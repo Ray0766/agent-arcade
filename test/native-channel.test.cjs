@@ -205,7 +205,7 @@ test('fixture real NativeBroker accepts attachment, a 128-event batch and explic
   await waitFor(()=>broker.nativeSnapshot().attached);
   // Server attachment is recorded before its HTTP response reaches the client.
   // An active authenticated poll proves the client actually learned its ID.
-  await waitFor(()=>broker.waiter!==null);
+  await waitFor(()=>!!broker.waiter);
   // The broker retains 128 events; an all-unknown batch cannot approve a tool.
   await channel.receive({events:Array.from({length:128},(_,index)=>({seq:index+1,type:'fixture-unknown'}))});
   assert.equal(mcp.sent.length,0);
