@@ -64,3 +64,7 @@ npm run dist
 直接依赖已固定版本，构建产物附带实际解析的 `package-lock.json`，复制到项目后可通过 `npm ci` 复现依赖。macOS/Linux 提供构建配置，尚不属于首版 Windows 验收范围。
 
 源码、文档和原创美术资产均为 **MIT 许可证**。欢迎先贡献状态误报复现和主题。更多集成、IDE 跳转、签名安装包与自动更新留待后续验证。本项目与 Anthropic、PeonPing 无隶属关系。
+
+## Agent 开发规范
+
+后续开发请结合 [AGENTS.md](AGENTS.md)、[项目质量 brief](docs/QUALITY_BRIEF.md) 与 [贡献规范](CONTRIBUTING.md)：核实技术选择与参考作品，验证差异化价值，在现有架构和原创美术基础上完成实现与验收。

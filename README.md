@@ -74,3 +74,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md), the [theme format](docs/THEMES.md), [ar
 ## Credits and license
 
 Code, docs, and original pixel/vector artwork are **MIT licensed**. Sprout Bot and the workshop art are drawn in `scripts/create-assets.cjs`; no third-party game characters or sounds are used. Electron and development dependencies retain their own licenses. Agent Arcade is an independent community project, not affiliated with Anthropic or PeonPing.
+
+## Agent guidance
+
+Before contributing, read [AGENTS.md](AGENTS.md) and the [project quality brief](docs/QUALITY_BRIEF.md) alongside CONTRIBUTING.md. They define research, differentiation, design references, and evidence required for future changes while preserving the current architecture and original artwork.
