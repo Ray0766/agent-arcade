@@ -7,7 +7,7 @@ const { pathToFileURL } = require('node:url');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { Store } = require('./core/store.cjs');
-const { NotificationGate } = require('./core/notify.cjs');
+const { NotificationGate, coalesceChanges } = require('./core/notify.cjs');
 const { atomicJSON, readJSON, drainInbox } = require('./core/files.cjs');
 const integration = require('./core/integration.cjs');
 const { validateTheme } = require('./core/theme.cjs');
@@ -90,9 +90,9 @@ else {
     timer = setInterval(() => {
       try {
         const changes = drainInbox(root,live,{captureResults:config.captureResults}); problem = '';
-        for (const c of changes) if (!demo && gate.allow(c,{enabled:config.notifications,quiet:config.quiet,focused:win.isFocused() && win.isVisible()}) && Notification.isSupported()) {
+        for (const c of coalesceChanges(changes)) if (!demo && gate.allow(c,{enabled:config.notifications,quiet:config.quiet,focused:win.isFocused() && win.isVisible()}) && Notification.isSupported()) {
           const zh = config.language === 'zh';
-          const labels = zh ? {waiting:'需要你确认',error:'检测到错误',done:'回复已完成'} : {waiting:'Needs your attention',error:'Error observed',done:'Response ready'};
+          const labels = zh ? {waiting:'需要你确认',error:'检测到错误',done:'回复结束 · 任务结果尚未验证'} : {waiting:'Needs your attention',error:'Error observed',done:'Response ended · outcome unverified'};
           const n = new Notification({title:`Agent Arcade · ${c.task.project}`,body:labels[c.task.state],silent:true});
           n.on('click',show); n.show();
         }

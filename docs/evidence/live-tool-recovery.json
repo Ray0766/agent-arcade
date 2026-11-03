@@ -1,0 +1,217 @@
+{
+  "source": "Real Claude Code 2.1.317, synthetic exit-code-7 then print-number commands",
+  "recordedAt": "2026-11-03T02:38:16.997Z",
+  "observations": [
+    {
+      "id": "c89bca85-7b28-454e-bc88-3919bb08db5b",
+      "at": 1793673352105,
+      "event": "SessionStart",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "c9e34730-ba59-4b60-8058-1d758e5cfff9",
+      "at": 1793673352187,
+      "event": "UserPromptSubmit",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "91ca0485-af1b-4e9e-acbf-5feee3e9739b",
+      "at": 1793673353944,
+      "event": "PreToolUse",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "Bash",
+      "toolId": "toolu_01UaGV6rZ6kUc8AGMdh31GNx",
+      "toolKey": "2d6784b98eb6e0b6bb835d633735e1f9b04a041ae971f8f656f5bed430371469",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "42c7068e-411d-4ccd-b50c-8a76ded542df",
+      "at": 1793673354550,
+      "event": "PostToolUseFailure",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "Bash",
+      "toolId": "toolu_01UaGV6rZ6kUc8AGMdh31GNx",
+      "toolKey": "2d6784b98eb6e0b6bb835d633735e1f9b04a041ae971f8f656f5bed430371469",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "830ce45a-ead6-4c43-badc-e1b68896d4bb",
+      "at": 1793673355794,
+      "event": "PreToolUse",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "Bash",
+      "toolId": "toolu_011y7RivtrAAmw2o6FxdR9Jw",
+      "toolKey": "f2c8ddb38a48870dc2fb8c9bfb33d8cac68ade773ad42a311b00b10c8ad573e3",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "2465bb8f-3592-4619-9da1-131a794fd509",
+      "at": 1793673355960,
+      "event": "PostToolUse",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "Bash",
+      "toolId": "toolu_011y7RivtrAAmw2o6FxdR9Jw",
+      "toolKey": "f2c8ddb38a48870dc2fb8c9bfb33d8cac68ade773ad42a311b00b10c8ad573e3",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "115bd530-29ec-4f4e-ab08-06f2657608ec",
+      "at": 1793673356818,
+      "event": "Stop",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "5bd2f46a-936a-44d9-b862-f5b3decc4d95",
+      "at": 1793673356877,
+      "event": "SessionEnd",
+      "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+      "agent": "",
+      "agentType": "",
+      "project": "Agent Arcade",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    }
+  ],
+  "station": {
+    "id": "[\"882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea\",\"\"]",
+    "session": "882fcdfa-17ce-4fb3-bcfe-ef323f3f59ea",
+    "agent": "",
+    "project": "Agent Arcade",
+    "name": "Claude",
+    "state": "ended",
+    "reason": "session_ended",
+    "createdAt": 1793673352105,
+    "updatedAt": 1793673356877,
+    "history": [
+      {
+        "event": "SessionStart",
+        "at": 1793673352105,
+        "state": "idle",
+        "tool": ""
+      },
+      {
+        "event": "UserPromptSubmit",
+        "at": 1793673352187,
+        "state": "running",
+        "tool": ""
+      },
+      {
+        "event": "PreToolUse",
+        "at": 1793673353944,
+        "state": "running",
+        "tool": "Bash"
+      },
+      {
+        "event": "PostToolUseFailure",
+        "at": 1793673354550,
+        "state": "error",
+        "tool": "Bash"
+      },
+      {
+        "event": "PreToolUse",
+        "at": 1793673355794,
+        "state": "running",
+        "tool": "Bash"
+      },
+      {
+        "event": "PostToolUse",
+        "at": 1793673355960,
+        "state": "running",
+        "tool": "Bash"
+      },
+      {
+        "event": "Stop",
+        "at": 1793673356818,
+        "state": "done",
+        "tool": ""
+      },
+      {
+        "event": "SessionEnd",
+        "at": 1793673356877,
+        "state": "ended",
+        "tool": ""
+      }
+    ],
+    "result": "",
+    "tools": [],
+    "acknowledged": false,
+    "waitFor": [],
+    "finishedTools": [
+      "toolu_01UaGV6rZ6kUc8AGMdh31GNx",
+      "toolu_011y7RivtrAAmw2o6FxdR9Jw"
+    ],
+    "calls": [],
+    "lastEvent": "SessionEnd",
+    "tool": "Bash",
+    "stale": false,
+    "displayState": "ended"
+  },
+  "interpretation": "Tool failure followed by activity and response boundary. No task-success assertion."
+}

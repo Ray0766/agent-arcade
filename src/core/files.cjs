@@ -15,7 +15,8 @@ function drainInbox(root, store, { captureResults = false } = {}) {
   const entries = [];
   for (const name of fs.readdirSync(dir).filter(n => /^\d+-[\w-]+\.json$/.test(n)).slice(0, 500)) {
     const file = path.join(dir, name);
-    const stat = fs.lstatSync(file);
+    let stat;
+    try { stat = fs.lstatSync(file); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
     if (!stat.isFile() || stat.isSymbolicLink()) continue;
     if (stat.size > 40000) { fs.unlinkSync(file); continue; }
     const event = readJSON(file, null);
@@ -27,7 +28,7 @@ function drainInbox(root, store, { captureResults = false } = {}) {
   // Save before acknowledging the inbox. Replays after a crash are idempotent.
   if (entries.length) {
     atomicJSON(path.join(root, 'state.json'), store.export());
-    for (const { file } of entries) fs.unlinkSync(file);
+    for (const { file } of entries) { try { fs.unlinkSync(file); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
   }
   return changes;
 }

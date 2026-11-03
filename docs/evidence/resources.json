@@ -1,0 +1,64 @@
+{
+  "purpose": "One-machine preview resource check, not a user study or a real Claude workload benchmark",
+  "environment": "Windows x64 development build, visible window, reduced motion",
+  "runtime": {
+    "electron": "45.2.1",
+    "appVersion": "0.1.2"
+  },
+  "protocol": {
+    "warmupSecondsPerStage": 3,
+    "intervalSeconds": 1,
+    "intervalsPerStage": 12,
+    "cpu": "Sum of per-process cumulativeCPUUsage deltas divided by monotonic wall time, times 100. 100% means one logical core fully used; not normalized by logical core count.",
+    "memory": "Sum of Electron app.getAppMetrics memory.workingSetSize KiB, divided by 1024. Shared pages can be counted once per process; this is not unique physical footprint.",
+    "workload": "Normal foreground window. First stage has zero stations. Second injects 200 synthetic SessionStart events into the real inbox/reducer/UI; then measures settled idle stations with no further events. Reduced motion enabled.",
+    "excluded": "Claude processes, observer startup cost, 200-event ingestion burst, animation cost, startup cost, sustained event throughput, long-term leaks, packaged builds, OS sleep/resume, multi-screen scaling, controller CPU, GPU hardware utilization.",
+    "processChurn": "If a process appears/disappears between readings its final interval CPU is unavailable; raw readings are retained and any churn makes the preview budget verdict inconclusive/false.",
+    "references": [
+      "https://www.electronjs.org/docs/latest/api/structures/cpu-usage",
+      "https://www.electronjs.org/docs/latest/api/structures/process-metric",
+      "https://www.electronjs.org/docs/latest/api/structures/memory-info"
+    ]
+  },
+  "stages": [
+    {
+      "name": "idle",
+      "stationCount": 0,
+      "synthetic": false,
+      "animations": "Idle stations; reduced-motion media preference enabled",
+      "warmupSeconds": 3,
+      "intervals": 12,
+      "measuredWallSeconds": 12.114,
+      "totalCPUSeconds": 0.125,
+      "meanCPUPercentOfOneCore": 1.034,
+      "peakIntervalCPUPercentOfOneCore": 1.756,
+      "peakSummedWorkingSetMiB": 329.164,
+      "processSetStable": true,
+      "budget": {
+        "meanCPUPercentOfOneCoreBelow": 5,
+        "peakSummedWorkingSetMiBBelow": 300
+      },
+      "withinPreviewBudget": false
+    },
+    {
+      "name": "synthetic200Idle",
+      "stationCount": 200,
+      "synthetic": true,
+      "animations": "Idle stations; reduced-motion media preference enabled",
+      "warmupSeconds": 3,
+      "intervals": 12,
+      "measuredWallSeconds": 12.105,
+      "totalCPUSeconds": 0.593,
+      "meanCPUPercentOfOneCore": 4.898,
+      "peakIntervalCPUPercentOfOneCore": 12.411,
+      "peakSummedWorkingSetMiB": 468.145,
+      "processSetStable": true,
+      "budget": {
+        "meanCPUPercentOfOneCoreBelow": 10,
+        "peakSummedWorkingSetMiBBelow": 500
+      },
+      "withinPreviewBudget": true
+    }
+  ],
+  "privacy": "Public summary only. Machine identifiers, hardware inventory, display bounds, process IDs, creation times and per-process samples are retained only in local ignored outputs."
+}

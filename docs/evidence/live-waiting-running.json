@@ -1,0 +1,114 @@
+{
+  "source": "Real installed Claude Code 2.1.317, synthetic acceptance commands; final 0.1.2 observer",
+  "capturedAt": "2026-11-03T02:34:44.185Z",
+  "demo": false,
+  "config": {
+    "language": "zh",
+    "notifications": false,
+    "quiet": false,
+    "captureResults": false,
+    "alwaysOnTop": false,
+    "compact": false,
+    "theme": "workshop"
+  },
+  "tasks": [
+    {
+      "id": "[\"a5e01b69-7887-4af5-8527-556d891c80a2\",\"\"]",
+      "session": "a5e01b69-7887-4af5-8527-556d891c80a2",
+      "agent": "",
+      "project": "parallel-check",
+      "name": "Claude",
+      "state": "running",
+      "reason": "working",
+      "createdAt": 1793673283198,
+      "updatedAt": 1793673283288,
+      "history": [
+        {
+          "event": "SessionStart",
+          "at": 1793673283198,
+          "state": "idle",
+          "tool": ""
+        },
+        {
+          "event": "UserPromptSubmit",
+          "at": 1793673283288,
+          "state": "running",
+          "tool": ""
+        }
+      ],
+      "result": "",
+      "tools": [],
+      "acknowledged": false,
+      "waitFor": [],
+      "finishedTools": [],
+      "calls": [],
+      "lastEvent": "UserPromptSubmit",
+      "tool": "",
+      "stale": false,
+      "displayState": "running"
+    },
+    {
+      "id": "[\"77ae458d-a36a-4f65-bfd1-51520ecbdd1c\",\"\"]",
+      "session": "77ae458d-a36a-4f65-bfd1-51520ecbdd1c",
+      "agent": "",
+      "project": "Agent Arcade",
+      "name": "Claude",
+      "state": "waiting",
+      "reason": "permission",
+      "createdAt": 1793673242594,
+      "updatedAt": 1793673251506,
+      "history": [
+        {
+          "event": "SessionStart",
+          "at": 1793673242594,
+          "state": "idle",
+          "tool": ""
+        },
+        {
+          "event": "UserPromptSubmit",
+          "at": 1793673242700,
+          "state": "running",
+          "tool": ""
+        },
+        {
+          "event": "PreToolUse",
+          "at": 1793673245424,
+          "state": "running",
+          "tool": "Bash"
+        },
+        {
+          "event": "PermissionRequest",
+          "at": 1793673245489,
+          "state": "waiting",
+          "tool": "Bash"
+        },
+        {
+          "event": "Notification",
+          "at": 1793673251506,
+          "state": "waiting",
+          "tool": ""
+        }
+      ],
+      "result": "",
+      "tools": [
+        "toolu_01SK9Lyfa9LW7fLM9uMndDQ8"
+      ],
+      "acknowledged": false,
+      "waitFor": [
+        "toolu_01SK9Lyfa9LW7fLM9uMndDQ8"
+      ],
+      "finishedTools": [],
+      "calls": [
+        {
+          "id": "toolu_01SK9Lyfa9LW7fLM9uMndDQ8",
+          "key": "2be7bafee7d9b582a4c549482a339af30aff2062953e67780f66b526c41caf36",
+          "inferredPermission": true
+        }
+      ],
+      "lastEvent": "Notification",
+      "tool": "Bash",
+      "stale": false,
+      "displayState": "waiting"
+    }
+  ]
+}

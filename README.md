@@ -8,16 +8,16 @@
 
 Agent Arcade is a local desktop companion for **Claude Code**. Each session and subagent gets a tiny workstation: building, asking for attention, recovering from a tool error, or delivering a response. It observes official lifecycle hooks; it does not infer completion from an animation or an idle timer.
 
-**0.1.1 preview:** Windows first. Core event handling is tested with real hook subprocesses and synthetic payloads. CI verifies the Electron app and Windows package before publishing the first preview. A successful CI run is not a live Claude Code acceptance test; see [validation and limitations](docs/VALIDATION.md).
+**0.1.2 preview:** Windows first. Real Claude Code acceptance, automated tests and remaining limitations are recorded separately in [validation and limitations](docs/VALIDATION.md). CI verifies the Electron app and Windows package before publishing each versioned preview.
 
 ## Try it
 
-Install [Node.js 22+](https://nodejs.org/) and a current [Claude Code](https://code.claude.com/docs/en/overview) version with the hooks listed below.
+Install [Node.js 22+](https://nodejs.org/) and [Claude Code](https://code.claude.com/docs/en/overview) 2.1.277 or newer (final live acceptance: 2.1.317). Hook commands use exec form, without a shell.
 
 ```sh
 git clone https://github.com/Ray0766/agent-arcade.git
 cd agent-arcade
-npm install
+npm ci
 npm run demo
 ```
 
@@ -45,18 +45,24 @@ The installer merges observer commands into `~/.claude/settings.json`, backs up 
 | `PermissionRequest`, `AskUserQuestion`, relevant `Notification` | Needs you | Return to Claude Code to respond |
 | `PostToolUseFailure` | Error observed | A tool failed; the agent may recover on its next action |
 | `StopFailure` | Error observed | A turn ended with an API failure |
-| `Stop`, `SubagentStop` | Ready | Response ended, **not proof the requested work succeeded** |
+| `Stop`, `SubagentStop` | Response ended | A response boundary, **not proof the requested work succeeded** |
 | `Stop` with background work / scheduled wakeup | Building / Idle | Do not claim all work has finished |
 | `SessionEnd` | Ended | Session closed; unfinished children become uncertain |
 | No event for five minutes while active | Uncertain | The last state may be stale; never auto-completed |
 
 Multiple pending tool permissions are tracked separately. Old events and duplicate delivery cannot replace newer state. Events are observed at hook time: another Stop hook can continue a turn, a long-running tool can become uncertain, and user interruptions do not always emit a terminal event. See [accuracy notes](docs/ARCHITECTURE.md).
 
+Approval itself has no follow-up hook: a permission request remains visible until the next tool/result event. Ambiguous permission matching is shown as uncertain. The persistent scene's benefit over notification-only tools is a hypothesis, not a completed user study.
+
+![Two real Claude Code sessions: one working, one requesting permission](docs/evidence/live-waiting-running.png)
+
+Real Claude Code 2.1.317 events with harmless synthetic commands, not demo mode. [Recovery and response-boundary evidence](docs/VALIDATION.md).
+
 ## Local by design
 
 No account, telemetry, web server, network listener, or cloud service. The observer stores a project **folder name**, session/agent IDs, event names, tool names/IDs and timestamps. It drops prompts, tool arguments, raw errors, and transcript paths. Final reply text is **off by default** and capped at 16,000 characters when enabled. Data is ordinary local JSON, not encrypted; do not enable result capture for replies you do not want stored on disk.
 
-The inbox is bounded to roughly 2,000 files/24 hours while hooks run; the app retains at most 200 stations and 30 events per station. Turning off capture clears saved reply text. **Clear finished** removes delivered/ended stations. Quit and remove `~/.agent-arcade/` after uninstalling hooks to erase local app data. Hook backups remain beside Claude settings so you can restore them deliberately.
+The inbox is bounded to roughly 2,000 files/24 hours while hooks run; the app retains at most 200 stations and 30 events per station. Turning off capture clears saved reply text. **Clear ended stations** removes response-ended/session-ended stations. Quit and remove `~/.agent-arcade/` after uninstalling hooks to erase local app data. Hook backups remain beside Claude settings so you can restore them deliberately.
 
 ## Develop
 
@@ -67,7 +73,7 @@ npm run test:ui    # isolated Electron + installed hook smoke test
 npm run dist      # package for the current OS
 ```
 
-Direct development dependencies are pinned. The verified build attaches the resolved `package-lock.json` to its artifact/release; copy it into the checkout and use `npm ci` to reproduce that dependency graph. macOS/Linux packaging is configured but is not included in the first Windows acceptance target.
+Direct development dependencies and the resolved `package-lock.json` are committed. Use `npm ci` to reproduce that dependency graph. macOS/Linux packaging is configured but is not included in the Windows acceptance target.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), the [theme format](docs/THEMES.md), [architecture](docs/ARCHITECTURE.md), and [security policy](SECURITY.md). The first priority is reliable observation. Additional tools, clickable IDE navigation, richer themes, signed installers, and automatic updates are future work.
 

@@ -1,0 +1,16 @@
+{
+  "platform": "win32",
+  "packaged": true,
+  "closeToTray": true,
+  "nativeNotification": "native show event received",
+  "hiddenAfterNotification": true,
+  "displayCount": 1,
+  "testScale": 1.5,
+  "horizontalOverflow": false,
+  "limitations": [
+    "Native show event means the OS accepted the notification, not proof that a human saw a banner.",
+    "Does not change Windows focus/notification settings, simulate physical sleep, or audit accessibility.",
+    "One installed display configuration; no claim about untested monitor/scaling combinations."
+  ],
+  "privacy": "Display identifiers, bounds and exact collection times omitted."
+}

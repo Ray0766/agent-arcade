@@ -26,11 +26,10 @@ function install({ settingsFile, root, sourceDir, nodePath = 'node' }) {
   fs.mkdirSync(path.join(bin, 'core'), { recursive: true, mode: 0o700 });
   fs.copyFileSync(path.join(sourceDir, 'hook.cjs'), path.join(bin, 'hook.cjs'));
   for (const f of ['events.cjs','files.cjs']) fs.copyFileSync(path.join(sourceDir, 'core', f), path.join(bin, 'core', f));
-  // Forward slashes work in Git Bash, PowerShell, and POSIX shells. Reject shell metacharacters.
-  const safe = value => { if (/["`$\r\n%]/.test(value)) throw Error('Unsupported character in installation path.'); return value.replace(/\\/g, '/'); };
-  const command = `"${safe(nodePath)}" "${safe(path.join(bin, 'hook.cjs'))}"`;
+  // Exec-form hooks bypass shell quoting entirely (Claude Code >= 2.1.207).
+  const command = nodePath;
   settings.hooks ||= {};
-  for (const event of EVENTS) (settings.hooks[event] ||= []).push({ hooks: [{ type: 'command', command, timeout: 2, statusMessage: MARKER }] });
+  for (const event of EVENTS) (settings.hooks[event] ||= []).push({ hooks: [{ type: 'command', command, args: [path.join(bin, 'hook.cjs')], timeout: 2, statusMessage: MARKER }] });
   const backup = fs.existsSync(settingsFile) ? `${settingsFile}.arcade-${Date.now()}.bak` : null;
   if (backup) fs.copyFileSync(settingsFile, backup);
   atomicJSON(settingsFile, settings);
