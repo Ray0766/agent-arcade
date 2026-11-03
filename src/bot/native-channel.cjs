@@ -127,18 +127,22 @@ function createChannel({url, token, fetchImpl=globalThis.fetch, mcp, timeoutMs=3
     });
   }
 
-  async function close({notify=true} = {}) {
+  function close({notify=true} = {}) {
     if (closing) return closePromise;
     closing = true;
-    controller.abort();
-    closePromise = (async () => {
-      if (notify) for (const id of [...pending]) await verdict(id, 'deny').catch(() => {});
-      pending.clear();
-      if (clientId) await request('/detached', 'POST', {}, {detaching:true}).catch(() => {});
-      await mcp.close().catch(() => {});
-      signal?.removeEventListener('abort', externalAbort);
-      resolveDone();
-    })();
+    let finish;closePromise=new Promise(resolve=>{finish=resolve;});
+    (async () => {
+      try {
+        if (notify) for (const id of [...pending]) await verdict(id, 'deny').catch(() => {});
+        pending.clear();
+        // Complete the authenticated detach before aborting the active HTTP
+        // poll. Aborting first can tear down its shared transport mid-detach.
+        if (clientId) await request('/detached', 'POST', {}, {detaching:true}).catch(() => {});
+      } finally {
+        controller.abort();await mcp.close().catch(() => {});
+        signal?.removeEventListener('abort', externalAbort);resolveDone();finish();
+      }
+    })().catch(()=>{controller.abort();resolveDone();finish();});
     return closePromise;
   }
   const externalAbort = () => {void close();};
@@ -160,14 +164,14 @@ function createChannel({url, token, fetchImpl=globalThis.fetch, mcp, timeoutMs=3
       if (!attached || typeof attached.client_id !== 'string' || !/^[a-f0-9]{32}$/.test(attached.client_id)) throw fail('invalid_bridge_attachment');
       clientId = attached.client_id;
       let failures = 0;
-      while (!controller.signal.aborted) {
+      while (!closing && !controller.signal.aborted) {
         try {
           const batch = await request(`/events?after=${cursor}`);
           failures = 0;
           if (await receive(batch)) break;
           if (!batch.events.length) await pause(100);
         } catch (error) {
-          if (controller.signal.aborted) break;
+          if (closing || controller.signal.aborted) break;
           if (['resync_required','bridge_access_denied','invalid_bridge_events','invalid_bridge_message','bridge_response_too_large','mcp_write_failed'].includes(error.code) || ++failures >= 3) throw error;
           await pause(250 * failures);
         }
