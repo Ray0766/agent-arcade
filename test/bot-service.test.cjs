@@ -57,3 +57,31 @@ test('fixture: an online empty poll is not an inbound message; failed sends are 
   assert.equal(service.snapshot().incomingCount,1);assert.equal(service.snapshot().outgoingAccepted,1);assert.equal(sends,2);
   await service.disconnect();assert.equal(service.status,'disconnected');
 });
+test('fixture: API/native selection persists without deleting the API key and native never calls the SDK',async t=>{
+  let sdkCalls=0,cleaned=0;
+  const {service,root}=fixture(t,()=>({getUpdates:(_cursor,signal)=>new Promise((resolve,reject)=>{signal.addEventListener('abort',()=>reject(Error('aborted')),{once:true});}),sendText:async()=>{}}));
+  service.runnerFactory=()=>{sdkCalls++;throw Error('SDK must not start in native mode');};
+  service.nativeFactory=async()=>({command:'fixture-native-command',cleanup:()=>cleaned++});
+  service.configure({key:'fixture-key-invalid',workspace:root});service.secret.token='fixture';service.secret.ownerId='fixture';
+  service.configure({mode:'native'});assert.equal(service.snapshot().hasKey,true);
+  await service.connect();assert.equal(sdkCalls,0);assert.equal(service.snapshot().native.command,'fixture-native-command');
+  assert.throws(()=>service.configure({mode:'api'}),/Disconnect/);
+  assert(!JSON.stringify(service.snapshot()).includes(service.dispatcher.token));
+  await service.disconnect();assert.equal(cleaned,1);service.configure({mode:'api'});assert.equal(service.snapshot().hasKey,true);
+  const reloaded=new BotService({root,vault:service.vault});assert.equal(reloaded.snapshot().mode,'api');assert.equal(reloaded.snapshot().hasKey,true);
+});
+test('fixture: late disconnect cannot clean a newer native launch configuration',async t=>{
+  const {service}=fixture(t,()=>({})),stopped=deferred(),cleaned=[];let stops=0;
+  service.status='connected';service.dispatcher={stop:()=>++stops===1?stopped.promise:Promise.resolve(),whenIdle:()=>Promise.resolve()};
+  const old={cleanup:()=>cleaned.push('old')},next={cleanup:()=>cleaned.push('new')};service.nativeLaunch=old;
+  const first=service.disconnect();await service.disconnect();service.nativeLaunch=next;service.generation++;
+  stopped.resolve();await first;assert.equal(service.nativeLaunch,next);assert(!cleaned.includes('new'));
+  service.nativeLaunch=null;
+});
+test('fixture: native preparation succeeds with no saved API key',async t=>{
+  const {service,root}=fixture(t,()=>({getUpdates:(_cursor,signal)=>new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(Error('aborted')),{once:true})),sendText:async()=>{}}));
+  let prepared=0;service.nativeFactory=async()=>{prepared++;return {command:'fixture-command',cleanup(){}};};
+  service.configure({workspace:root,mode:'native'});service.secret.token='fixture';service.secret.ownerId='fixture';
+  assert.equal(service.snapshot().hasKey,false);await service.connect();assert.equal(prepared,1);assert.equal(service.snapshot().native.command,'fixture-command');
+  await service.disconnect();
+});

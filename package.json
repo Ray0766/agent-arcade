@@ -1,6 +1,6 @@
 {
   "name": "agent-arcade",
-  "version": "0.2.0-preview.2",
+  "version": "0.3.0-preview.1",
   "description": "Give your Claude agent a task through WeChat. Watch real work in a tiny desktop workshop.",
   "main": "src/main.cjs",
   "private": true,
@@ -16,6 +16,7 @@
     "test:ui": "node scripts/smoke.cjs",
     "test:bot-ui": "node scripts/bot-smoke.cjs",
     "test:bot-flow": "node scripts/bot-flow.cjs",
+    "test:native": "node scripts/native-smoke.cjs",
     "check": "node scripts/check.cjs",
     "prepack": "node scripts/build-icon.cjs",
     "pack": "electron-builder --dir",
@@ -46,9 +47,7 @@
       "THIRD_PARTY_NOTICES.md"
     ],
     "asar": true,
-    "asarUnpack": [
-      "node_modules/@anthropic-ai/claude-agent-sdk-*/**/*"
-    ],
+    "asarUnpack": ["node_modules/**/*","src/bot/native-channel.cjs"],
     "win": {
       "target": [
         "portable"
@@ -71,6 +70,8 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.317",
-    "qrcode": "1.5.4"
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "qrcode": "1.5.4",
+    "zod": "4.6.7"
   }
 }

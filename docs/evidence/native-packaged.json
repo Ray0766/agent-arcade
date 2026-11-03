@@ -1,0 +1,13 @@
+{
+  "stage": "packaged",
+  "ui": "passed",
+  "modeSwitch": "API key retained; native configuration persisted",
+  "nativeMcp": "real system Node + stdio + authenticated local HTTP",
+  "protocol": "2025-11-25",
+  "reply": "accepted by fixture transport",
+  "permissionRelay": "fixture native request and one-use allow",
+  "cleanup": "broker revoked and private configuration removed",
+  "liveClaudeRegistration": false,
+  "liveModel": false,
+  "liveWeChat": false
+}

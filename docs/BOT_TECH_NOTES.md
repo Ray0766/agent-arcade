@@ -1,6 +1,6 @@
 # WeChat task bot: execution research
 
-Reviewed **2026-11-03**. This is an implementation contract and research record, not a live WeChat or SDK acceptance report. The installed local CLI reports **Claude Code 2.1.317**. No model request, dependency installation, social-account access, or message send was performed for this research.
+Reviewed **2026-11-03**. This is an implementation contract and research record, not a live WeChat or SDK acceptance report. The original API-mode research below checked installed **Claude Code 2.1.317** without model requests, dependency installation, social-account access or messages. The [0.3 local-mode addendum](#03-local-claude-code-channels-addendum) separates the later implementation and fixture evidence.
 
 The user has changed the scope from observation alone to an owner-operated WeChat bot that can dispatch tasks. Retain Electron, the observer, deterministic state semantics and original characters. Keep execution orchestration separate from the observer; the SDK starts the agent in its own native process. A character animation must never make an execution decision.
 
@@ -12,7 +12,7 @@ The mature alternative is an installed CLI subprocess with `-p --input-format st
 
 ## Authentication and environment
 
-The public bot should require the owner's **Anthropic API key**. Current SDK documentation does not authorize third-party products to offer claude.ai login or subscription limits without prior approval. Do not copy the user's existing Claude OAuth credentials into bot storage. Existing native CLI login working locally is a separate fact; it is not evidence that subscription-backed product distribution is supported. See [SDK quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart).
+The bot's **API/SDK execution mode** requires the owner's **Anthropic API key**. Current SDK documentation does not authorize third-party products to offer claude.ai login or subscription limits without prior approval. Do not copy existing Claude OAuth credentials into bot storage. This API-mode constraint does not mean the optional original-CLI channel must collect an API key: that mode retains the user's login in Anthropic's own binary/flow. See [SDK quickstart](https://code.claude.com/docs/en/agent-sdk/quickstart) and the addendum below.
 
 According to the [environment reference](https://code.claude.com/docs/en/env-vars), non-interactive runs always use `ANTHROPIC_API_KEY` when present. `options.env` **replaces**, rather than merges, the subprocess environment. Build it from a small OS-variable allowlist, then explicitly set:
 
@@ -116,3 +116,15 @@ The demonstrable target is one WeChat message reaching one owned task, an actual
 Preserve separate facts: response ended, agent run failed, cancelled, waiting for input, background work remains, and verified task success. `result.subtype === 'success'` alone is insufficient; inspect `is_error` and diagnostic fields. Even an error-free agent turn does not prove tests passed or the requested artifact is correct. Report independently observed test/output evidence separately.
 
 Before calling the bot complete, test real SDK execution and WeChat receipt/reply; invalid credentials without subscription fallback; denied and expired approvals; a clarifying answer; duplicate inbound messages; wrong sender/request IDs; cancellation while running and while waiting; restart with a pending approval; package-native path; and error-free response without task-success evidence. This research did not run those checks.
+
+## 0.3 local Claude Code Channels addendum
+
+The user requested both entry points. [Official Channels](https://code.claude.com/docs/en/channels) supports original CLI authentication through claude.ai or a Console API key. Agent Arcade adds a Node MCP channel and a loopback relay, not another Claude sign-in flow. It does not read/copy Claude credentials, set an API key, or reuse the SDK's isolated `CLAUDE_CONFIG_DIR`/API environment for the local session. Authentication/account limits belong to the user's unmodified CLI; see [credential boundaries](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use).
+
+The generated command uses installed Node.js 22.13+ and original CLI 2.1.317+ with `--permission-mode default --strict-mcp-config --mcp-config <private file> --dangerously-load-development-channels server:agent-arcade-wechat`. Custom Channels remains research preview and requires the user's interactive confirmation; `-p` and SDK runs ignore this development flag. It bypasses the channel allowlist only. No user/project settings are edited. Pin MCP SDK 1.32.2 and zod 4.6.7; a real Node stdio fixture negotiated protocol 2025-11-25. That handshake is not evidence the original CLI registered or processed a channel message.
+
+Electron retains WeChat credentials and owns the random-port 127.0.0.1 broker. A temporary 256-bit capability is stored in a private generated MCP file, not the renderer/copied command. A separate attachment ID, bound reply IDs, expiring permission codes, bounded events and fail-closed gap/write handling prevent silent connection reuse/replay. Capability revocation is authoritative even if file cleanup fails. The Node sidecar and production dependencies are unpacked from ASAR for system Node; packaged-sidecar verification is required.
+
+The [reference](https://code.claude.com/docs/en/channels-reference) distinguishes channel input, the `reply` tool, permission notifications and model execution. Busy input can combine; a reply is not a Stop boundary. Native permission previews are not raw complete parameters and can be normalized, masked or omitted. The app refuses unsuitable previews remotely; a verdict sent does not confirm adoption. Existing CLI read/allow rules may execute without another prompt. Native `/cancel` only pauses new relay input and sends pending denials, while actual interruption/new-session handling remains in the original terminal. Neither app exit nor relay closure guarantees the independent CLI stopped.
+
+Original CLI registration/consent, actual WeChat task/reply, native verdict adoption and stopping/recovery are still pending. Keep API mode's tested abort/session/result contract separate; no stability, latency, resource or billing improvement is inferred from adding this research-preview route.

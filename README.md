@@ -6,19 +6,24 @@
 
 **Message your agent on WeChat. Keep its work in a little desktop world.**
 
-Agent Arcade now has an experimental **WeChat task bot**: pair your own account, select a local project, and send instructions to a Claude agent. One-time permissions, questions and final replies return to the same conversation. Electron and the original Sprout Bot remain the local workshop. The existing Claude Code hook observer still works independently.
+Agent Arcade has an experimental **WeChat task bot** with two execution choices: an **API agent** managed by the app, or your **local Claude Code CLI** using its existing login. Pair your own account, select a local project, and send instructions in the ClawBot conversation. Electron, the original Sprout Bot and the independent hook observer remain the local workshop.
 
-**0.2.0-preview.2 · Windows first.** The WeChat and model portions have a reproducible **mocked** dispatch/approval/cancellation flow; **live WeChat + model acceptance is pending**. The Tencent QR endpoint was reached without logging in or sending a message. Earlier real hook acceptance remains separate in [validation and limitations](docs/VALIDATION.md).
+**0.3.0-preview.1 · Windows first.** Local mode uses the official Channels research preview and requires explicit confirmation in the original CLI. **Real WeChat + agent acceptance remains pending for both modes.** Mock dispatch tests and a real Node stdio MCP handshake are separate evidence; see [validation and limitations](docs/VALIDATION.md).
 
 ## Give the bot a task
 
-First find **ClawBot** in your phone's **WeChat → Me → Settings → Plugins**. Run `npm start`, open **WeChat tasks → Pair WeChat**, and scan its code using the phone's ClawBot setup page. The conversation is **ClawBot**, not an ordinary friend named Agent Arcade. Choose a project, save your **Anthropic API key**, then select **Start receiving tasks**. The computer must stay on. Credential saved, channel online and first inbound text are distinct states. See [setup, chat commands, costs and boundaries](docs/WECHAT.md).
+First find **ClawBot** in your phone's **WeChat → Me → Settings → Plugins**. Run `npm start`, open **WeChat tasks → Pair WeChat**, and scan its code using the phone's ClawBot setup page. Chat in **ClawBot**, not an ordinary friend named Agent Arcade. Choose a disposable project, then select an execution method:
 
-Send a task in ordinary language. Approve each tool using the exact one-time `/allow CODE`; use `/deny CODE`, `/status`, `/cancel` or `/new` as needed. This owner-only preview does not accept group tasks. Claude subscription login is not used. Messages/results go through Tencent and Anthropic; an approved Windows command can affect the computer beyond the selected folder. **A response ending never proves task success.**
+| Method | Setup and authority | Stopping work |
+| --- | --- | --- |
+| **API agent** (default) | Save your Anthropic API key, then start receiving tasks. The SDK asks for each tool action through a one-time code. API billing applies. | `/cancel` aborts the app-managed run and clears its queue. |
+| **Local Claude Code CLI** | Install Node.js 22.13+ and Claude Code 2.1.317+, log in through the original CLI, then start local mode. Copy the generated command into your terminal and personally confirm the custom development channel. No additional API key is required by Agent Arcade. | `/cancel` only pauses forwarding and sends denials for pending remote requests. Use **Ctrl+C in the local CLI** to stop execution. |
+
+Disconnect before switching modes; your saved API key is retained. Local mode follows the CLI's own permission rules, so previously allowed actions may run without a new prompt. Channels may combine messages in one session; a forwarded message is not a separate verified task. Keep the computer/app running and, in local mode, keep the CLI terminal open. Messages/results go through Tencent and Anthropic; approved Windows commands can affect data beyond the project. **Replies and accepted sends never prove task success.** See [setup, commands, privacy and limits](docs/WECHAT.md).
 
 ## Try it
 
-For source development install [Node.js 22.13+](https://nodejs.org/). The bot bundles Claude Agent SDK 0.3.317 / native CLI 2.1.317. To observe existing terminal sessions separately, install [Claude Code](https://code.claude.com/docs/en/overview) 2.1.277+ (real acceptance: 2.1.317). Observer hook commands use exec form, without a shell.
+For source development install [Node.js 22.13+](https://nodejs.org/). API mode bundles Claude Agent SDK 0.3.317 / its native runtime 2.1.317; local mode uses your separately installed [Claude Code](https://code.claude.com/docs/en/overview) 2.1.317+. The independent observer supports terminal versions 2.1.277+ (real acceptance: 2.1.317). Observer hook commands use exec form, without a shell.
 
 ```sh
 git clone https://github.com/Ray0766/agent-arcade.git
@@ -66,7 +71,7 @@ Real Claude Code 2.1.317 events with harmless synthetic commands, not demo mode.
 
 ## Observer privacy
 
-The independent **observer mode** needs no account or cloud service and adds no telemetry/server/listener. It stores a project **folder name**, session/agent IDs, event names, tool names/IDs and timestamps. It drops prompts, tool arguments, raw errors, and transcript paths. Final reply text is **off by default** and capped at 16,000 characters when enabled. Observer data is ordinary unencrypted local JSON. **The optional WeChat bot has different data flows:** Tencent/Anthropic receive messages/model input, credentials use OS encryption, and SDK session content persists locally. See [bot privacy and deletion](docs/WECHAT.md#privacy-restart-and-failure).
+The independent **observer mode** needs no account or cloud service and adds no telemetry/server/listener. It stores a project **folder name**, session/agent IDs, event names, tool names/IDs and timestamps. It drops prompts, tool arguments, raw errors, and transcript paths. Final reply text is **off by default** and capped at 16,000 characters when enabled. Observer data is ordinary unencrypted local JSON. **The optional WeChat bot has different data flows:** Tencent/Anthropic receive messages/model input; the saved WeChat/API credentials use OS encryption. Local mode adds a temporary authenticated loopback broker and private MCP launch file; it does not read Claude login credentials. The SDK and original CLI retain their own session content separately. See [bot privacy and deletion](docs/WECHAT.md#privacy-restart-and-failure).
 
 The inbox is bounded to roughly 2,000 files/24 hours while hooks run; the app retains at most 200 stations and 30 events per station. Turning off capture clears saved reply text. **Clear ended stations** removes response-ended/session-ended stations. Quit and remove `~/.agent-arcade/` after uninstalling hooks to erase local app data. Hook backups remain beside Claude settings so you can restore them deliberately.
 
@@ -78,6 +83,7 @@ npm run check      # JavaScript syntax checks
 npm run test:ui    # isolated Electron + installed hook smoke test
 npm run test:bot-ui # actual bot UI / OS vault, no paid model
 npm run test:bot-flow # clearly marked mock transport/model flow
+npm run test:native # Electron + Node MCP sidecar fixture, no model/WeChat
 npm run dist      # package for the current OS
 ```
 

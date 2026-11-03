@@ -1,6 +1,20 @@
 # Architecture and accuracy
 
-## Optional WeChat task execution (0.2 experimental preview)
+## Optional WeChat execution: API and local CLI (0.3 experimental preview)
+
+Both modes use the same paired-owner WeChat text client, project selection, encrypted WeChat credential and isolated renderer. `bot-config.json` selects `api` (default) or `native`; switching requires disconnection and retains the saved API key. Only the selected mode consumes this app's connection. Neither mode is an OS sandbox.
+
+**Local mode:** WeChat long poll → owner-filtered text → Electron's authenticated loopback broker → Node stdio MCP Channel → the user's original interactive Claude Code CLI. Replies return through a bound `reply(id, text)` tool; native permission prompts use the official channel relay. Claude owns its login, configuration and execution. Agent Arcade neither reads/copies Claude credentials nor sets an API key for the native session.
+
+The broker binds only `127.0.0.1` on a random port. A per-connection 256-bit capability is written to a private MCP launch file, not to the renderer or copied command. Attachment returns a separate client ID; later requests bind to it. One long poll, bounded event batches/history, explicit sequence-gap failure and close-time revocation prevent silent cross-connection reuse. A current message ID is required for replies. MCP write failures close the relay rather than automatically replaying possibly delivered input. Another process running as the same OS user is outside this boundary.
+
+The generated command starts the installed Node.js 22.13+ channel through original Claude Code 2.1.317+ with manual permissions, a private strict MCP config and the custom development-channel flag. The user must personally confirm the research preview/project/MCP prompts and keep the CLI session open. Runtime files/dependencies are unpacked from ASAR for system Node. No user/project CLI settings are edited. The launch capability is revoked and its file is removed on disconnect where possible; a leftover file cannot authenticate to the closed broker.
+
+Native input can be combined in one CLI turn; delivery into MCP, a reply-tool call and a response boundary are distinct. `attached` means MCP initialized, not that Claude registered or executed a message. Permission previews may already be normalized/redacted/omitted upstream; unsuitable previews are refused remotely. Codes bind one native request and expire after five minutes, but sending a verdict cannot prove the CLI adopted it before a local decision. Native mode follows existing CLI permission rules; it does not force every read or previously allowed action to prompt.
+
+Native `/cancel` pauses new forwarding, removes unforwarded messages and sends denials for pending remote requests. It cannot withdraw input already in Claude or stop an active tool. App disconnect/quit closes this relay, not necessarily the independent CLI. Actual interruption is **Ctrl+C in the original terminal**. New sessions are handled there too; the API queue/turn/time/cost limits below do not apply to native execution.
+
+## API agent
 
 WeChat iLink HTTPS long poll → owner-only timestamped text → bounded serial Dispatcher → official Claude Agent SDK/native subprocess → correlated one-time permission/question → same owner's reply. Electron main orchestrates `src/bot` asynchronously; the SDK executes in a separate native process. This is independent of the observer below and does not install user hooks.
 
@@ -8,7 +22,7 @@ Connections never start automatically. One owner/project/connection has one expl
 
 Every known tool is forced through a fail-closed `PreToolUse` ask rule, then a callback bound to a 128-bit, five-minute, single-use request. Unknown tools are denied. Tool/task cancellation, expiry and disconnect invalidate permissions. Oversized or secret-filtered parameters cannot be authorized from an altered display. This is authorization, not OS containment: approved Windows commands can affect the whole local account.
 
-OS-encrypted credentials never enter renderer snapshots. Ambient user/project settings, OAuth, hooks, plugins and MCP are excluded. SDK sessions persist locally; the bounded bot UI transcript is memory-only. Tencent and Anthropic receive data needed for the flow. See [WeChat setup/limits](WECHAT.md), [source review](BOT_TECH_NOTES.md), and [third-party terms](../THIRD_PARTY_NOTICES.md). Real WeChat + valid-key model acceptance is pending.
+OS-encrypted API/WeChat credentials never enter renderer snapshots. In API mode, ambient user/project settings, OAuth, hooks, plugins and MCP are excluded. SDK sessions persist locally; the bounded bot UI transcript is memory-only. Tencent and Anthropic receive data needed for the flow. See [WeChat setup/limits](WECHAT.md), [source review](BOT_TECH_NOTES.md), and [third-party terms](../THIRD_PARTY_NOTICES.md). Real WeChat + actual agent acceptance is pending for both modes.
 
 ## Existing local observer
 

@@ -1,0 +1,235 @@
+'use strict';
+// Original Claude Code owns its login and execution. This process only relays MCP.
+const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
+const { ListToolsRequestSchema, CallToolRequestSchema, LATEST_PROTOCOL_VERSION } = require('@modelcontextprotocol/sdk/types.js');
+const { z } = require('zod');
+
+const MAX_BYTES = 200 * 1024;
+const MAX_IDS = 200;
+const ID = /^[A-Za-z0-9._:-]{1,128}$/;
+const REQUEST_ID = /^[a-km-z]{5}$/;
+const PERMISSION_REQUEST = 'notifications/claude/channel/permission_request';
+const PERMISSION_REPLY = 'notifications/claude/channel/permission';
+const permissionSchema = z.object({
+  method: z.literal(PERMISSION_REQUEST),
+  params: z.object({request_id:z.string().regex(REQUEST_ID), tool_name:z.string().min(1).max(128),
+    description:z.string().max(16000), input_preview:z.string().max(131072)}),
+});
+const replySchema = z.object({id:z.string().regex(ID), text:z.string().min(1).max(12000)}).strict();
+const fail = code => Object.assign(new Error(code), {code});
+
+function bridgeConfig(url, token) {
+  if (typeof url !== 'string' || !/^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})\/?$/.test(url)) throw fail('invalid_bridge_address');
+  let parsed;
+  try { parsed = new URL(url); } catch { throw fail('invalid_bridge_address'); }
+  if (!parsed.port || Number(parsed.port) > 65535) throw fail('invalid_bridge_address');
+  if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw fail('invalid_bridge_capability');
+  return {url:parsed.origin, token};
+}
+
+async function boundedJSON(response) {
+  if (Number(response.headers.get('content-length')) > MAX_BYTES) throw fail('bridge_response_too_large');
+  if (!response.body) throw fail('invalid_bridge_response');
+  const reader = response.body.getReader(), chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_BYTES) throw fail('bridge_response_too_large');
+      chunks.push(Buffer.from(value));
+    }
+    return JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(Buffer.concat(chunks)));
+  } finally { await reader.cancel().catch(() => {}); }
+}
+
+function createChannel({url, token, fetchImpl=globalThis.fetch, mcp, timeoutMs=30000, signal, onError=()=>{}} = {}) {
+  const config = bridgeConfig(url, token);
+  // Claude's channel runtime does not register negotiated revision 2026-07-28.
+  // Revisit this gate only after accepting a newer pinned SDK with the real CLI.
+  if (LATEST_PROTOCOL_VERSION >= '2026-07-28') throw fail('unsupported_mcp_revision');
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30000) throw fail('invalid_bridge_timeout');
+  mcp ||= new Server({name:'agent-arcade-wechat', version:'0.1.0'}, {
+    capabilities:{experimental:{'claude/channel':{}, 'claude/channel/permission':{}}, tools:{}},
+    instructions:'Messages arrive from the paired owner as <channel task_id="...">. ' +
+      'Use the reply tool with that exact task_id as id for answers and clarification questions. ' +
+      'Forwarded means submitted to the channel transport, not confirmed received, executed or successful. ' +
+      'Report actual changes, checks and remaining limits. A reply ending does not prove task success. ' +
+      'Permission decisions arrive separately through Claude Code permission relay. ' +
+      'A relay disconnect does not stop this Claude Code session.',
+  });
+  const controller = new AbortController(), messages = new Set(), pending = new Set();
+  let cursor = 0, clientId = '', initialized = false, started = false, closing = false, closePromise;
+  let resolveDone;
+  const done = new Promise(resolve => { resolveDone=resolve; });
+
+  async function request(route, method='GET', payload, {detaching=false} = {}) {
+    if (controller.signal.aborted && !detaching) throw fail('bridge_closed');
+    const body = payload === undefined ? undefined : JSON.stringify(payload);
+    if (body && Buffer.byteLength(body) > MAX_BYTES) throw fail('bridge_request_too_large');
+    const local = new AbortController();
+    const abort = () => local.abort();
+    if (!detaching) controller.signal.addEventListener('abort', abort, {once:true});
+    const timer = setTimeout(abort, detaching ? 1000 : timeoutMs);
+    try {
+      const response = await fetchImpl(config.url + route, {method, body, redirect:'error', cache:'no-store', signal:local.signal,
+        headers:{Authorization:`Bearer ${config.token}`, Accept:'application/json',
+          ...(clientId ? {'X-Arcade-Client':clientId} : {}), ...(body ? {'Content-Type':'application/json'} : {})}});
+      if (!response.ok) throw fail(response.status === 409 ? 'resync_required' : response.status === 401 || response.status === 403 ? 'bridge_access_denied' : 'bridge_request_failed');
+      return await boundedJSON(response);
+    } finally { clearTimeout(timer); controller.signal.removeEventListener('abort', abort); }
+  }
+
+  async function notify(message) {
+    try { await mcp.notification(message); }
+    catch { throw fail('mcp_write_failed'); }
+  }
+
+  async function verdict(requestId, behavior) {
+    if (!pending.has(requestId)) return;
+    await notify({method:PERMISSION_REPLY, params:{request_id:requestId, behavior}});
+    pending.delete(requestId);
+  }
+
+  async function receive(batch) {
+    if (!batch || !Array.isArray(batch.events) || batch.events.length > 128 ||
+        (batch.closed !== undefined && typeof batch.closed !== 'boolean')) throw fail('invalid_bridge_events');
+    for (const event of batch.events) {
+      if (closing || controller.signal.aborted) throw fail('bridge_closed');
+      if (!event || !Number.isSafeInteger(event.seq) || event.seq < 1) throw fail('invalid_bridge_events');
+      if (event.seq <= cursor) continue;
+      if (event.type === 'message') {
+        if (typeof event.id !== 'string' || !ID.test(event.id) || typeof event.text !== 'string' || !event.text.length || event.text.length > 6000) throw fail('invalid_bridge_message');
+        if (!messages.has(event.id)) {
+          await notify({method:'notifications/claude/channel', params:{content:event.text, meta:{task_id:event.id}}});
+          messages.add(event.id);
+          if (messages.size > MAX_IDS) messages.delete(messages.values().next().value);
+        }
+      } else if (event.type === 'permission_reply') {
+        if (typeof event.request_id === 'string' && REQUEST_ID.test(event.request_id) && ['allow','deny'].includes(event.behavior)) {
+          await verdict(event.request_id, event.behavior);
+        }
+      }
+      // Unknown events cannot authorize anything, but must not poison the cursor.
+      cursor = event.seq;
+    }
+    return batch.closed === true;
+  }
+
+  async function pause(ms) {
+    if (controller.signal.aborted) return;
+    await new Promise(resolve => {
+      const finish = () => {clearTimeout(timer); controller.signal.removeEventListener('abort', finish); resolve();};
+      const timer = setTimeout(finish, ms);
+      controller.signal.addEventListener('abort', finish, {once:true});
+    });
+  }
+
+  async function close({notify=true} = {}) {
+    if (closing) return closePromise;
+    closing = true;
+    controller.abort();
+    closePromise = (async () => {
+      if (notify) for (const id of [...pending]) await verdict(id, 'deny').catch(() => {});
+      pending.clear();
+      if (clientId) await request('/detached', 'POST', {}, {detaching:true}).catch(() => {});
+      await mcp.close().catch(() => {});
+      signal?.removeEventListener('abort', externalAbort);
+      resolveDone();
+    })();
+    return closePromise;
+  }
+  const externalAbort = () => {void close();};
+  if (signal?.aborted) controller.abort(); else signal?.addEventListener('abort', externalAbort, {once:true});
+
+  async function denyOrClose(requestId) {
+    try { await verdict(requestId, 'deny'); }
+    catch {
+      onError('mcp_write_failed');
+      await close({notify:false});
+    }
+  }
+
+  async function attachAndPoll() {
+    if (initialized || closing) return;
+    initialized = true;
+    try {
+      const attached = await request('/attached', 'POST', {});
+      if (!attached || typeof attached.client_id !== 'string' || !/^[a-f0-9]{32}$/.test(attached.client_id)) throw fail('invalid_bridge_attachment');
+      clientId = attached.client_id;
+      let failures = 0;
+      while (!controller.signal.aborted) {
+        try {
+          const batch = await request(`/events?after=${cursor}`);
+          failures = 0;
+          if (await receive(batch)) break;
+          if (!batch.events.length) await pause(100);
+        } catch (error) {
+          if (controller.signal.aborted) break;
+          if (['resync_required','bridge_access_denied','invalid_bridge_events','invalid_bridge_message','bridge_response_too_large','mcp_write_failed'].includes(error.code) || ++failures >= 3) throw error;
+          await pause(250 * failures);
+        }
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) onError(error.code || 'bridge_disconnected');
+    } finally { await close(); }
+  }
+
+  mcp.setRequestHandler(ListToolsRequestSchema, async () => ({tools:[{
+    name:'reply', description:'Reply to a paired-owner message already forwarded to this session. Forwarding or replying does not prove task success.',
+    inputSchema:{type:'object',properties:{id:{type:'string',maxLength:128},text:{type:'string',minLength:1,maxLength:12000}},required:['id','text'],additionalProperties:false},
+  }]}));
+  mcp.setRequestHandler(CallToolRequestSchema, async ({params}) => {
+    const parsed = replySchema.safeParse(params.arguments);
+    if (params.name !== 'reply' || !parsed.success || !messages.has(parsed.data.id) || closing || !clientId) {
+      return {isError:true, content:[{type:'text',text:'Reply rejected: use a current forwarded task id and bounded text.'}]};
+    }
+    try {
+      const response = await request('/reply', 'POST', parsed.data);
+      if (response?.accepted !== true) throw fail('reply_not_accepted');
+      return {content:[{type:'text',text:'Reply submitted to the local WeChat relay. This does not confirm recipient receipt or task success.'}]};
+    } catch { return {isError:true,content:[{type:'text',text:'Reply relay failed. Check Agent Arcade; do not assume delivery.'}]}; }
+  });
+  mcp.setNotificationHandler(permissionSchema, async ({params}) => {
+    if (!clientId || closing || pending.has(params.request_id)) return;
+    pending.add(params.request_id);
+    if (pending.size > 100) {await denyOrClose(params.request_id); return;}
+    try {
+      const response = await request('/permission', 'POST', {request_id:params.request_id, tool_name:params.tool_name,
+        input:params.input_preview, description:params.description});
+      if (!response || !(response.code === null || typeof response.code === 'string' && response.code.length <= 128)) throw fail('invalid_bridge_permission');
+      // No remote context: keep the original terminal prompt authoritative.
+      if (response?.relayed === false) pending.delete(params.request_id);
+    } catch { await denyOrClose(params.request_id); }
+  });
+  mcp.oninitialized = () => {void attachAndPoll();};
+  mcp.onclose = () => {void close({notify:false});};
+  mcp.onerror = () => {onError('mcp_transport_error');};
+
+  return {mcp, done, close, receive,
+    async start(transport) {
+      if (started || closing || controller.signal.aborted) throw fail('channel_already_started_or_closed');
+      started = true;
+      await mcp.connect(transport || new StdioServerTransport());
+    },
+  };
+}
+
+async function runChannel({env=process.env, ...options} = {}) {
+  const channel = createChannel({url:env.ARCADE_BRIDGE_URL, token:env.ARCADE_BRIDGE_TOKEN,
+    onError:code=>process.stderr.write(`Agent Arcade local relay stopped (${['resync_required','bridge_access_denied','invalid_bridge_attachment','bridge_disconnected'].includes(code)?code:'bridge_error'}). Restart it in Agent Arcade.\n`),
+    ...options});
+  const stop = () => {void channel.close();};
+  process.once('SIGINT', stop); process.once('SIGTERM', stop);
+  try {await channel.start(); await channel.done;}
+  finally {process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop); await channel.close();}
+}
+
+if (require.main === module) runChannel().catch(() => {
+  // Never print bridge credentials, server responses, or arbitrary exception text.
+  process.stderr.write('Agent Arcade local channel could not connect. Restart its relay in Agent Arcade.\n');
+  process.exitCode = 1;
+});
+module.exports = {createChannel, runChannel};

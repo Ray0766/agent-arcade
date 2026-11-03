@@ -264,4 +264,4 @@ class Dispatcher {
     }
   }
 }
-module.exports = { Dispatcher };
+module.exports = { Dispatcher, clean };

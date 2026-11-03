@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage, clipboard } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -15,6 +15,7 @@ const { demoStore } = require('./core/demo.cjs');
 const { createIcon } = require('./core/icon.cjs');
 const { BotService } = require('./bot/service.cjs');
 const QRCode = require('qrcode');
+const {discoverNative,createNativeLaunch}=require('./bot/native-launch.cjs');
 const root = process.env.AGENT_ARCADE_HOME || path.join(os.homedir(), '.agent-arcade');
 const settingsFile = process.env.AGENT_ARCADE_CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
 let config = { language: 'en', notifications: false, quiet: false, captureResults: false, alwaysOnTop: false, compact: false, theme: 'workshop', ...readJSON(path.join(root, 'config.json')) };
@@ -59,7 +60,7 @@ else {
     const custom = readJSON(path.join(root, 'theme.json'), null);
     try { if (custom) themes.set('custom', validateTheme(custom)); } catch { problem = 'Saved theme is invalid; using Workshop.'; }
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
-    bot = new BotService({root,vault:safeStorage,onChange:publish,qrEncoder:text=>QRCode.toDataURL(text,{width:280,margin:3,errorCorrectionLevel:'M'})});
+    bot = new BotService({root,vault:safeStorage,onChange:publish,qrEncoder:text=>QRCode.toDataURL(text,{width:280,margin:3,errorCorrectionLevel:'M'}),nativeFactory:async options=>createNativeLaunch({...options,...await discoverNative(),sourceDir:path.join(__dirname,'bot')})});
     const icon = nativeImage.createFromBuffer(createIcon());
     win = new BrowserWindow({ width:1200, height:830, minWidth:900, minHeight:640, backgroundColor:'#f5f3ed', title:'Agent Arcade', autoHideMenuBar:true, icon,
       webPreferences:{ preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true, webSecurity:true } });
@@ -77,6 +78,7 @@ else {
     register('botConnect', async () => { await bot.connect(); return bot.snapshot(); });
     register('botDisconnect', async () => { await bot.disconnect(); return bot.snapshot(); });
     register('botForget', async () => { await bot.forget(); return bot.snapshot(); });
+    register('botCopyNative', () => {const command=bot.snapshot().native?.command;if(!command)throw Error('Connect local mode first.');clipboard.writeText(command);});
     register('demo', value => { demo = value === true; if (demo) sample = demoStore(); publish(); return snapshot(); });
     register('acknowledge', id => { if (typeof id === 'string') store().acknowledge(id); if (!demo) atomicJSON(path.join(root,'state.json'),live.export()); publish(); });
     register('clear', () => { store().clearFinished(); if (!demo) atomicJSON(path.join(root,'state.json'),live.export()); publish(); });

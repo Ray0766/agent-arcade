@@ -4,13 +4,15 @@ const {atomicJSON,readJSON}=require('../core/files.cjs');
 const {Dispatcher}=require('./dispatcher.cjs');
 const {WeixinClient}=require('./weixin.cjs');
 const {createRunner}=require('./runner.cjs');
+const {NativeBroker}=require('./native-broker.cjs');
 function pause(ms,signal){return new Promise(resolve=>{if(signal.aborted)return resolve();const done=()=>{clearTimeout(timer);signal.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,ms);signal.addEventListener('abort',done,{once:true});});}
 
 // Electron's OS-backed vault is deliberately injected. No plaintext fallback.
 class BotService {
-  constructor({root,vault,onChange=()=>{},clientFactory=opts=>new WeixinClient(opts),runnerFactory=createRunner,qrEncoder}) {
-    Object.assign(this,{root,vault,onChange,clientFactory,runnerFactory,qrEncoder});
+  constructor({root,vault,onChange=()=>{},clientFactory=opts=>new WeixinClient(opts),runnerFactory=createRunner,nativeFactory,qrEncoder}) {
+    Object.assign(this,{root,vault,onChange,clientFactory,runnerFactory,nativeFactory,qrEncoder});
     this.file=path.join(root,'bot-vault.json'); this.config=readJSON(path.join(root,'bot-config.json'));
+    if(!['api','native'].includes(this.config.mode))this.config.mode='api';
     this.secret={}; this.status='disconnected'; this.problem=''; this.dispatcher=null; this.qr=null;this.generation=0;this.incomingCount=0;this.outgoingAccepted=0;
     try { const stored=readJSON(this.file,null); if(stored&&vault.isEncryptionAvailable()) this.secret=JSON.parse(vault.decryptString(Buffer.from(stored.data,'base64'))); } catch { this.problem='Saved credentials could not be opened. Reconnect WeChat and set the API key again.'; }
   }
@@ -18,10 +20,11 @@ class BotService {
     if(!this.vault.isEncryptionAvailable()) throw Error('OS credential encryption is unavailable. Credentials were not saved.');
     atomicJSON(this.file,{data:this.vault.encryptString(JSON.stringify(next)).toString('base64')});this.secret=next;
   }
-  snapshot(){return {status:this.status,problem:this.problem,workspace:this.config.workspace||'',budget:this.config.budget||1,hasKey:!!this.secret.key,paired:!!this.secret.token,qr:this.qr,incomingCount:this.incomingCount,outgoingAccepted:this.outgoingAccepted,tasks:this.dispatcher?.snapshot()||null};}
+  snapshot(){return {mode:this.config.mode,status:this.status,problem:this.problem,workspace:this.config.workspace||'',budget:this.config.budget||1,hasKey:!!this.secret.key,paired:!!this.secret.token,qr:this.qr,incomingCount:this.incomingCount,outgoingAccepted:this.outgoingAccepted,native:this.config.mode==='native'?this.dispatcher?.nativeSnapshot?.()||{command:null,attached:false,forwarded:0,replies:0}:null,tasks:this.dispatcher?.snapshot()||null};}
   changed(){this.onChange();}
-  configure({key,workspace,budget}={}){
+  configure({key,workspace,budget,mode}={}){
     if(this.status!=='disconnected')throw Error('Disconnect before changing the project or API key.');
+    if(mode!==undefined){if(!['api','native'].includes(mode))throw Error('Choose API or local Claude Code.');this.config.mode=mode;this.dispatcher=null;this.incomingCount=0;this.outgoingAccepted=0;}
     if(workspace!==undefined){if(typeof workspace!=='string'||!path.isAbsolute(workspace)||!fs.statSync(workspace).isDirectory())throw Error('Choose an existing project folder.');this.config.workspace=fs.realpathSync(workspace);}
     if(budget!==undefined){if(typeof budget!=='number'||!Number.isFinite(budget)||budget<0.05||budget>5)throw Error('Task budget must be between $0.05 and $5.');this.config.budget=budget;}
     if(key!==undefined){if(typeof key!=='string'||key.length>500||key.length<10)throw Error('Enter a valid Anthropic API key.');this.persist({...this.secret,key});}
@@ -55,20 +58,34 @@ class BotService {
   async connect(){
     if(this.status==='connected'||this.status==='connecting')return;
     if(this.status!=='disconnected')throw Error('Finish pairing or wait for the previous task to stop first.');
-    if(!this.secret.token||!this.secret.ownerId||!this.secret.key||!this.config.workspace)throw Error('Choose a project, save an API key, and pair WeChat first.');
+    const native=this.config.mode==='native';
+    if(!this.secret.token||!this.secret.ownerId||(!native&&!this.secret.key)||!this.config.workspace)throw Error(native?'Choose a project and pair WeChat first.':'Choose a project, save an API key, and pair WeChat first.');
     if(!fs.statSync(this.config.workspace).isDirectory())throw Error('Project folder is unavailable.');
     this.status='connecting';this.problem='';this.controller=new AbortController();
     const signal=this.controller.signal,generation=++this.generation,ownerId=this.secret.ownerId;
     this.incomingCount=0;this.outgoingAccepted=0;
-    let client;
+    let client,startedBroker,preparedLaunch,ready=false;
+    const send=async(text,contextToken)=>{
+      await client.sendText(ownerId,text,contextToken,undefined,signal);
+      if(generation===this.generation&&!signal.aborted){this.outgoingAccepted++;this.changed();}
+    };
+    const onChange=()=>{if(generation===this.generation)this.changed();};
     try{
       client=this.clientFactory({token:this.secret.token,ownerId,baseUrl:this.secret.baseUrl});
-      const execute=this.runnerFactory({workspace:this.config.workspace,key:this.secret.key,configDir:path.join(this.root,'bot-agent'),budget:this.config.budget||1});
-      this.dispatcher=new Dispatcher({execute,send:async(text,contextToken)=>{
-        await client.sendText(ownerId,text,contextToken,undefined,signal);
-        if(generation===this.generation&&!signal.aborted){this.outgoingAccepted++;this.changed();}
-      },onChange:()=>{if(generation===this.generation)this.changed();}});
-    }catch{this.controller.abort();this.status='disconnected';this.problem='Could not start the bot. Check the project and saved connection.';this.changed();return;}
+      if(native){
+        if(!this.nativeFactory)throw Error('Native mode is unavailable in this environment.');
+        const broker=await new NativeBroker({send,onChange,onClose:()=>{if(ready&&generation===this.generation){this.problem='Local channel stopped. Claude Code may still be running; inspect its terminal before reconnecting.';void this.disconnect();}}}).start();startedBroker=broker;
+        if(signal.aborted||generation!==this.generation){await broker.close();return;}
+        this.dispatcher=broker;
+        const launch=await this.nativeFactory({root:this.root,workspace:this.config.workspace,url:broker.url,token:broker.token});preparedLaunch=launch;
+        if(signal.aborted||generation!==this.generation){launch.cleanup();await broker.close();return;}
+        this.nativeLaunch=launch;broker.command=launch.command;
+      }else{
+        const execute=this.runnerFactory({workspace:this.config.workspace,key:this.secret.key,configDir:path.join(this.root,'bot-agent'),budget:this.config.budget||1});
+        this.dispatcher=new Dispatcher({execute,send,onChange});
+      }
+      ready=true;
+    }catch{preparedLaunch?.cleanup();await startedBroker?.close();if(generation===this.generation){this.controller.abort();this.nativeLaunch=null;this.status='disconnected';this.problem=native?'Could not prepare local mode. Install Node.js 22.13+ and Claude Code 2.1.317+, then retry.':'Could not start the bot. Check the project and saved connection.';this.changed();}return;}
     this.changed();
     // No auto-connect or replay after app restart. Old approvals cannot survive.
     this.loop=this.poll(client,signal,this.dispatcher,generation);return;
@@ -90,15 +107,14 @@ class BotService {
       }
     }
     if(!signal.aborted&&generation===this.generation){
-      this.controller.abort();dispatcher.stop();this.status='disconnecting';this.changed();await dispatcher.whenIdle();
-      if(generation===this.generation){this.status='disconnected';this.changed();}
+      await this.disconnect();
     }
   }
   async disconnect(){
-    const generation=++this.generation,dispatcher=this.dispatcher;
-    this.loginController?.abort();this.controller?.abort();dispatcher?.stop();
+    const generation=++this.generation,dispatcher=this.dispatcher,launch=this.nativeLaunch;
+    this.loginController?.abort();this.controller?.abort();const stopped=dispatcher?.stop();
     this.status='disconnecting';this.qr=null;this.changed();
-    await dispatcher?.whenIdle();
+    await stopped;await dispatcher?.whenIdle();launch?.cleanup();if(this.nativeLaunch===launch)this.nativeLaunch=null;
     if(generation===this.generation){this.status='disconnected';this.changed();}
   }
   async forget(){await this.disconnect();this.secret={};if(fs.existsSync(this.file))fs.unlinkSync(this.file);this.dispatcher=null;this.incomingCount=0;this.outgoingAccepted=0;this.changed();}

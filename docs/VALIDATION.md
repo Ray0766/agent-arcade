@@ -1,5 +1,18 @@
 # Validation
 
+## 0.3.0-preview.1 — API and local CLI entry points
+
+Current implementation adds local mode while preserving the API runner. **Real original Claude Code channel registration and WeChat + actual agent acceptance are pending.** No native model session, social message or credential transfer was performed by the fixture checks below.
+
+- `npm test`: **118 passed, 0 failed**. Native fixtures cover loopback/capability/attachment checks, event paging/gaps, bound reply IDs, cancelled/expired/omitted permission previews, MCP write failure, stale configuration cleanup, native preparation without an API key and mode switching without deleting the saved API key. Historical counts below describe their own releases.
+- Real Node child + stdio MCP + local HTTP fixtures negotiated protocol **2025-11-25**, declared channel/reply/permission capabilities and exercised message/reply/verdict paths. These use a test client, not an original Claude Code model session. MCP initialization does not prove the CLI registered this custom channel.
+- Source API bot UI smoke and the original observer smoke passed. Isolated native UI fixtures checked English/Chinese conditions, persisted selection, retained encrypted fixture key, copied-command IPC routing, paused/failure wording and compact layout. Native screenshots are visibly synthetic.
+- Source `npm run test:native` passed real Electron mode/key-retention checks and a system-Node stdio MCP/local-HTTP permission round trip, including app-side revocation/private-config cleanup. Runtime discovery found system Node and original CLI 2.1.317 using version checks only. These do not register a channel in the original CLI or call a model. `npm run check`: **41 JavaScript files**. [Source fixture receipt](evidence/native-source.json).
+- The local `dist/win-unpacked/Agent Arcade.exe` passed native sidecar, API bot UI and observer UI gates. The sidecar check actually launched system Node against the package's unpacked script/dependencies and exercised stdio/reply/permission/cleanup; it was not a source-path substitute. [Packaged fixture receipt](evidence/native-packaged.json). Final release CI reruns these gates against its own build, including the final version-label and wording refinements.
+- `npm audit --omit=dev`: **0 known production dependency vulnerabilities** at this check, not a security audit. No resource/performance improvement has been measured.
+
+**Pending live checks:** user confirmation of the custom development channel in original CLI 2.1.317+, inbound WeChat text, actual task/output, a reply received on the phone, native permission adoption/local-first race, Ctrl+C behavior and reconnect recovery. API's turn/time/cost/abort guarantees do not apply to the independent CLI. Native `/cancel` only pauses forwarding and sends denials; a CLI process may keep running after app exit. All actual execution and task-success claims need separate evidence.
+
 ## 0.2.0-preview.2 — onboarding and connection evidence
 
 The setup previously omitted the phone's ClawBot entry and placed QR pairing after project/API settings. Pairing now appears first with explicit ClawBot instructions in both languages. Authorization credentials, a successful empty long poll, a filtered inbound text and an accepted send are separate facts. Outbound acceptance is not read receipt or task verification. No ordinary friend chat is treated as the bot channel.

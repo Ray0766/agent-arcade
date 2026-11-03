@@ -15,5 +15,6 @@ contextBridge.exposeInMainWorld('arcade', {
   botConnect: () => ipcRenderer.invoke('arcade:botConnect'),
   botDisconnect: () => ipcRenderer.invoke('arcade:botDisconnect'),
   botForget: () => ipcRenderer.invoke('arcade:botForget'),
+  botCopyNative: () => ipcRenderer.invoke('arcade:botCopyNative'),
   subscribe: callback => { const listener = (_e,data) => callback(data); ipcRenderer.on('arcade:snapshot',listener); return () => ipcRenderer.removeListener('arcade:snapshot',listener); },
 });

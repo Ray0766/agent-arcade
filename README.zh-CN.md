@@ -6,19 +6,24 @@
 
 [English](README.md) · [构建状态](https://github.com/Ray0766/agent-arcade/actions) · [下载](https://github.com/Ray0766/agent-arcade/releases) · [制作主题](docs/THEMES.md)
 
-新增实验性的 **微信派活 Bot**：扫码配对自己的微信、选择本机项目，再用自然语言派任务。一次性权限请求、追问和最终回复回到同一聊天。延续 Electron、原创 Sprout Bot 与两套主题；原有 Claude Code hooks 观察功能仍可独立使用。
+实验性的 **微信派活 Bot** 保留两个入口：由应用管理的 **API Agent**，以及复用既有登录的 **本机 Claude Code CLI**。扫码配对自己的微信、选择本机项目，再在 ClawBot 对话中派任务。延续 Electron、原创 Sprout Bot 与两套主题；原有 hooks 观察功能仍可独立使用。
 
-**当前版本：0.2.0-preview.2，优先支持 Windows。** 微信派活、批准和取消已用可复现的模拟传输/模型跑通；**真实微信＋模型全链路尚未验收**。腾讯官方二维码接口已实测可达，未登录或发送消息。原有真实 hooks 验收独立保留，见[验证说明](docs/VALIDATION.md)。
+**当前版本：0.3.0-preview.1，优先支持 Windows。** 本机模式采用官方 Channels 研究预览，首次需在原版 CLI 中明确确认。**两个模式的真实微信＋Agent 全链路仍未验收**。模拟派活与真实 Node stdio MCP 握手是独立证据，见[验证说明](docs/VALIDATION.md)。
 
 ## 给 Bot 派活
 
-先在手机微信 **我 → 设置 → 插件** 找到 **ClawBot**。电脑运行 `npm start`，进入 **微信派活 → 连接微信** 生成二维码，用手机 ClawBot 页面上的扫码功能扫描并确认。聊天入口是 **ClawBot 对话**，不会创建名为 Agent Arcade 的普通好友。选择项目、保存 **Anthropic API key**，再点击 **开始接收任务**；运行时电脑需保持开机。页面分别标明授权凭证、通道在线、实际收到消息，空轮询不会冒充接入验收。[完整步骤、费用和限制](docs/WECHAT.md)。
+先在手机微信 **我 → 设置 → 插件** 找到 **ClawBot**。电脑运行 `npm start`，进入 **微信派活 → 连接微信** 生成二维码，用手机 ClawBot 页面上的扫码功能扫描并确认。聊天入口是 **ClawBot 对话**。选择一次性测试项目，再选执行方式：
 
-直接发自然语言任务；每次工具操作需回复对应的 `/allow 验证码`，也可用 `/deny` 拒绝、`/status` 查状态、`/cancel` 中止、`/new` 新建会话。仅接扫码主人的私聊，不接群聊。不使用 Claude 订阅登录；消息与输出会经过腾讯及 Anthropic。批准的 Windows 命令可能影响项目目录以外的本机内容。**回复结束不代表任务已成功。**
+| 入口 | 配置与权限 | 停止方式 |
+| --- | --- | --- |
+| **API Agent**（默认） | 保存 Anthropic API key 后接收任务。SDK 对每次工具操作请求一次性确认，使用 API 计费。 | `/cancel` 中止应用管理的执行并清空队列。 |
+| **本机 Claude Code CLI** | 安装 Node.js 22.13+ 和原版 Claude Code 2.1.317+，在 CLI 自行登录。开启本机模式后，把页面生成的命令复制到终端，亲自确认自定义开发通道。Agent Arcade 不要求额外 API key。 | `/cancel` 仅暂停转发并发送待决权限的拒绝；真正停止执行请在本机 CLI 按 **Ctrl+C**。 |
+
+先断开再切换模式，已保存的 API key 会保留。本机模式沿用原版 CLI 的权限设置，已有允许规则可能自动执行；多条微信消息也可能在同一会话中合并处理。运行时电脑和应用需保持开启，本机模式还需保持 CLI 终端运行。消息与输出会经过腾讯及 Anthropic；批准的 Windows 命令可能影响项目目录以外的内容。**收到回复或平台受理回传，都不代表任务已验收成功。** [完整步骤、费用和限制](docs/WECHAT.md)。
 
 ## 启动
 
-从源码运行需要 [Node.js 22.13 或更新版本](https://nodejs.org/)。Bot 自带 Claude Agent SDK 0.3.317 / 原生 CLI 2.1.317。单独观察终端会话时才需要安装 Claude Code 2.1.277+（真实验收为 2.1.317）；hooks 直接调用进程，无需 shell 解析：
+从源码运行需要 [Node.js 22.13 或更新版本](https://nodejs.org/)。API 模式自带 Claude Agent SDK 0.3.317 / 其原生运行时 2.1.317；本机模式使用你单独安装的 Claude Code 2.1.317+。独立观察器支持终端版本 2.1.277+（真实验收为 2.1.317）；hooks 直接调用进程，无需 shell 解析：
 
 ```sh
 git clone https://github.com/Ray0766/agent-arcade.git
@@ -62,7 +67,7 @@ npm run demo
 
 ## 隐私与开源
 
-独立的**观察器模式**无需账号或云服务，不添加遥测或网络监听。默认只记录项目文件夹名、会话与任务 ID、事件、工具名称/ID、时间，丢弃提示词、工具参数、完整路径和原始报错。最终回复需单独开启保存，最多 16,000 字符；观察器数据是本地普通 JSON，不加密。**微信模式的数据流不同**：消息/模型输入经过腾讯及 Anthropic，凭证使用系统加密，SDK 在本机保留会话内容。[具体隐私、删除与重启行为](docs/WECHAT.md#privacy-restart-and-failure)。
+独立的**观察器模式**无需账号或云服务，不添加遥测或网络监听。默认只记录项目文件夹名、会话与任务 ID、事件、工具名称/ID、时间，丢弃提示词、工具参数、完整路径和原始报错。最终回复需单独开启保存，最多 16,000 字符；观察器数据是本地普通 JSON，不加密。**微信模式的数据流不同**：消息/模型输入经过腾讯及 Anthropic，已保存的微信/API 凭证使用系统加密。本机模式增加临时认证的本地回环服务与私有 MCP 启动配置，不读取 Claude 登录凭据；SDK 与原版 CLI 分别保留各自会话内容。[具体隐私、删除与重启行为](docs/WECHAT.md#privacy-restart-and-failure)。
 
 界面最多保留 200 个角色，每个角色保留 30 条事件；离线队列约 2,000 条，钩子运行时清理超过 24 小时的记录。关闭回复保存会清除已保存的文本；“清理已结束角色”移除回复或会话结束的角色。卸载 hooks 并退出后，可删除 `~/.agent-arcade/` 清除数据。Claude 配置旁的备份需要自行保留或删除。
 
@@ -72,6 +77,7 @@ npm run check
 npm run test:ui
 npm run test:bot-ui
 npm run test:bot-flow
+npm run test:native
 npm run dist
 ```
 

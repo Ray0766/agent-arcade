@@ -31,6 +31,7 @@ jobs:
       - run: npm run test:ui
       - run: npm run test:bot-ui
       - run: npm run test:bot-flow
+      - run: npm run test:native
       - run: npm run dist -- --win
       - name: Test packaged application
         shell: pwsh
@@ -38,6 +39,7 @@ jobs:
           $env:ARCADE_EXECUTABLE = Join-Path $PWD 'dist\win-unpacked\Agent Arcade.exe'
           npm run test:ui
           npm run test:bot-ui
+          npm run test:native
       - uses: actions/upload-artifact@v4
         if: always()
         with:
