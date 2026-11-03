@@ -18,13 +18,22 @@ const settingsFile = process.env.AGENT_ARCADE_CLAUDE_SETTINGS || path.join(os.ho
 let config = { language: 'en', notifications: false, quiet: false, captureResults: false, alwaysOnTop: false, compact: false, theme: 'workshop', ...readJSON(path.join(root, 'config.json')) };
 const live = new Store(readJSON(path.join(root, 'state.json')));
 let demo = process.argv.includes('--demo'), sample = demoStore(), win, tray, quitting = false, problem = '', timer;
+let lastPublishedSnapshot = '';
 const gate = new NotificationGate();
 const themes = new Map();
 const store = () => demo ? sample : live;
 const indexURL = pathToFileURL(path.join(__dirname, 'ui', 'index.html')).href;
 function saveConfig() { atomicJSON(path.join(root, 'config.json'), config); }
 function snapshot() { return { tasks: store().snapshot(), demo, config, installed: integration.installed(settingsFile), lastEventAt: live.lastEventAt, problem, theme: themes.get(config.theme) || themes.get('workshop'), themes: [...themes].map(([id,t])=>({id,name:t.name})) }; }
-function publish() { if (win && !win.isDestroyed()) win.webContents.send('arcade:snapshot', snapshot()); }
+function publish() {
+  if (!win || win.isDestroyed()) return;
+  // Still evaluate derived stale status each poll, but do not clone/send the
+  // same histories, replies and theme to the renderer every idle second.
+  const next = snapshot(), fingerprint = JSON.stringify(next);
+  if (fingerprint === lastPublishedSnapshot) return;
+  win.webContents.send('arcade:snapshot', next);
+  lastPublishedSnapshot = fingerprint;
+}
 function show() { if (win) { win.show(); win.focus(); } }
 function applyWindow() {
   win.setAlwaysOnTop(config.alwaysOnTop === true);

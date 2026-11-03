@@ -1,0 +1,44 @@
+{
+  "purpose": "Deterministic delivery/DOM activity check, not a CPU or memory benchmark",
+  "baselineRef": "b4b9d89",
+  "workload": "200 synthetic idle stations, reduced motion, one visible scene then activity view; initial rendering excluded",
+  "variants": [
+    {
+      "label": "baseline",
+      "stationCount": 200,
+      "sampleWindowMs": 4200,
+      "scene": {
+        "messages": 4,
+        "structures": 4
+      },
+      "activity": {
+        "messages": 4,
+        "structures": 8
+      },
+      "relativeAgeAdvanced": true,
+      "newEventRendered": true,
+      "derivedStaleBoundaryRendered": true
+    },
+    {
+      "label": "current",
+      "stationCount": 200,
+      "sampleWindowMs": 4200,
+      "scene": {
+        "messages": 0,
+        "structures": 0
+      },
+      "activity": {
+        "messages": 0,
+        "structures": 0
+      },
+      "relativeAgeAdvanced": true,
+      "newEventRendered": true,
+      "derivedStaleBoundaryRendered": true
+    }
+  ],
+  "limitations": [
+    "A single 4.2-second sample per view; no claim of resource percentage improvement.",
+    "Stale boundary uses a test clock offset, not physical sleep/resume.",
+    "Other current modules are shared across the comparison; only main/UI delivery behavior is compared."
+  ]
+}

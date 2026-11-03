@@ -1,0 +1,270 @@
+{
+  "source": "Real Claude Code 2.1.317 observer receipts, processed in order through the reducer",
+  "explanation": "A real custom child returns a synthetic token. Its response boundary does not end the parent turn.",
+  "observations": [
+    {
+      "id": "15f2ce24-3039-48df-8fd8-9fc234c0b9c3",
+      "at": 1793685961106,
+      "event": "SessionStart",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "",
+      "agentType": "",
+      "project": "subagent",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "d2f100a2-ed3d-43d0-bd09-c3b6e21599b6",
+      "at": 1793685961191,
+      "event": "UserPromptSubmit",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "",
+      "agentType": "",
+      "project": "subagent",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "d1e074a1-36e8-4281-977a-434f3c7df14a",
+      "at": 1793685963646,
+      "event": "PreToolUse",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "",
+      "agentType": "",
+      "project": "subagent",
+      "tool": "Agent",
+      "toolId": "toolu_01LL638Av56Q3pnbGhLiW2uh",
+      "toolKey": "11a512c0ef2e16c286f6c74bc18af5913d996642398db6982675e7f8ed18e6fa",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "2708d2ca-4866-43ca-80e7-b77be2380005",
+      "at": 1793685963709,
+      "event": "SubagentStart",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "a7bcb6aaebc15fb08",
+      "agentType": "parcel-check",
+      "project": "subagent",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "344dba2d-1965-4c58-b211-3efb6a729840",
+      "at": 1793685965423,
+      "event": "SubagentStop",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "a7bcb6aaebc15fb08",
+      "agentType": "parcel-check",
+      "project": "subagent",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "9ff0f7d6-4160-4413-8f29-f73aa2a05de0",
+      "at": 1793685965505,
+      "event": "PostToolUse",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "",
+      "agentType": "",
+      "project": "subagent",
+      "tool": "Agent",
+      "toolId": "toolu_01LL638Av56Q3pnbGhLiW2uh",
+      "toolKey": "11a512c0ef2e16c286f6c74bc18af5913d996642398db6982675e7f8ed18e6fa",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "389c2b4b-0dde-4883-b3be-c8d95bee440f",
+      "at": 1793685966741,
+      "event": "Stop",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "",
+      "agentType": "",
+      "project": "subagent",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "c8a7ae14-0bbf-432c-aed8-6052c15bd85d",
+      "at": 1793685966803,
+      "event": "SessionEnd",
+      "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+      "agent": "",
+      "agentType": "",
+      "project": "subagent",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    }
+  ],
+  "trace": [
+    {
+      "event": "SessionStart",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "idle",
+          "reason": "session_ready"
+        }
+      ]
+    },
+    {
+      "event": "UserPromptSubmit",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "running",
+          "reason": "working"
+        }
+      ]
+    },
+    {
+      "event": "PreToolUse",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "running",
+          "reason": "tool_running"
+        }
+      ]
+    },
+    {
+      "event": "SubagentStart",
+      "actor": "a7bcb6aaebc15fb08",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "a7bcb6aaebc15fb08",
+          "state": "running",
+          "reason": "working"
+        },
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "running",
+          "reason": "tool_running"
+        }
+      ]
+    },
+    {
+      "event": "SubagentStop",
+      "actor": "a7bcb6aaebc15fb08",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "a7bcb6aaebc15fb08",
+          "state": "done",
+          "reason": "turn_ended"
+        },
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "running",
+          "reason": "tool_running"
+        }
+      ]
+    },
+    {
+      "event": "PostToolUse",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "a7bcb6aaebc15fb08",
+          "state": "done",
+          "reason": "turn_ended"
+        },
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "running",
+          "reason": "working"
+        }
+      ]
+    },
+    {
+      "event": "Stop",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "a7bcb6aaebc15fb08",
+          "state": "done",
+          "reason": "turn_ended"
+        },
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "done",
+          "reason": "turn_ended"
+        }
+      ]
+    },
+    {
+      "event": "SessionEnd",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "a7bcb6aaebc15fb08",
+          "state": "done",
+          "reason": "turn_ended"
+        },
+        {
+          "session": "ac9bd3a7-a910-42d2-8b81-3593a7134642",
+          "agent": "",
+          "state": "ended",
+          "reason": "session_ended"
+        }
+      ]
+    }
+  ]
+}

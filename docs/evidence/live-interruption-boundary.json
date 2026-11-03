@@ -1,0 +1,124 @@
+{
+  "source": "Real Claude Code 2.1.317, synthetic 60-second wait cancelled with Esc; no simulated clock",
+  "cancelled": true,
+  "terminalHookAfterCancelObserved": false,
+  "observedUntilMsAfterLastHook": 342096,
+  "task": {
+    "id": "[\"92a564c5-b0ef-4e85-83ee-ffc4eb574743\",\"\"]",
+    "session": "92a564c5-b0ef-4e85-83ee-ffc4eb574743",
+    "agent": "",
+    "state": "running",
+    "project": "interrupt",
+    "name": "Claude",
+    "reason": "tool_running",
+    "createdAt": 1793685751717,
+    "updatedAt": 1793685753875,
+    "lastEvent": "PreToolUse",
+    "tool": "Bash",
+    "result": "",
+    "acknowledged": false,
+    "tools": [
+      "toolu_01RghHk9JvFRqhoee9vtUrCo"
+    ],
+    "waitFor": [],
+    "questionFor": [],
+    "finishedTools": [],
+    "calls": [
+      {
+        "id": "toolu_01RghHk9JvFRqhoee9vtUrCo",
+        "key": "2989c8f01de3c70cffb90da8a55195aa670448bd0ad4edd6a08c11dddc686764",
+        "inferredPermission": false
+      }
+    ],
+    "history": [
+      {
+        "event": "SessionStart",
+        "at": 1793685751717,
+        "state": "idle",
+        "tool": ""
+      },
+      {
+        "event": "UserPromptSubmit",
+        "at": 1793685751826,
+        "state": "running",
+        "tool": ""
+      },
+      {
+        "event": "PreToolUse",
+        "at": 1793685753875,
+        "state": "running",
+        "tool": "Bash"
+      }
+    ],
+    "stale": true,
+    "displayState": "unknown"
+  },
+  "interpretation": "No cancellation hook arrived. Retained running is only the last observation; after five actual minutes the displayed state becomes uncertain, never success.",
+  "closingEvents": [
+    {
+      "id": "62196af4-0863-485c-a920-2f3d28b23276",
+      "at": 1793686116597,
+      "event": "SessionEnd",
+      "session": "92a564c5-b0ef-4e85-83ee-ffc4eb574743",
+      "agent": "",
+      "agentType": "",
+      "project": "interrupt",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    }
+  ],
+  "afterExplicitExit": {
+    "id": "[\"92a564c5-b0ef-4e85-83ee-ffc4eb574743\",\"\"]",
+    "session": "92a564c5-b0ef-4e85-83ee-ffc4eb574743",
+    "agent": "",
+    "state": "ended",
+    "project": "interrupt",
+    "name": "Claude",
+    "reason": "session_ended",
+    "createdAt": 1793685751717,
+    "updatedAt": 1793686116597,
+    "lastEvent": "SessionEnd",
+    "tool": "Bash",
+    "result": "",
+    "acknowledged": false,
+    "tools": [],
+    "waitFor": [],
+    "questionFor": [],
+    "finishedTools": [],
+    "calls": [],
+    "history": [
+      {
+        "event": "SessionStart",
+        "at": 1793685751717,
+        "state": "idle",
+        "tool": ""
+      },
+      {
+        "event": "UserPromptSubmit",
+        "at": 1793685751826,
+        "state": "running",
+        "tool": ""
+      },
+      {
+        "event": "PreToolUse",
+        "at": 1793685753875,
+        "state": "running",
+        "tool": "Bash"
+      },
+      {
+        "event": "SessionEnd",
+        "at": 1793686116597,
+        "state": "ended",
+        "tool": ""
+      }
+    ],
+    "stale": false,
+    "displayState": "ended"
+  }
+}

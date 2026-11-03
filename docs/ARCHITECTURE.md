@@ -4,11 +4,13 @@ Claude Code command hook → allowlisted metadata → atomic local inbox file �
 
 The short-lived Node observer reads stdin, caps input at 2 MiB, writes one uniquely named JSON file, produces no output, and exits 0 even if observation fails. It times out after 1.5 seconds. It does not parse transcripts, approve commands, call a server, or keep a process alive. Claude's configured hook timeout is 2 seconds.
 
-The main process polls once per second, sorts received events by observation time, rejects invalid payloads and duplicate IDs, and ignores events older than a station's latest timestamp. It persists state atomically before deleting consumed inbox files, so a crash replay is idempotent. A single-instance lock prevents competing consumers. Processing is bounded at 500 files per tick and 200 stations. Event history is capped at 30 entries per station.
+The main process polls once per second, sorts received events by observation time, rejects invalid payloads and duplicate IDs, and ignores events older than a station's latest timestamp. It persists state atomically before deleting consumed inbox files, so a crash replay is idempotent. A single-instance lock prevents competing consumers. Processing is bounded at 500 files per tick and 200 stations. Event history is capped at 30 entries per station. Full renderer snapshots are sent only when their contents change; relative ages update locally, while the poll still checks the five-minute uncertainty boundary.
 
 Station keys are tuples of session ID and agent ID, not project folder names. Existing stations keep their positions as events arrive; new stations appear first. Tool failures are recoverable, API failures are separate, and closed parent sessions do not imply child success. The UI marks active observations older than five minutes as uncertain without changing the stored observation.
 
 `PermissionRequest` does not include `tool_use_id`. The observer computes an HMAC of canonical tool input, session, agent and tool using a random local 32-byte `observer-key`. Only the opaque digest is stored, never the input. The reducer matches a permission to a unique pending `PreToolUse` digest and its tool ID. A completion for a different tool cannot clear that permission. Missing input or identical concurrent inputs cannot be resolved reliably: after activity the station becomes uncertain instead of guessing. This also applies to old inbox events without correlation metadata.
+
+Pending approvals and questions are bounded to 100 entries. Overflow retains an unresolved marker across restarts; completing the retained entries cannot make discarded approvals look resolved. AskUserQuestion and ExitPlanMode keep their input-request meaning through generic permission notifications. Older parent-close events cannot rewind newer child observations; a newly uncertain child becomes visible for attention again.
 
 ## Limits of observation
 

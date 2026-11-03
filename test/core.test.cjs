@@ -97,6 +97,32 @@ test('AskUserQuestion waits; idle reminders and irrelevant notifications do not 
  s.apply(event('Notification',{notification_type:'agent_needs_input'},80000));assert.equal(task(s).reason,'input');
 });
 
+test('real input-tool permission and notification sequence stays a question until answered',()=>{
+ for(const tool of ['AskUserQuestion','ExitPlanMode']){
+  let s=new Store();const input=tool==='AskUserQuestion'?{questions:[{question:'Synthetic choice?'}]}:{plan:'Synthetic plan'};
+  s.apply(correlated('PreToolUse',{tool_name:tool,tool_use_id:'q',tool_input:input}));
+  s.apply(correlated('PermissionRequest',{tool_name:tool,tool_input:input}));
+  s.apply(event('Notification',{notification_type:'permission_prompt'}));
+  assert.equal(task(s).state,'waiting');assert.equal(task(s).reason,'question');
+  s=new Store(JSON.parse(JSON.stringify(s.export())));
+  s.apply(event('Notification',{notification_type:'permission_prompt'}));assert.equal(task(s).reason,'question');
+  s.apply(event('PostToolUse',{tool_name:tool,tool_use_id:'q'}));
+  assert.equal(task(s).state,'running');assert.deepEqual(task(s).questionFor,[]);
+ }
+});
+
+test('parallel approvals and tools do not erase a pending question or lose their own wait',()=>{
+ const s=new Store();s.apply(event('PreToolUse',{tool_name:'AskUserQuestion',tool_use_id:'q'}));
+ s.apply(event('PermissionRequest',{tool_name:'Bash',tool_use_id:'approval'}));
+ s.apply(event('PreToolUse',{tool_name:'Read',tool_use_id:'other'}));
+ s.apply(event('PostToolUse',{tool_name:'Read',tool_use_id:'other'}));
+ assert.equal(task(s).state,'waiting');assert.equal(task(s).reason,'question');
+ assert.deepEqual(task(s).waitFor,['q','approval']);
+ s.apply(event('PostToolUse',{tool_name:'AskUserQuestion',tool_use_id:'q'}));
+ assert.equal(task(s).state,'waiting');assert.equal(task(s).reason,'permission');assert.deepEqual(task(s).waitFor,['approval']);
+ s.apply(event('PostToolUse',{tool_name:'Bash',tool_use_id:'approval'}));assert.equal(task(s).state,'running');
+});
+
 test('elicitation notifications distinguish a question from approval and resume after response',()=>{
  const s=new Store();s.apply(event('Notification',{notification_type:'elicitation_url_dialog'}));assert.equal(task(s).state,'waiting');assert.equal(task(s).reason,'question');
  s.apply(event('Notification',{notification_type:'elicitation_response'}));assert.equal(task(s).state,'running');
@@ -129,6 +155,67 @@ test('session/subagent identities stay independent and parent exit is not child 
  const s=new Store();s.apply(event('UserPromptSubmit'));s.apply(event('SubagentStart',{agent_id:'worker'}));s.apply(event('SubagentStart',{session_id:'s2',agent_id:'worker'}));assert.equal(s.tasks.size,3);
  s.apply(event('SessionEnd'));assert.equal(s.snapshot(10000).find(t=>t.session==='s1'&&t.agent==='worker').state,'unknown');
  assert.equal(s.snapshot(10000).find(t=>t.session==='s2').state,'running');
+});
+
+test('parent close cannot rewind a fresher child observation or admit older child events',()=>{
+ const s=new Store();s.apply(event('UserPromptSubmit',{},10000));
+ s.apply(event('SubagentStart',{agent_id:'child'},12000));
+ s.apply(event('PreToolUse',{agent_id:'child',tool_use_id:'a'},20000));
+ s.apply(event('SessionEnd',{},15000));
+ const child=()=>s.snapshot(21000).find(t=>t.agent==='child');
+ assert.equal(child().state,'running');assert.equal(child().updatedAt,20000);
+ assert.equal(s.apply(event('PostToolUse',{agent_id:'child',tool_use_id:'a'},17000)),null);
+ assert.equal(child().updatedAt,20000);
+});
+
+test('parent close makes an acknowledged active child visible for attention again',()=>{
+ const s=new Store();s.apply(event('UserPromptSubmit',{},10000));
+ s.apply(event('SubagentStart',{agent_id:'child'},12000));
+ const id=JSON.stringify(['s1','child']);s.acknowledge(id);
+ assert.equal(s.tasks.get(id).acknowledged,true);
+ s.apply(event('SessionEnd',{},15000));
+ const child=s.tasks.get(id);assert.equal(child.state,'unknown');
+ assert.equal(child.reason,'parent_ended');assert.equal(child.acknowledged,false);
+ assert.equal(child.updatedAt,15000);
+});
+
+test('pending permissions stay bounded without making dropped requests look resolved',()=>{
+ let s=new Store();
+ for(let i=0;i<101;i++)s.apply(event('PermissionRequest',{tool_use_id:String(i)},10000+i));
+ assert.equal(task(s).waitFor.length,100);assert(task(s).waitFor.includes('unknown:overflow'));
+ assert.equal(task(s).state,'unknown');assert.equal(task(s).reason,'permission_unknown');
+ s=new Store(JSON.parse(JSON.stringify(s.export())));
+ for(let i=1;i<101;i++)s.apply(event('PostToolUse',{tool_use_id:String(i)},11000+i));
+ assert.equal(task(s).state,'unknown');assert.deepEqual(task(s).waitFor,['unknown:overflow']);
+ s.apply(event('UserPromptSubmit',{},12000));assert.equal(task(s).state,'running');assert.deepEqual(task(s).waitFor,[]);
+ for(let i=0;i<150;i++)s.apply(event('PreToolUse',{tool_use_id:String(i)},13000+i));
+ assert.equal(task(s).tools.length,100);
+});
+
+test('restoring a legacy oversized permission set preserves uncertainty after completions',()=>{
+ const initial=new Store();initial.apply(event('PermissionRequest',{tool_use_id:'0'}));
+ const saved=JSON.parse(JSON.stringify(initial.export()));
+ saved.tasks[0].waitFor=Array.from({length:101},(_,i)=>String(i));saved.tasks[0].acknowledged=true;
+ const s=new Store(saved);assert.equal(task(s).state,'unknown');assert.equal(task(s).acknowledged,false);
+ assert.equal(task(s).waitFor.length,100);
+ for(let i=1;i<101;i++)s.apply(event('PostToolUse',{tool_use_id:String(i)},11000+i));
+ assert.equal(task(s).state,'unknown');assert.equal(task(s).reason,'permission_unknown');
+ assert.deepEqual(task(s).waitFor,['unknown:overflow']);
+ s.apply(event('Stop',{},12000));assert.equal(task(s).state,'done');assert.deepEqual(task(s).waitFor,[]);
+});
+
+test('restarting preserves acknowledgement of an already bounded overflow uncertainty',()=>{
+ const initial=new Store();
+ for(let i=0;i<101;i++)initial.apply(event('PermissionRequest',{tool_use_id:String(i)},10000+i));
+ initial.acknowledge(task(initial).id);
+ const saved=JSON.parse(JSON.stringify(initial.export()));
+ const restored=new Store(saved);
+ assert.equal(task(restored).state,'unknown');assert.equal(task(restored).reason,'permission_unknown');
+ assert.equal(task(restored).waitFor.length,100);assert.equal(task(restored).acknowledged,true);
+ // An old save that still loses requests during recovery introduces new
+ // uncertainty even when its previous label already happened to be unknown.
+ saved.tasks[0].waitFor=Array.from({length:101},(_,i)=>String(i));
+ assert.equal(task(new Store(saved)).acknowledged,false);
 });
 test('subagent result does not finish parent; background Stop is not done',()=>{
  const s=new Store();s.apply(event('UserPromptSubmit'));s.apply(event('SubagentStop',{agent_id:'worker',last_assistant_message:'child'}));assert.equal(s.snapshot(10000).find(t=>!t.agent).state,'running');

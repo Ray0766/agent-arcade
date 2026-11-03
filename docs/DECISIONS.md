@@ -69,3 +69,11 @@ Two feasible directions were considered: a text-first event list with a small ch
 - **Language:** action text says what happens (“Install hooks”, “Open response”, “Clear responses”), status says what was observed. Both languages must preserve “response ended ≠ independently verified success”. Use synthetic examples only where visibly marked as demo.
 
 These references inform structure and semantics. Original Sprout Bot pixels and scene vectors remain MIT project assets; third-party reference images remain their owners' works. Current local UI screenshots, genuine event receipts, resource measurements and pending Windows acceptance belong in [VALIDATION.md](VALIDATION.md), not in marketing claims.
+
+## 0.1.3 observation and idle-delivery refinement
+
+The [official hook contract](https://code.claude.com/docs/en/hooks#tools-that-require-user-interaction) treats AskUserQuestion and ExitPlanMode as user-interaction tools. A real 2.1.317 AskUserQuestion flow emitted PreToolUse, PermissionRequest and a generic permission_prompt notification before the answer. Preserve the specific question meaning through those events instead of relabeling it as operation approval. Track question IDs alongside pending approvals so parallel completions and saved-state restoration keep their meaning. A 100-entry pending limit retains uncertainty on overflow rather than treating dropped requests as granted.
+
+Keep the one-second inbox poll, but deduplicate unchanged renderer snapshots and update relative ages locally. This removes repeated IPC copies and structural rendering without a new transport or framework. A narrow [baseline/current probe](evidence/snapshot-probe.json) confirmed zero repeated snapshots in each sampled idle window while ages, new events and uncertainty still updated. A cached JSON fingerprint consumes additional bounded memory; no CPU/RSS improvement is inferred from message counts, and the 0.1.2 memory result remains the published baseline.
+
+Real Esc cancellation emitted no terminal hook. The UI consequently labels its section “Recent observations / 最近观测”; the last running observation becomes uncertain after five minutes. This makes the boundary visible without inventing an immediate cancellation signal or replacing the original character/theme direction.

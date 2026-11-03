@@ -8,7 +8,7 @@
 
 Agent Arcade is a local desktop companion for **Claude Code**. Each session and subagent gets a tiny workstation: building, asking for attention, recovering from a tool error, or delivering a response. It observes official lifecycle hooks; it does not infer completion from an animation or an idle timer.
 
-**0.1.2 preview:** Windows first. Real Claude Code acceptance, automated tests and remaining limitations are recorded separately in [validation and limitations](docs/VALIDATION.md). CI verifies the Electron app and Windows package before publishing each versioned preview.
+**0.1.3 preview:** Windows first. Real Claude Code acceptance, automated tests and remaining limitations are recorded separately in [validation and limitations](docs/VALIDATION.md). CI verifies the Electron app and Windows package before publishing each versioned preview.
 
 ## Try it
 

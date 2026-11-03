@@ -1,0 +1,238 @@
+{
+  "source": "Real Claude Code 2.1.317, harmless synthetic acceptance request",
+  "demo": false,
+  "tasks": [
+    {
+      "id": "[\"e565bb4b-a12a-46ef-81e4-83a829909595\",\"a449d7f060a12de36\"]",
+      "session": "e565bb4b-a12a-46ef-81e4-83a829909595",
+      "agent": "a449d7f060a12de36",
+      "state": "done",
+      "project": "subagent",
+      "name": "parcel-check",
+      "reason": "turn_ended",
+      "createdAt": 1793685561312,
+      "updatedAt": 1793685562686,
+      "lastEvent": "SubagentStop",
+      "tool": "",
+      "result": "",
+      "acknowledged": false,
+      "tools": [],
+      "waitFor": [],
+      "questionFor": [],
+      "finishedTools": [],
+      "calls": [],
+      "history": [
+        {
+          "event": "SubagentStart",
+          "at": 1793685561312,
+          "state": "running",
+          "tool": ""
+        },
+        {
+          "event": "SubagentStop",
+          "at": 1793685562686,
+          "state": "done",
+          "tool": ""
+        }
+      ],
+      "stale": false,
+      "displayState": "done"
+    },
+    {
+      "id": "[\"e565bb4b-a12a-46ef-81e4-83a829909595\",\"\"]",
+      "session": "e565bb4b-a12a-46ef-81e4-83a829909595",
+      "agent": "",
+      "state": "ended",
+      "project": "subagent",
+      "name": "Claude",
+      "reason": "session_ended",
+      "createdAt": 1793685559136,
+      "updatedAt": 1793685563794,
+      "lastEvent": "SessionEnd",
+      "tool": "Agent",
+      "result": "",
+      "acknowledged": false,
+      "tools": [],
+      "waitFor": [],
+      "questionFor": [],
+      "finishedTools": [
+        "toolu_019RqRoZV6aphGi4JeFSzjQz"
+      ],
+      "calls": [],
+      "history": [
+        {
+          "event": "SessionStart",
+          "at": 1793685559136,
+          "state": "idle",
+          "tool": ""
+        },
+        {
+          "event": "UserPromptSubmit",
+          "at": 1793685559233,
+          "state": "running",
+          "tool": ""
+        },
+        {
+          "event": "PreToolUse",
+          "at": 1793685561249,
+          "state": "running",
+          "tool": "Agent"
+        },
+        {
+          "event": "PostToolUse",
+          "at": 1793685562773,
+          "state": "running",
+          "tool": "Agent"
+        },
+        {
+          "event": "Stop",
+          "at": 1793685563726,
+          "state": "done",
+          "tool": ""
+        },
+        {
+          "event": "SessionEnd",
+          "at": 1793685563794,
+          "state": "ended",
+          "tool": ""
+        }
+      ],
+      "stale": false,
+      "displayState": "ended"
+    },
+    {
+      "id": "[\"f5713d76-5cb6-46e6-a414-f81ba5a0a4a4\",\"aa0674d0d24943bd2\"]",
+      "session": "f5713d76-5cb6-46e6-a414-f81ba5a0a4a4",
+      "agent": "aa0674d0d24943bd2",
+      "state": "done",
+      "project": "question",
+      "name": "Claude",
+      "reason": "turn_ended",
+      "createdAt": 1793685530488,
+      "updatedAt": 1793685530488,
+      "lastEvent": "SubagentStop",
+      "tool": "",
+      "result": "",
+      "acknowledged": false,
+      "tools": [],
+      "waitFor": [],
+      "questionFor": [],
+      "finishedTools": [],
+      "calls": [],
+      "history": [
+        {
+          "event": "SubagentStop",
+          "at": 1793685530488,
+          "state": "done",
+          "tool": ""
+        }
+      ],
+      "stale": false,
+      "displayState": "done"
+    },
+    {
+      "id": "[\"f5713d76-5cb6-46e6-a414-f81ba5a0a4a4\",\"\"]",
+      "session": "f5713d76-5cb6-46e6-a414-f81ba5a0a4a4",
+      "agent": "",
+      "state": "done",
+      "project": "question",
+      "name": "Claude",
+      "reason": "turn_ended",
+      "createdAt": 1793685358494,
+      "updatedAt": 1793685719724,
+      "lastEvent": "Stop",
+      "tool": "AskUserQuestion",
+      "result": "",
+      "acknowledged": false,
+      "tools": [],
+      "waitFor": [],
+      "questionFor": [],
+      "finishedTools": [
+        "toolu_012HUKS7vxLG7BPxeE2cwtik"
+      ],
+      "calls": [],
+      "history": [
+        {
+          "event": "SessionStart",
+          "at": 1793685358494,
+          "state": "idle",
+          "tool": ""
+        },
+        {
+          "event": "UserPromptSubmit",
+          "at": 1793685358584,
+          "state": "running",
+          "tool": ""
+        },
+        {
+          "event": "PreToolUse",
+          "at": 1793685360725,
+          "state": "waiting",
+          "tool": "AskUserQuestion"
+        },
+        {
+          "event": "PermissionRequest",
+          "at": 1793685360791,
+          "state": "waiting",
+          "tool": "AskUserQuestion"
+        },
+        {
+          "event": "Notification",
+          "at": 1793685366801,
+          "state": "waiting",
+          "tool": ""
+        },
+        {
+          "event": "PostToolUse",
+          "at": 1793685527904,
+          "state": "running",
+          "tool": "AskUserQuestion"
+        },
+        {
+          "event": "Stop",
+          "at": 1793685528814,
+          "state": "done",
+          "tool": ""
+        },
+        {
+          "event": "UserPromptSubmit",
+          "at": 1793685659394,
+          "state": "running",
+          "tool": ""
+        },
+        {
+          "event": "PreToolUse",
+          "at": 1793685661553,
+          "state": "waiting",
+          "tool": "AskUserQuestion"
+        },
+        {
+          "event": "PermissionRequest",
+          "at": 1793685661621,
+          "state": "waiting",
+          "tool": "AskUserQuestion"
+        },
+        {
+          "event": "Notification",
+          "at": 1793685667641,
+          "state": "waiting",
+          "tool": ""
+        },
+        {
+          "event": "PostToolUse",
+          "at": 1793685718461,
+          "state": "running",
+          "tool": "AskUserQuestion"
+        },
+        {
+          "event": "Stop",
+          "at": 1793685719724,
+          "state": "done",
+          "tool": ""
+        }
+      ],
+      "stale": false,
+      "displayState": "done"
+    }
+  ]
+}

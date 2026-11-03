@@ -1,0 +1,124 @@
+{
+  "source": "Real Claude Code 2.1.317 observer receipts, processed in order through the reducer",
+  "explanation": "A deliberately unavailable synthetic model is reported by the CLI as api_error/404. This checks StopFailure emission, not a simulated service outage.",
+  "observations": [
+    {
+      "id": "a99bbe87-0c53-420c-a9d1-14bc3d3635cd",
+      "at": 1793685960258,
+      "event": "SessionStart",
+      "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+      "agent": "",
+      "agentType": "",
+      "project": "acceptance-more",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "9eb2c9cc-e179-4672-930d-c4066ae3ff6c",
+      "at": 1793685960654,
+      "event": "UserPromptSubmit",
+      "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+      "agent": "",
+      "agentType": "",
+      "project": "acceptance-more",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "58fc5b88-bb8f-4c43-b9da-5e6b7d95b6ed",
+      "at": 1793685961327,
+      "event": "StopFailure",
+      "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+      "agent": "",
+      "agentType": "",
+      "project": "acceptance-more",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    },
+    {
+      "id": "b7b991b7-f553-4144-a464-3420eac45a5f",
+      "at": 1793685962839,
+      "event": "SessionEnd",
+      "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+      "agent": "",
+      "agentType": "",
+      "project": "acceptance-more",
+      "tool": "",
+      "toolId": "",
+      "toolKey": "",
+      "notification": "",
+      "interrupted": false,
+      "background": false,
+      "scheduled": false,
+      "result": ""
+    }
+  ],
+  "trace": [
+    {
+      "event": "SessionStart",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+          "agent": "",
+          "state": "idle",
+          "reason": "session_ready"
+        }
+      ]
+    },
+    {
+      "event": "UserPromptSubmit",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+          "agent": "",
+          "state": "running",
+          "reason": "working"
+        }
+      ]
+    },
+    {
+      "event": "StopFailure",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+          "agent": "",
+          "state": "error",
+          "reason": "turn_error"
+        }
+      ]
+    },
+    {
+      "event": "SessionEnd",
+      "actor": "parent",
+      "tasks": [
+        {
+          "session": "de9366b6-c2f1-416e-ac6e-d6142fb3b389",
+          "agent": "",
+          "state": "ended",
+          "reason": "session_ended"
+        }
+      ]
+    }
+  ]
+}
