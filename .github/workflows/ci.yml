@@ -58,11 +58,12 @@ jobs:
         with:
           name: agent-arcade-windows
           path: release-assets
-      - name: Publish first verified preview
+      - name: Publish verified preview
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view v0.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          version=$(node -p "require('./package.json').version")
+          if ! gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             find release-assets -name '*.exe' -exec sha256sum {} \; > release-assets/SHA256SUMS.txt
-            gh release create v0.1.0 release-assets/dist/*.exe release-assets/SHA256SUMS.txt release-assets/package-lock.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Agent Arcade 0.1.0 — Moss Workshop' --notes-file docs/RELEASE.md
+            gh release create "v$version" release-assets/dist/*.exe release-assets/SHA256SUMS.txt release-assets/package-lock.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Agent Arcade $version — Moss Workshop" --notes-file docs/RELEASE.md
           fi

@@ -8,7 +8,7 @@
 
 首版只接入 **Claude Code**。每个会话和子任务都有自己的工作台：施工、举牌等你、工具出错冒烟、回复完成后交付包裹。状态来自官方 hooks，不靠计时器猜测“任务完成”。
 
-**当前版本：0.1.0 预览版，优先支持 Windows。** 核心逻辑通过真实钩子进程与合成事件测试；GitHub Actions 验证桌面程序与 Windows 打包后才发布首个预览版本。自动测试不等于真实 Claude Code 全链路验收，具体边界见[验证说明](docs/VALIDATION.md)。
+**当前版本：0.1.1 预览版，优先支持 Windows。** 核心逻辑通过真实钩子进程与合成事件测试；GitHub Actions 验证桌面程序与 Windows 打包后才发布首个预览版本。自动测试不等于真实 Claude Code 全链路验收，具体边界见[验证说明](docs/VALIDATION.md)。
 
 ## 启动
 

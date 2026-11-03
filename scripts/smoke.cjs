@@ -16,6 +16,7 @@ const { spawnSync } = require('node:child_process');
  const errors=[];
  try{
   const page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));
+  const icon=require('../src/core/icon.cjs').createIcon().toString('base64');assert.equal(await app.evaluate(({nativeImage},base64)=>nativeImage.createFromBuffer(Buffer.from(base64,'base64')).isEmpty(),icon),false);
   await page.locator('.task-card').first().waitFor();assert.equal(await page.locator('.task-card').count(),4);
   await page.locator('.task-card').filter({hasText:'agent-arcade'}).click();assert.equal(await page.locator('#detail').evaluate(n=>n.open),true);assert.match(await page.locator('#detail-body').innerText(),/demonstration result/);await page.locator('#close-detail').click();
   await page.locator('#language').click();await page.locator('h1').filter({hasText:'小小世界，认真干活。'}).waitFor();

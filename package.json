@@ -1,6 +1,6 @@
 {
   "name": "agent-arcade",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A quiet desktop workshop for your AI agents. Real events, tiny worlds.",
   "main": "src/main.cjs",
   "private": true,
@@ -13,7 +13,9 @@
     "test": "node --test test/*.test.cjs",
     "test:ui": "node scripts/smoke.cjs",
     "check": "node scripts/check.cjs",
+    "prepack": "node scripts/build-icon.cjs",
     "pack": "electron-builder --dir",
+    "predist": "node scripts/build-icon.cjs",
     "dist": "electron-builder --publish never"
   },
   "repository": { "type": "git", "url": "https://github.com/Ray0766/agent-arcade.git" },
@@ -30,7 +32,7 @@
     "directories": { "output": "dist" },
     "files": ["src/**/*", "package.json", "LICENSE"],
     "asar": true,
-    "win": { "target": ["portable"], "signAndEditExecutable": false },
+    "win": { "target": ["portable"], "icon": "src/assets/app.ico", "signAndEditExecutable": false },
     "mac": { "target": ["zip"], "category": "public.app-category.developer-tools" },
     "linux": { "target": ["AppImage"], "category": "Development" }
   }

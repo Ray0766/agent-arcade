@@ -70,3 +70,4 @@ test('built-in themes validate; external content is not accepted as colors or sp
  const theme=structuredClone(require('../src/themes/workshop.json'));theme.colors.sky='url(https://example.com)';assert.throws(()=>validateTheme(theme));
  theme.colors.sky='#123456';theme.sprites.running[0]='<script>alert(1)';assert.throws(()=>validateTheme(theme));
 });
+test('native icon is a PNG with expected dimensions, not an unsupported SVG',()=>{const png=require('../src/core/icon.cjs').createIcon();assert.deepEqual([...png.subarray(0,8)],[137,80,78,71,13,10,26,10]);assert.equal(png.readUInt32BE(16),32);assert.equal(png.readUInt32BE(20),32);});

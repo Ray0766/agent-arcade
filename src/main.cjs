@@ -12,6 +12,7 @@ const { atomicJSON, readJSON, drainInbox } = require('./core/files.cjs');
 const integration = require('./core/integration.cjs');
 const { validateTheme } = require('./core/theme.cjs');
 const { demoStore } = require('./core/demo.cjs');
+const { createIcon } = require('./core/icon.cjs');
 const root = process.env.AGENT_ARCADE_HOME || path.join(os.homedir(), '.agent-arcade');
 const settingsFile = process.env.AGENT_ARCADE_CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
 let config = { language: 'en', notifications: false, quiet: false, captureResults: false, alwaysOnTop: false, compact: false, theme: 'workshop', ...readJSON(path.join(root, 'config.json')) };
@@ -46,7 +47,8 @@ else {
     const custom = readJSON(path.join(root, 'theme.json'), null);
     try { if (custom) themes.set('custom', validateTheme(custom)); } catch { problem = 'Saved theme is invalid; using Workshop.'; }
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
-    win = new BrowserWindow({ width:1200, height:830, minWidth:900, minHeight:640, backgroundColor:'#f5f3ed', title:'Agent Arcade', autoHideMenuBar:true,
+    const icon = nativeImage.createFromBuffer(createIcon());
+    win = new BrowserWindow({ width:1200, height:830, minWidth:900, minHeight:640, backgroundColor:'#f5f3ed', title:'Agent Arcade', autoHideMenuBar:true, icon,
       webPreferences:{ preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true, webSecurity:true } });
     win.webContents.setWindowOpenHandler(() => ({ action:'deny' }));
     win.webContents.on('will-navigate', e => e.preventDefault());
@@ -78,9 +80,9 @@ else {
       const theme = validateTheme(JSON.parse(fs.readFileSync(file,'utf8')));
       atomicJSON(path.join(root,'theme.json'),theme); themes.set('custom',theme); config.theme = 'custom'; saveConfig(); publish();
     });
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect x="2" y="4" width="28" height="26" rx="7" fill="#3bb89a"/><path d="M10 12v5m12-5v5M12 23h8" stroke="#172e2b" stroke-width="3"/></svg>';
     try {
-      tray = new Tray(nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`));
+      if (icon.isEmpty()) throw Error('Tray icon is empty');
+      tray = new Tray(icon);
       tray.setToolTip('Agent Arcade'); tray.on('click',show);
       tray.setContextMenu(Menu.buildFromTemplate([{label:'Open Agent Arcade',click:show},{label:'Quit',click:()=>{quitting=true;app.quit();}}]));
     } catch { tray = null; }

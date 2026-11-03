@@ -2,7 +2,7 @@
 
 ## Local verification
 
-- Node.js 24 on Windows: 19 core/integration tests passed.
+- Node.js 24 on Windows: 20 core/integration tests passed.
 - Actual observer subprocesses tested with synthetic official-shape payloads, including 12 concurrent processes and installed script copies.
 - Settings merge/reinstall/uninstall, invalid settings preservation, privacy defaults, duplicate/out-of-order events, parallel permissions, recovery, subagent isolation, stale status, result revocation and theme validation covered.
 - JavaScript syntax checked across source, scripts and tests.
@@ -11,7 +11,7 @@
 
 The `Verify and build` GitHub workflow runs core tests on Windows and Linux, launches the Electron app on Windows, checks demo/live separation, result display, Chinese localization, theme change, quiet/compact modes, and install/remove hooks in a temporary home. It sends a real hook subprocess event to verify the displayed live station. It then builds the Windows package and repeats the smoke test on the packaged executable. Screenshots are retained as CI artifacts.
 
-The first `v0.1.0` GitHub prerelease is created **only after** both core jobs and the Windows desktop/package job pass. Check the repository's actual Actions status; the existence of this workflow file is not evidence it ran successfully.
+The first `v0.1.1` GitHub prerelease is created **only after** both core jobs and the Windows desktop/package job pass. Check the repository's actual Actions status; the existence of this workflow file is not evidence it ran successfully.
 
 ## Remaining acceptance work
 
