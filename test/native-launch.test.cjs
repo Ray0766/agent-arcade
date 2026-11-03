@@ -8,6 +8,8 @@ test('native launch fixture: private MCP capability never enters copied command 
   const cfg=JSON.parse(fs.readFileSync(launch.file,'utf8')).mcpServers['agent-arcade-wechat'];
   assert.equal(cfg.env.ARCADE_BRIDGE_TOKEN,token);assert.equal(cfg.command,process.execPath);assert(fs.existsSync(cfg.args[0]));
   assert.equal(launch.command.includes(token),false);assert.equal(launch.command.includes('--bare'),false);assert.equal(launch.command.includes('ANTHROPIC_API_KEY'),false);
+  assert.match(launch.command,/--allowedTools mcp__agent-arcade-wechat__reply --permission-mode default/);
+  assert.doesNotMatch(launch.command,/--dangerously-skip-permissions|--permission-mode (?:bypassPermissions|acceptEdits)|mcp__agent-arcade-wechat__\*/);
   assert(launch.command.includes('--dangerously-load-development-channels'));assert.equal(fs.existsSync(path.join(workspace,'.mcp.json')),false);
   if(process.platform==='win32')assert(launch.command.includes("project '' test"));
   launch.cleanup();assert.equal(fs.existsSync(launch.file),false);

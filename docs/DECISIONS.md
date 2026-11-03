@@ -1,5 +1,7 @@
 # Decisions and evidence
 
+The 2026-11-04 working-desktop revision and its visual/HCI evidence are recorded in [UI_REFERENCES.md](UI_REFERENCES.md). It keeps the existing event and execution contracts while simplifying navigation, setup and conversation hierarchy.
+
 Reviewed **2026-11-03** for the Windows preview. This record explains the retained design and the validation work; it is not a claim that live acceptance or a comparative user study has passed. See [VALIDATION.md](VALIDATION.md) for measured results and remaining checks.
 
 ## Decision: keep the current observation architecture
@@ -111,4 +113,12 @@ The selected design uses a random-port, capability-authenticated `127.0.0.1` bro
 
 State/authority differs deliberately: native messages can combine, MCP initialization is not model receipt, reply submission is not a response boundary, and a remote permission verdict is not proof of adoption. Native permission previews are upstream display text, not complete raw arguments; elided/redacted/oversized values fail closed remotely. The existing CLI's read/allow rules remain authoritative. `/cancel` stops new relay input and sends pending denials; real interruption stays in the original terminal with Ctrl+C. Stop/new-session semantics are not silently copied from the API Dispatcher.
 
-The UI adds a method selector and conditional setup text in the existing column; switching is disabled during a connection and keeps the API key. The local character stays idle unless a real relay permission is pending, rather than animating guessed execution/completion. Existing inspected references continue to inform actor + concrete fact; this is no new art direction. Real original-CLI registration, WeChat round trip, verdict adoption and stop/recovery remain pending; [VALIDATION.md](VALIDATION.md) separates fixtures and packaging from live acceptance.
+The UI adds a method selector and conditional setup text in the existing column; switching is disabled during a connection and keeps the API key. The local character stays idle unless a real relay permission is pending, rather than animating guessed execution/completion. Existing inspected references continue to inform actor + concrete fact; this is no new art direction. Original-CLI registration and a basic native WeChat/file/reply flow subsequently passed on 2026-11-04 with preview.1; [VALIDATION.md](VALIDATION.md) separates that evidence from fixtures and the remaining verdict-race/stop/recovery checks.
+
+### 0.3.0-preview.2: natural native conversation
+
+**Decision, 2026-11-04:** the live preview.1 route required approving the reply tool even for ordinary conversation, and injected transport/result boilerplate into chat. Keep API mode's existing approval contract. For native mode, launch with `--allowedTools mcp__agent-arcade-wechat__reply --permission-mode default`: allow this exact return path for the current session, without permanent settings, wildcard tools or permission bypass. Existing deny/ask rules, hooks and organization policy still apply. The [official CLI flag reference](https://code.claude.com/docs/en/cli-reference) and [MCP rule syntax](https://code.claude.com/docs/en/permissions#mcp) were checked on this date.
+
+The baseline is repeated one-time approval for ordinary replies; the alternative of disabling permissions would widen execution authority and is rejected. The practical intended benefit is fewer approval messages during conversation. Successful forwarding now stays silent and reply bodies have no fixed result/unverified prefix. Necessary permissions/errors remain visible; channel instructions still require evidence for work claims. Model adherence and reduced interruption remain to be verified with preview.2, not inferred from the earlier live run.
+
+Keep the same setup/scene and original assets. Move MCP/counter details behind the existing desktop connection-details disclosure so the main text answers what to do next. This follows the existing actor + concrete fact references; no new visual system or third-party artwork is introduced. The earlier live Write artifact is independently evidenced, while native `/cancel`, reconnect, approval races, forced Write permission and API live flow remain outside that acceptance.

@@ -1,0 +1,32 @@
+{
+  "ui": "passed",
+  "fixture": true,
+  "scope": "Neutral workbench UI; no live acceptance claim",
+  "fontStack": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", system-ui, sans-serif",
+  "setupSteps": 3,
+  "apiFixtureKeyEncryptedAndRemoved": true,
+  "conversationFirst": true,
+  "connectionDetailsKeyboardAccessible": true,
+  "languages": [
+    "zh",
+    "en"
+  ],
+  "compactNoOverflow": true,
+  "originalThemes": 2,
+  "observerResponseEndNotSuccess": true,
+  "liveWeChat": false,
+  "liveClaude": false,
+  "preservedExistingIds": true,
+  "formalObserverUiSmoke": "passed",
+  "formalBotUiSmoke": "passed",
+  "renderedFontsSampled": {
+    "heading": "Microsoft YaHei UI Bold",
+    "body": [
+      "Microsoft YaHei UI",
+      "Segoe UI"
+    ],
+    "brand": "Segoe UI Bold"
+  },
+  "fontEvidence": "workspace-rendered-fonts.json",
+  "limitation": "UI and local observer checks do not prove live WeChat or Claude acceptance"
+}

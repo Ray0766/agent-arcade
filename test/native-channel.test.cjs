@@ -63,7 +63,7 @@ test('fixture initialization attaches once and authenticates every subsequent br
   await channel.receive({events:[{seq:1,type:'message',id:'fixture-task',text:'Synthetic task'}]});
   const result = await mcp.requests.get('tools/call')({params:{name:'reply',arguments:{id:'fixture-task',text:'Synthetic reply'}}});
   assert.equal(result.isError,undefined);
-  assert.match(result.content[0].text,/does not confirm/);
+  assert.match(result.content[0].text,/Recipient receipt is unknown/);
   assert.equal(calls.filter(call=>call.url.endsWith('/attached')).length,1);
   for (const {url,options} of calls) {
     assert.equal(options.headers.Authorization,`Bearer ${TOKEN}`);

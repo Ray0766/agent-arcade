@@ -23,7 +23,7 @@ const { spawnSync } = require('node:child_process');
   await page.locator('.task-card').first().waitFor();assert.equal(await page.locator('.task-card').count(),4);
   await page.locator('[data-filter="attentionFilter"]').focus();await page.waitForTimeout(1200);assert.equal(await page.locator('[data-filter="attentionFilter"]').evaluate(n=>n===document.activeElement),true);
   await page.locator('.task-card').filter({hasText:'agent-arcade'}).click();assert.equal(await page.locator('#detail').evaluate(n=>n.open),true);assert.match(await page.locator('#detail-body').innerText(),/demonstration result/);await page.locator('#close-detail').click();
-  await page.locator('#language').click();await page.locator('h1').filter({hasText:'小小世界，认真干活。'}).waitFor();
+  await page.locator('#language').click();await page.locator('#scene-view h1').filter({hasText:'会话'}).waitFor();
   await page.locator('[data-view="settings"]').click();await page.locator('#theme').selectOption('moonbase');await page.waitForFunction(()=>document.documentElement.style.getPropertyValue('--sky')==='#E2E5F1');
   await page.locator('#install').click();await page.locator('#install-status').filter({hasText:'钩子已安装'}).waitFor();assert(fs.existsSync(path.join(root,'bin','hook.cjs')));
   await page.locator('#uninstall').click();await page.locator('#install-status').filter({hasText:'钩子已移除'}).waitFor();

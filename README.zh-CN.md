@@ -8,7 +8,7 @@
 
 实验性的 **微信派活 Bot** 保留两个入口：由应用管理的 **API Agent**，以及复用既有登录的 **本机 Claude Code CLI**。扫码配对自己的微信、选择本机项目，再在 ClawBot 对话中派任务。延续 Electron、原创 Sprout Bot 与两套主题；原有 hooks 观察功能仍可独立使用。
 
-**当前版本：0.3.0-preview.1，优先支持 Windows。** 本机模式采用官方 Channels 研究预览，首次需在原版 CLI 中明确确认。**两个模式的真实微信＋Agent 全链路仍未验收**。模拟派活与真实 Node stdio MCP 握手是独立证据，见[验证说明](docs/VALIDATION.md)。
+**当前版本：0.3.0-preview.2，优先支持 Windows。** 本机模式采用官方 Channels 研究预览，首次需在原版 CLI 中明确确认。2026-11-04 已用 preview.1 跑通本机微信最小闭环，独立检查了实际文件，主人也确认手机收到回复。**本版普通回复的权限调整仍待真实复验，API 模式真实闭环仍未验收。** 见[验证说明](docs/VALIDATION.md)。
 
 ## 给 Bot 派活
 
@@ -20,6 +20,8 @@
 | **本机 Claude Code CLI** | 安装 Node.js 22.13+ 和原版 Claude Code 2.1.317+，在 CLI 自行登录。开启本机模式后，把页面生成的命令复制到终端，亲自确认自定义开发通道。Agent Arcade 不要求额外 API key。 | `/cancel` 仅暂停转发并发送待决权限的拒绝；真正停止执行请在本机 CLI 按 **Ctrl+C**。 |
 
 先断开再切换模式，已保存的 API key 会保留。本机模式沿用原版 CLI 的权限设置，已有允许规则可能自动执行；多条微信消息也可能在同一会话中合并处理。运行时电脑和应用需保持开启，本机模式还需保持 CLI 终端运行。消息与输出会经过腾讯及 Anthropic；批准的 Windows 命令可能影响项目目录以外的内容。**收到回复或平台受理回传，都不代表任务已验收成功。** [完整步骤、费用和限制](docs/WECHAT.md)。
+
+本机模式收到并转发普通消息后保持安静，直接回传 Agent 的回复正文；权限请求和需要处理的异常仍会提示。启动命令仅在本次会话允许 `mcp__agent-arcade-wechat__reply`，仍受 CLI 的 deny/ask 规则与 hooks 约束，不跳过其他权限，也不写入永久允许设置。MCP 与转发计数放在桌面的“连接详情”中。
 
 ## 启动
 
@@ -88,3 +90,5 @@ npm run dist
 ## Agent 开发规范
 
 后续开发请结合 [AGENTS.md](AGENTS.md)、[项目质量 brief](docs/QUALITY_BRIEF.md) 与 [贡献规范](CONTRIBUTING.md)：核实技术选择与参考作品，验证差异化价值，在现有架构和原创美术基础上完成实现与验收。
+
+本次工作台改版的获奖作品、官网与 HCI 论文参考见[设计记录](docs/UI_REFERENCES.md)；新技术的收益、兼容性及采用边界见[技术调研](docs/TECH_RADAR.md)。调研候选不表示已经实现。

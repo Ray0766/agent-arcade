@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "observedDate": "2026-11-04",
+  "appVersion": "0.3.0-preview.1",
+  "claudeCodeVersion": "2.1.317",
+  "mode": "native",
+  "result": "basic live owner-to-native-Claude-to-WeChat flow passed",
+  "observations": {
+    "ownerQrPairing": true,
+    "originalInteractiveCliChannel": true,
+    "realOwnerText": true,
+    "oneTimeReplyToolApproval": true,
+    "markerReplyReceivedOnPhone": "confirmed by owner",
+    "writePathResultReceivedOnPhone": "confirmed by owner"
+  },
+  "artifact": {
+    "fileName": "native-wechat-20261104-A.txt",
+    "initiallyAbsent": true,
+    "byteCount": 24,
+    "exactContent": "ARCADE_NATIVE_20261104_A",
+    "exactByteMatch": true,
+    "newline": false,
+    "sha256": "fc31ecf4411fab3443e468cfe703b4f766ce64610fcbec26e1d07f36fbfd2411",
+    "verification": "independent local raw-byte comparison and SHA-256, not the model report"
+  },
+  "limitations": [
+    "This run predates preview.2's session-only reply-tool pre-allowance and natural-chat changes.",
+    "Existing native Write allow rules meant Write did not demonstrate a forced approval path.",
+    "Remote approval exercised the reply tool; expiry and a competing local decision remain unaccepted.",
+    "Native /cancel, Ctrl+C interruption, reconnect and sleep recovery were not exercised.",
+    "API mode's real agent flow was not tested in this run.",
+    "No comparative interruption, performance or billing measurement."
+  ],
+  "privacy": "No phone screenshots, contacts, approval codes, credentials or private MCP configuration are included."
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "real original CLI/model with fixture WeChat transport",
+  "cliVersion": "2.1.317",
+  "sessionRule": "mcp__agent-arcade-wechat__reply",
+  "permissionMode": "default",
+  "otherToolsPreallowed": false,
+  "replyCalls": 1,
+  "ownerMessages": 1,
+  "replyBody": "你好呀，有什么想聊的吗？",
+  "remotePermissions": 0,
+  "liveWeChat": false,
+  "credentialFilesRead": false
+}

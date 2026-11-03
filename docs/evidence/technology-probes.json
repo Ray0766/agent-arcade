@@ -1,0 +1,19 @@
+{
+  "observedDate": "2026-11-04",
+  "scope": "Read-only scoped CLI query and in-memory database availability; no candidate feature adopted",
+  "sessionJson": {
+    "cliVersion": "2.1.317",
+    "scopedToDisposableTestProject": true,
+    "resultType": "array",
+    "sessionCount": 1,
+    "availableFields": ["sessionId", "status"],
+    "states": ["idle"],
+    "modelTaskRun": false,
+    "identifiersAndContentExported": false
+  },
+  "sqlite": [
+    {"runtime": "system Node", "node": "24.18.0", "sqlite": "3.53.1", "inMemoryOpenAndQuery": true},
+    {"runtime": "Electron", "electron": "45.2.1", "node": "24.22.1", "sqlite": "3.53.4", "inMemoryOpenAndQuery": true}
+  ],
+  "limitations": ["No on-disk durability or crash recovery test", "No latency or resource benchmark", "No background Channels or quoted/voice message acceptance", "Interactive row did not demonstrate waitingFor or detailed background state"]
+}

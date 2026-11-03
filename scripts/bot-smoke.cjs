@@ -22,7 +22,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
     await page.evaluate(async workspace=>window.arcade.botConfigure({workspace}),root);
     await page.locator('#bot-budget').fill('0.5');await page.locator('#bot-budget').press('Tab');
     await page.waitForFunction(async()=> (await window.arcade.snapshot()).bot.budget===0.5);
-    await page.locator('#language').click();await page.locator('#bot-view h1').filter({hasText:'发条微信，让 Agent 开工。'}).waitFor();
+    await page.locator('#language').click();await page.locator('#bot-view h1').filter({hasText:'微信'}).waitFor();
     await page.emulateMedia({reducedMotion:'reduce'});
     // Clearly labelled synthetic output exercises long text and semantic states.
     const showFixture=()=>page.evaluate(()=>{

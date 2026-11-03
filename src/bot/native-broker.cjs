@@ -15,7 +15,7 @@ class NativeBroker {
   message(role,text,deliveryFailed=false){const m={id:crypto.randomUUID(),role,text:clean(text),deliveryFailed};this.messages.push(m);this.messages=this.messages.slice(-60);this.change();return m;}
   deliver(text,context=this.lastContext,guard=()=>true){
     if(!context||this.closed||this.sending>=32)return Promise.resolve(false);
-    this.sending++;const body=clean(text),entry=this.message('assistant',body);
+    this.sending++;const entry=this.message('assistant',text),body=entry.text;
     const next=this.sendChain.then(async()=>{
       if(this.closed||!guard()){entry.deliveryFailed=true;this.change();return false;}
       try{await this.send(body,context);return true;}catch{entry.deliveryFailed=true;this.change();return false;}
@@ -31,27 +31,35 @@ class NativeBroker {
     if(this.seen.has(id))return;if(this.seen.size>=10000){await this.deliver('本次连接达到消息上限，请断开后重新连接。',contextToken);return;}
     this.seen.add(id);this.lastContext=contextToken;this.message('user',text);this.expire();const body=text.trim();
     if(body.startsWith('/')){
-      if(body==='/status'){await this.deliver(`本机通道：${this.clientId?'MCP进程已连接，CLI处理未确认':'等待你在终端启动'}；已转交通道 ${this.forwarded} 条，平台受理回复 ${this.replies} 条。${this.paused?'新消息转发已暂停。':''}执行状态请查看原版 Claude Code。`);return;}
+      if(body==='/status'){
+        const connection=this.paused?'消息转发已暂停。请先在电脑上停止旧会话，再到 Agent Arcade 断开重连。':this.clientId?'电脑端已连接，可以继续发消息。':'电脑端还没接上。请在 Agent Arcade 复制启动命令，到终端运行并完成确认。';
+        await this.deliver(`${connection}${this.pending.size?`还有 ${this.pending.size} 条确认提示未在微信处理；若已在电脑上处理，可忽略。`:''}要确认任务进展，请查看电脑上的 Claude Code。`);return;
+      }
       if(body==='/cancel'){
         this.paused=true;for(const p of [...this.pending.values()])this.resolve(p,'deny');
         this.events=this.events.filter(e=>e.type!=='message');
-        await this.deliver('已暂停后续微信消息转发，并拒绝尚未批准的远端请求。Claude Code可能仍在运行；请在本机终端按Ctrl+C停止。已进入CLI的消息无法从这里撤回。');return;
+        await this.deliver('已暂停转发，并向待确认的操作发送拒绝。电脑上的 Claude Code 可能还在运行；要停止它，请在终端按 Ctrl+C。已经转交的消息无法撤回。');return;
       }
       const match=body.match(/^\/(allow|deny)\s+([a-f0-9]{32})$/i);
       if(match){const p=this.pending.get(match[2].toLowerCase());
-        if(p&&!this.paused&&p.expiresAt>this.now()){this.resolve(p,match[1].toLowerCase()==='allow'?'allow':'deny');await this.deliver('本次裁决已发送给本机通道，CLI是否采用尚未确认；本机可能已先行处理。');}
-        else await this.deliver('确认码无效、已过期或属于旧连接，未发送批准。');return;
+        if(p&&!this.paused&&p.expiresAt>this.now()){
+          const behavior=match[1].toLowerCase()==='allow'?'allow':'deny';this.resolve(p,behavior);
+          await this.deliver(`已发送${behavior==='allow'?'批准':'拒绝'}。若你已在电脑上处理，这次回复可能不再生效。`);
+        }else await this.deliver('确认码无效或已过期，这条回复没有批准操作。请在电脑上检查当前请求，并使用最新提示中的确认码。');return;
       }
-      await this.deliver('本机模式支持 /status、/cancel、/allow CODE、/deny CODE。/new和真正中止执行请在原版Claude Code终端操作；此消息未转发为任务。');return;
+      if(/^\/(?:allow|deny)\b/i.test(body)){
+        await this.deliver('这条确认没有执行。请从权限提示复制以 /allow 或 /deny 开头的一整行，包含后面的32位确认码，单独发送。不要附带说明或另一条命令。');return;
+      }
+      await this.deliver('这条指令没有执行。可发送 /status 查看连接，或 /cancel 暂停转发。批准或拒绝操作时，请复制权限提示中对应的一整行；新建会话和停止 Claude Code 请在电脑终端操作。');return;
     }
-    if(this.paused||!this.clientId){await this.deliver(this.paused?'转发已暂停。请先在本机停止旧会话，再断开重连。':'尚未连接本机通道。请先运行电脑页面中的启动命令、完成原版CLI确认，再重新发送任务。');return;}
-    if(this.seq-this.ackSeq>=100){await this.deliver('本机通道积压过多，本条没有转发。请检查终端后重试。');return;}
+    if(this.paused||!this.clientId){await this.deliver(this.paused?'消息转发已暂停。请先在电脑上停止旧会话，再到 Agent Arcade 断开重连。':'电脑端还没接上。请在 Agent Arcade 复制启动命令，到终端运行并完成确认，再发一次消息。');return;}
+    if(this.seq-this.ackSeq>=100){await this.deliver('电脑端有太多消息尚未接收，这条没有转发。请检查 Claude Code 是否仍在运行，稍后再发一次。');return;}
     const opaque=crypto.randomUUID();this.records.set(opaque,{context:contextToken,replies:0});while(this.records.size>MAX_RECORDS)this.records.delete(this.records.keys().next().value);
-    this.event({type:'message',id:opaque,text});await this.deliver('消息已提交本机通道，尚不代表Claude Code已接收或开始执行。',contextToken);
+    this.event({type:'message',id:opaque,text});
   }
   async reply({id,text}){
     const record=this.records.get(id);if(this.closed||!record||!validText(text,12000)||record.replies>=20)throw Error('invalid_reply');
-    const accepted=await this.deliver(`Claude Code回复（任务结果未验证）：\n${text}`,record.context);
+    const accepted=await this.deliver(text,record.context);
     if(!accepted)throw Error('send_failed');record.replies++;this.replies++;this.change();return {accepted:true,read_confirmed:false};
   }
   async permission({request_id,tool_name,input,description=''}){
@@ -61,12 +69,13 @@ class NativeBroker {
     if(this.usedRequests.size>=2000)throw Error('permission_limit');this.usedRequests.add(request_id);
     if(!this.lastContext)return {code:null,relayed:false};
     const preview=`${tool_name}\n${description}\n${input}`;
-    if(this.paused||this.pending.size>=8||Buffer.byteLength(preview,'utf8')>3000||clean(preview)!==preview||/\[REDACTED\]|unserializable|code points elided|\u2026|\u22ef/i.test(preview)){
-      this.event({type:'permission_reply',request_id,behavior:'deny'});await this.deliver('CLI参数预览过长、已省略或含敏感数据，或转发已暂停；已发送拒绝。请在本机检查完整操作。');return {code:null,relayed:true};
+    const refusal=this.paused?'消息转发已暂停':this.pending.size>=8?'待确认的操作太多':Buffer.byteLength(preview,'utf8')>3000?'这次操作的参数预览太长':clean(preview)!==preview||/\[REDACTED\]|unserializable|code points elided|\u2026|\u22ef/i.test(preview)?'参数预览含省略或敏感内容':'';
+    if(refusal){
+      this.event({type:'permission_reply',request_id,behavior:'deny'});await this.deliver(`${refusal}，无法在微信中确认，已向 Claude Code 发送拒绝。请在电脑上查看完整操作并处理。`);return {code:null,relayed:true};
     }
     const p={code:crypto.randomBytes(16).toString('hex'),request_id,tool:tool_name,expiresAt:this.now()+TTL};
     this.pending.set(p.code,p);this.change();
-    await this.deliver(`本机Claude Code会话请求权限（不代表某条微信独立任务）。以下是CLI提供的参数预览，并非应用核验的完整原参数；批准可能影响本机项目以外的数据。\n${preview}\n/allow ${p.code}\n/deny ${p.code}\n五分钟内单次有效。本机先行处理可能使远端裁决失效。`,this.lastContext,()=>this.pending.get(p.code)===p&&!this.paused&&p.expiresAt>this.now());
+    await this.deliver(`Claude Code 请求你确认操作，批准可能影响本机项目以外的数据。下面是它提供的参数预览，不能保证是完整原参数：\n${preview}\n\n五分钟内有效，只能用一次。选择一种，只复制对应的一整行发送（含32位确认码）：\n批准：\n/allow ${p.code}\n拒绝：\n/deny ${p.code}\n若你已在电脑上处理，这次回复可能不再生效。`,this.lastContext,()=>this.pending.get(p.code)===p&&!this.paused&&p.expiresAt>this.now());
     return {code:p.code,relayed:true};
   }
   resolve(p,behavior){if(!this.pending.delete(p.code))return;this.event({type:'permission_reply',request_id:p.request_id,behavior});}

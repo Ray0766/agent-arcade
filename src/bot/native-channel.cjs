@@ -53,11 +53,13 @@ function createChannel({url, token, fetchImpl=globalThis.fetch, mcp, timeoutMs=3
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30000) throw fail('invalid_bridge_timeout');
   mcp ||= new Server({name:'agent-arcade-wechat', version:'0.1.0'}, {
     capabilities:{experimental:{'claude/channel':{}, 'claude/channel/permission':{}}, tools:{}},
-    instructions:'Messages arrive from the paired owner as <channel task_id="...">. ' +
+    instructions:'You are talking with the paired owner in WeChat. Messages arrive as <channel task_id="...">. ' +
       'Use the reply tool with that exact task_id as id for answers and clarification questions. ' +
-      'Forwarded means submitted to the channel transport, not confirmed received, executed or successful. ' +
-      'Report actual changes, checks and remaining limits. A reply ending does not prove task success. ' +
-      'Permission decisions arrive separately through Claude Code permission relay. ' +
+      'Reply naturally, directly and concisely in the owner\'s language. Ordinary conversation needs only your answer. ' +
+      'Do not send task-received confirmations, transport diagnostics, internal IDs or routine verification disclaimers. ' +
+      'For work requests, describe actual results and any meaningful failure or requested check you could not perform. ' +
+      'Never claim a change, test or successful outcome without evidence. A reply ending does not prove task success. ' +
+      'Permission decisions arrive separately through Claude Code permission relay; follow the CLI\'s permissions. ' +
       'A relay disconnect does not stop this Claude Code session.',
   });
   const controller = new AbortController(), messages = new Set(), pending = new Set();
@@ -182,7 +184,7 @@ function createChannel({url, token, fetchImpl=globalThis.fetch, mcp, timeoutMs=3
   }
 
   mcp.setRequestHandler(ListToolsRequestSchema, async () => ({tools:[{
-    name:'reply', description:'Reply to a paired-owner message already forwarded to this session. Forwarding or replying does not prove task success.',
+    name:'reply', description:'Send an answer or result to the paired owner in WeChat. Use the exact task_id of a message you received as id.',
     inputSchema:{type:'object',properties:{id:{type:'string',maxLength:128},text:{type:'string',minLength:1,maxLength:12000}},required:['id','text'],additionalProperties:false},
   }]}));
   mcp.setRequestHandler(CallToolRequestSchema, async ({params}) => {
@@ -193,7 +195,7 @@ function createChannel({url, token, fetchImpl=globalThis.fetch, mcp, timeoutMs=3
     try {
       const response = await request('/reply', 'POST', parsed.data);
       if (response?.accepted !== true) throw fail('reply_not_accepted');
-      return {content:[{type:'text',text:'Reply submitted to the local WeChat relay. This does not confirm recipient receipt or task success.'}]};
+      return {content:[{type:'text',text:'Reply accepted by the WeChat service. Recipient receipt is unknown; do not repeat this internal acknowledgement to the owner.'}]};
     } catch { return {isError:true,content:[{type:'text',text:'Reply relay failed. Check Agent Arcade; do not assume delivery.'}]}; }
   });
   mcp.setNotificationHandler(permissionSchema, async ({params}) => {

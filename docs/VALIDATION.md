@@ -1,8 +1,19 @@
 # Validation
 
+## 0.3.0-preview.2 — natural native chat
+
+Native startup now pre-allows only `mcp__agent-arcade-wechat__reply` for the current CLI session with `--permission-mode default`; it writes no permanent allow setting and does not bypass deny/ask rules or hooks. Successful forwarding emits no receipt acknowledgement; reply bodies carry no fixed task-result/unverified prefix. Necessary permissions/errors remain, and desktop connection details contain the MCP counters. API permissions are unchanged.
+
+- `npm test`: **120 passed, 0 failed**. `npm run check`: **41 JavaScript files**. These results belong to preview.2; the preview.1 counts below are retained.
+- Source `npm run test:native` passed actual Electron and system-Node stdio MCP/local-HTTP checks, including silent successful inbound forwarding, direct reply bodies, collapsed diagnostics and mode switching/key retention. These are transport/UI fixtures, not a model or WeChat session.
+- The final working-desktop UI passed source and packaged native, bot and observer checks. It uses compact navigation, three real setup steps, a conversation-first connected view, expandable settings/diagnostics and the original two scene themes. English/Chinese, compact layout, keyboard access, reduced motion and mode/key retention were checked. Sampled rendered fonts were Segoe UI and Microsoft YaHei UI. [UI fixture receipt](evidence/workspace-ui.json), [reference and research record](UI_REFERENCES.md).
+- Original Claude Code **2.1.317** completed a real model/tool call with only `mcp__agent-arcade-wechat__reply` pre-allowed and default permission mode. Its single natural reply was accepted by the fixture transport without a remote approval; no account files were read. This used `-p` and a fixture owner/WeChat transport, so it verifies scoped tool permission behavior, **not a new live WeChat Channels acceptance run**. [Scoped-reply receipt](evidence/scoped-reply-live.json). The preview.1 live run below used one-time reply approval; the revised ordinary-chat experience still needs phone-side acceptance.
+
+Native `/cancel`, Ctrl+C interruption, reconnect/recovery, expiry/local-first permission races, a forced Write approval path and API real-agent flow remain unaccepted. No comparative interruption, latency or resource improvement is claimed.
+
 ## 0.3.0-preview.1 — API and local CLI entry points
 
-Current implementation adds local mode while preserving the API runner. **Real original Claude Code channel registration and WeChat + actual agent acceptance are pending.** No native model session, social message or credential transfer was performed by the fixture checks below.
+This release added local mode while preserving the API runner. At its fixture checkpoint, real channel registration/WeChat acceptance was still pending; the later basic live run is recorded separately below. No native model session, social message or credential transfer was performed by these fixture checks.
 
 - `npm test`: **118 passed, 0 failed**. Native fixtures cover loopback/capability/attachment checks, event paging/gaps, bound reply IDs, cancelled/expired/omitted permission previews, MCP write failure, stale configuration cleanup, native preparation without an API key and mode switching without deleting the saved API key. Historical counts below describe their own releases.
 - Real Node child + stdio MCP + local HTTP fixtures negotiated protocol **2025-11-25**, declared channel/reply/permission capabilities and exercised message/reply/verdict paths. These use a test client, not an original Claude Code model session. MCP initialization does not prove the CLI registered this custom channel.
@@ -12,7 +23,11 @@ Current implementation adds local mode while preserving the API runner. **Real o
 - `npm audit --omit=dev`: **0 known production dependency vulnerabilities** at this check, not a security audit. No resource/performance improvement has been measured.
 - CI exposed graceful-detach timing: the fixture waits for a present authenticated client poll (the initial waiter is `undefined`, not just `null`), and the channel sends its detach before aborting the active HTTP poll. The broker lease remains the fallback when graceful notification cannot complete. Packaged PowerShell gates stop on each failed command so a later pass cannot mask an earlier failure.
 
-**Pending live checks:** user confirmation of the custom development channel in original CLI 2.1.317+, inbound WeChat text, actual task/output, a reply received on the phone, native permission adoption/local-first race, Ctrl+C behavior and reconnect recovery. API's turn/time/cost/abort guarantees do not apply to the independent CLI. Native `/cancel` only pauses forwarding and sends denials; a CLI process may keep running after app exit. All actual execution and task-success claims need separate evidence.
+### Basic native live acceptance — 2026-11-04
+
+Preview.1 and original Claude Code **2.1.317** completed owner QR pairing, custom-channel startup, real owner text, a one-time reply-tool approval and a marker reply received in ClawBot. A subsequent Write request created `native-wechat-20261104-A.txt`; independent raw-byte inspection found **24 bytes**, exactly `ARCADE_NATIVE_20261104_A`, **no newline**, SHA-256 `fc31ecf4411fab3443e468cfe703b4f766ce64610fcbec26e1d07f36fbfd2411`. The owner confirmed the path/result reply on the phone. [Public aggregate receipt](evidence/native-live-basic.json). No phone screenshot, contact, approval code or private MCP config is shipped.
+
+This establishes the basic native route and this artifact, not general task correctness. Existing native Write allow rules meant Write did not demonstrate forced approval. Remote approval was exercised through the reply tool; expiry and a competing local decision were not accepted. Native `/cancel`, Ctrl+C behavior, reconnect and sleep recovery were not exercised. API mode's live flow remains pending. Its turn/time/cost/abort guarantees do not apply to the independent CLI; native `/cancel` pauses forwarding and sends denials, while a CLI process may keep running after app exit.
 
 ## 0.2.0-preview.2 — onboarding and connection evidence
 

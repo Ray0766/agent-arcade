@@ -8,7 +8,7 @@
 
 Agent Arcade has an experimental **WeChat task bot** with two execution choices: an **API agent** managed by the app, or your **local Claude Code CLI** using its existing login. Pair your own account, select a local project, and send instructions in the ClawBot conversation. Electron, the original Sprout Bot and the independent hook observer remain the local workshop.
 
-**0.3.0-preview.1 · Windows first.** Local mode uses the official Channels research preview and requires explicit confirmation in the original CLI. **Real WeChat + agent acceptance remains pending for both modes.** Mock dispatch tests and a real Node stdio MCP handshake are separate evidence; see [validation and limitations](docs/VALIDATION.md).
+**0.3.0-preview.2 · Windows first.** Local mode uses the official Channels research preview and requires explicit confirmation in the original CLI. A basic native WeChat round trip passed on 2026-11-04 with preview.1, including an independently checked file and a reply received on the phone. **This version's ordinary-reply permission change still needs live confirmation; API mode's real round trip remains pending.** See [validation and limitations](docs/VALIDATION.md).
 
 ## Give the bot a task
 
@@ -20,6 +20,8 @@ First find **ClawBot** in your phone's **WeChat → Me → Settings → Plugins*
 | **Local Claude Code CLI** | Install Node.js 22.13+ and Claude Code 2.1.317+, log in through the original CLI, then start local mode. Copy the generated command into your terminal and personally confirm the custom development channel. No additional API key is required by Agent Arcade. | `/cancel` only pauses forwarding and sends denials for pending remote requests. Use **Ctrl+C in the local CLI** to stop execution. |
 
 Disconnect before switching modes; your saved API key is retained. Local mode follows the CLI's own permission rules, so previously allowed actions may run without a new prompt. Channels may combine messages in one session; a forwarded message is not a separate verified task. Keep the computer/app running and, in local mode, keep the CLI terminal open. Messages/results go through Tencent and Anthropic; approved Windows commands can affect data beyond the project. **Replies and accepted sends never prove task success.** See [setup, commands, privacy and limits](docs/WECHAT.md).
+
+Local chat stays quiet on successful receipt and returns the agent's reply text directly; permissions and actionable failures still appear. The launch command pre-allows only `mcp__agent-arcade-wechat__reply` for that session, subject to the CLI's deny/ask rules and hooks. It skips no general permissions and writes no permanent allow setting. Connection/MCP counters stay in the desktop's **Connection details**.
 
 ## Try it
 
@@ -90,6 +92,8 @@ npm run dist      # package for the current OS
 Direct development dependencies and the resolved `package-lock.json` are committed. Use `npm ci` to reproduce that dependency graph. macOS/Linux packaging is configured but is not included in the Windows acceptance target.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), the [theme format](docs/THEMES.md), [architecture](docs/ARCHITECTURE.md), and [security policy](SECURITY.md). The first priority is reliable observation. Additional tools, clickable IDE navigation, richer themes, signed installers, and automatic updates are future work.
+
+The working-desktop revision and inspected design/HCI references are recorded in [UI_REFERENCES.md](docs/UI_REFERENCES.md). See the [technology review](docs/TECH_RADAR.md) for researched options, evidence and adoption limits; candidate features are not implemented capabilities.
 
 ## Credits and license
 

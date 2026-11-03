@@ -26,8 +26,9 @@ function createNativeLaunch({root,workspace,url,token,node,cli,sourceDir}){
   const folder=path.join(root,'native-launch',crypto.randomUUID()),file=path.join(folder,'mcp.json');
   atomicJSON(file,{mcpServers:{'agent-arcade-wechat':{command:node,args:[script],env:{ARCADE_BRIDGE_URL:url,ARCADE_BRIDGE_TOKEN:token}}}});
   let command;
-  if(process.platform==='win32')command=`Set-Location -LiteralPath ${psLiteral(workspace)}\n& ${psLiteral(cli)} --permission-mode default --strict-mcp-config --mcp-config ${psLiteral(file)} --dangerously-load-development-channels server:agent-arcade-wechat`;
-  else{const quote=s=>`'${s.replace(/'/g,"'\\''")}'`;command=`cd -- ${quote(workspace)}\n${quote(cli)} --permission-mode default --strict-mcp-config --mcp-config ${quote(file)} --dangerously-load-development-channels server:agent-arcade-wechat`;}
+  const options='--allowedTools mcp__agent-arcade-wechat__reply --permission-mode default --strict-mcp-config';
+  if(process.platform==='win32')command=`Set-Location -LiteralPath ${psLiteral(workspace)}\n& ${psLiteral(cli)} ${options} --mcp-config ${psLiteral(file)} --dangerously-load-development-channels server:agent-arcade-wechat`;
+  else{const quote=s=>`'${s.replace(/'/g,"'\\''")}'`;command=`cd -- ${quote(workspace)}\n${quote(cli)} ${options} --mcp-config ${quote(file)} --dangerously-load-development-channels server:agent-arcade-wechat`;}
   return {command,file,cleanup:()=>{try{fs.unlinkSync(file);fs.rmdirSync(folder);}catch{/* Another process may still have a read handle. The broker capability is already revoked. */}}};
 }
 module.exports={discoverNative,createNativeLaunch,psLiteral};

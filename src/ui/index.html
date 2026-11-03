@@ -13,66 +13,71 @@
 </head>
 <body>
   <aside class="sidebar">
-    <div class="brand"><span class="brand-mark">a<span>•</span>a</span><div>agent arcade<small>SMALL WORLD. REAL WORK.</small></div></div>
-    <div class="nav-caption" data-i18n="workspace">WORKSPACE</div>
-    <nav><button class="nav" data-view="bot"><span>↗</span><span data-bot="nav">WeChat tasks</span></button><button class="nav active" data-view="scene"><span>▦</span><span data-i18n="workshop">The workshop</span></button><button class="nav" data-view="activity"><span>≋</span><span data-i18n="activity">Activity log</span></button><button class="nav" data-view="settings"><span>⚙</span><span data-i18n="settings">Settings & themes</span></button></nav>
-    <div class="sidebar-note"><div class="tiny-robot">▰<br>▪ ▪</div><h3 data-i18n="quietTitle">A little less checking.</h3><p data-i18n="quietBody">A little more making. Your agents have a place to work.</p></div>
-    <div class="connection"><span class="dot"></span><div>Claude Code<small id="connection-label">Not connected</small></div><span class="version">v0.3</span></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">a·a</span><span>Agent Arcade</span></div>
+    <nav aria-label="Workspace"><button class="nav" data-view="bot"><span aria-hidden="true">↗</span><span data-bot="nav">WeChat</span></button><button class="nav active" data-view="scene"><span aria-hidden="true">▦</span><span data-i18n="workshop">Sessions</span></button><button class="nav" data-view="activity"><span aria-hidden="true">≋</span><span data-i18n="activity">Activity</span></button><button class="nav" data-view="settings"><span aria-hidden="true">⚙</span><span data-i18n="settings">Settings</span></button></nav>
+    <div class="connection"><span class="dot" aria-hidden="true"></span><div><span data-i18n="observerLabel">Observer</span><small id="connection-label">Not connected</small></div><span class="version">v0.3</span></div>
   </aside>
   <main>
-    <header><div class="breadcrumb">AGENT ARCADE <span>/</span> <span data-i18n="workshop">The workshop</span></div><div class="header-actions"><select id="view-picker" class="compact-nav" aria-label="View"><option value="bot" data-bot="nav">WeChat tasks</option><option value="scene" data-i18n="workshop">The workshop</option><option value="activity" data-i18n="activity">Activity log</option><option value="settings" data-i18n="settings">Settings &amp; themes</option></select><button id="language" class="plain" aria-label="Switch language">中文</button><button id="compact" class="plain" data-i18n="compact">Mini view</button><button id="quiet" class="quiet" aria-pressed="false" data-i18n="quiet">Quiet mode</button></div></header>
+    <header><div class="breadcrumb">Agent Arcade <span aria-hidden="true">/</span> <span data-i18n="workshop">Sessions</span></div><div class="header-actions"><select id="view-picker" class="compact-nav" aria-label="View"><option value="bot" data-bot="nav">WeChat</option><option value="scene" data-i18n="workshop">Sessions</option><option value="activity" data-i18n="activity">Activity</option><option value="settings" data-i18n="settings">Settings</option></select><button id="language" class="plain" aria-label="Switch language">中文</button><button id="compact" class="plain" data-i18n="compact">Compact</button><button id="quiet" class="quiet" aria-pressed="false" data-i18n="quiet">Quiet mode</button></div></header>
     <section id="bot-view" class="view" hidden>
-      <div class="page-heading"><div><h1 data-bot="title">Send a message. Give your agent a job.</h1><p class="subtitle" data-bot="subtitle">WeChat is the conversation. This workshop runs the work.</p></div><span id="bot-status" class="state-pill" role="status"></span></div>
+      <div class="page-heading"><h1 data-bot="title">WeChat</h1><div class="bot-heading-actions"><span id="bot-status" class="state-pill" role="status"></span><button id="bot-stop" class="secondary" data-bot="stop" hidden>Disconnect & cancel</button></div></div>
       <p class="bot-preview" data-bot="preview">Experimental connection · live WeChat acceptance pending.</p>
       <div id="bot-problem" class="problem" role="alert" hidden></div>
       <div class="bot-layout">
-        <div class="bot-setup">
-          <h2 data-bot="setup">Connect your workshop</h2>
-          <p data-bot="scope">One WeChat owner, one local project, one Claude agent. Your computer must stay on.</p>
-          <p data-bot="access">On your phone, open WeChat → Me → Settings → Plugins → ClawBot, enable it, then scan below. Send tasks in the ClawBot conversation, not to an ordinary contact named Agent Arcade. If this entry is missing, client compatibility or account availability remains unverified.</p>
-          <button id="bot-pair" class="secondary" data-bot="pair">Pair WeChat</button>
-          <div id="bot-qr-wrap" hidden><img id="bot-qr" width="280" height="280" alt="WeChat pairing QR code"><p data-bot="scan">Enable ClawBot in mobile WeChat, then scan and confirm. Codes expire after three minutes.</p></div>
-          <label for="bot-project" data-bot="project">Project folder</label><div class="bot-project-row"><output id="bot-project"></output><button id="bot-pick" class="secondary" data-bot="choose">Choose folder</button></div>
-          <label for="bot-mode" data-bot="mode">Execution method</label><select id="bot-mode"><option value="api" data-bot="modeApi">API agent</option><option value="native" data-bot="modeNative">Local Claude Code CLI</option></select>
-          <div id="bot-api-options">
-            <label for="bot-key">Anthropic API key</label><div class="bot-key-row"><input id="bot-key" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button id="bot-save" class="secondary" data-bot="save">Save key</button></div><small id="bot-key-status"></small>
-            <label for="bot-budget" data-bot="budget">SDK cost threshold (USD)</label><input id="bot-budget" type="number" min="0.05" max="5" step="0.05" value="1"><small data-bot="budgetNote">In-flight requests may exceed this threshold. It is not a hard billing cap.</small>
+        <details id="bot-setup-panel" class="bot-setup" open>
+          <summary><span data-bot="setup">Connection settings</span><span id="bot-setup-summary"></span></summary>
+          <div class="bot-setup-content">
+            <fieldset class="setup-step"><legend data-bot="pairStep">Pair WeChat</legend>
+              <p data-bot="access">On your phone, enable WeChat → Me → Settings → Plugins → ClawBot, then scan below. Send messages in the ClawBot conversation. If the entry is missing, client or account availability is unverified.</p>
+              <button id="bot-pair" class="secondary" data-bot="pair">Pair WeChat</button>
+              <div id="bot-qr-wrap" hidden><img id="bot-qr" width="240" height="240" alt="WeChat pairing QR code"><p data-bot="scan">Scan in mobile WeChat and confirm. Codes expire after three minutes.</p></div>
+            </fieldset>
+            <fieldset class="setup-step"><legend data-bot="projectStep">Choose a project and execution method</legend>
+              <label for="bot-project" data-bot="project">Project folder</label><div class="bot-project-row"><output id="bot-project"></output><button id="bot-pick" class="secondary" data-bot="choose">Choose folder</button></div>
+              <label for="bot-mode" data-bot="mode">Execution method</label><select id="bot-mode"><option value="api" data-bot="modeApi">API agent</option><option value="native" data-bot="modeNative">Local Claude Code CLI</option></select>
+              <div id="bot-api-options">
+                <label for="bot-key">Anthropic API key</label><div class="bot-key-row"><input id="bot-key" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button id="bot-save" class="secondary" data-bot="save">Save key</button></div><small id="bot-key-status"></small>
+                <label for="bot-budget" data-bot="budget">SDK cost threshold (USD)</label><input id="bot-budget" type="number" min="0.05" max="5" step="0.05" value="1"><small data-bot="budgetNote">In-flight requests may exceed this threshold. It is not a hard billing cap.</small>
+              </div>
+              <div id="bot-native-options" hidden>
+                <details class="bot-help"><summary data-bot="nativeRequirements">Login, requirements and permissions</summary><p data-bot="nativeSetup">Uses your existing Claude Code login. Requires Node.js 22.13+ and local Claude Code 2.1.317. Confirm the custom Channels research preview yourself and keep the terminal open.</p><p data-bot="nativeReplyPermission">This launch pre-allows WeChat replies for this session. Other actions still follow your CLI permissions.</p><p data-bot="nativeStopNote">To stop Claude, press Ctrl+C in its terminal. Disconnecting WeChat only stops forwarding.</p></details>
+                <small id="bot-native-key-retained" data-bot="keyRetained" hidden>Your saved API key stays stored when switching modes.</small>
+              </div>
+            </fieldset>
+            <fieldset class="setup-step"><legend data-bot="startStep">Start the connection</legend>
+              <div class="button-row"><button id="bot-start" class="primary" data-bot="start">Start receiving tasks</button></div>
+              <p id="bot-start-note" class="bot-fine" data-bot="startNote">Pairing alone does not start a task. Send your instruction from WeChat after connecting.</p>
+              <div id="bot-native-launch" hidden><p id="bot-native-command-label" class="bot-command-label" data-bot="nativeCommand">Run in your terminal</p><pre id="bot-native-command" tabindex="0" aria-labelledby="bot-native-command-label"></pre><button id="bot-native-copy" class="secondary" data-bot="copyCommand">Copy launch command</button></div>
+            </fieldset>
+            <details class="bot-help setup-privacy"><summary data-bot="privacyTitle">Privacy and saved credentials</summary><p id="bot-privacy" data-bot="privacy">Messages and task output pass through Tencent and Anthropic. Credentials use OS encryption.</p><button id="bot-forget" class="plain" data-bot="forget">Forget credentials</button></details>
           </div>
-          <div id="bot-native-options" hidden>
-            <p data-bot="nativeSetup">Uses the original Claude Code CLI and its existing login. Agent Arcade does not read Claude credentials. Requires Node.js 22.13+ and local Claude Code 2.1.317. After connecting, run the command below yourself, confirm the custom Channels research preview in the terminal, and keep it open. The CLI follows its existing permissions; already allowed tools may run automatically.</p>
-            <p data-bot="nativeStopNote">Stop Claude locally with Ctrl+C. WeChat /cancel and Disconnect only stop forwarding; they cannot guarantee that Claude stops.</p>
-            <small id="bot-native-key-retained" data-bot="keyRetained" hidden>Your saved API key stays stored when switching modes.</small>
-            <div id="bot-native-launch" hidden><p id="bot-native-command-label" class="bot-command-label" data-bot="nativeCommand">Run in your terminal</p><pre id="bot-native-command" tabindex="0" aria-labelledby="bot-native-command-label"></pre><button id="bot-native-copy" class="secondary" data-bot="copyCommand">Copy launch command</button></div>
-          </div>
-          <p id="bot-privacy" class="bot-fine" data-bot="privacy">Messages and task output pass through Tencent and Anthropic. Credentials use OS encryption; local chat history stays in memory. The SDK also keeps local session files.</p>
-          <div class="button-row"><button id="bot-start" class="primary" data-bot="start">Start receiving tasks</button><button id="bot-stop" class="secondary" data-bot="stop" hidden>Disconnect & cancel</button></div>
-          <button id="bot-forget" class="plain" data-bot="forget">Forget credentials</button>
-        </div>
-        <div class="bot-inbox">
-          <div class="bot-inbox-head"><div id="bot-mascot" aria-hidden="true"></div><div><h2 data-bot="inbox">Task inbox</h2><p data-bot="inboxNote">Only requests for input and final replies go back to WeChat.</p></div></div>
+        </details>
+        <div id="bot-inbox" class="bot-inbox" hidden>
+          <div class="bot-inbox-head"><div id="bot-mascot" aria-hidden="true"></div><div><h2 data-bot="inbox">Conversation</h2><p data-bot="inboxNote">Messages and replies from WeChat appear here.</p></div></div>
           <p id="bot-task-state" class="bot-fine" role="status"></p>
-          <div id="bot-messages"><p class="bot-empty" data-bot="empty">After starting reception, send a task in the WeChat ClawBot conversation. Tasks and replies will appear here.</p></div>
-          <details class="bot-help"><summary data-bot="commands">Chat commands & permissions</summary><p data-bot="help">Send a task in plain language. /status checks progress; /cancel stops the task and clears the queue; /new starts fresh. Tool actions ask for a one-time /allow code or /deny code. Questions accept /answer code text.</p><p data-bot="risk">An approved command can affect your computer beyond the selected folder. A reply ending does not prove the work succeeded. Disconnection cancels active work; tasks are never resumed automatically.</p></details>
+          <div id="bot-messages"><p class="bot-empty" data-bot="empty">Send a message in your WeChat ClawBot conversation.</p></div>
+          <p class="bot-input-note" data-bot="messageEntry">Send messages in WeChat → ClawBot. This window displays the conversation.</p>
+          <details id="bot-connection-details" class="bot-help bot-diagnostics" hidden><summary data-bot="connectionDetails">Connection details</summary><p id="bot-connection-state"></p><p id="bot-native-diagnostic-note" data-bot="nativeDiagnosticNote" hidden>A connection or reply does not prove task success.</p></details>
+          <details class="bot-help"><summary data-bot="commands">Chat commands & permissions</summary><p data-bot="help">Use /status to check progress, or /cancel to stop API work.</p><p data-bot="risk">A reply ending does not prove task success.</p></details>
         </div>
       </div>
     </section>
     <section id="scene-view" class="view">
-      <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">YOUR DESKTOP, A LITTLE MORE ALIVE</div><h1 data-i18n="headline">Good work, little world.</h1><p class="subtitle" data-i18n="subtitle">A place for every agent. A moment for your attention.</p></div><button id="demo" class="secondary" data-i18n="demo">Try the demo</button></div>
-      <div id="demo-banner" class="banner" hidden><span data-i18n="demoBanner">DEMO WORLD · Sample tasks. Your live sessions are kept separate.</span><button id="live" data-i18n="goLive">Go live →</button></div>
+      <div class="page-heading"><div><h1 data-i18n="headline">Sessions</h1><p class="subtitle" data-i18n="subtitle">Observed Claude Code sessions and subagents.</p></div><button id="demo" class="secondary" data-i18n="demo">View sample sessions</button></div>
+      <div id="demo-banner" class="banner" hidden><span data-i18n="demoBanner">Sample sessions · separate from live observations.</span><button id="live" data-i18n="goLive">Return to live sessions</button></div>
       <div id="problem" class="problem" role="alert" hidden></div>
-      <div class="stats" id="stats"></div>
-      <div class="section-title"><h2 data-i18n="onFloor">On the workshop floor</h2><span class="live-label"><i></i><span id="world-label">LOCAL EVENTS</span></span></div>
-      <div class="filters" id="filters"></div>
-      <div id="tasks" class="task-grid"></div>
-      <div id="empty" class="empty" hidden><div class="empty-art">▱<span>✦</span>▱</div><h2 data-i18n="emptyTitle">Your workshop is ready.</h2><p data-i18n="emptyBody">Connect Claude Code, then start a new session. Every agent gets its own little corner.</p><button id="connect" class="primary" data-i18n="connect">Connect Claude Code</button></div>
-      <footer><span data-i18n="localNote">◎ Local by design. No account. No cloud.</span><button id="clear" class="plain" data-i18n="clear">Clear ended stations</button></footer>
+      <div id="stats" hidden></div>
+      <div class="section-title"><h2 data-i18n="onFloor">Recent observations</h2><span class="live-label"><i aria-hidden="true"></i><span id="world-label">Local events</span></span></div>
+      <div class="filters" id="filters"></div><div id="tasks" class="task-grid"></div>
+      <div id="empty" class="empty" hidden><h2 data-i18n="emptyTitle">No sessions yet</h2><p data-i18n="emptyBody">Install the Claude Code observer, restart Claude Code, then submit a prompt.</p><button id="connect" class="primary" data-i18n="connect">Set up observer</button></div>
+      <footer><span data-i18n="localNote">Observer events stay on this device.</span><button id="clear" class="plain" data-i18n="clear">Clear ended stations</button></footer>
     </section>
-    <section id="activity-view" class="view" hidden><div class="page-heading"><div><div class="eyebrow" data-i18n="eventsEyebrow">EVENTS, NOT GUESSES</div><h1 data-i18n="activity">Activity log</h1><p class="subtitle" data-i18n="activityNote">The last 30 events per agent. No prompts or tool arguments.</p></div></div><div id="activity-list"></div></section>
-    <section id="settings-view" class="view" hidden><div class="page-heading"><div><div class="eyebrow" data-i18n="settingsEyebrow">MAKE YOURSELF AT HOME</div><h1 data-i18n="settings">Settings & themes</h1></div></div><div class="settings-grid">
-      <article class="settings-card"><h2 data-i18n="integration">Claude Code connection</h2><p data-i18n="integrationNote">Install a local observer in your user settings. Existing hooks are preserved and backed up. Requires Node.js 22+. Restart Claude Code after changes.</p><div class="button-row"><button id="install" class="primary" data-i18n="install">Install hooks</button><button id="uninstall" class="secondary" data-i18n="uninstall">Remove hooks</button></div><div id="install-status" role="status"></div></article>
-      <article class="settings-card"><h2 data-i18n="attention">Your attention, protected</h2><label><span data-i18n="notifications">Silent desktop notifications</span><input type="checkbox" id="notifications"></label><p data-i18n="notifyNote">Only waiting, error and response-end transitions. Suppressed while this window is focused. Quiet mode pauses all notifications.</p><label><span data-i18n="pin">Keep above other windows</span><input type="checkbox" id="alwaysOnTop"></label></article>
-      <article class="settings-card"><h2 data-i18n="themeTitle">A world of your own</h2><p data-i18n="themeNote">Original pixel characters. Themes are small JSON files with colors and seven 16 × 16 sprites. No scripts.</p><label><span data-i18n="theme">Theme</span><select id="theme"></select></label><button id="import" class="secondary" data-i18n="import">Import a theme</button></article>
-      <article class="settings-card"><h2 data-i18n="privacy">Stay local</h2><label><span data-i18n="capture">Save final response text</span><input type="checkbox" id="captureResults"></label><p data-i18n="captureNote">Off by default. When enabled, final replies stay on this device so you can open delivery parcels. Turning it off removes saved reply text. Never stores prompts or tool arguments.</p><p class="fine" data-i18n="accuracyNote">“Response ended” does not mean the work passed validation. After 5 minutes without an event, active status becomes uncertain.</p></article>
+    <section id="activity-view" class="view" hidden><div class="page-heading"><div><h1 data-i18n="activity">Activity</h1><p class="subtitle" data-i18n="activityNote">The last 30 events per session. No prompts or tool arguments.</p></div></div><div id="activity-list"></div></section>
+    <section id="settings-view" class="view" hidden><div class="page-heading"><h1 data-i18n="settings">Settings</h1></div><div class="settings-grid">
+      <article class="settings-card"><h2 data-i18n="integration">Claude Code observer</h2><p data-i18n="integrationNote">Install a local observer in your user settings. Existing hooks are preserved and backed up. Requires Node.js 22+. Restart Claude Code after changes.</p><div class="button-row"><button id="install" class="primary" data-i18n="install">Install hooks</button><button id="uninstall" class="secondary" data-i18n="uninstall">Remove hooks</button></div><div id="install-status" role="status"></div></article>
+      <article class="settings-card"><h2 data-i18n="attention">Notifications</h2><label><span data-i18n="notifications">Silent desktop notifications</span><input type="checkbox" id="notifications"></label><p data-i18n="notifyNote">Only waiting, error and response-end transitions. Suppressed while this window is focused. Quiet mode pauses all notifications.</p><label><span data-i18n="pin">Keep above other windows</span><input type="checkbox" id="alwaysOnTop"></label></article>
+      <article class="settings-card"><h2 data-i18n="themeTitle">Scene theme</h2><p data-i18n="themeNote">Original pixel characters. Declarative themes, without scripts or remote assets.</p><label><span data-i18n="theme">Theme</span><select id="theme"></select></label><button id="import" class="secondary" data-i18n="import">Import a theme</button></article>
+      <article class="settings-card"><h2 data-i18n="privacy">Observer privacy</h2><label><span data-i18n="capture">Save final response text</span><input type="checkbox" id="captureResults"></label><p data-i18n="captureNote">Off by default. Replies stay on this device. Turning it off removes saved reply text.</p><p class="fine" data-i18n="accuracyNote">A response ending does not mean the work passed validation.</p></article>
     </div></section>
   </main>
   <dialog id="detail" aria-labelledby="detail-title"><button id="close-detail" class="close" aria-label="Close">×</button><div id="detail-body"></div><button id="acknowledge" class="primary" data-i18n="acknowledge">Got it</button></dialog>
