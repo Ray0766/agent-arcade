@@ -13,7 +13,8 @@ const { spawnSync } = require('node:child_process');
  const env={...process.env,AGENT_ARCADE_HOME:root,AGENT_ARCADE_CLAUDE_SETTINGS:path.join(root,'claude-settings.json')};
  delete env.ELECTRON_RUN_AS_NODE;
  const executablePath=process.env.ARCADE_EXECUTABLE || require('electron');
- const args=process.env.ARCADE_EXECUTABLE?['--demo']:[path.resolve(__dirname,'..'),'--demo'];
+ const profile=`--user-data-dir=${path.join(root,'electron-profile')}`;
+ const args=process.env.ARCADE_EXECUTABLE?['--demo',profile]:[path.resolve(__dirname,'..'),'--demo',profile];
  const app=await electron.launch({executablePath,args,env,timeout:30000});
  const errors=[];
  try{

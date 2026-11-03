@@ -2,6 +2,17 @@
 (() => {
   const words={en:{nav:'WeChat tasks',title:'Send a message. Give your agent a job.',subtitle:'WeChat is the conversation. This workshop runs the work.',preview:'Experimental connection · live WeChat acceptance pending.',setup:'Connect your workshop',scope:'One WeChat owner, one local project, one Claude agent. Your computer must stay on.',project:'Project folder',choose:'Choose folder',save:'Save key',budget:'Maximum cost per task (USD)',privacy:'Messages and task output pass through Tencent and Anthropic. Credentials use OS encryption; local chat history stays in memory. The SDK also keeps local session files.',pair:'Pair WeChat',start:'Start receiving tasks',stop:'Disconnect & cancel',scan:'Scan in WeChat and confirm. Codes expire after three minutes.',forget:'Forget credentials',inbox:'Task inbox',inboxNote:'Task acknowledgements, requests for input and final replies go back to WeChat.',empty:'After connecting, send your bot a message in WeChat. Tasks and replies will appear here.',commands:'Chat commands & permissions',help:'Send a task in plain language. /status checks progress; /cancel stops the task and clears the queue; /new starts fresh. Tool actions ask for a one-time /allow code or /deny code. Questions accept /answer code text.',risk:'An approved command can affect your computer beyond the selected folder. A reply ending does not prove the work succeeded. Disconnection cancels active work; tasks are never resumed automatically.',keySet:'Key saved with OS encryption. It is never sent to this view.',keyEmpty:'API billing required. Claude subscription login is not used.',noProject:'Choose a project before connecting.',disconnected:'Disconnected',connecting:'Connecting…',connected:'Receiving tasks',pairing:'Waiting for WeChat scan',paired:'WeChat paired',you:'You',agent:'Sprout Bot',notDesktop:'Open the desktop app to connect WeChat.',saved:'Key saved',confirmForget:'Forget API key and WeChat credentials? Active tasks will be cancelled.'},zh:{nav:'微信派活',title:'发条微信，让 Agent 开工。',subtitle:'微信里说清任务，小工坊在电脑上执行。',preview:'实验接入 · 尚未完成真实微信全链路验收。',setup:'连接你的工坊',scope:'一个微信主人、一个本机项目、一个 Claude Agent。运行时电脑需要保持开机。',project:'项目目录',choose:'选择文件夹',save:'保存密钥',budget:'每条任务的费用上限（美元）',privacy:'消息与任务输出会经过腾讯和 Anthropic。凭证使用系统加密；本页聊天仅保留在内存。SDK 另在本机保留会话文件。',pair:'连接微信',start:'开始接收任务',stop:'断开并取消任务',scan:'用微信扫码并确认，二维码三分钟后失效。',forget:'忘记凭证',inbox:'任务收件箱',inboxNote:'微信只收到接收确认、需要你介入的问题和最终回复。',empty:'连接后，在微信向 Bot 发一条任务。任务与回复会出现在这里。',commands:'聊天命令与操作权限',help:'直接用自然语言派活。/status 查看进度；/cancel 停止任务并清空队列；/new 开启新会话。工具操作需回复一次性的 /allow 验证码 或 /deny 验证码；问题可用 /answer 验证码 回答。',risk:'批准的命令可能影响所选文件夹以外的本机内容。回复结束不代表任务已成功。断开会取消执行，重启不会自动续跑。',keySet:'已使用系统加密保存。密钥不会回传到本页面。',keyEmpty:'需要 API 计费，不使用 Claude 订阅登录。',noProject:'先选择一个项目。',disconnected:'未连接',connecting:'正在连接…',connected:'正在接收任务',pairing:'等待微信扫码',paired:'微信已配对',you:'你',agent:'Sprout Bot',notDesktop:'请在桌面应用中连接微信。',saved:'密钥已保存',confirmForget:'忘记 API 密钥和微信凭证？当前任务会被取消。'}};
   let language='en',lastMessages='',lastMascot='',state;
+  words.en.access='On your phone, open WeChat → Me → Settings → Plugins → ClawBot, enable it, then scan below. Send tasks in the ClawBot conversation, not to an ordinary contact named Agent Arcade. If this entry is missing, client compatibility or account availability remains unverified.';
+  words.zh.access='手机微信：我 → 设置 → 插件 → ClawBot，启用后再扫码。任务入口是 ClawBot 对话，不是名为 Agent Arcade 的普通好友。若没有此入口，当前客户端适配或账号可用性仍待核实。';
+  words.en.scan='Enable ClawBot in mobile WeChat, then scan and confirm. Codes expire after three minutes.';words.zh.scan='在手机微信启用 ClawBot 后扫码并确认，二维码三分钟后失效。';
+  words.en.empty='After starting reception, send a task in the WeChat ClawBot conversation. Tasks and replies will appear here.';words.zh.empty='开始接收任务后，在微信 ClawBot 对话中发一条任务。任务与回复会出现在这里。';
+  words.en.paired='Authorization credentials saved';words.zh.paired='授权凭证已保存';
+  words.en.repair='Pair WeChat again';words.zh.repair='重新扫码配对';
+  words.en.connected='Channel online · no WeChat message received yet';words.zh.connected='通道在线·尚未收到微信消息';
+  words.en.received='WeChat message received';words.zh.received='已收到微信消息';
+  words.en.incoming='Texts received this connection';words.zh.incoming='本次连接收到文本';
+  words.en.outgoing='returns accepted by platform';words.zh.outgoing='平台受理回传';
+  words.en.notRead='not read receipts';words.zh.notRead='不代表已读';
   words.en.budget='Task cost limit (SDK, USD)';words.zh.budget='任务费用限制（SDK，美元）';
   words.en.disconnecting='Stopping the local task…';words.zh.disconnecting='正在停止本机任务…';
   copy.en.localNote='◎ Observer events stay on this device.';copy.zh.localNote='◎ 观察器事件留在本机。';
@@ -11,10 +22,12 @@
     language=next.config.language;state=next.bot;
     document.querySelectorAll('[data-bot]').forEach(n=>n.textContent=word(n.dataset.bot));
     document.querySelector('.breadcrumb>span:last-child').textContent=view==='bot'?word('nav'):t({scene:'workshop',activity:'activity',settings:'settings'}[view]);
-    $('bot-status').textContent=word(state?.status||'disconnected');
+    const incoming=Number(state?.incomingCount)||0,outgoing=Number(state?.outgoingAccepted)||0;
+    const status=state?.status||'disconnected';
+    $('bot-status').textContent=word(status==='connected'?(incoming>0?'received':'connected'):status==='disconnected'&&state?.paired?'paired':status);
     $('bot-project').textContent=state?.workspace||word('noProject');
     $('bot-key-status').textContent=word(state?.hasKey?'keySet':'keyEmpty');
-    $('bot-pair').textContent=word(state?.paired?'paired':'pair');
+    $('bot-pair').textContent=word(state?.paired?'repair':'pair');
     $('bot-problem').hidden=!state?.problem;$('bot-problem').textContent=state?.problem||'';
     const active=['connected','connecting','disconnecting'].includes(state?.status),pairing=state?.status==='pairing';
     for(const id of ['bot-pick','bot-key','bot-save','bot-budget','bot-pair'])$(id).disabled=active||pairing;
@@ -26,7 +39,9 @@
     if(!state?.qr)$('bot-qr').removeAttribute('src');
     const messages=state?.tasks?.messages||[], fingerprint=JSON.stringify([language,messages]);
     const latest=state?.tasks?.tasks?.at(-1),labels=language==='zh'?{queued:'排队中',running:'执行中',waiting_permission:'等待你的批准',waiting_question:'等待你的回答',cancelling:'正在中止',reply_ended:'回复结束 · 任务结果未验证',error:'执行出错 · 结果未验证',limit:'达到执行限制',cancelled:'已取消'}:{queued:'Queued',running:'Running',waiting_permission:'Waiting for approval',waiting_question:'Waiting for your answer',cancelling:'Cancelling',reply_ended:'Response ended · outcome unverified',error:'Execution error · outcome unverified',limit:'Execution limit reached',cancelled:'Cancelled'};
-    $('bot-task-state').textContent=latest?`${labels[latest.state]||latest.state}${latest.activity?' · '+latest.activity:''}`:'';
+    const taskState=latest?`${labels[latest.state]||latest.state}${latest.activity?' · '+latest.activity:''}`:'';
+    const channelState=status==='connected'||incoming>0||outgoing>0?`${word('incoming')}: ${incoming} · ${word('outgoing')}: ${outgoing} (${word('notRead')})`:'';
+    $('bot-task-state').textContent=[taskState,channelState].filter(Boolean).join(' · ');
     if(lastMessages!==fingerprint){
       lastMessages=fingerprint;
       if(messages.length){

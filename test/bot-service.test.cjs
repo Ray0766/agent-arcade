@@ -46,3 +46,14 @@ test('fixture: reconnect and configuration wait until previous execution actuall
   await assert.rejects(service.connect(),/previous task/);assert.throws(()=>service.configure({budget:1}),/Disconnect/);
   stopped.resolve();await disconnect;assert.equal(service.status,'disconnected');
 });
+test('fixture: an online empty poll is not an inbound message; failed sends are not accepted replies',async t=>{
+  const first=deferred(),second=deferred();let polls=0,sends=0;
+  const {service,root}=fixture(t,()=>({getUpdates:()=>++polls===1?first.promise:second.promise,sendText:async()=>{if(++sends===1)throw Error('fixture send failure');}}));
+  service.configure({key:'fixture-key-invalid',workspace:root});service.secret.token='fixture';service.secret.ownerId='fixture';
+  await service.connect();first.resolve({cursor:'fixture',messages:[]});
+  await new Promise(r=>setImmediate(r));assert.equal(service.status,'connected');assert.equal(service.snapshot().incomingCount,0);assert.equal(service.snapshot().outgoingAccepted,0);
+  second.resolve({cursor:'fixture-next',messages:[{id:'fixture-1',text:'Fixture task',contextToken:'fixture-context'}]});
+  const deadline=Date.now()+2000;while(service.snapshot().outgoingAccepted<1&&Date.now()<deadline)await new Promise(r=>setTimeout(r,10));
+  assert.equal(service.snapshot().incomingCount,1);assert.equal(service.snapshot().outgoingAccepted,1);assert.equal(sends,2);
+  await service.disconnect();assert.equal(service.status,'disconnected');
+});

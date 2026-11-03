@@ -11,14 +11,14 @@ class BotService {
   constructor({root,vault,onChange=()=>{},clientFactory=opts=>new WeixinClient(opts),runnerFactory=createRunner,qrEncoder}) {
     Object.assign(this,{root,vault,onChange,clientFactory,runnerFactory,qrEncoder});
     this.file=path.join(root,'bot-vault.json'); this.config=readJSON(path.join(root,'bot-config.json'));
-    this.secret={}; this.status='disconnected'; this.problem=''; this.dispatcher=null; this.qr=null;this.generation=0;
+    this.secret={}; this.status='disconnected'; this.problem=''; this.dispatcher=null; this.qr=null;this.generation=0;this.incomingCount=0;this.outgoingAccepted=0;
     try { const stored=readJSON(this.file,null); if(stored&&vault.isEncryptionAvailable()) this.secret=JSON.parse(vault.decryptString(Buffer.from(stored.data,'base64'))); } catch { this.problem='Saved credentials could not be opened. Reconnect WeChat and set the API key again.'; }
   }
   persist(next=this.secret){
     if(!this.vault.isEncryptionAvailable()) throw Error('OS credential encryption is unavailable. Credentials were not saved.');
     atomicJSON(this.file,{data:this.vault.encryptString(JSON.stringify(next)).toString('base64')});this.secret=next;
   }
-  snapshot(){return {status:this.status,problem:this.problem,workspace:this.config.workspace||'',budget:this.config.budget||1,hasKey:!!this.secret.key,paired:!!this.secret.token,qr:this.qr,tasks:this.dispatcher?.snapshot()||null};}
+  snapshot(){return {status:this.status,problem:this.problem,workspace:this.config.workspace||'',budget:this.config.budget||1,hasKey:!!this.secret.key,paired:!!this.secret.token,qr:this.qr,incomingCount:this.incomingCount,outgoingAccepted:this.outgoingAccepted,tasks:this.dispatcher?.snapshot()||null};}
   changed(){this.onChange();}
   configure({key,workspace,budget}={}){
     if(this.status!=='disconnected')throw Error('Disconnect before changing the project or API key.');
@@ -30,7 +30,7 @@ class BotService {
   async login(){
     await this.disconnect();const generation=++this.generation,controller=new AbortController(),signal=controller.signal;
     const current=()=>this.generation===generation&&!signal.aborted;
-    this.status='pairing';this.problem='';this.loginController=controller;this.changed();
+    this.status='pairing';this.problem='';this.loginController=controller;this.dispatcher=null;this.incomingCount=0;this.outgoingAccepted=0;this.changed();
     try {
       const client=this.clientFactory({});const code=await client.startLogin(signal);if(!current())return;
       const qr=await this.qrEncoder(code.qrContent);if(!current())return;this.qr=qr;this.changed();
@@ -59,11 +59,15 @@ class BotService {
     if(!fs.statSync(this.config.workspace).isDirectory())throw Error('Project folder is unavailable.');
     this.status='connecting';this.problem='';this.controller=new AbortController();
     const signal=this.controller.signal,generation=++this.generation,ownerId=this.secret.ownerId;
+    this.incomingCount=0;this.outgoingAccepted=0;
     let client;
     try{
       client=this.clientFactory({token:this.secret.token,ownerId,baseUrl:this.secret.baseUrl});
       const execute=this.runnerFactory({workspace:this.config.workspace,key:this.secret.key,configDir:path.join(this.root,'bot-agent'),budget:this.config.budget||1});
-      this.dispatcher=new Dispatcher({execute,send:(text,contextToken)=>client.sendText(ownerId,text,contextToken,undefined,signal),onChange:()=>{if(generation===this.generation)this.changed();}});
+      this.dispatcher=new Dispatcher({execute,send:async(text,contextToken)=>{
+        await client.sendText(ownerId,text,contextToken,undefined,signal);
+        if(generation===this.generation&&!signal.aborted){this.outgoingAccepted++;this.changed();}
+      },onChange:()=>{if(generation===this.generation)this.changed();}});
     }catch{this.controller.abort();this.status='disconnected';this.problem='Could not start the bot. Check the project and saved connection.';this.changed();return;}
     this.changed();
     // No auto-connect or replay after app restart. Old approvals cannot survive.
@@ -75,7 +79,7 @@ class BotService {
       try {
         const batch=await client.getUpdates(cursor,signal);if(signal.aborted)break;
         cursor=batch.cursor;failures=0;this.status='connected';this.problem='';this.changed();
-        for(const message of batch.messages){if(signal.aborted)break;await dispatcher.receive(message);}
+        for(const message of batch.messages){if(signal.aborted)break;this.incomingCount++;this.changed();await dispatcher.receive(message);}
         await pause(500,signal);
       }catch(error){
         if(signal.aborted)break;
@@ -97,6 +101,6 @@ class BotService {
     await dispatcher?.whenIdle();
     if(generation===this.generation){this.status='disconnected';this.changed();}
   }
-  async forget(){await this.disconnect();this.secret={};if(fs.existsSync(this.file))fs.unlinkSync(this.file);this.dispatcher=null;this.changed();}
+  async forget(){await this.disconnect();this.secret={};if(fs.existsSync(this.file))fs.unlinkSync(this.file);this.dispatcher=null;this.incomingCount=0;this.outgoingAccepted=0;this.changed();}
 }
 module.exports={BotService};

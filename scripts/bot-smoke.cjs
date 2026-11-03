@@ -8,7 +8,8 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
   fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({language:'en'}));
   const env={...process.env,AGENT_ARCADE_HOME:root,AGENT_ARCADE_CLAUDE_SETTINGS:path.join(root,'observer-settings.json')};delete env.ELECTRON_RUN_AS_NODE;
   const executablePath=process.env.ARCADE_EXECUTABLE||require('electron');
-  const app=await electron.launch({executablePath,args:process.env.ARCADE_EXECUTABLE?[]:[path.resolve(__dirname,'..')],env});
+  const profile=`--user-data-dir=${path.join(root,'electron-profile')}`;
+  const app=await electron.launch({executablePath,args:process.env.ARCADE_EXECUTABLE?[profile]:[path.resolve(__dirname,'..'),profile],env});
   try{
     const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.locator('#bot-view').waitFor();assert.equal(await page.locator('#bot-start').isDisabled(),true);

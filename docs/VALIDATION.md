@@ -1,5 +1,13 @@
 # Validation
 
+## 0.2.0-preview.2 — onboarding and connection evidence
+
+The setup previously omitted the phone's ClawBot entry and placed QR pairing after project/API settings. Pairing now appears first with explicit ClawBot instructions in both languages. Authorization credentials, a successful empty long poll, a filtered inbound text and an accepted send are separate facts. Outbound acceptance is not read receipt or task verification. No ordinary friend chat is treated as the bot channel.
+
+`npm test`: **92 passed, 0 failed**. The additional service fixture proves an empty successful poll leaves inbound count at zero and a failed send does not increase accepted-send count. The mock dispatch/approval/cancellation flow still passes with two task turns/ten outgoing messages. Real WeChat/paid-model round trip remains pending. The user's phone screenshot was used only to understand onboarding and is not shipped.
+
+Desktop smoke scripts now isolate both Agent Arcade's data and Electron's user-data profile; tests can coexist with an owner's running desktop instance. This does not change the product's single-instance behavior within one profile. Source/packaged UI evidence for this revision is tracked separately from the preserved preview.1 evidence below.
+
 ## 0.2.0-preview.1 — experimental WeChat bot
 
 Checked 2026-11-03 on the same Windows/Node/Electron environment below. Existing user hooks and social-account credentials were not modified. No valid paid model credential was used.

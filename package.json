@@ -1,6 +1,6 @@
 {
   "name": "agent-arcade",
-  "version": "0.2.0-preview.1",
+  "version": "0.2.0-preview.2",
   "description": "Give your Claude agent a task through WeChat. Watch real work in a tiny desktop workshop.",
   "main": "src/main.cjs",
   "private": true,
@@ -42,7 +42,8 @@
     "files": [
       "src/**/*",
       "package.json",
-      "LICENSE"
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
     ],
     "asar": true,
     "asarUnpack": [

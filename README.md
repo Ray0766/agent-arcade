@@ -8,11 +8,11 @@
 
 Agent Arcade now has an experimental **WeChat task bot**: pair your own account, select a local project, and send instructions to a Claude agent. One-time permissions, questions and final replies return to the same conversation. Electron and the original Sprout Bot remain the local workshop. The existing Claude Code hook observer still works independently.
 
-**0.2.0-preview.1 · Windows first.** The WeChat and model portions have a reproducible **mocked** dispatch/approval/cancellation flow; **live WeChat + model acceptance is pending**. The Tencent QR endpoint was reached without logging in or sending a message. Earlier real hook acceptance remains separate in [validation and limitations](docs/VALIDATION.md).
+**0.2.0-preview.2 · Windows first.** The WeChat and model portions have a reproducible **mocked** dispatch/approval/cancellation flow; **live WeChat + model acceptance is pending**. The Tencent QR endpoint was reached without logging in or sending a message. Earlier real hook acceptance remains separate in [validation and limitations](docs/VALIDATION.md).
 
 ## Give the bot a task
 
-Run `npm start`, open **WeChat tasks**, choose a project, save your **Anthropic API key**, pair WeChat by QR, then select **Start receiving tasks**. The computer must stay on. See [setup, chat commands, costs and boundaries](docs/WECHAT.md).
+First find **ClawBot** in your phone's **WeChat → Me → Settings → Plugins**. Run `npm start`, open **WeChat tasks → Pair WeChat**, and scan its code using the phone's ClawBot setup page. The conversation is **ClawBot**, not an ordinary friend named Agent Arcade. Choose a project, save your **Anthropic API key**, then select **Start receiving tasks**. The computer must stay on. Credential saved, channel online and first inbound text are distinct states. See [setup, chat commands, costs and boundaries](docs/WECHAT.md).
 
 Send a task in ordinary language. Approve each tool using the exact one-time `/allow CODE`; use `/deny CODE`, `/status`, `/cancel` or `/new` as needed. This owner-only preview does not accept group tasks. Claude subscription login is not used. Messages/results go through Tencent and Anthropic; an approved Windows command can affect the computer beyond the selected folder. **A response ending never proves task success.**
 

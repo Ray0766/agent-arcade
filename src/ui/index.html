@@ -29,18 +29,20 @@
         <div class="bot-setup">
           <h2 data-bot="setup">Connect your workshop</h2>
           <p data-bot="scope">One WeChat owner, one local project, one Claude agent. Your computer must stay on.</p>
+          <p data-bot="access">On your phone, open WeChat → Me → Settings → Plugins → ClawBot, enable it, then scan below. Send tasks in the ClawBot conversation, not to an ordinary contact named Agent Arcade. If this entry is missing, client compatibility or account availability remains unverified.</p>
+          <button id="bot-pair" class="secondary" data-bot="pair">Pair WeChat</button>
+          <div id="bot-qr-wrap" hidden><img id="bot-qr" width="280" height="280" alt="WeChat pairing QR code"><p data-bot="scan">Enable ClawBot in mobile WeChat, then scan and confirm. Codes expire after three minutes.</p></div>
           <label for="bot-project" data-bot="project">Project folder</label><div class="bot-project-row"><output id="bot-project"></output><button id="bot-pick" class="secondary" data-bot="choose">Choose folder</button></div>
           <label for="bot-key">Anthropic API key</label><div class="bot-key-row"><input id="bot-key" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button id="bot-save" class="secondary" data-bot="save">Save key</button></div><small id="bot-key-status"></small>
           <label for="bot-budget" data-bot="budget">Maximum cost per task (USD)</label><input id="bot-budget" type="number" min="0.05" max="5" step="0.05" value="1">
           <p class="bot-fine" data-bot="privacy">Messages and task output pass through Tencent and Anthropic. Credentials use OS encryption; local chat history stays in memory. The SDK also keeps local session files.</p>
-          <div class="button-row"><button id="bot-pair" class="secondary" data-bot="pair">Pair WeChat</button><button id="bot-start" class="primary" data-bot="start">Start receiving tasks</button><button id="bot-stop" class="secondary" data-bot="stop" hidden>Disconnect & cancel</button></div>
-          <div id="bot-qr-wrap" hidden><img id="bot-qr" width="280" height="280" alt="WeChat pairing QR code"><p data-bot="scan">Scan in WeChat and confirm. Codes expire after three minutes.</p></div>
+          <div class="button-row"><button id="bot-start" class="primary" data-bot="start">Start receiving tasks</button><button id="bot-stop" class="secondary" data-bot="stop" hidden>Disconnect & cancel</button></div>
           <button id="bot-forget" class="plain" data-bot="forget">Forget credentials</button>
         </div>
         <div class="bot-inbox">
           <div class="bot-inbox-head"><div id="bot-mascot" aria-hidden="true"></div><div><h2 data-bot="inbox">Task inbox</h2><p data-bot="inboxNote">Only requests for input and final replies go back to WeChat.</p></div></div>
           <p id="bot-task-state" class="bot-fine" role="status"></p>
-          <div id="bot-messages"><p class="bot-empty" data-bot="empty">After connecting, send your bot a message in WeChat. Tasks and replies will appear here.</p></div>
+          <div id="bot-messages"><p class="bot-empty" data-bot="empty">After starting reception, send a task in the WeChat ClawBot conversation. Tasks and replies will appear here.</p></div>
           <details class="bot-help"><summary data-bot="commands">Chat commands & permissions</summary><p data-bot="help">Send a task in plain language. /status checks progress; /cancel stops the task and clears the queue; /new starts fresh. Tool actions ask for a one-time /allow code or /deny code. Questions accept /answer code text.</p><p data-bot="risk">An approved command can affect your computer beyond the selected folder. A reply ending does not prove the work succeeded. Disconnection cancels active work; tasks are never resumed automatically.</p></details>
         </div>
       </div>
