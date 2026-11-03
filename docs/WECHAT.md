@@ -11,6 +11,8 @@ The user-facing flow is **message → owned task → question/one-time approval 
 5. Select **Start receiving tasks**, then send a short instruction to the paired bot in WeChat. Keep the computer and app running. Pairing never starts execution automatically.
 6. Confirm the exact tool parameters before sending `/allow CODE`. For the first real task, request a small text file in a disposable project, inspect that actual file locally, and test denial and cancellation too. A model-generated report is not independent verification.
 
+**Windows shell tools:** this preview exposes `Bash` and file tools, so install [Git for Windows](https://gitforwindows.org/) for shell tasks. Direct Read/Write/Edit tasks do not need Git. Current Claude Code itself can [use native PowerShell without Git](https://code.claude.com/docs/en/setup#set-up-on-windows), but `PowerShell` is not yet exposed by this preview's fixed tool list. This is a project limitation, not an SDK requirement; a clean Windows machine without Git has not been accepted for shell tasks. Individual projects may also need their own tools such as npm.
+
 ## Conversation
 
 | Message | Behavior |
