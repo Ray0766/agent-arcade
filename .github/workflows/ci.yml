@@ -1,0 +1,68 @@
+name: Verify and build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm test
+      - run: npm run check
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run test:ui
+      - run: npm run dist -- --win
+      - name: Test packaged application
+        shell: pwsh
+        run: |
+          $env:ARCADE_EXECUTABLE = Join-Path $PWD 'dist\win-unpacked\Agent Arcade.exe'
+          npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-evidence
+          path: outputs/*.png
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-arcade-windows
+          path: |
+            dist/*.exe
+            package-lock.json
+  prerelease:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [core, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-arcade-windows
+          path: release-assets
+      - name: Publish first verified preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view v0.1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            find release-assets -name '*.exe' -exec sha256sum {} \; > release-assets/SHA256SUMS.txt
+            gh release create v0.1.0 release-assets/dist/*.exe release-assets/SHA256SUMS.txt release-assets/package-lock.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Agent Arcade 0.1.0 — Moss Workshop' --notes-file docs/RELEASE.md
+          fi

@@ -1,0 +1,20 @@
+name: State or app bug
+description: Report a reproducible problem using synthetic data.
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Expected and observed state; include event names from the activity log. Do not attach private results or settings.
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Versions
+      placeholder: Agent Arcade 0.1.0 / Claude Code version / operating system
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true

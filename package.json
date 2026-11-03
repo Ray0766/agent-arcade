@@ -1,0 +1,37 @@
+{
+  "name": "agent-arcade",
+  "version": "0.1.0",
+  "description": "A quiet desktop workshop for your AI agents. Real events, tiny worlds.",
+  "main": "src/main.cjs",
+  "private": true,
+  "author": "Agent Arcade contributors",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "electron .",
+    "demo": "electron . --demo",
+    "test": "node --test test/*.test.cjs",
+    "test:ui": "node scripts/smoke.cjs",
+    "check": "node scripts/check.cjs",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish never"
+  },
+  "repository": { "type": "git", "url": "https://github.com/Ray0766/agent-arcade.git" },
+  "homepage": "https://github.com/Ray0766/agent-arcade#readme",
+  "bugs": "https://github.com/Ray0766/agent-arcade/issues",
+  "devDependencies": {
+    "electron": "45.2.1",
+    "electron-builder": "26.18.1",
+    "playwright": "1.64.1"
+  },
+  "build": {
+    "appId": "io.github.agentarcade.desktop",
+    "productName": "Agent Arcade",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "package.json", "LICENSE"],
+    "asar": true,
+    "win": { "target": ["portable"], "signAndEditExecutable": false },
+    "mac": { "target": ["zip"], "category": "public.app-category.developer-tools" },
+    "linux": { "target": ["AppImage"], "category": "Development" }
+  }
+}
