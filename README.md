@@ -4,15 +4,21 @@
 
 # Agent Arcade
 
-**One little world. All your agents, at a glance.**
+**Message your agent on WeChat. Keep its work in a little desktop world.**
 
-Agent Arcade is a local desktop companion for **Claude Code**. Each session and subagent gets a tiny workstation: building, asking for attention, recovering from a tool error, or delivering a response. It observes official lifecycle hooks; it does not infer completion from an animation or an idle timer.
+Agent Arcade now has an experimental **WeChat task bot**: pair your own account, select a local project, and send instructions to a Claude agent. One-time permissions, questions and final replies return to the same conversation. Electron and the original Sprout Bot remain the local workshop. The existing Claude Code hook observer still works independently.
 
-**0.1.3 preview:** Windows first. Real Claude Code acceptance, automated tests and remaining limitations are recorded separately in [validation and limitations](docs/VALIDATION.md). CI verifies the Electron app and Windows package before publishing each versioned preview.
+**0.2.0-preview.1 · Windows first.** The WeChat and model portions have a reproducible **mocked** dispatch/approval/cancellation flow; **live WeChat + model acceptance is pending**. The Tencent QR endpoint was reached without logging in or sending a message. Earlier real hook acceptance remains separate in [validation and limitations](docs/VALIDATION.md).
+
+## Give the bot a task
+
+Run `npm start`, open **WeChat tasks**, choose a project, save your **Anthropic API key**, pair WeChat by QR, then select **Start receiving tasks**. The computer must stay on. See [setup, chat commands, costs and boundaries](docs/WECHAT.md).
+
+Send a task in ordinary language. Approve each tool using the exact one-time `/allow CODE`; use `/deny CODE`, `/status`, `/cancel` or `/new` as needed. This owner-only preview does not accept group tasks. Claude subscription login is not used. Messages/results go through Tencent and Anthropic; an approved Windows command can affect the computer beyond the selected folder. **A response ending never proves task success.**
 
 ## Try it
 
-Install [Node.js 22+](https://nodejs.org/) and [Claude Code](https://code.claude.com/docs/en/overview) 2.1.277 or newer (final live acceptance: 2.1.317). Hook commands use exec form, without a shell.
+For source development install [Node.js 22.13+](https://nodejs.org/). The bot bundles Claude Agent SDK 0.3.317 / native CLI 2.1.317. To observe existing terminal sessions separately, install [Claude Code](https://code.claude.com/docs/en/overview) 2.1.277+ (real acceptance: 2.1.317). Observer hook commands use exec form, without a shell.
 
 ```sh
 git clone https://github.com/Ray0766/agent-arcade.git
@@ -37,7 +43,7 @@ The installer merges observer commands into `~/.claude/settings.json`, backs up 
 - English and Simplified Chinese, keyboard controls, and reduced-motion support.
 - Declarative JSON themes with no JavaScript, remote images, or remote fonts.
 
-## What a status actually means
+## What an observer status actually means
 
 | Observed event | Scene | Meaning |
 | --- | --- | --- |
@@ -58,18 +64,20 @@ Approval itself has no follow-up hook: a permission request remains visible unti
 
 Real Claude Code 2.1.317 events with harmless synthetic commands, not demo mode. [Recovery and response-boundary evidence](docs/VALIDATION.md).
 
-## Local by design
+## Observer privacy
 
-No account, telemetry, web server, network listener, or cloud service. The observer stores a project **folder name**, session/agent IDs, event names, tool names/IDs and timestamps. It drops prompts, tool arguments, raw errors, and transcript paths. Final reply text is **off by default** and capped at 16,000 characters when enabled. Data is ordinary local JSON, not encrypted; do not enable result capture for replies you do not want stored on disk.
+The independent **observer mode** needs no account or cloud service and adds no telemetry/server/listener. It stores a project **folder name**, session/agent IDs, event names, tool names/IDs and timestamps. It drops prompts, tool arguments, raw errors, and transcript paths. Final reply text is **off by default** and capped at 16,000 characters when enabled. Observer data is ordinary unencrypted local JSON. **The optional WeChat bot has different data flows:** Tencent/Anthropic receive messages/model input, credentials use OS encryption, and SDK session content persists locally. See [bot privacy and deletion](docs/WECHAT.md#privacy-restart-and-failure).
 
 The inbox is bounded to roughly 2,000 files/24 hours while hooks run; the app retains at most 200 stations and 30 events per station. Turning off capture clears saved reply text. **Clear ended stations** removes response-ended/session-ended stations. Quit and remove `~/.agent-arcade/` after uninstalling hooks to erase local app data. Hook backups remain beside Claude settings so you can restore them deliberately.
 
 ## Develop
 
 ```sh
-npm test           # Node's built-in runner; no dependencies needed
+npm test           # Node's built-in runner, after npm ci
 npm run check      # JavaScript syntax checks
 npm run test:ui    # isolated Electron + installed hook smoke test
+npm run test:bot-ui # actual bot UI / OS vault, no paid model
+npm run test:bot-flow # clearly marked mock transport/model flow
 npm run dist      # package for the current OS
 ```
 
@@ -79,7 +87,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md), the [theme format](docs/THEMES.md), [ar
 
 ## Credits and license
 
-Code, docs, and original pixel/vector artwork are **MIT licensed**. Sprout Bot and the workshop art are drawn in `scripts/create-assets.cjs`; no third-party game characters or sounds are used. Electron and development dependencies retain their own licenses. Agent Arcade is an independent community project, not affiliated with Anthropic or PeonPing.
+Original code, docs and pixel/vector artwork are **MIT licensed**. Sprout Bot and workshop art are drawn in `scripts/create-assets.cjs`; no third-party game characters or sounds are used. Dependencies retain their own licenses; the bundled Claude SDK/runtime is subject to Anthropic's separate terms, see [third-party notices](THIRD_PARTY_NOTICES.md). This community project is not affiliated with Tencent, Anthropic or PeonPing.
 
 ## Agent guidance
 

@@ -2,17 +2,23 @@
 
 # Agent Arcade
 
-**把 AI 的工作状态，变成桌面上的一个小场景。**
+**发条微信，让 Agent 在电脑上接任务、问问题、交结果。**
 
 [English](README.md) · [构建状态](https://github.com/Ray0766/agent-arcade/actions) · [下载](https://github.com/Ray0766/agent-arcade/releases) · [制作主题](docs/THEMES.md)
 
-首版只接入 **Claude Code**。每个会话和子任务都有自己的工作台：施工、举牌等你、工具出错冒烟、回复完成后交付包裹。状态来自官方 hooks，不靠计时器猜测“任务完成”。
+新增实验性的 **微信派活 Bot**：扫码配对自己的微信、选择本机项目，再用自然语言派任务。一次性权限请求、追问和最终回复回到同一聊天。延续 Electron、原创 Sprout Bot 与两套主题；原有 Claude Code hooks 观察功能仍可独立使用。
 
-**当前版本：0.1.3 预览版，优先支持 Windows。** 真实 Claude Code 验收、自动测试和未验证的边界分开记录，见[验证说明](docs/VALIDATION.md)。GitHub Actions 验证桌面程序与 Windows 打包后才发布对应版本。
+**当前版本：0.2.0-preview.1，优先支持 Windows。** 微信派活、批准和取消已用可复现的模拟传输/模型跑通；**真实微信＋模型全链路尚未验收**。腾讯官方二维码接口已实测可达，未登录或发送消息。原有真实 hooks 验收独立保留，见[验证说明](docs/VALIDATION.md)。
+
+## 给 Bot 派活
+
+运行 `npm start`，进入 **微信派活**，选择项目、保存 **Anthropic API key**，用微信扫码配对后点击 **开始接收任务**。运行时电脑需保持开机。[完整接入步骤、费用和限制](docs/WECHAT.md)。
+
+直接发自然语言任务；每次工具操作需回复对应的 `/allow 验证码`，也可用 `/deny` 拒绝、`/status` 查状态、`/cancel` 中止、`/new` 新建会话。仅接扫码主人的私聊，不接群聊。不使用 Claude 订阅登录；消息与输出会经过腾讯及 Anthropic。批准的 Windows 命令可能影响项目目录以外的本机内容。**回复结束不代表任务已成功。**
 
 ## 启动
 
-安装 [Node.js 22 或更新版本](https://nodejs.org/) 和 Claude Code 2.1.277 或更新版本（最终真实验收为 2.1.317）。hooks 直接调用进程，无需 shell 解析：
+从源码运行需要 [Node.js 22.13 或更新版本](https://nodejs.org/)。Bot 自带 Claude Agent SDK 0.3.317 / 原生 CLI 2.1.317。单独观察终端会话时才需要安装 Claude Code 2.1.277+（真实验收为 2.1.317）；hooks 直接调用进程，无需 shell 解析：
 
 ```sh
 git clone https://github.com/Ray0766/agent-arcade.git
@@ -56,7 +62,7 @@ npm run demo
 
 ## 隐私与开源
 
-无账号、遥测、云服务或网络监听。默认只记录项目文件夹名、会话与任务 ID、事件、工具名称/ID、时间；丢弃提示词、工具参数、完整路径和原始报错。最终回复需要单独开启保存，最多 16,000 字符。数据是本地普通 JSON，不加密。
+独立的**观察器模式**无需账号或云服务，不添加遥测或网络监听。默认只记录项目文件夹名、会话与任务 ID、事件、工具名称/ID、时间，丢弃提示词、工具参数、完整路径和原始报错。最终回复需单独开启保存，最多 16,000 字符；观察器数据是本地普通 JSON，不加密。**微信模式的数据流不同**：消息/模型输入经过腾讯及 Anthropic，凭证使用系统加密，SDK 在本机保留会话内容。[具体隐私、删除与重启行为](docs/WECHAT.md#privacy-restart-and-failure)。
 
 界面最多保留 200 个角色，每个角色保留 30 条事件；离线队列约 2,000 条，钩子运行时清理超过 24 小时的记录。关闭回复保存会清除已保存的文本；“清理已结束角色”移除回复或会话结束的角色。卸载 hooks 并退出后，可删除 `~/.agent-arcade/` 清除数据。Claude 配置旁的备份需要自行保留或删除。
 
@@ -64,12 +70,14 @@ npm run demo
 npm test
 npm run check
 npm run test:ui
+npm run test:bot-ui
+npm run test:bot-flow
 npm run dist
 ```
 
 直接依赖已固定版本，实际解析的 `package-lock.json` 已入库，可通过 `npm ci` 复现依赖。macOS/Linux 提供构建配置，尚不属于 Windows 验收范围。
 
-源码、文档和原创美术资产均为 **MIT 许可证**。欢迎先贡献状态误报复现和主题。更多集成、IDE 跳转、签名安装包与自动更新留待后续验证。本项目与 Anthropic、PeonPing 无隶属关系。
+原创源码、文档和美术资产为 **MIT 许可证**。依赖保留各自许可，捆绑的 Claude SDK/运行时适用 Anthropic 的独立条款，见[第三方说明](THIRD_PARTY_NOTICES.md)。欢迎贡献真实微信验收、状态误报复现和主题。更多集成、IDE 跳转、签名安装包与自动更新留待后续验证。本项目与腾讯、Anthropic、PeonPing 无隶属关系。
 
 ## Agent 开发规范
 

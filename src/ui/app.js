@@ -9,7 +9,7 @@ const t = key => copy[data?.config.language || 'en'][key] || key;
 const el = (tag, cls, content) => {const n=document.createElement(tag);if(cls)n.className=cls;if(content!==undefined)n.textContent=content;return n;};
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,6000);}
 async function action(fn){try{return await fn();}catch(e){toast(`${t('failed')}: ${e.message}`);}}
-function switchView(next){view=next;$('view-picker').value=next;for(const x of ['scene','activity','settings'])$(`${x}-view`).hidden=x!==view;document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));render();}
+function switchView(next){view=next;$('view-picker').value=next;for(const x of ['bot','scene','activity','settings'])$(`${x}-view`).hidden=x!==view;document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));render();}
 function age(at){const seconds=Math.max(0,Math.floor((Date.now()-at)/1000));return seconds<60?`${seconds}s`:seconds<3600?`${Math.floor(seconds/60)}m`:`${Math.floor(seconds/3600)}h`;}
 function updateAges(){
   if(!data||document.hidden||view!=='scene')return;
@@ -59,6 +59,7 @@ function render(){if(!data)return;document.documentElement.lang=data.config.lang
   }
   else updateAges();
   if($('detail').open)renderDetail();
+  window.renderBot?.(data);
   $('empty').hidden=data.tasks.length>0;
   for(const k of ['notifications','alwaysOnTop','captureResults'])$(k).checked=!!data.config[k];
   if($('theme').options.length!==data.themes.length)$('theme').replaceChildren(...data.themes.map(theme=>{const n=el('option','',theme.name);n.value=theme.id;return n;}));$('theme').value=data.config.theme;
@@ -81,4 +82,4 @@ window.arcade.subscribe(next=>{data=next;render();});
 // transfer, and never changes the observed state or infers completion.
 setInterval(updateAges,1000);
 document.addEventListener('visibilitychange',updateAges);
-action(async()=>{data=await window.arcade.snapshot();render();});
+action(async()=>{data=await window.arcade.snapshot();if(!data.demo)switchView('bot');else render();});

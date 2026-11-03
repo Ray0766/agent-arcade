@@ -9,5 +9,11 @@ contextBridge.exposeInMainWorld('arcade', {
   install: () => ipcRenderer.invoke('arcade:install'),
   uninstall: () => ipcRenderer.invoke('arcade:uninstall'),
   importTheme: () => ipcRenderer.invoke('arcade:importTheme'),
+  botConfigure: value => ipcRenderer.invoke('arcade:botConfigure',value),
+  botProject: () => ipcRenderer.invoke('arcade:botProject'),
+  botLogin: () => ipcRenderer.invoke('arcade:botLogin'),
+  botConnect: () => ipcRenderer.invoke('arcade:botConnect'),
+  botDisconnect: () => ipcRenderer.invoke('arcade:botDisconnect'),
+  botForget: () => ipcRenderer.invoke('arcade:botForget'),
   subscribe: callback => { const listener = (_e,data) => callback(data); ipcRenderer.on('arcade:snapshot',listener); return () => ipcRenderer.removeListener('arcade:snapshot',listener); },
 });

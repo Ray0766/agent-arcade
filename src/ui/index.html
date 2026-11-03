@@ -9,17 +9,42 @@
   <script src="preview-themes.js" defer></script>
   <script src="preview.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="bot.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
     <div class="brand"><span class="brand-mark">a<span>•</span>a</span><div>agent arcade<small>SMALL WORLD. REAL WORK.</small></div></div>
     <div class="nav-caption" data-i18n="workspace">WORKSPACE</div>
-    <nav><button class="nav active" data-view="scene"><span>▦</span><span data-i18n="workshop">The workshop</span></button><button class="nav" data-view="activity"><span>≋</span><span data-i18n="activity">Activity log</span></button><button class="nav" data-view="settings"><span>⚙</span><span data-i18n="settings">Settings & themes</span></button></nav>
+    <nav><button class="nav" data-view="bot"><span>↗</span><span data-bot="nav">WeChat tasks</span></button><button class="nav active" data-view="scene"><span>▦</span><span data-i18n="workshop">The workshop</span></button><button class="nav" data-view="activity"><span>≋</span><span data-i18n="activity">Activity log</span></button><button class="nav" data-view="settings"><span>⚙</span><span data-i18n="settings">Settings & themes</span></button></nav>
     <div class="sidebar-note"><div class="tiny-robot">▰<br>▪ ▪</div><h3 data-i18n="quietTitle">A little less checking.</h3><p data-i18n="quietBody">A little more making. Your agents have a place to work.</p></div>
-    <div class="connection"><span class="dot"></span><div>Claude Code<small id="connection-label">Not connected</small></div><span class="version">v0.1</span></div>
+    <div class="connection"><span class="dot"></span><div>Claude Code<small id="connection-label">Not connected</small></div><span class="version">v0.2</span></div>
   </aside>
   <main>
-    <header><div class="breadcrumb">AGENT ARCADE <span>/</span> <span data-i18n="workshop">The workshop</span></div><div class="header-actions"><select id="view-picker" class="compact-nav" aria-label="View"><option value="scene" data-i18n="workshop">The workshop</option><option value="activity" data-i18n="activity">Activity log</option><option value="settings" data-i18n="settings">Settings &amp; themes</option></select><button id="language" class="plain" aria-label="Switch language">中文</button><button id="compact" class="plain" data-i18n="compact">Mini view</button><button id="quiet" class="quiet" aria-pressed="false" data-i18n="quiet">Quiet mode</button></div></header>
+    <header><div class="breadcrumb">AGENT ARCADE <span>/</span> <span data-i18n="workshop">The workshop</span></div><div class="header-actions"><select id="view-picker" class="compact-nav" aria-label="View"><option value="bot" data-bot="nav">WeChat tasks</option><option value="scene" data-i18n="workshop">The workshop</option><option value="activity" data-i18n="activity">Activity log</option><option value="settings" data-i18n="settings">Settings &amp; themes</option></select><button id="language" class="plain" aria-label="Switch language">中文</button><button id="compact" class="plain" data-i18n="compact">Mini view</button><button id="quiet" class="quiet" aria-pressed="false" data-i18n="quiet">Quiet mode</button></div></header>
+    <section id="bot-view" class="view" hidden>
+      <div class="page-heading"><div><h1 data-bot="title">Send a message. Give your agent a job.</h1><p class="subtitle" data-bot="subtitle">WeChat is the conversation. This workshop runs the work.</p></div><span id="bot-status" class="state-pill" role="status"></span></div>
+      <p class="bot-preview" data-bot="preview">Experimental connection · live WeChat acceptance pending.</p>
+      <div id="bot-problem" class="problem" role="alert" hidden></div>
+      <div class="bot-layout">
+        <div class="bot-setup">
+          <h2 data-bot="setup">Connect your workshop</h2>
+          <p data-bot="scope">One WeChat owner, one local project, one Claude agent. Your computer must stay on.</p>
+          <label for="bot-project" data-bot="project">Project folder</label><div class="bot-project-row"><output id="bot-project"></output><button id="bot-pick" class="secondary" data-bot="choose">Choose folder</button></div>
+          <label for="bot-key">Anthropic API key</label><div class="bot-key-row"><input id="bot-key" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button id="bot-save" class="secondary" data-bot="save">Save key</button></div><small id="bot-key-status"></small>
+          <label for="bot-budget" data-bot="budget">Maximum cost per task (USD)</label><input id="bot-budget" type="number" min="0.05" max="5" step="0.05" value="1">
+          <p class="bot-fine" data-bot="privacy">Messages and task output pass through Tencent and Anthropic. Credentials use OS encryption; local chat history stays in memory. The SDK also keeps local session files.</p>
+          <div class="button-row"><button id="bot-pair" class="secondary" data-bot="pair">Pair WeChat</button><button id="bot-start" class="primary" data-bot="start">Start receiving tasks</button><button id="bot-stop" class="secondary" data-bot="stop" hidden>Disconnect & cancel</button></div>
+          <div id="bot-qr-wrap" hidden><img id="bot-qr" width="280" height="280" alt="WeChat pairing QR code"><p data-bot="scan">Scan in WeChat and confirm. Codes expire after three minutes.</p></div>
+          <button id="bot-forget" class="plain" data-bot="forget">Forget credentials</button>
+        </div>
+        <div class="bot-inbox">
+          <div class="bot-inbox-head"><div id="bot-mascot" aria-hidden="true"></div><div><h2 data-bot="inbox">Task inbox</h2><p data-bot="inboxNote">Only requests for input and final replies go back to WeChat.</p></div></div>
+          <p id="bot-task-state" class="bot-fine" role="status"></p>
+          <div id="bot-messages"><p class="bot-empty" data-bot="empty">After connecting, send your bot a message in WeChat. Tasks and replies will appear here.</p></div>
+          <details class="bot-help"><summary data-bot="commands">Chat commands & permissions</summary><p data-bot="help">Send a task in plain language. /status checks progress; /cancel stops the task and clears the queue; /new starts fresh. Tool actions ask for a one-time /allow code or /deny code. Questions accept /answer code text.</p><p data-bot="risk">An approved command can affect your computer beyond the selected folder. A reply ending does not prove the work succeeded. Disconnection cancels active work; tasks are never resumed automatically.</p></details>
+        </div>
+      </div>
+    </section>
     <section id="scene-view" class="view">
       <div class="page-heading"><div><div class="eyebrow" data-i18n="eyebrow">YOUR DESKTOP, A LITTLE MORE ALIVE</div><h1 data-i18n="headline">Good work, little world.</h1><p class="subtitle" data-i18n="subtitle">A place for every agent. A moment for your attention.</p></div><button id="demo" class="secondary" data-i18n="demo">Try the demo</button></div>
       <div id="demo-banner" class="banner" hidden><span data-i18n="demoBanner">DEMO WORLD · Sample tasks. Your live sessions are kept separate.</span><button id="live" data-i18n="goLive">Go live →</button></div>

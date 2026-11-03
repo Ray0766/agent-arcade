@@ -1,6 +1,10 @@
 # Security and privacy
 
-Agent Arcade is a local observer, not an approval agent. It never returns a decision to Claude Code, opens untrusted result URLs, executes result text, or reads full transcripts.
+Agent Arcade has two distinct modes. The **local hook observer** never approves a command or reads full transcripts. The optional **WeChat task bot** deliberately starts a Claude agent and relays the paired owner's single-use permission decisions. Neither mode opens result URLs or executes reply text as an application command. The bot's SDK can execute approved tools; do not confuse these two authority boundaries.
+
+Bot credentials use Electron OS encryption without plaintext fallback. Connections and execution are opt-in; no startup replay/resume. Only the paired owner's complete, fresh private text is accepted. A bounded serial queue and expiring, task-bound approval codes prevent old decisions from authorizing new tools. Cancellation invalidates requests before waiting for execution to settle. Every tool is routed through a fail-closed hook and host callback. These controls are not an OS sandbox: approved native Windows commands may affect other local files or the network. Use a disposable project for acceptance; do not expose this as a multi-user service.
+
+The SDK gets an API key and a small OS-environment allowlist, isolated configuration, disabled ambient hooks/plugins/MCP, and subprocess credential scrubbing. No local subscription credentials are copied. Tencent/Anthropic data flow and separate local SDK session retention are documented in [WECHAT.md](docs/WECHAT.md). There is no exactly-once delivery or durable task queue claim. A heuristic redactor is not a general secret detector; inspect data before allowing its use.
 
 Renderer isolation: context isolation and sandbox enabled, Node integration disabled, navigation/new windows denied, permission requests denied, narrow validated IPC, no remote assets. Themes are validated palette/grid data, not SVG imports, HTML, or scripts. Response text is rendered using `textContent`.
 

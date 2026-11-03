@@ -1,5 +1,17 @@
 # Architecture and accuracy
 
+## Optional WeChat task execution (0.2 experimental preview)
+
+WeChat iLink HTTPS long poll → owner-only timestamped text → bounded serial Dispatcher → official Claude Agent SDK/native subprocess → correlated one-time permission/question → same owner's reply. Electron main orchestrates `src/bot` asynchronously; the SDK executes in a separate native process. This is independent of the observer below and does not install user hooks.
+
+Connections never start automatically. One owner/project/connection has one explicit SDK session ID; subsequent prompts use `resume`, never global `continue`. One active task plus three queued tasks, 24 turns, ten minutes, bounded history and an SDK cost threshold limit work. Task state and send failure are separate. Disconnect and quit abort execution, invalidate permissions and wait for the old runner to settle before a new connection. No durable replay is attempted.
+
+Every known tool is forced through a fail-closed `PreToolUse` ask rule, then a callback bound to a 128-bit, five-minute, single-use request. Unknown tools are denied. Tool/task cancellation, expiry and disconnect invalidate permissions. Oversized or secret-filtered parameters cannot be authorized from an altered display. This is authorization, not OS containment: approved Windows commands can affect the whole local account.
+
+OS-encrypted credentials never enter renderer snapshots. Ambient user/project settings, OAuth, hooks, plugins and MCP are excluded. SDK sessions persist locally; the bounded bot UI transcript is memory-only. Tencent and Anthropic receive data needed for the flow. See [WeChat setup/limits](WECHAT.md), [source review](BOT_TECH_NOTES.md), and [third-party terms](../THIRD_PARTY_NOTICES.md). Real WeChat + valid-key model acceptance is pending.
+
+## Existing local observer
+
 Claude Code command hook → allowlisted metadata → atomic local inbox file → Electron main-process reducer → isolated renderer.
 
 The short-lived Node observer reads stdin, caps input at 2 MiB, writes one uniquely named JSON file, produces no output, and exits 0 even if observation fails. It times out after 1.5 seconds. It does not parse transcripts, approve commands, call a server, or keep a process alive. Claude's configured hook timeout is 2 seconds.

@@ -17,6 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm test
       - run: npm run check
   windows:
@@ -28,12 +29,15 @@ jobs:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
       - run: npm run test:ui
+      - run: npm run test:bot-ui
+      - run: npm run test:bot-flow
       - run: npm run dist -- --win
       - name: Test packaged application
         shell: pwsh
         run: |
           $env:ARCADE_EXECUTABLE = Join-Path $PWD 'dist\win-unpacked\Agent Arcade.exe'
           npm run test:ui
+          npm run test:bot-ui
       - uses: actions/upload-artifact@v4
         if: always()
         with:

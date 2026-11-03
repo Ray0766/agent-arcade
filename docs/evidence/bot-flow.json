@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "fixture": "WeChat task dispatch and one-time approval",
+  "mocked_transport_and_model": true,
+  "real_network_requests": 0,
+  "real_model_requests": 0,
+  "real_shell_executions": 0,
+  "pipeline": [
+    "BotService",
+    "WeixinClient protocol parsing",
+    "Dispatcher",
+    "createRunner",
+    "SDK canUseTool callback fixture",
+    "WeixinClient result serialization"
+  ],
+  "checks": {
+    "paired_fixture": true,
+    "owner_message_dispatched": true,
+    "explicit_tool_approval": true,
+    "stale_nonce_rejected_without_new_task": true,
+    "cancel_denied_pending_tool": true,
+    "cancellation_overrode_late_success_shaped_result": true,
+    "cancelled_nonce_rejected": true,
+    "reply_boundary_label_keeps_outcome_unverified": true,
+    "queries_closed": 2
+  },
+  "counts": {
+    "received_messages": 6,
+    "model_fixtures": 2,
+    "permission_callbacks": 2,
+    "sent_messages": 10
+  },
+  "connection_states": [
+    "disconnected",
+    "disconnecting",
+    "disconnected",
+    "pairing",
+    "disconnected",
+    "connecting",
+    "connected"
+  ],
+  "sent_messages": [
+    "任务 fixture-1 已收到。",
+    "任务 fixture-1 请求本机权限。批准后此操作可读取、修改文件或影响本机，请核对完整参数。\n{\"tool\":\"Bash\",\"input\":{\"command\":\"printf 'fixture-only'\"}}\n批准：/allow [nonce]\n拒绝：/deny [nonce]\n确认码 5 分钟内有效，仅限本次请求。",
+    "已收到本次确认。",
+    "任务 fixture-1：回复结束（任务结果未验证）\nSynthetic report prepared. No shell was executed; actual task outcome is unverified.",
+    "确认码无效、已过期或不属于当前任务，未批准任何操作。",
+    "任务 fixture-2 已收到。",
+    "任务 fixture-2 请求本机权限。批准后此操作可读取、修改文件或影响本机，请核对完整参数。\n{\"tool\":\"Bash\",\"input\":{\"command\":\"printf 'fixture-only'\"}}\n批准：/allow [nonce]\n拒绝：/deny [nonce]\n确认码 5 分钟内有效，仅限本次请求。",
+    "已清空等待队列并请求中止当前任务。新任务将等本地执行停止后开始。",
+    "任务 fixture-2：本轮已取消。",
+    "确认码无效、已过期或不属于当前任务，未批准任何操作。"
+  ],
+  "dispatcher_final": {
+    "current_task": null,
+    "queued": 0,
+    "pending_confirmations": 0,
+    "tasks": [
+      {
+        "state": "reply_ended",
+        "outcome": "reply_ended",
+        "text": "Synthetic report prepared. No shell was executed; actual task outcome is unverified.",
+        "delivery_failed": false
+      },
+      {
+        "state": "cancelled",
+        "outcome": "cancelled",
+        "text": "",
+        "delivery_failed": false
+      }
+    ]
+  },
+  "limitations": [
+    "Transport and model are mocked; this is not live WeChat or Claude acceptance.",
+    "No actual Bash command is run.",
+    "A reply boundary is not independent evidence that work succeeded."
+  ]
+}

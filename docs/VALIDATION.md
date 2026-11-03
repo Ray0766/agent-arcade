@@ -1,4 +1,20 @@
-# Validation — 0.1.3 preview
+# Validation
+
+## 0.2.0-preview.1 — experimental WeChat bot
+
+Checked 2026-11-03 on the same Windows/Node/Electron environment below. Existing user hooks and social-account credentials were not modified. No valid paid model credential was used.
+
+- `npm test`: **91 passed, 0 failed**, including all 41 previous observer checks. New checks cover parser bounds/owner/replay/cursor, serialized work, single-use/expired/cancelled approvals, single questions, send failure, login/forget races, OS-vault refusal and SDK result/abort semantics. These new model/transport tests use fixtures.
+- `npm run test:bot-flow`: real service/parser/dispatcher/runner, mocked HTTP and SDK query boundaries. **2 task turns, 6 inbound, 10 outbound**, one reply boundary and one cancellation. Used/cancelled approval codes rejected; a late success-shaped result remains cancelled. [Public fixture output](evidence/bot-flow.json) explicitly reports zero network/model/shell executions. This is not live acceptance.
+- `npm run test:bot-ui`: actual Electron English/Chinese setup, narrow view, reduced-motion rendering, a deliberately invalid key saved using the Windows OS vault then removed, and native SDK **2.1.317** startup. Source screenshots are local `outputs/bot-{setup,zh,compact}.png`; messages in the Chinese full screenshot are visibly synthetic. No WeChat authentication or model task is performed by this check.
+- `npm run test:ui`: existing actual observer subprocess/UI flow still passed. `npm run check`: **34 JavaScript files**. `npm audit --omit=dev`: **0 known production vulnerabilities** at this check; this is not a security audit. Existing development dependencies still report moderate advisories.
+- Real Tencent QR endpoint returned a code and local-encoding content. Not authenticated, no messages sent; QR data is not published.
+- Actual SDK/native subprocess with an intentionally invalid synthetic API key returned an authentication-error result and `error` outcome, zero approved tools. [Redacted receipt](evidence/sdk-auth-check.json). This verifies failure handling/no observed subscription fallback, not valid-key model operation.
+- Final `dist/win-unpacked/Agent Arcade.exe`: both observer and bot UI checks passed, including OS-vault save/remove and the unpacked native SDK binary's actual version. Final portable build/startup is tracked separately from this unpacked check.
+
+**Not accepted:** actual owner pairing, incoming WeChat task, valid-key model execution, real approval/question round trips, output-file inspection and final reply receipt. UI screenshots, QR reachability, binary startup and fixtures cannot establish these. Login requiring phone verification, groups and media are unsupported. Native Windows is not a sandbox; no latency/resource/user-benefit improvement has been measured. New runtime increases dependency/package size. Historical observer measurements below do not describe the bot.
+
+## 0.1.3 observer preview — preserved prior evidence
 
 Verified on **2026-11-03**, a Windows x64 development machine at 150% test scaling. Electron 45.2.1, host Node 24.18.0. Hardware inventory, display identifiers and raw process telemetry are excluded from public evidence. Test inputs and commands were synthetic; the CLI, hook subprocesses, inbox, reducer and Electron renderer were real. Existing user Claude hook settings were not modified by the installer.
 

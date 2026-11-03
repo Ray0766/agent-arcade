@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -13,18 +13,21 @@ const integration = require('./core/integration.cjs');
 const { validateTheme } = require('./core/theme.cjs');
 const { demoStore } = require('./core/demo.cjs');
 const { createIcon } = require('./core/icon.cjs');
+const { BotService } = require('./bot/service.cjs');
+const QRCode = require('qrcode');
 const root = process.env.AGENT_ARCADE_HOME || path.join(os.homedir(), '.agent-arcade');
 const settingsFile = process.env.AGENT_ARCADE_CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
 let config = { language: 'en', notifications: false, quiet: false, captureResults: false, alwaysOnTop: false, compact: false, theme: 'workshop', ...readJSON(path.join(root, 'config.json')) };
 const live = new Store(readJSON(path.join(root, 'state.json')));
 let demo = process.argv.includes('--demo'), sample = demoStore(), win, tray, quitting = false, problem = '', timer;
 let lastPublishedSnapshot = '';
+let bot, cleanedUp = false;
 const gate = new NotificationGate();
 const themes = new Map();
 const store = () => demo ? sample : live;
 const indexURL = pathToFileURL(path.join(__dirname, 'ui', 'index.html')).href;
 function saveConfig() { atomicJSON(path.join(root, 'config.json'), config); }
-function snapshot() { return { tasks: store().snapshot(), demo, config, installed: integration.installed(settingsFile), lastEventAt: live.lastEventAt, problem, theme: themes.get(config.theme) || themes.get('workshop'), themes: [...themes].map(([id,t])=>({id,name:t.name})) }; }
+function snapshot() { return { tasks: store().snapshot(), demo, config, installed: integration.installed(settingsFile), lastEventAt: live.lastEventAt, problem, bot:bot?.snapshot(), theme: themes.get(config.theme) || themes.get('workshop'), themes: [...themes].map(([id,t])=>({id,name:t.name})) }; }
 function publish() {
   if (!win || win.isDestroyed()) return;
   // Still evaluate derived stale status each poll, but do not clone/send the
@@ -56,6 +59,7 @@ else {
     const custom = readJSON(path.join(root, 'theme.json'), null);
     try { if (custom) themes.set('custom', validateTheme(custom)); } catch { problem = 'Saved theme is invalid; using Workshop.'; }
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+    bot = new BotService({root,vault:safeStorage,onChange:publish,qrEncoder:text=>QRCode.toDataURL(text,{width:280,margin:3,errorCorrectionLevel:'M'})});
     const icon = nativeImage.createFromBuffer(createIcon());
     win = new BrowserWindow({ width:1200, height:830, minWidth:900, minHeight:640, backgroundColor:'#f5f3ed', title:'Agent Arcade', autoHideMenuBar:true, icon,
       webPreferences:{ preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true, webSecurity:true } });
@@ -63,6 +67,16 @@ else {
     win.webContents.on('will-navigate', e => e.preventDefault());
     win.on('close', e => { if (!quitting && tray) { e.preventDefault(); win.hide(); } });
     register('snapshot', snapshot);
+    register('botConfigure', value => { bot.configure(value); return bot.snapshot(); });
+    register('botProject', async () => {
+      const picked=await dialog.showOpenDialog(win,{properties:['openDirectory']});
+      if(!picked.canceled)bot.configure({workspace:picked.filePaths[0]});
+      return bot.snapshot();
+    });
+    register('botLogin', () => { if(bot.status!=='pairing')void bot.login(); return bot.snapshot(); });
+    register('botConnect', async () => { await bot.connect(); return bot.snapshot(); });
+    register('botDisconnect', async () => { await bot.disconnect(); return bot.snapshot(); });
+    register('botForget', async () => { await bot.forget(); return bot.snapshot(); });
     register('demo', value => { demo = value === true; if (demo) sample = demoStore(); publish(); return snapshot(); });
     register('acknowledge', id => { if (typeof id === 'string') store().acknowledge(id); if (!demo) atomicJSON(path.join(root,'state.json'),live.export()); publish(); });
     register('clear', () => { store().clearFinished(); if (!demo) atomicJSON(path.join(root,'state.json'),live.export()); publish(); });
@@ -110,5 +124,8 @@ else {
     },1000);
   }).catch(error => { dialog.showErrorBox('Agent Arcade',error.message); app.quit(); });
 }
-app.on('before-quit', () => { quitting = true; clearInterval(timer); });
+app.on('before-quit', event => {
+  quitting = true; clearInterval(timer);
+  if(!cleanedUp){event.preventDefault();Promise.resolve(bot?.disconnect()).finally(()=>{cleanedUp=true;app.quit();});}
+});
 app.on('window-all-closed', () => app.quit());

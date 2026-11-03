@@ -1,15 +1,13 @@
-Agent Arcade 0.1.3 Windows preview: a local desktop workshop for Claude Code sessions and subagents.
+Agent Arcade 0.2.0-preview.1 — experimental WeChat task bot, Windows first.
 
-- Original Sprout Bot artwork, Moss Workshop and Lunar Post themes.
-- Event-driven running, attention, error, delivery and uncertain states.
-- Silent opt-in notifications, quiet mode, compact window and pinning.
-- Optional local final-response parcels; no prompt or tool-argument capture.
-- English / 简体中文 and an editable JSON theme format.
+Send a message to dispatch a Claude task from WeChat; one-time permissions, questions and final replies return to the same owner. The original Electron workshop, Sprout Bot themes and independent local hook observer remain available.
 
-**Start:** install Node.js 22+, open the portable executable, then Settings & themes → Install hooks. Restart Claude Code. Use Try the demo to explore without connecting.
+**Experimental:** real WeChat pairing + paid model execution + output-file/result receipt is still pending. The official Tencent QR endpoint was reached without authentication or sending messages. A real SDK invalid-key run returned an authentication error without approved tools. These do not prove valid-key execution or chat delivery.
 
-Questions now stay “waiting for your answer” through generic permission notifications. Older parent-close events cannot overwrite newer child observations, and pending-request overflow remains uncertain after restart. Idle snapshots are deduplicated; relative ages and uncertainty still update.
+**Start:** open the app → WeChat tasks → choose a disposable project → save your Anthropic API key → pair using WeChat QR → Start receiving tasks. Computer must stay on. API billing is separate; Claude subscription login is not used. See docs/WECHAT.md.
 
-41 core/integration tests plus source/packaged Windows smoke gates cover this preview. Real Claude Code 2.1.317 question/answer, child lifecycle, unavailable-model StopFailure and cancellation flows have receipts in docs/VALIDATION.md. A cancellation emitted no terminal hook: its last running observation became uncertain after five real minutes. Immediate cancellation detection is not claimed. “Response ended” still does not establish task success.
+Natural-language tasks, /status, /cancel, /new, one-time /allow and /deny, and single-question replies are implemented. Owner-only text, one active task and three queued, bounded inputs/turns/time/cost threshold. No group/media support, permanent tool approval or auto-resume. Approved native Windows commands are not sandboxed. Messages/results pass through Tencent and Anthropic; SDK sessions persist separately from the observer. Credentials use OS encryption. Original code/assets are MIT; SDK/runtime terms remain separate in THIRD_PARTY_NOTICES.md.
 
-The idle delivery comparison removed 4 repeated full snapshots per 4.2-second sample with 200 static stations. It does not prove CPU or memory savings. The prior 0.1.2 summed-working-set baseline exceeded 300 MiB; 0.1.3 has not been rebenchmarked for memory. Native notification/tray were checked on one Windows display at 150%; physical sleep, multi-monitor behavior and comparative user benefit remain unverified. Builds are unsigned; SHA256SUMS.txt and the locked dependencies are attached. No automatic updater.
+91 automated checks and a reproducible mock HTTP/model pipeline cover dispatch, dedupe, approval, cancellation, stale codes and outcome labels. Actual Electron UI checks cover English/Chinese, compact layout, OS-vault save/remove and bundled SDK startup. CI checks source/packaged observer and bot UI before releasing. “Response ended” never means verified task success.
+
+No resource or user-benefit improvement claim. Live account compatibility, actual approval/question round trips, restart/network recovery with a paid task, physical sleep/multiple displays and resource impact remain unverified. Windows builds are unsigned; checksum and locked dependencies are attached. No automatic updater.

@@ -1,0 +1,12 @@
+{
+  "realSDK": true,
+  "syntheticInput": true,
+  "validCredentialUsed": false,
+  "toolApprovals": 0,
+  "authRejected": true,
+  "streamResult": true,
+  "nativeFailure": true,
+  "outcome": "error",
+  "validKeyModelAcceptance": false,
+  "liveWeChat": false
+}
