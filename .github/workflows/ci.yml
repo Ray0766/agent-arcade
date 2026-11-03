@@ -63,7 +63,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version=$(node -p "require('./package.json').version")
-          if ! gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            mkdir -p checksum-assets
+            gh release download "v$version" --repo "$GITHUB_REPOSITORY" --pattern '*.exe' --dir checksum-assets
+            (cd checksum-assets && sha256sum *.exe) > release-assets/SHA256SUMS.txt
+            gh release upload "v$version" release-assets/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            # GitHub replaces spaces in uploaded asset names with dots.
+            for file in release-assets/dist/*.exe; do
+              name=$(basename "$file")
+              safe_name="${name// /.}"
+              if [ "$name" != "$safe_name" ]; then mv -- "$file" "release-assets/dist/$safe_name"; fi
+            done
             sha256sum release-assets/dist/*.exe | sed 's|release-assets/dist/||' > release-assets/SHA256SUMS.txt
             gh release create "v$version" release-assets/dist/*.exe release-assets/SHA256SUMS.txt release-assets/package-lock.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Agent Arcade $version — Moss Workshop" --notes-file docs/RELEASE.md
           fi
