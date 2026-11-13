@@ -27,10 +27,12 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix deploy/transfer-helper --ignore-scripts --omit=optional --no-audit --no-fund
       - run: node scripts/check.cjs
-      # scripts/test.cjs is the same entry as `npm test`. The default macOS temp
-      # directory sits behind a symbolic link (/var is /private/var) and tests
-      # compare temporary paths with their resolved form, so the script hands
-      # them the resolved directory. It changes nothing on Windows.
+      # scripts/test.cjs is the same entry as `npm test` on all three platforms.
+      # Tests and several modules compare temporary paths with their resolved
+      # form, so the script hands them the resolved directory: on macOS the
+      # default sits behind a symbolic link (/var is /private/var), and on a
+      # Windows runner TEMP is an 8.3 short name (RUNNER~1) that
+      # src/qq-supervisor/ownership.cjs refuses.
       # Two files at a time: several QQ process and repair tests use real
       # deadlines and time out when many test files compete for the runner.
       # No single test may run longer than five minutes, so a test that hangs
