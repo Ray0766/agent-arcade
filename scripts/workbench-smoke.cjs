@@ -12,7 +12,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
   try{
     const page=await app.firstWindow(),errors=[],network=[];page.on('pageerror',e=>errors.push(e.message));
     await page.route(/^https?:/,r=>{network.push(r.request().url());return r.abort();});
-    await page.locator('[data-view="work"]').click();await page.locator('#artifact-pick').waitFor();
+    await page.locator('#ws-work').click();await page.locator('nav [data-view="work"]').click();await page.locator('#artifact-pick').waitFor();
     await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},file);
     await page.locator('#artifact-pick').click();
     const viewer=page.frameLocator('#artifact-app');await viewer.locator('#artifact-body').waitFor();

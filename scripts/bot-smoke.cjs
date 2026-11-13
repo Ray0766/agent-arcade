@@ -15,13 +15,15 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
     await page.locator('nav [data-view="bot"]').click();
     await page.locator('#bot-view').waitFor();assert.equal(await page.locator('#bot-start').isDisabled(),true);
     fs.mkdirSync('outputs',{recursive:true});await page.screenshot({path:process.env.ARCADE_EXECUTABLE?'outputs/bot-packaged-setup.png':'outputs/bot-setup.png',fullPage:true});
+    // Conversation settings start closed for an App-only profile; the owner opens them from the chat header.
+    await page.locator('#bot-settings-toggle').click();
     await page.locator('#bot-key').fill('fixture-invalid-api-key');await page.locator('#bot-save').click();
     await page.locator('#bot-key-status').filter({hasText:'Key saved with OS encryption'}).waitFor();
     assert.equal(await page.locator('#bot-key').inputValue(),'');
     assert.doesNotMatch(fs.readFileSync(path.join(root,'bot-vault.json'),'utf8'),/fixture-invalid-api-key/);
     assert.equal((await page.evaluate(()=>window.arcade.snapshot())).bot.hasKey,true);
     await page.evaluate(async workspace=>window.arcade.botConfigure({workspace}),root);
-    await page.locator('#bot-budget').fill('0.5');await page.locator('#bot-budget').press('Tab');
+    await page.locator('#bot-advanced>summary').click();await page.locator('#bot-budget').fill('0.5');await page.locator('#bot-budget').press('Tab');
     await page.waitForFunction(async()=> (await window.arcade.snapshot()).bot.budget===0.5);
     await page.locator('#language').click();await page.locator('#bot-view h1').filter({hasText:'橘'}).waitFor();
     await page.emulateMedia({reducedMotion:'reduce'});
@@ -57,7 +59,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
       assert.equal(attached.openHidden,true);
     }
     await showFixture();
-    await page.locator('#compact').click();await page.locator('body.compact').waitFor();
+    await page.locator('#shell-compact').click();await page.locator('body.compact').waitFor();
     await page.locator('#view-picker').selectOption('bot');
     await showFixture();
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -65,10 +67,14 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
     await page.evaluate(async()=>{const state=await window.arcade.snapshot();return window.arcade.botForget({profileId:state.accounts.selectedId});});
     assert.equal(fs.existsSync(path.join(root,'bot-vault.json')),false);
     assert.deepEqual(errors,[]);
-    const appRoot=await app.evaluate(({app})=>app.getAppPath());
+    // A source run's application root is this repository, whichever entry file Electron was started with.
+    const appRoot=process.env.ARCADE_EXECUTABLE?await app.evaluate(({app})=>app.getAppPath()):path.resolve(__dirname,'..');
     const binaryPath=path.join(appRoot.replace(/app\.asar$/, 'app.asar.unpacked'),'node_modules',`@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}`,process.platform==='win32'?'claude.exe':'claude');
-    assert.equal(fs.existsSync(binaryPath),true,'Packaged SDK executable exists outside asar');
-    const binary=require('node:child_process').execFileSync(binaryPath,['--version'],{timeout:15000,windowsHide:true,encoding:'utf8'}).trim();
+    // The proprietary Claude Agent SDK is an optional dependency for source runs and is excluded from
+    // packages (package.json build.files), so a packaged run proves that it was not shipped.
+    let binary='not shipped in the package';
+    if(process.env.ARCADE_EXECUTABLE)assert.equal(fs.existsSync(binaryPath),false,'The proprietary SDK executable is not packaged');
+    else{assert.equal(fs.existsSync(binaryPath),true,'Optional SDK executable is installed for the source run');binary=require('node:child_process').execFileSync(binaryPath,['--version'],{timeout:15000,windowsHide:true,encoding:'utf8'}).trim();}
     console.log(JSON.stringify({ui:'passed',osVault:'fixture key encrypted and removed',nativeSdk:binary,liveWeChat:false,liveModel:false}));
   }finally{await app.close();assert(root.startsWith(path.resolve(os.tmpdir())+path.sep));fs.rmSync(root,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

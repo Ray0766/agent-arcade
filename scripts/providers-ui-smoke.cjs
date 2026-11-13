@@ -31,9 +31,15 @@ const {WebSocketServer}=require('ws');
   try{
     const page=await app.firstWindow(),errors=[];page.on('pageerror',error=>errors.push(error.message));
     const setDetails=async(id,open=true)=>{const details=page.locator(`#${id}`);if(await details.evaluate(node=>node.open)!==open)await details.locator(':scope > summary').click();assert.equal(await details.evaluate(node=>node.open),open);};
+    // Channel, project and start controls sit in the collapsed "Channels and tasks (advanced)"
+    // group of the conversation settings panel, which starts closed on a fresh profile.
     await page.locator('nav [data-view="bot"]').click();
+    await page.locator('#bot-settings-toggle').click();
+    await setDetails('bot-advanced');
     await page.locator('#bot-channel').waitFor();
-    const chooseBackend=async(provider,method)=>{await page.locator('nav [data-view="connections"]').click();await page.locator(`[data-provider="${provider}"]`).click();if(method)await page.locator(`[data-method="${method}"]`).click();await page.locator('.onboarding-advanced').click();};
+    // Channels lives in the Work workspace; its advanced-settings button is inside the optional
+    // disclosure, which is open once the profile has a work folder.
+    const chooseBackend=async(provider,method)=>{await page.locator('#ws-work').click();await page.locator('nav [data-view="connections"]').click();await page.locator(`#connections-content [data-provider="${provider}"]`).click();if(method)await page.locator(`#connections-content [data-method="${method}"]`).click();if(await page.locator('#onboarding-optional-toggle').getAttribute('aria-expanded')!=='true')await page.locator('#onboarding-optional-toggle').click();await page.locator('.onboarding-advanced').click();};
     await page.evaluate(workspace=>window.arcade.botConfigure({workspace}),root);
     // The main Claude entry selects the program runner, without an API key or
     // the legacy Channels terminal controls. No Claude process is started here.

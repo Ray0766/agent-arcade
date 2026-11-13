@@ -94,7 +94,7 @@ const assert = require('node:assert/strict');
           ? currentFixture.language === 'zh'
             ? (expectedMessages.some(message => message.role === 'user') ? '已收到消息' : '微信已连接')
             : (expectedMessages.some(message => message.role === 'user') ? 'Message received' : 'WeChat connected')
-          : '未连接';
+          : '还没有 AI';
         if(currentFixture?.mode === 'native' && currentFixture.status === 'connected') {
           if(['stopped','exited'].includes(currentFixture.native.process?.status)) expectedStatus=currentFixture.language==='zh'?'本机会话已停止':'Local session stopped';
           else if(currentFixture.native.attached===false) expectedStatus=currentFixture.language==='zh'?'等你打开 Claude':'Waiting for you to open Claude';
@@ -114,8 +114,16 @@ const assert = require('node:assert/strict');
       await assertCaptureState();
     };
 
-    assert.equal(await panelOpen(), true, 'First launch exposes connection setup');
+    // First launch without a usable AI: the chat page shows the key entry card
+    // as its empty state and conversation settings start closed.
+    assert.equal(await panelOpen(), false, 'First launch keeps conversation settings closed');
+    assert.equal(await page.locator('#bot-messages #first-run-card').isVisible(), true, 'First launch exposes the AI key card');
+    assert.equal(await page.locator('#first-run-key').isVisible(), true);
+    assert.equal(await page.locator('#first-run-save').isEnabled(), true);
     assert.equal(await page.locator('#bot-start').isDisabled(), true);
+    await page.locator('#bot-settings-toggle').click();
+    assert.equal(await panelOpen(), true, 'Conversation settings open on request');
+    await focused('bot-settings-close');
     await capture('setup');
     await page.locator('#bot-settings-close').click();
     assert.equal(await panelOpen(), false);
@@ -171,6 +179,11 @@ const assert = require('node:assert/strict');
     const launchFixture={command:'claude [synthetic launch command]',attached:false,process:{status:'idle',owned:false,canResume:false}};
     await fixture({messages:conversation,native:launchFixture});
     await page.locator('#bot-settings-toggle').click();
+    // Channel start and the local session controls sit under "Channels and
+    // tasks (advanced)", which this profile (no channel at launch) starts closed.
+    assert.equal(await page.locator('#bot-advanced').evaluate(node => node.open), false);
+    await page.locator('#bot-advanced > summary').click();
+    assert.equal(await page.locator('#bot-advanced').evaluate(node => node.open), true);
     await page.locator('#bot-native-open').scrollIntoViewIfNeeded();
     assert.equal(await page.locator('#bot-native-open').textContent(),'打开 Claude');
     assert.equal(await page.locator('#bot-native-open').isEnabled(),true);
@@ -264,17 +277,16 @@ const assert = require('node:assert/strict');
 
     await fixture({messages: conversation});
     await size(1280, 820);
+    // Channels live in the Work workspace; its navigation is hidden while the
+    // Companion workspace is showing.
+    await page.locator('#ws-work').click();
     await page.locator('nav [data-view="connections"]').click();
     await page.locator('#connections-view').waitFor();
-    const planned = ['feishu', 'messenger', 'x', 'doubao', 'gemini'];
-    const implemented = ['claude', 'gpt', 'deepseek'];
-    for (const id of planned) {
-      const row = page.locator(`.connection-item[data-connection="${id}"]`);
-      assert.equal(await row.locator('button').count(), 0, `${id} is a plan, with no misleading action`);
-      assert.equal(await row.locator('.availability.planned').count(), 1);
-    }
+    // Every listed AI and channel is implemented now; no "planned" rows remain.
+    const implemented = ['claude', 'gpt', 'deepseek', 'gemini', 'doubao'];
+    assert.equal(await page.locator('.connection-item, .availability.planned').count(), 0, 'No planned-only connection rows are listed');
     assert.deepEqual(await page.locator('.partner-choice').evaluateAll(rows => rows.map(row => row.dataset.provider)), implemented);
-    for (const id of ['wechat','qq']) assert.equal(await page.locator(`[data-onboard-channel="${id}"]`).count(), 1);
+    for (const id of ['wechat','qq','feishu','x','messenger']) assert.equal(await page.locator(`[data-onboard-channel="${id}"]`).count(), 1);
     await page.locator('#onboarding-appearance summary').click();
 
     const modeBeforePortrait = await page.evaluate(async () => (await window.arcade.snapshot()).bot.mode);
@@ -309,7 +321,7 @@ const assert = require('node:assert/strict');
       clipboardRoundTrip: true, clipboardBounds: true, messageNodePreserved: true,
       readingPositionPreserved: true, latestMessageNavigation: true, compactNoHorizontalOverflow: true,
       localPortraitLoaded: true, portraitPersisted: true, unknownPortraitIgnored: true,
-      appearancePreservesExecutionMode: true, plannedConnectionsHaveNoActions: true,
+      appearancePreservesExecutionMode: true, noPlannedOnlyConnectionRows: true,
       nativeLifecycleControls: 'start/resume/stop IPC fixture; busy and unowned states guarded; disconnect remains separate',
       viewportChecks: [[1280, 820], [430, 720]], limitations: 'Renderer fixtures do not establish live delivery, native execution, or task success.'};
     fs.writeFileSync(`outputs/chat-redesign-${stage}.json`, JSON.stringify(receipt, null, 2));

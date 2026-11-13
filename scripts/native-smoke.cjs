@@ -16,7 +16,9 @@ async function until(predicate){const end=Date.now()+7000;while(!predicate()){if
   const app=await electron.launch({executablePath,args:process.env.ARCADE_EXECUTABLE?[profile]:[path.resolve(__dirname,'..'),profile],env});
   let broker,client,launch;
   try{
-    const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('nav [data-view="bot"]').click();await page.locator('#bot-mode').waitFor();assert.equal(await page.locator('.version').textContent(),'v0.3');
+    const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('nav [data-view="bot"]').click();
+    // Conversation settings start closed for an App-only profile; the owner opens them from the chat header.
+    await page.locator('#bot-settings-toggle').click();await page.locator('#bot-mode').waitFor();assert.equal(await page.locator('.version').textContent(),'v'+/^\d+\.\d+/.exec(require('../package.json').version)[0]);
     assert.equal(await page.locator('#bot-mode').inputValue(),'api');
     await page.locator('#bot-key').fill('fixture-invalid-api-key');await page.locator('#bot-save').click();
     await page.waitForFunction(async()=> (await window.arcade.snapshot()).bot.hasKey);
@@ -30,7 +32,8 @@ async function until(predicate){const end=Date.now()+7000;while(!predicate()){if
     await page.locator('#bot-native-options').filter({hasText:'Ctrl+C'}).waitFor();
     await page.evaluate(async()=>{const state=await window.arcade.snapshot();return window.arcade.botForget({profileId:state.accounts.selectedId});});assert.equal(fs.existsSync(path.join(root,'bot-vault.json')),false);
     const outbound=[];broker=await new NativeBroker({send:async text=>outbound.push(text)}).start();const capability=broker.token;
-    const appRoot=await app.evaluate(({app})=>app.getAppPath());
+    // A source run's application root is this repository, whichever entry file Electron was started with.
+    const appRoot=process.env.ARCADE_EXECUTABLE?await app.evaluate(({app})=>app.getAppPath()):path.resolve(__dirname,'..');
     launch=createNativeLaunch({root,workspace:root,node:process.execPath,cli:process.execPath,sourceDir:path.join(appRoot,'src','bot'),url:broker.url,token:capability});
     assert(!launch.command.includes(capability));
     const config=JSON.parse(fs.readFileSync(launch.file,'utf8')).mcpServers['agent-arcade-wechat'];
