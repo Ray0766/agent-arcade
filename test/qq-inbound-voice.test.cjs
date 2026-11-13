@@ -5,7 +5,10 @@ const test=require('node:test'),assert=require('node:assert/strict'),{once,Event
 const {WebSocketServer}=require('ws');
 const {captureOwnerVoice,decodeRecord,OwnerRecordReader,OwnerVoicePipeline:Pipeline}=require('../src/bot/qq-inbound-voice.cjs');
 const {QwenFileAsr}=require('../src/voice/qwen-file-asr.cjs');
+const path=require('node:path');
 const JOB='12345678-1234-1234-1234-123456789abc';
+// Never opened or started (spawnProcess is a fake); they only have to be absolute on the platform running the test.
+const FIXTURE_PYTHON=path.resolve(path.sep,'fixture','python.exe'),FIXTURE_MODEL=path.resolve(path.sep,'fixture','model');
 // Existing fixture injection remains private; production requires an explicit
 // shared lease implementation and a per-job transcriber factory.
 class OwnerVoicePipeline extends Pipeline{constructor({asr,...options}){super({createAsr:()=>asr,acquireLease:async()=>({assertCurrent(){},release(){}}),...options});}}
@@ -85,7 +88,7 @@ test('pipeline close waits for reader cancellation and final journal disposition
  const result=p.process(event());result.catch(()=>{});await until(()=>release);const closing=p.close().then(()=>{closed=true;});await new Promise(r=>setImmediate(r));assert.equal(closed,false);release();await until(()=>finalize);assert.equal(closed,false);finalize();await closing;await assert.rejects(result,{code:'cancelled'});assert(pcm.every(x=>x===0));
 });
 function fakeProcess({onInput,killExit=true}={}){const child=new EventEmitter();child.pid=123;child.stdin=new PassThrough();child.stdout=new PassThrough();child.stderr=new PassThrough();let input='';child.stdin.on('data',b=>input+=b);child.stdin.on('finish',()=>onInput?.(JSON.parse(input),child));child.kill=()=>{if(killExit)queueMicrotask(()=>child.emit('close',1));return true;};return child;}
-function fakeAsr(spawnProcess,extra={}){const asr=new QwenFileAsr({pythonPath:'C:\\fixture\\python.exe',modelPath:'C:\\fixture\\model',spawnProcess,exitTimeoutMs:30,timeoutMs:200,...extra});const transcribe=asr.transcribe.bind(asr),cancel=asr.cancel.bind(asr);asr.transcribe=(audio,options={})=>transcribe(audio,{jobId:JOB,...options});asr.cancel=(options={})=>cancel({jobId:JOB,...options});return asr;}
+function fakeAsr(spawnProcess,extra={}){const asr=new QwenFileAsr({pythonPath:FIXTURE_PYTHON,modelPath:FIXTURE_MODEL,spawnProcess,exitTimeoutMs:30,timeoutMs:200,...extra});const transcribe=asr.transcribe.bind(asr),cancel=asr.cancel.bind(asr);asr.transcribe=(audio,options={})=>transcribe(audio,{jobId:JOB,...options});asr.cancel=(options={})=>cancel({jobId:JOB,...options});return asr;}
 test('ASR result is withheld until actual process close; no source/path/PCM stdout retained',async()=>{
  let child,id;const asr=fakeAsr((_exe,args,options)=>{assert.deepEqual(options.stdio,['pipe','pipe','pipe']);assert.equal(options.windowsHide,true);assert.equal(options.env.HF_HUB_OFFLINE,'1');assert.equal(args[0],'-u');child=fakeProcess({onInput(row,c){id=row.id;c.stdout.write(JSON.stringify({id,event:'transcript',text:'你好'})+'\n');}});return child;});
  let settled=false;const p=asr.transcribe({pcm:Buffer.alloc(8000),sampleRate:16000}).then(x=>{settled=true;return x;});await until(()=>id);await new Promise(r=>setImmediate(r));assert.equal(settled,false);assert.equal(asr.busy,true);child.emit('close',0);assert.equal(await p,'你好');assert.equal(asr.busy,false);

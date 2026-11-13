@@ -473,6 +473,10 @@ test('foreign child PID reuse cannot hide descendants, stale snapshots or missin
 });
 
 test('a reused foreign worker may have only its exact later system console during manual metadata recovery',async t=>{
+  // The console is recognised by its path under SystemRoot. Off Windows that variable is unset and the product's
+  // 'C:\\Windows' fallback is not an absolute path there, so every variation would end in ownership_lost before
+  // reaching its own check. A synthetic absolute root keeps all six variations meaningful on every platform.
+  if(!process.env.SystemRoot){process.env.SystemRoot=path.resolve(path.sep,'Synthetic','Windows');t.after(()=>{delete process.env.SystemRoot;});}
   for(const variation of ['valid','old-console','unknown-path','grandchild','two-children','reparented']){
     const f=fixture(t);await f.manager.start(A);const child=f.state.rows.find(p=>p.name==='QQ.exe'),{next,file}=abandoned(f);
     const replacement={pid:child.pid,parentPid:1,name:'foreign.exe',executable:path.join(f.dir,'foreign.exe'),createdAt:'2026-11-06T00:00:00.0000000Z'};
