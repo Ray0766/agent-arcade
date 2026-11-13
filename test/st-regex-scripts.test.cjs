@@ -130,8 +130,10 @@ test('hostile or broken patterns are skipped and leave the text unchanged',()=>{
   assert.equal(slow.text,'a'.repeat(60)+'!');assert.deepEqual(slow.applied,[]);
   assert.equal(slow.warnings.filter(warning=>/ran too long/.test(warning)).length,1); // identical warnings are merged
   assert.ok(Date.now()-started<2000);
-  // The shared budget stops later scripts once it is spent.
-  const budget=run('a'.repeat(60)+'!',[S('/(a|aa)+$/','x'),S('!','?')],{timeBudgetMs:5});
+  // The shared budget stops later scripts once it is spent. The clock is the test's own (start, before the first
+  // script, before the second): with the real one the 5 ms pattern timeout and Date.now() disagreed by a millisecond
+  // on a fast machine, 1 ms looked left over and the second script ran (seen on ubuntu-latest).
+  const clock=[0,0,5],budget=run('a'.repeat(60)+'!',[S('/(a|aa)+$/','x'),S('!','?')],{timeBudgetMs:5,now:()=>clock.length>1?clock.shift():clock[0]});
   assert.equal(budget.text,'a'.repeat(60)+'!');assert.match(budget.warnings.join('\n'),/remaining scripts were not applied/);
   for(const pattern of ['/(/','/[a/','/a)/','/(?<n>a)(?<n>b)/'])assert.equal(run('(a)[a',S(pattern,'x')).text,'(a)[a',pattern);
   assert.match(run('a',{scriptName:5,findRegex:'a'}).warnings[0],/invalid regex script was skipped/);
