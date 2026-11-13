@@ -1,0 +1,122 @@
+{
+  "date": "2026-11-04",
+  "milestone": "GPT API and DeepSeek API",
+  "published": false,
+  "liveOpenAI": false,
+  "liveDeepSeek": false,
+  "liveMessaging": false,
+  "source": {
+    "gpt": true,
+    "deepseek": true,
+    "nativeCodexPreserved": true
+  },
+  "suite": {
+    "total": 310,
+    "passed": 309,
+    "failed": 0,
+    "skipped": 1,
+    "skip": "opt-in native process test"
+  },
+  "syntaxFiles": 82,
+  "runnerTests": {
+    "gpt": 16,
+    "deepseek": 18
+  },
+  "apiProviderFlowTests": 7,
+  "servicePersonaJournalTests": 43,
+  "actualComponents": [
+    "GPT runner",
+    "DeepSeek runner",
+    "BotService",
+    "Dispatcher",
+    "SQLite",
+    "temporary files with independent readback"
+  ],
+  "syntheticComponents": [
+    "model responses",
+    "chat transports",
+    "account credentials"
+  ],
+  "sourceUI": {
+    "stage": "source",
+    "ui": "passed",
+    "synthetic": true,
+    "liveQQ": false,
+    "liveDeepSeek": false,
+    "liveGPT": false,
+    "liveCodex": false,
+    "osVault": "fixture credentials encrypted",
+    "providerKeysIsolated": true,
+    "threeAPIKeysConfigured": true,
+    "unsavedKeyClearedAcrossNavigation": true,
+    "gptAndDeepSeekModelsPreserved": true,
+    "gptAndDeepSeekAvailableOnBothChannels": true,
+    "qqSettingsSaved": true,
+    "qqTokenGeneratedAndNotRotated": true,
+    "qqClipboardConfig": true,
+    "qqReadOnlyAccountCheck": true,
+    "qqUnknownStates": true,
+    "qqOfflineAndFriendMissing": true,
+    "qqAuthenticationFailure": true,
+    "qqCheckingDisablesControls": true,
+    "qqCheckCancelled": true,
+    "qqTokenAbsentFromSnapshotAndUI": true,
+    "avatarFollowsBackend": true,
+    "narrowWidth": 430,
+    "languages": [
+      "zh",
+      "en"
+    ]
+  },
+  "packagedUI": {
+    "stage": "packaged",
+    "ui": "passed",
+    "synthetic": true,
+    "liveQQ": false,
+    "liveDeepSeek": false,
+    "liveGPT": false,
+    "liveCodex": false,
+    "osVault": "fixture credentials encrypted",
+    "providerKeysIsolated": true,
+    "threeAPIKeysConfigured": true,
+    "unsavedKeyClearedAcrossNavigation": true,
+    "gptAndDeepSeekModelsPreserved": true,
+    "gptAndDeepSeekAvailableOnBothChannels": true,
+    "qqSettingsSaved": true,
+    "qqTokenGeneratedAndNotRotated": true,
+    "qqClipboardConfig": true,
+    "qqReadOnlyAccountCheck": true,
+    "qqUnknownStates": true,
+    "qqOfflineAndFriendMissing": true,
+    "qqAuthenticationFailure": true,
+    "qqCheckingDisablesControls": true,
+    "qqCheckCancelled": true,
+    "qqTokenAbsentFromSnapshotAndUI": true,
+    "avatarFollowsBackend": true,
+    "narrowWidth": 430,
+    "languages": [
+      "zh",
+      "en"
+    ]
+  },
+  "sourceChatUI": "passed",
+  "sourcePersonaUI": "passed",
+  "package": {
+    "sourceFilesMatched": 17,
+    "newDependencies": 0
+  },
+  "screenshot": {
+    "file": "gpt-api-setup.png",
+    "synthetic": true,
+    "openedForReview": true,
+    "sha256": "1d69f8f4f9809d42d3d7cc309b54976debf4b1abf2c59daae5e16e4df9b0b480"
+  },
+  "limits": [
+    "No paid OpenAI or DeepSeek request",
+    "No live social-channel-to-model acceptance",
+    "No shell in API runners",
+    "No dollar-cost cap",
+    "Cancellation confirms local processing only",
+    "No measured quality/latency/cost advantage"
+  ]
+}

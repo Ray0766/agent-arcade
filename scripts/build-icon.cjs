@@ -1,6 +1,12 @@
 'use strict';
-const fs=require('node:fs'),path=require('node:path');
-const { createIcon }=require('../src/core/icon.cjs');
-const dir=path.join(__dirname,'..','src','assets');fs.mkdirSync(dir,{recursive:true});
-const png=createIcon(16);fs.writeFileSync(path.join(dir,'app.png'),png);
-const ico=Buffer.alloc(22);ico.writeUInt16LE(1,2);ico.writeUInt16LE(1,4);ico.writeUInt16LE(1,10);ico.writeUInt16LE(32,12);ico.writeUInt32LE(png.length,14);ico.writeUInt32LE(22,18);fs.writeFileSync(path.join(dir,'app.ico'),Buffer.concat([ico,png]));
+const path=require('node:path');
+const {spawnSync}=require('node:child_process');
+const {readBrandSource}=require('../src/core/icon.cjs');
+// Validate before starting Electron, and never silently package the fallback mark.
+readBrandSource();
+const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+const child=spawnSync(require('electron'),[path.join(__dirname,'brand-icon-worker.cjs')],{
+  env,windowsHide:true,stdio:'inherit',timeout:30000
+});
+if(child.error)throw child.error;
+if(child.status!==0)throw new Error('brand_icon_build_failed');

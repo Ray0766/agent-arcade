@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-05",
+  "scope": "Opt-in QQ companion for one bound owner; owner-only text space posts",
+  "implementation": {
+    "runtime": "Electron 45.2.1 with existing model and QQ adapters",
+    "conversationMemory": "120 local messages per authenticated account/contact/character; 1000-character editable private notes",
+    "modelTools": "disabled in companion mode; existing coding mode retained",
+    "supportedCompanionBackends": ["claude", "api", "gpt", "deepseek"],
+    "localCodexCompanion": "not enabled: enforceable no-tool configuration not verified",
+    "defaultPolicy": {"localHours": "09:00-22:00", "decisionIntervalMinutes": 180, "quietAfterChatMinutes": 15, "maxProactiveMessagesPerDay": 2, "maxPostsPerDay": 1},
+    "spaceAudienceRequested": "ugc_right=16 with only the bound owner",
+    "unknownSendAutomaticRetry": false
+  },
+  "verification": {
+    "regression": {"tests": 392, "passed": 391, "failed": 0, "skipped": 1},
+    "finalTargetedMemoryAndControllerTests": {"passed": 28, "failed": 0},
+    "packagedUi": {"passed": true, "synthetic": true, "languages": ["zh", "en"], "narrowWidth": 430, "reducedMotion": true},
+    "packagedSourceByteComparison": {"matched": true, "files": 16},
+    "realOriginalClaude": {
+      "transport": "synthetic in-process, not QQ",
+      "calls": 3,
+      "outcomes": ["reply_ended", "reply_ended", "reply_ended"],
+      "freshCallsWithoutResume": true,
+      "restartRecall": "ARCADE_SOCIAL_MEMORY_20261105",
+      "requestedFileAbsent": true,
+      "toolApprovals": 0
+    },
+    "normalApplicationUi": {
+      "newPreviewOpened": true,
+      "retainedJuProfileUsed": true,
+      "savedConnectionPresenceRecognized": true,
+      "actualQQBridgeCheck": "normal application identified the expected Ju account as online and verified the bound owner in its friend list",
+      "napcatInstance": "owner completed sign-in; actual Desktop UI shows all three instances running and QQ signed in",
+      "companionSettingsSavedAndReadBack": true,
+      "activeCompanionConnection": true,
+      "connectionObservation": "normal social-preview UI shows QQ connected after Start; no repeat QR or Channels confirmation",
+      "restartWithoutQrVerified": false,
+      "realProactiveMessagesSent": 0,
+      "realSpacePostsPublished": 0,
+      "spaceVisibilityVerified": false
+    }
+  },
+  "blockedProbe": {
+    "standaloneProbe": "stopped at original-profile vault decryption before connecting or sending",
+    "proposedDirectBridgeTokenRead": "rejected by automatic approval review; not executed; temporary script removed",
+    "saferContinuation": "opened normal application with its retained profile; after owner sign-in, normal UI verified the expected account/friend and connected successfully without reading bridge tokens"
+  },
+  "limits": [
+    "QQ companion connection is active; real companion reply, proactive message and space post acceptance is still pending.",
+    "Installed upstream supports quick login, but these three accounts have not been restarted to verify QR-free recovery.",
+    "A bridge acceptance receipt or own-post readback does not establish recipient visibility.",
+    "No personal WeChat account/Moments, groups, other contacts, comments, likes, friend requests or full account management.",
+    "No unattended service after app exit or automatic restart/replay.",
+    "Long-term naturalness and emotional value have not been measured.",
+    "No new GitHub push or release in this milestone."
+  ]
+}

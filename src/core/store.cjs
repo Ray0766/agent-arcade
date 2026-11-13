@@ -7,6 +7,10 @@ const timestamp = v => Number.isSafeInteger(v) && v > 0;
 const pendingLimit = 100;
 const pendingOverflow = 'unknown:overflow';
 const inputTools = new Set(['AskUserQuestion', 'ExitPlanMode']);
+// An elicitation dialog has no tool ID. This marker keeps its wait open until
+// the dialog itself resolves, whatever unrelated tools finish meanwhile.
+const elicitationPending = 'notice:elicitation';
+const turnEvents = new Set(['SessionStart', 'UserPromptSubmit', 'SubagentStart', 'Stop', 'SubagentStop', 'StopFailure']);
 function boundedPending(values) {
   const ids = Array.isArray(values) ? [...new Set(values.filter(v => boundedText(v)))] : [];
   if (ids.length <= pendingLimit && !ids.includes(pendingOverflow)) return ids;
@@ -47,7 +51,10 @@ class Store {
     this.lastEventAt = Math.max(this.lastEventAt, e.at);
     const id = JSON.stringify([e.session, e.agent || '']);
     const old = this.tasks.get(id);
+    if (old && e.at < old.updatedAt && old.state !== 'ended') return this.late(old, e);
     if (old && e.at < old.updatedAt) return null;
+    // Hooks racing a close must not reopen it; only a real resume does.
+    if (old && old.state === 'ended' && !['SessionStart', 'UserPromptSubmit'].includes(e.event)) return null;
     // idle_prompt is a reminder 60s AFTER a response, not a request for approval.
     // Turning it into waiting would re-alert for a turn that already ended.
     if (e.event === 'Notification' && !['permission_prompt', 'elicitation_dialog', 'elicitation_url_dialog', 'agent_needs_input', 'quota_auto_resume_stale', 'quota_auto_resume_fired', 'elicitation_complete', 'elicitation_response'].includes(e.notification)) return null;
@@ -96,9 +103,14 @@ class Store {
         if (e.notification === 'quota_auto_resume_fired') afterTool('running', 'working');
         else if (['elicitation_complete', 'elicitation_response'].includes(e.notification)) {
           // These notifications resolve only an elicitation, not other approvals.
-          if (task.reason !== 'question') return null;
+          if (task.reason !== 'question' && !task.waitFor.includes(elicitationPending)) return null;
+          task.waitFor = task.waitFor.filter(id => id !== elicitationPending);
+          task.questionFor = task.questionFor.filter(id => id !== elicitationPending);
           afterTool('running', 'working');
-        } else set('waiting', e.notification === 'permission_prompt' ? (task.reason === 'question' ? 'question' : waitingReason()) : ['agent_needs_input', 'quota_auto_resume_stale'].includes(e.notification) ? 'input' : 'question');
+        } else {
+          if (['elicitation_dialog', 'elicitation_url_dialog'].includes(e.notification)) for (const list of [task.waitFor, task.questionFor]) if (!list.includes(elicitationPending)) list.push(elicitationPending);
+          set('waiting', e.notification === 'permission_prompt' ? (task.reason === 'question' ? 'question' : waitingReason()) : ['agent_needs_input', 'quota_auto_resume_stale'].includes(e.notification) ? 'input' : 'question');
+        }
         break;
       case 'PostToolUse':
         task.tools = task.tools.filter(x => x !== e.toolId);
@@ -141,6 +153,35 @@ class Store {
       this.tasks.delete(removable.id);
     }
     return { task, previous: old?.state, previousReason: old?.reason, changed: old?.state !== task.state || old?.reason !== task.reason };
+  }
+  // A hook that lost the race to disk still reports a fact about its own tool
+  // call. Record that fact; never move the session's state back in time.
+  late(old, e) {
+    if (!e.toolId || !['running', 'waiting'].includes(old.state) || !['PostToolUse', 'PostToolUseFailure', 'PermissionRequest'].includes(e.event)) return null;
+    const history = Array.isArray(old.history) ? old.history : [];
+    const turnStart = history.findLast(h => turnEvents.has(h.event))?.at ?? history[0]?.at ?? Infinity;
+    const finished = old.finishedTools || [];
+    if (e.at < turnStart || finished.includes(e.toolId)) return null;
+    const task = structuredClone(old);
+    task.waitFor ||= []; task.questionFor ||= []; task.tools ||= []; task.calls ||= [];
+    if (e.event === 'PermissionRequest') {
+      if (task.waitFor.includes(e.toolId)) return null;
+      task.waitFor.push(e.toolId);
+      if (inputTools.has(e.tool)) task.questionFor.push(e.toolId);
+    } else {
+      for (const key of ['tools', 'waitFor', 'questionFor']) task[key] = task[key].filter(id => id !== e.toolId);
+      task.calls = task.calls.filter(c => c.id !== e.toolId);
+      task.finishedTools = [...finished, e.toolId].slice(-100);
+    }
+    task.waitFor = boundedPending(task.waitFor);
+    task.questionFor = task.questionFor.filter(id => task.waitFor.includes(id)).slice(-pendingLimit);
+    if (task.waitFor.some(id => id === 'unknown' || id.startsWith('unknown:'))) { task.state = 'unknown'; task.reason = 'permission_unknown'; }
+    else if (task.waitFor.length) { task.state = 'waiting'; task.reason = task.questionFor.length ? 'question' : 'permission'; }
+    else if (old.state === 'waiting' && (old.waitFor || []).includes(e.toolId)) { task.state = 'running'; task.reason = 'working'; }
+    const changed = old.state !== task.state || old.reason !== task.reason;
+    if (changed) task.acknowledged = false;
+    this.tasks.set(task.id, task);
+    return changed ? { task, previous: old.state, previousReason: old.reason, changed } : null;
   }
   snapshot(now = Date.now(), staleMs = 5 * 60 * 1000) {
     return [...this.tasks.values()].map(t => ({ ...t, stale: active.has(t.state) && now - t.updatedAt > staleMs,

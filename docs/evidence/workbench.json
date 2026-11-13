@@ -1,0 +1,16 @@
+{
+  "stage": "packaged",
+  "scope": "Actual local file + MCP protocol + sandboxed UI; no WeChat or model execution",
+  "checks": {
+    "fileHashMatchesBytes": true,
+    "literalHtmlAndIframeIsolation": true,
+    "interactiveJsonToggle": true,
+    "unknownIdsRejected": true,
+    "oversizedFileRejected": true,
+    "englishChineseAndCompact": true,
+    "noNetwork": true,
+    "actualElectronSQLite": true
+  },
+  "node": "24.22.1",
+  "sqlite": "3.53.4"
+}

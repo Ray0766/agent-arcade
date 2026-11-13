@@ -1,0 +1,9 @@
+'use strict';
+// Synthetic endpoint only: TLS chain/hostname verification is real. Explicit
+// connector DI maps the selected documentation address to the local test server.
+const https=require('node:https'),tls=require('node:tls');
+const material=require('./qq-remote-tls-fixture.cjs');
+const {QQRemoteFileTransport}=require('../../src/bot/qq-remote-file-transport.cjs');
+const CREDENTIAL='synthetic-file-transport-credential',REMOTE='198.51.100.20';
+async function fixture(t,{handler,streamHandler}={}){const requests=[],sockets=new Set(),state={lookups:0,connects:0};const server=https.createServer({key:material.key,cert:material.cert},(req,res)=>{if(streamHandler)return streamHandler(req,res,requests);const chunks=[];req.on('data',x=>chunks.push(x));req.on('error',()=>{});req.on('end',()=>{const row={method:req.method,path:req.url,headers:req.headers,body:Buffer.concat(chunks)};requests.push(row);if(handler)handler(req,res,row);else{res.setHeader('content-type','application/json');res.end(JSON.stringify({code:0,data:true,message:'synthetic raw text is not projected'}));}});});server.on('connection',s=>{sockets.add(s);s.on('close',()=>sockets.delete(s));});server.on('tlsClientError',()=>{});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const port=server.address().port,options={origin:`https://remote.arcade.invalid:${port}`,caPem:material.caPem,lookup:async()=>{state.lookups++;return [{address:REMOTE,family:4}];},connect:config=>{state.connects++;const socket=tls.connect({...config,host:'127.0.0.1',family:4});Object.defineProperty(socket,'remoteAddress',{configurable:true,get:()=>config.host});return socket;}},clients=[];t.after(async()=>{for(const c of clients)c.close();for(const s of sockets)s.destroy();await new Promise(resolve=>server.close(resolve));});return {requests,state,options,client(extra={}){const c=new QQRemoteFileTransport({...options,...extra});clients.push(c);return c;}};}
+module.exports={fixture,CREDENTIAL};

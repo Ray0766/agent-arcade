@@ -1,0 +1,189 @@
+{
+  "date": "2026-11-04",
+  "scope": "One Windows owner account, Ju personal QQ bridge, installed original Claude Code program mode",
+  "versions": {
+    "claudeCode": "2.1.317",
+    "controlProtocolReferenceSDK": "0.3.317",
+    "electron": "45.2.1",
+    "napCat": "4.18.42",
+    "napCatDesktop": "3.5.19"
+  },
+  "authProbe": {
+    "checkedAt": "2026-11-04T11:59:42.500Z",
+    "originalCLI": "2.1.317",
+    "apiCredentialEnvRemoved": true,
+    "settingSourcesEmpty": true,
+    "channelsLoaded": false,
+    "init": true,
+    "apiKeySource": "none",
+    "exitCode": 0,
+    "subtype": "success",
+    "isError": false,
+    "toolUses": 0,
+    "text": "[redacted private test text]",
+    "passed": true,
+    "interpretation": "The original CLI completed a real request with API/provider/OAuth-token environment overrides removed, default credential location and no setting sources. Its own auth status reported claude.ai login. No credential file was read or copied by Agent Arcade; this is local compatibility evidence, not a general subscription-product authorization claim."
+  },
+  "directRunner": {
+    "passed": true,
+    "chat": true,
+    "sameSession": true,
+    "write": {
+      "bytes": 24,
+      "sha256": "6c5d8e0f88f6e83a9e93fc20de72dd15625a54a2241bcf38d7b423d56f5f3479",
+      "exact": true
+    },
+    "denialAndCancel": [
+      {
+        "action": "deny",
+        "calls": 1,
+        "fileAbsent": true,
+        "outcome": "reply_ended"
+      },
+      {
+        "action": "cancel",
+        "calls": 1,
+        "fileAbsent": true,
+        "outcome": "cancelled"
+      }
+    ],
+    "transport": "direct runner; not QQ"
+  },
+  "qqAcceptance": {
+    "actualTransport": "Owner QQ desktop UI -> real personal QQ account -> NapCat OneBot -> packaged BotService/Dispatcher -> original Claude CLI -> QQ owner conversation",
+    "modelAndTransportSimulated": false,
+    "startedWithMode": "claude",
+    "channelConfirmationPrompt": false,
+    "ordinaryChat": {
+      "replyObserved": true,
+      "permissionPromptObserved": false,
+      "reply": "[redacted private test text]"
+    },
+    "sameConversation": {
+      "askedWithoutRepeatingToken": true,
+      "reply": "[redacted private test text]",
+      "passed": true
+    },
+    "write": {
+      "oneWriteApprovalObserved": true,
+      "targetAbsentBeforeApproval": true,
+      "approval": "[redacted private test text]",
+      "reply": "[redacted private test text]",
+      "independentReadback": {
+        "checkedAt": "2026-11-04T12:17:55.470Z",
+        "exists": true,
+        "path": "work/qq-trio/claude/project/qq-program-proof-20261104.txt",
+        "bytes": 27,
+        "exact": true,
+        "sha256": "bbf985ded903ab4b6d4d64ad29712c11a064c9a838cf24d9b1156c559c43735c"
+      }
+    },
+    "stop": {
+      "trigger": "Owner sent 停止 while a second Write was waiting for approval.",
+      "reply": "[redacted private test text]",
+      "targetAbsentAfterStop": true,
+      "state": "cancelled"
+    },
+    "reconnect": {
+      "method": "Normal Disconnect and Start receiving tasks in the app, using saved QQ settings.",
+      "noTerminalOrChannelsPrompt": true,
+      "reply": "[redacted private test text]",
+      "passed": true,
+      "oldTaskReplayObserved": false
+    },
+    "metadataOnlyJournal": [
+      {
+        "mode": "claude",
+        "state": "cancelled",
+        "count": 1
+      },
+      {
+        "mode": "claude",
+        "state": "command_handled",
+        "count": 2
+      },
+      {
+        "mode": "claude",
+        "state": "reply_ended",
+        "count": 4
+      }
+    ],
+    "completedAt": "2026-11-04T12:22:20.175Z"
+  },
+  "tests": {
+    "total": 336,
+    "passed": 335,
+    "failed": 0,
+    "skipped": 1,
+    "skip": "Opt-in Windows harmless process-tree launch/stop test",
+    "syntaxFiles": 84,
+    "sourceProviderUI": "passed",
+    "sourceBotUI": "passed",
+    "desktopUI": "passed",
+    "packagedProviderUI": "passed",
+    "finalAsarMatchesRuntimeSource": true
+  },
+  "deployment": {
+    "path": "dist/claude-program-preview/win-unpacked/Agent Arcade.exe",
+    "originalJuHomeAndProfileRetained": true,
+    "originalVaultRetained": true,
+    "juMode": "claude",
+    "juQQConnectedAtEnd": true,
+    "otherTwoAccountsAndAppInstancesPreserved": true,
+    "oldAppExitedThroughMenu": true,
+    "ownedChannelsProcessStopConfirmed": true
+  },
+  "limitations": [
+    "Acceptance is one installed CLI version/account/Windows machine, not a cross-version or platform guarantee.",
+    "Tool approvals remain; removal concerns only custom Channels startup confirmation.",
+    "The stdio control protocol is matched to the installed SDK types/implementation and guarded by a fail-closed initialization handshake.",
+    "Explicit same-UUID continuation is within the active connection. Reconnect does not replay old input or automatically restore a model conversation.",
+    "QQ stop was tested while waiting for permission; long-running shell cancellation and independent background processes were not accepted by this run.",
+    "Actual QQ denial was not tested separately; denial passed through the real direct runner and synthetic QQ flows.",
+    "No release, push, or broad Tencent/account reliability claim."
+  ],
+  "publicationPrivacy": {
+    "redacted": true,
+    "redactedAt": "2026-11-06",
+    "originalEvidenceRetainedLocally": true,
+    "privateBackup": "work/publication-private-evidence-20261106/",
+    "note": "Private test messages, journal content, identifiers and local identity paths are replaced by explicit placeholders. Existing outcomes, counts, byte lengths, hashes and event order are unchanged. Existing content hashes describe the retained private originals, not these placeholders. Original evidence bytes are preserved outside Git.",
+    "fields": [
+      {
+        "field": "authProbe.text",
+        "type": "private test text",
+        "originalUtf8Bytes": 29
+      },
+      {
+        "field": "qqAcceptance.ordinaryChat.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 511
+      },
+      {
+        "field": "qqAcceptance.sameConversation.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 12
+      },
+      {
+        "field": "qqAcceptance.write.approval",
+        "type": "private test text",
+        "originalUtf8Bytes": 167
+      },
+      {
+        "field": "qqAcceptance.write.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 279
+      },
+      {
+        "field": "qqAcceptance.stop.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 101
+      },
+      {
+        "field": "qqAcceptance.reconnect.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 18
+      }
+    ]
+  }
+}

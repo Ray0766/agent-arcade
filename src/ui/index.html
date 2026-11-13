@@ -3,42 +3,195 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-dxbTiEp7QSpRRynd3l4RMHVTyupV6S6NEgzzIooqEwI='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Agent Arcade</title>
+  <script src="appearance.js"></script><script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="companions.css">
+  <link rel="stylesheet" href="qq-login.css">
+  <link rel="stylesheet" href="qq-dialog.css">
+  <link rel="stylesheet" href="qq-directory-members.css">
+  <link rel="stylesheet" href="qq-group-profile.css">
+  <link rel="stylesheet" href="qq-group-admin.css">
+  <link rel="stylesheet" href="qq-contact-admin.css">
+  <link rel="stylesheet" href="qq-plugin-admin.css">
+  <link rel="stylesheet" href="qq-ssqq-client.css">
+  <link rel="stylesheet" href="qq-plugin-config.css">
+  <link rel="stylesheet" href="qq-qce.css">
+  <link rel="stylesheet" href="qq-qce-export.css">
+  <link rel="stylesheet" href="qq-qce-schedule.css">
+  <link rel="stylesheet" href="qq-qce-security.css">
+  <link rel="stylesheet" href="qq-qce-native-plans.css">
+  <link rel="stylesheet" href="qq-plugin-package.css">
+  <link rel="stylesheet" href="qq-remote.css">
+  <link rel="stylesheet" href="qq-supervisor.css">
+  <link rel="stylesheet" href="qq-transfer.css">
+  <link rel="stylesheet" href="qq-transfer-local.css">
+  <link rel="stylesheet" href="qq-remote-files.css">
+  <link rel="stylesheet" href="qq-component-repair.css">
+  <link rel="stylesheet" href="voice.css">
+  <link rel="stylesheet" href="qq-media.css">
+  <link rel="stylesheet" href="qq-voice.css">
+  <link rel="stylesheet" href="qq-first-setup.css">
+  <link rel="stylesheet" href="qq-friend-requests.css">
+  <link rel="stylesheet" href="qq-self-profile.css">
+  <link rel="stylesheet" href="qq-owner-history.css">
+  <link rel="stylesheet" href="room.css">
+  <link rel="stylesheet" href="qq-start-connect.css">
   <script src="preview-themes.js" defer></script>
   <script src="preview.js" defer></script>
+  <script src="qq-start-connect.js" defer></script>
   <script src="app.js" defer></script>
   <script src="bot.js" defer></script>
+  <script src="qq-media.js" defer></script>
+  <script src="qq-voice.js" defer></script>
+  <script src="connections.js" defer></script>
+  <script src="social.js" defer></script>
+  <script src="accounts.js" defer></script>
+  <script src="qq-self-profile.js" defer></script>
+  <script src="qq-owner-history.js" defer></script>
+  <script src="qq-plugin-config.js" defer></script>
+  <script src="qq-qce.js" defer></script>
+  <script src="qq-qce-export.js" defer></script>
+  <script src="qq-qce-schedule.js" defer></script>
+  <script src="qq-qce-security.js" defer></script>
+  <script src="qq-qce-native-plans.js" defer></script>
+  <script src="qq-plugin-admin.js" defer></script>
+  <script src="qq-ssqq-client.js" defer></script>
+  <script src="qq-plugin-package.js" defer></script>
+  <script src="qq-remote-files.js" defer></script>
+  <script src="qq-transfer.js" defer></script>
+  <script src="qq-transfer-local.js" defer></script>
+  <script src="qq-supervisor-orphans.js" defer></script>
+  <script src="qq-supervisor-native-passkeys.js" defer></script>
+  <script src="qq-supervisor-profile-backups.js" defer></script>
+  <script src="qq-supervisor-component-repair.js" defer></script>
+  <script src="qq-supervisor.js" defer></script>
+  <script src="qq-remote.js" defer></script>
+  <script src="qq-runtime.js" defer></script>
+  <script src="qq-group-profile.js" defer></script>
+  <script src="qq-group-admin.js" defer></script>
+  <script src="qq-contact-admin.js" defer></script>
+  <script src="qq-directory.js" defer></script>
+  <script src="qq-friend-requests.js" defer></script>
+  <script src="qq-node-repair.js" defer></script>
+  <script src="qq-components.js" defer></script>
+  <script src="qq-first-setup.js" defer></script>
+  <script src="relationship.js" defer></script>
+  <script src="voice.js" defer></script>
+  <script src="voice-host.js" defer></script>
+  <script src="desktop-chat.js" defer></script>
+  <link rel="stylesheet" href="desktop-chat.css">
+  <script src="work.js" defer></script>
+  <script src="sources.js" defer></script>
+  <script src="characters.js" defer></script>
+  <script src="st-settings.js" defer></script>
+  <script src="kit.js" defer></script>
+  <script src="groups.js" defer></script><script src="notes.js" defer></script><script src="tasks.js" defer></script><script src="first-run.js" defer></script><script src="shell.js" defer></script><script src="layout-immersive.js" defer></script><script src="layout-messenger.js" defer></script><script src="layout-minimal.js" defer></script>
+  <link rel="stylesheet" href="appearance.css">
+  <link rel="stylesheet" href="unified-room.css"><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="knowledge.css"><link rel="stylesheet" href="shell.css"><link rel="stylesheet" href="first-run.css"><link rel="stylesheet" href="layout-immersive.css"><link rel="stylesheet" href="layout-messenger.css"><link rel="stylesheet" href="layout-minimal.css">
 </head>
 <body>
   <aside class="sidebar">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">a·a</span><span>Agent Arcade</span></div>
-    <nav aria-label="Workspace"><button class="nav" data-view="bot"><span aria-hidden="true">↗</span><span data-bot="nav">WeChat</span></button><button class="nav active" data-view="scene"><span aria-hidden="true">▦</span><span data-i18n="workshop">Sessions</span></button><button class="nav" data-view="activity"><span aria-hidden="true">≋</span><span data-i18n="activity">Activity</span></button><button class="nav" data-view="settings"><span aria-hidden="true">⚙</span><span data-i18n="settings">Settings</span></button></nav>
-    <div class="connection"><span class="dot" aria-hidden="true"></span><div><span data-i18n="observerLabel">Observer</span><small id="connection-label">Not connected</small></div><span class="version">v0.3</span></div>
+    <div class="brand" title="Agent Arcade"><span class="brand-mark brand-mark-image" aria-hidden="true"><img src="../assets/brand/ribbon-simple-v1.png" alt="" width="48" height="48"></span><span class="sr-only">Agent Arcade</span></div>
+    <nav aria-label="Workspace"><button class="nav" data-view="bot"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 2v-7.3A8 8 0 1 1 20 11.5Z"/><path d="M7 9h8M7 13h5"/></svg><span data-bot="nav">WeChat</span></button><button class="nav active" data-view="scene"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M9 10v10"/></svg><span data-i18n="workshop">Sessions</span></button><button class="nav" data-view="activity"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span data-i18n="activity">Activity</span></button><button class="nav" data-view="notices"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span data-i18n="notices">Notices</span></button><button class="nav" data-view="notes"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h11a2 2 0 0 1 2 2v14H8a2 2 0 0 1-2-2V4Z"/><path d="M6 18a2 2 0 0 1 2-2h11M10 8h5M10 12h5"/></svg><span data-i18n="notes">Notes</span></button><button class="nav" data-view="tasks"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M15 4v16"/></svg><span data-i18n="taskBoard">Tasks</span></button><button class="nav" data-view="settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="3" fill="currentColor" stroke="none"/></svg><span data-i18n="settings">Settings</span></button></nav>
+    <div class="connection"><span class="dot" aria-hidden="true"></span><div class="connection-description"><span data-i18n="observerLabel">Observer</span><small id="connection-label">Not connected</small></div><span class="version">—</span></div>
   </aside>
   <main>
-    <header><div class="breadcrumb">Agent Arcade <span aria-hidden="true">/</span> <span data-i18n="workshop">Sessions</span></div><div class="header-actions"><select id="view-picker" class="compact-nav" aria-label="View"><option value="bot" data-bot="nav">WeChat</option><option value="scene" data-i18n="workshop">Sessions</option><option value="activity" data-i18n="activity">Activity</option><option value="settings" data-i18n="settings">Settings</option></select><button id="language" class="plain" aria-label="Switch language">中文</button><button id="compact" class="plain" data-i18n="compact">Compact</button><button id="quiet" class="quiet" aria-pressed="false" data-i18n="quiet">Quiet mode</button></div></header>
+    <header><div class="breadcrumb">Agent Arcade<span class="sr-only" aria-hidden="true"> / </span><span class="sr-only" data-i18n="workshop">Sessions</span></div><div class="header-actions"><select id="view-picker" class="compact-nav" aria-label="View"><option value="bot" data-bot="nav">WeChat</option><option value="scene" data-i18n="workshop">Sessions</option><option value="activity" data-i18n="activity">Activity</option><option value="notices" data-i18n="notices">Notices</option><option value="notes" data-i18n="notes">Notes</option><option value="tasks" data-i18n="taskBoard">Tasks</option><option value="settings" data-i18n="settings">Settings</option></select><button id="language" class="plain" aria-label="Switch language">中文</button><button id="compact" class="plain" data-i18n="compact">Compact</button><button id="quiet" class="quiet" aria-pressed="false" data-i18n="quiet">Quiet mode</button></div></header>
     <section id="bot-view" class="view" hidden>
-      <div class="page-heading"><h1 data-bot="title">WeChat</h1><div class="bot-heading-actions"><span id="bot-status" class="state-pill" role="status"></span><button id="bot-stop" class="secondary" data-bot="stop" hidden>Disconnect & cancel</button></div></div>
-      <p class="bot-preview" data-bot="preview">Experimental connection · live WeChat acceptance pending.</p>
+      <div class="page-heading chat-heading"><div class="chat-identity"><div id="bot-mascot" aria-hidden="true"></div><div><h1 data-bot="title">WeChat</h1><p data-bot="inboxNote">Messages and replies from WeChat appear here.</p></div></div><div class="bot-heading-actions"><span id="bot-status" class="state-pill" role="status"></span><button id="bot-stop" class="plain" data-bot="stop" hidden>Disconnect & cancel</button><button id="bot-settings-toggle" class="secondary inspector-toggle" aria-controls="bot-setup-panel" aria-expanded="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="3" fill="currentColor" stroke="none"/></svg><span data-bot="setup">Connection settings</span></button></div></div>
       <div id="bot-problem" class="problem" role="alert" hidden></div>
       <div class="bot-layout">
+        <div id="bot-inbox" class="bot-inbox" hidden>
+          <h2 class="sr-only" data-bot="inbox">Conversation</h2>
+          <div id="bot-thread-scroll" class="bot-thread-scroll" tabindex="0" aria-label="Conversation">
+          <p id="bot-task-state" class="bot-fine" role="status"></p>
+          <div id="bot-messages"><p class="bot-empty" data-bot="empty">Send a message in your WeChat ClawBot conversation.</p></div>
+          </div>
+          <button id="bot-latest" class="latest-message" hidden>New messages ↓</button>
+          <p class="bot-input-note" data-bot="messageEntry">Send messages in WeChat → ClawBot. This window displays the conversation.</p>
+          <p class="bot-preview" data-bot="preview">Experimental connection · live WeChat acceptance pending.</p>
+        </div>
         <details id="bot-setup-panel" class="bot-setup" open>
           <summary><span data-bot="setup">Connection settings</span><span id="bot-setup-summary"></span></summary>
-          <div class="bot-setup-content">
-            <fieldset class="setup-step"><legend data-bot="pairStep">Pair WeChat</legend>
+          <div class="bot-setup-content"><button id="bot-settings-close" class="icon-button inspector-close" aria-label="Close connection settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+            <fieldset class="setup-step"><legend data-bot="channel">Chat channel</legend>
+              <label for="bot-channel" data-bot="channel">Chat channel</label><select id="bot-channel"><option value="wechat">WeChat · ClawBot</option><option value="qq">QQ · OneBot</option><option value="feishu" data-bot="feishuChannel">Feishu app bot</option><option value="x" data-bot="xChannel">X standard DMs · experimental</option><option value="messenger" data-bot="messengerChannel">Messenger Page · experimental</option></select>
+              <div id="bot-wechat-options">
               <p data-bot="access">On your phone, enable WeChat → Me → Settings → Plugins → ClawBot, then scan below. Send messages in the ClawBot conversation. If the entry is missing, client or account availability is unverified.</p>
               <button id="bot-pair" class="secondary" data-bot="pair">Pair WeChat</button>
               <div id="bot-qr-wrap" hidden><img id="bot-qr" width="240" height="240" alt="WeChat pairing QR code"><p data-bot="scan">Scan in mobile WeChat and confirm. Codes expire after three minutes.</p></div>
+              </div>
+              <div id="bot-qq-options" hidden>
+                <p data-bot="qqSetup">Use a separate QQ account signed into your local OneBot bridge. This unofficial integration currently accepts only the configured owner's private text messages.</p>
+                <div class="qq-setup-part">
+                  <h3 data-bot="qqLoginTitle">Sign in to the AI's QQ</h3>
+                  <p data-bot="qqLoginNote">Install NapCat separately and sign in with the AI's QQ account. Add it from your own QQ, then accept the friend request in that account.</p>
+                  <div class="qq-actions"><button id="bot-qq-download" class="secondary" data-bot="qqDownload">Get NapCat</button><button id="bot-qq-guide" class="plain" data-bot="qqGuide">Connection guide</button></div>
+                </div>
+                <div class="qq-setup-part">
+                  <h3 data-bot="qqBridgeTitle">Connect on this computer</h3>
+                  <p data-bot="qqBridgeNote">In NapCat, add a forward WebSocket server: Universal (API + events), Array format, host 127.0.0.1, port 3001, path /. Turn off self-message reporting and keep the 30-second heartbeat.</p>
+                  <div class="qq-actions"><button id="bot-qq-prepare" class="secondary" data-bot="qqPrepare">Generate connection token</button><button id="bot-qq-copy-config" class="secondary" data-bot="qqCopyConfig">Copy NapCat configuration</button><button id="bot-qq-copy-token" class="plain" data-bot="qqCopyToken">Copy token only</button></div>
+                  <small id="bot-qq-token-state"></small>
+                  <details class="bot-help qq-config-help"><summary data-bot="qqConfigHelp">Where to use the copied configuration</summary><p data-bot="qqConfigHelpNote">The configuration is one websocketServers entry, not a whole file. In NapCat Desktop, fill the fields above and paste the token. Save the connection, then save the Bot configuration; restart if prompted.</p></details>
+                  <details id="bot-qq-advanced" class="bot-help qq-advanced"><summary data-bot="qqAdvanced">Use an existing connection or another port</summary>
+                    <label for="bot-qq-url" data-bot="qqUrl">Local WebSocket address</label><input id="bot-qq-url" type="url" maxlength="256" value="ws://127.0.0.1:3001" autocomplete="off" spellcheck="false">
+                    <label for="bot-qq-token">OneBot token</label><input id="bot-qq-token" type="password" maxlength="256" autocomplete="off" spellcheck="false"><small data-bot="qqTokenHint">Use the OneBot token, not the WebUI password. Leave blank to keep the saved token.</small>
+                  </details>
+                </div>
+                <div class="qq-setup-part">
+                  <h3 data-bot="qqCheckTitle">Check which account is connected</h3>
+                  <label for="bot-qq-owner" data-bot="qqOwner">Your QQ number (allowed sender)</label><input id="bot-qq-owner" type="text" inputmode="numeric" maxlength="15" autocomplete="off" spellcheck="false">
+                  <small data-bot="qqOwnerNote">Enter your own QQ number, not the AI's. Only your friend-private messages are accepted.</small>
+                  <div class="qq-actions"><button id="bot-qq-save" class="secondary" data-bot="qqSave">Save QQ connection</button><button id="bot-qq-test" class="secondary" data-bot="qqTest">Test connection</button></div>
+                  <div id="bot-qq-check" class="qq-check" role="status" aria-live="polite"><strong id="bot-qq-check-title"></strong><p id="bot-qq-check-detail"></p></div>
+                </div>
+              </div>
+              <div id="bot-feishu-options" hidden>
+                <p data-bot="feishuSetup">Use a Feishu internal app bot with the official long connection. No public callback URL is required. Only the configured owner's private messages are accepted.</p>
+                <label for="bot-feishu-app-id">App ID</label><input id="bot-feishu-app-id" type="text" maxlength="64" placeholder="cli_…" autocomplete="off" spellcheck="false">
+                <label for="bot-feishu-owner" data-bot="feishuOwner">Your open_id in this app</label><input id="bot-feishu-owner" type="text" maxlength="131" placeholder="ou_…" autocomplete="off" spellcheck="false"><small data-bot="feishuOwnerHint">Use the owner's open_id for this Feishu app. The first message never chooses the owner automatically.</small>
+                <label for="bot-feishu-secret">App Secret</label><input id="bot-feishu-secret" type="password" maxlength="512" autocomplete="off" spellcheck="false"><small id="bot-feishu-secret-status" role="status"></small>
+                <button id="bot-feishu-save" class="secondary" data-bot="feishuSave">Save Feishu connection</button><small data-bot="feishuLimit">App bot, not a personal account. No group chat or autonomous companion activity.</small>
+              </div>
+              <div id="bot-messenger-options" hidden>
+                <p data-bot="messengerSetup">Connect a Facebook Page to one configured owner. This needs a separately deployed public HTTPS relay; it is not a personal Facebook login.</p>
+                <label for="bot-messenger-app" data-bot="messengerApp">Meta App ID</label><input id="bot-messenger-app" type="text" inputmode="numeric" maxlength="20" autocomplete="off" spellcheck="false">
+                <label for="bot-messenger-page" data-bot="messengerPage">Facebook Page ID</label><input id="bot-messenger-page" type="text" inputmode="numeric" maxlength="20" autocomplete="off" spellcheck="false">
+                <label for="bot-messenger-owner" data-bot="messengerOwner">Owner's Page-scoped ID (PSID)</label><input id="bot-messenger-owner" type="text" inputmode="numeric" maxlength="20" autocomplete="off" spellcheck="false">
+                <label for="bot-messenger-relay" data-bot="messengerRelay">HTTPS relay origin</label><input id="bot-messenger-relay" type="url" maxlength="2048" placeholder="https://relay.example.com" autocomplete="off" spellcheck="false"><small data-bot="messengerRelayHint">Use the origin only, without a path, query or credentials. The relay receives plaintext messages.</small>
+                <label for="bot-messenger-page-token">Page Access Token</label><input id="bot-messenger-page-token" type="password" maxlength="4096" autocomplete="off" spellcheck="false"><small id="bot-messenger-page-token-status" role="status"></small>
+                <label for="bot-messenger-relay-token" data-bot="messengerRelayToken">Relay access token</label><input id="bot-messenger-relay-token" type="password" maxlength="4096" autocomplete="off" spellcheck="false"><small id="bot-messenger-relay-token-status" role="status"></small>
+                <button id="bot-messenger-save" class="secondary" data-bot="messengerSave">Save Messenger connection</button>
+                <details><summary data-bot="messengerRequirements">Connection requirements</summary><p data-bot="messengerLimit">Requires approved Page messaging access, a subscribed webhook and a relay with a publicly trusted HTTPS certificate. App Secret and webhook verification token belong on the relay. Ordinary replies are limited to 24 hours after the owner's message; no groups or autonomous activity.</p></details>
+                <div id="bot-messenger-stopped" hidden><p data-bot="messengerStopped">Messenger receiving was stopped with /unsubscribe. It stays off after restarting the app.</p><button id="bot-messenger-resume" class="secondary" data-bot="messengerResume">Re-enable Messenger receiving</button><small data-bot="messengerResumeHint">This only clears the local stop. Choose Connect afterward to receive messages again.</small></div>
+                <small id="bot-messenger-check" role="status"></small>
+              </div>
+              <div id="bot-x-options" hidden>
+                <p data-bot="xSetup">Connect standard one-to-one X DMs from one configured owner. Checks run about every 75 seconds; X API reads and writes may incur charges, in addition to AI usage.</p>
+                <label for="bot-x-account" data-bot="xAccount">AI account's numeric X user ID</label><input id="bot-x-account" type="text" inputmode="numeric" maxlength="19" autocomplete="off" spellcheck="false">
+                <label for="bot-x-owner" data-bot="xOwner">Your numeric X user ID</label><input id="bot-x-owner" type="text" inputmode="numeric" maxlength="19" autocomplete="off" spellcheck="false"><small data-bot="xOwnerHint">Use account IDs, not @usernames. Only this owner's direct text is accepted.</small>
+                <label for="bot-x-token">OAuth 2 User Access Token</label><input id="bot-x-token" type="password" maxlength="4096" autocomplete="off" spellcheck="false"><small id="bot-x-token-status" role="status"></small>
+                <button id="bot-x-save" class="secondary" data-bot="xSave">Save X connection</button><small data-bot="xLimit">Use a user-authorized token with dm.read, dm.write, users.read and tweet.read. App-only tokens and encrypted X Chat are unsupported. Expired tokens need reauthorization. Confirm applicable X automation requirements before connecting; the app cannot verify platform approval.</small>
+                <div id="bot-x-stopped" hidden><p data-bot="xStopped">X receiving was stopped with /unsubscribe. It stays off after restarting the app.</p><button id="bot-x-resume" class="secondary" data-bot="xResume">Re-enable X receiving</button><small data-bot="xResumeHint">This only clears the local stop. Choose Connect afterward to start receiving again.</small></div>
+                <small id="bot-x-check" role="status"></small>
+              </div>
             </fieldset>
             <fieldset class="setup-step"><legend data-bot="projectStep">Choose a project and execution method</legend>
               <label for="bot-project" data-bot="project">Project folder</label><div class="bot-project-row"><output id="bot-project"></output><button id="bot-pick" class="secondary" data-bot="choose">Choose folder</button></div>
-              <label for="bot-mode" data-bot="mode">Execution method</label><select id="bot-mode"><option value="api" data-bot="modeApi">API agent</option><option value="native" data-bot="modeNative">Local Claude Code CLI</option></select>
+              <label for="bot-mode" data-bot="mode">Execution method</label><select id="bot-mode"><option value="api" data-bot="modeApi">Claude API</option><option value="claude" data-bot="modeClaude">Local Claude · program mode</option><option value="native" data-bot="modeNative">Claude Channels · manual startup</option><option value="codex" data-bot="modeCodex">Local Codex</option><option value="gpt">GPT API</option><option value="deepseek">DeepSeek API</option><option value="gemini">Gemini API</option><option value="doubao">Doubao API</option></select>
               <div id="bot-api-options">
-                <label for="bot-key">Anthropic API key</label><div class="bot-key-row"><input id="bot-key" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button id="bot-save" class="secondary" data-bot="save">Save key</button></div><small id="bot-key-status"></small>
-                <label for="bot-budget" data-bot="budget">SDK cost threshold (USD)</label><input id="bot-budget" type="number" min="0.05" max="5" step="0.05" value="1"><small data-bot="budgetNote">In-flight requests may exceed this threshold. It is not a hard billing cap.</small>
+                <label id="bot-key-label" for="bot-key">Anthropic API key</label><div class="bot-key-row"><input id="bot-key" type="password" maxlength="500" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button id="bot-save" class="secondary" data-bot="save">Save key</button></div><small id="bot-key-status"></small>
+                <div id="bot-claude-budget"><label for="bot-budget" data-bot="budget">SDK cost threshold (USD)</label><input id="bot-budget" type="number" min="0.05" max="5" step="0.05" value="1"><small data-bot="budgetNote">In-flight requests may exceed this threshold. It is not a hard billing cap.</small></div>
+                <div id="bot-gpt-options" hidden><label for="bot-gpt-model" data-bot="model">Model</label><select id="bot-gpt-model"><option value="gpt-6.1-sol">GPT-6.1 Sol</option><option value="gpt-6-astra">GPT-6 Astra</option></select><p class="bot-fine" data-bot="gptNote">Use an OpenAI API key. API usage is billed separately from local Codex login. File actions require approval; shell commands are unavailable.</p></div>
+                <div id="bot-deepseek-options" hidden><label for="bot-deepseek-model" data-bot="model">Model</label><select id="bot-deepseek-model"><option value="deepseek-flash">DeepSeek Flash</option><option value="deepseek-v4-pro">DeepSeek V4 Pro</option></select><p class="bot-fine" data-bot="deepseekNote">API billing applies. Local file tools require approval; shell commands are unavailable.</p></div>
+                <div id="bot-gemini-options" hidden><label for="bot-gemini-model" data-bot="model">Model</label><select id="bot-gemini-model"><option value="gemini-3.6-flash">Gemini 3.6 Flash</option></select><p class="bot-fine" data-bot="geminiNote">Google AI Studio API key. API billing is separate from a Gemini app subscription.</p></div>
+                <div id="bot-doubao-options" hidden><label for="bot-doubao-model" data-bot="model">Model</label><select id="bot-doubao-model"><option value="doubao-seed-2-0-lite-260428">Doubao Seed 2.0 Lite · 260428</option></select><p class="bot-fine" data-bot="doubaoNote">Volcengine Ark API key. This does not use a Doubao app login.</p></div>
               </div>
+              <p id="bot-claude-options" class="bot-fine" data-bot="claudeSetup" hidden>Uses the installed original Claude Code and its existing login in program mode. No custom Channels startup confirmation. Tool actions still require approval.</p>
+              <p id="bot-codex-options" class="bot-fine" data-bot="codexSetup" hidden>Uses your installed Codex and existing login through App Server. No separate API key. File and command permissions follow the selected project sandbox and explicit approval requests.</p>
               <div id="bot-native-options" hidden>
                 <details class="bot-help"><summary data-bot="nativeRequirements">Login, requirements and permissions</summary><p data-bot="nativeSetup">Uses your existing Claude Code login. Requires Node.js 22.13+ and local Claude Code 2.1.317. Confirm the custom Channels research preview yourself and keep the terminal open.</p><p data-bot="nativeReplyPermission">This launch pre-allows WeChat replies for this session. Other actions still follow your CLI permissions.</p><p data-bot="nativeStopNote">To stop Claude, press Ctrl+C in its terminal. Disconnecting WeChat only stops forwarding.</p></details>
                 <small id="bot-native-key-retained" data-bot="keyRetained" hidden>Your saved API key stays stored when switching modes.</small>
@@ -47,19 +200,13 @@
             <fieldset class="setup-step"><legend data-bot="startStep">Start the connection</legend>
               <div class="button-row"><button id="bot-start" class="primary" data-bot="start">Start receiving tasks</button></div>
               <p id="bot-start-note" class="bot-fine" data-bot="startNote">Pairing alone does not start a task. Send your instruction from WeChat after connecting.</p>
-              <div id="bot-native-launch" hidden><p id="bot-native-command-label" class="bot-command-label" data-bot="nativeCommand">Run in your terminal</p><pre id="bot-native-command" tabindex="0" aria-labelledby="bot-native-command-label"></pre><button id="bot-native-copy" class="secondary" data-bot="copyCommand">Copy launch command</button></div>
+              <div id="bot-native-launch" hidden><div class="button-row"><button id="bot-native-open" class="primary" data-bot="nativeLaunch">Open Claude</button><button id="bot-native-new" class="secondary" data-bot="nativeNew" hidden>Open new session</button><button id="bot-native-halt" class="secondary" data-bot="nativeHalt" hidden>Stop local session</button><button id="bot-native-copy" class="secondary" data-bot="copyCommand">Copy launch command</button></div><p id="bot-native-process-note" class="bot-fine" role="status"></p><details class="bot-help"><summary id="bot-native-command-label" data-bot="nativeCommand">Manual launch command</summary><pre id="bot-native-command" tabindex="0" aria-labelledby="bot-native-command-label"></pre></details></div>
             </fieldset>
             <details class="bot-help setup-privacy"><summary data-bot="privacyTitle">Privacy and saved credentials</summary><p id="bot-privacy" data-bot="privacy">Messages and task output pass through Tencent and Anthropic. Credentials use OS encryption.</p><button id="bot-forget" class="plain" data-bot="forget">Forget credentials</button></details>
-          </div>
-        </details>
-        <div id="bot-inbox" class="bot-inbox" hidden>
-          <div class="bot-inbox-head"><div id="bot-mascot" aria-hidden="true"></div><div><h2 data-bot="inbox">Conversation</h2><p data-bot="inboxNote">Messages and replies from WeChat appear here.</p></div></div>
-          <p id="bot-task-state" class="bot-fine" role="status"></p>
-          <div id="bot-messages"><p class="bot-empty" data-bot="empty">Send a message in your WeChat ClawBot conversation.</p></div>
-          <p class="bot-input-note" data-bot="messageEntry">Send messages in WeChat → ClawBot. This window displays the conversation.</p>
           <details id="bot-connection-details" class="bot-help bot-diagnostics" hidden><summary data-bot="connectionDetails">Connection details</summary><p id="bot-connection-state"></p><p id="bot-native-diagnostic-note" data-bot="nativeDiagnosticNote" hidden>A connection or reply does not prove task success.</p></details>
           <details class="bot-help"><summary data-bot="commands">Chat commands & permissions</summary><p data-bot="help">Use /status to check progress, or /cancel to stop API work.</p><p data-bot="risk">A reply ending does not prove task success.</p></details>
-        </div>
+          </div>
+        </details>
       </div>
     </section>
     <section id="scene-view" class="view">
@@ -72,10 +219,17 @@
       <div id="empty" class="empty" hidden><h2 data-i18n="emptyTitle">No sessions yet</h2><p data-i18n="emptyBody">Install the Claude Code observer, restart Claude Code, then submit a prompt.</p><button id="connect" class="primary" data-i18n="connect">Set up observer</button></div>
       <footer><span data-i18n="localNote">Observer events stay on this device.</span><button id="clear" class="plain" data-i18n="clear">Clear ended stations</button></footer>
     </section>
+    <section id="work-view" class="view" hidden><div id="work-content"></div></section>
+    <section id="connections-view" class="view" hidden><div id="connections-content"></div></section>
     <section id="activity-view" class="view" hidden><div class="page-heading"><div><h1 data-i18n="activity">Activity</h1><p class="subtitle" data-i18n="activityNote">The last 30 events per session. No prompts or tool arguments.</p></div></div><div id="activity-list"></div></section>
+    <section id="notices-view" class="view" hidden><div class="page-heading"><div><h1 data-i18n="notices">Notices</h1><p class="subtitle" data-i18n="noticesNote">Calendars, folders and web updates you asked Agent Arcade to watch.</p></div></div><div id="notices-content" class="notices-content"></div></section>
+    <section id="notes-view" class="view" hidden><div class="page-heading"><div><h1 data-i18n="notes">Notes</h1><p class="subtitle" data-i18n="notesNote">Your own Markdown notes, the changes characters propose for them, and reflection.</p></div></div><div id="notes-content" class="notes-content"></div></section>
+    <section id="tasks-view" class="view" hidden><div class="page-heading"><div><h1 data-i18n="taskBoard">Tasks</h1><p class="subtitle" data-i18n="taskBoardNote">Background Claude Code tasks, each in its own git worktree. Handed back is not done.</p></div></div><div id="tasks-content" class="tasks-content"></div></section>
     <section id="settings-view" class="view" hidden><div class="page-heading"><h1 data-i18n="settings">Settings</h1></div><div class="settings-grid">
-      <article class="settings-card"><h2 data-i18n="integration">Claude Code observer</h2><p data-i18n="integrationNote">Install a local observer in your user settings. Existing hooks are preserved and backed up. Requires Node.js 22+. Restart Claude Code after changes.</p><div class="button-row"><button id="install" class="primary" data-i18n="install">Install hooks</button><button id="uninstall" class="secondary" data-i18n="uninstall">Remove hooks</button></div><div id="install-status" role="status"></div></article>
-      <article class="settings-card"><h2 data-i18n="attention">Notifications</h2><label><span data-i18n="notifications">Silent desktop notifications</span><input type="checkbox" id="notifications"></label><p data-i18n="notifyNote">Only waiting, error and response-end transitions. Suppressed while this window is focused. Quiet mode pauses all notifications.</p><label><span data-i18n="pin">Keep above other windows</span><input type="checkbox" id="alwaysOnTop"></label></article>
+      <article class="settings-card appearance-card"><h2 id="appearance-title" data-i18n="appearanceTitle">Appearance</h2><p id="appearance-note" data-i18n="appearanceNote">Choose how this window looks. Scene themes stay separate.</p><fieldset class="appearance-options" aria-describedby="appearance-note"><legend class="sr-only" data-i18n="appearanceTitle">Appearance</legend><label class="appearance-option"><input type="radio" name="appearance" id="appearance-system" value="system"><span data-i18n="appearanceSystem">Follow system</span></label><label class="appearance-option"><input type="radio" name="appearance" id="appearance-light" value="light"><span data-i18n="appearanceLight">Day</span></label><label class="appearance-option"><input type="radio" name="appearance" id="appearance-dark" value="dark"><span data-i18n="appearanceDark">Night</span></label></fieldset><p class="fine" id="appearance-status" role="status" aria-live="polite"></p></article>
+      <article class="settings-card"><h2 data-i18n="sendShortcutTitle">Chat</h2><p id="send-shortcut-note" data-i18n="sendShortcutNote">Choose the send key for App and connected conversations. Shift+Enter always starts a new line.</p><fieldset class="appearance-options" aria-describedby="send-shortcut-note"><legend class="sr-only" data-i18n="sendShortcutTitle">Chat</legend><label class="appearance-option"><input type="radio" name="sendShortcut" id="send-shortcut-enter" value="enter"><span data-i18n="sendShortcutEnter">Enter to send</span></label><label class="appearance-option"><input type="radio" name="sendShortcut" id="send-shortcut-ctrl-enter" value="ctrl-enter"><span data-i18n="sendShortcutCtrlEnter">Ctrl+Enter to send</span></label></fieldset><p class="fine" id="send-shortcut-status" role="status" aria-live="polite"></p></article>
+      <article class="settings-card" id="observer-card" tabindex="-1"><h2 data-i18n="integration">Claude Code observer</h2><p data-i18n="integrationNote">Install a local observer in your user settings. Existing hooks are preserved and backed up. Requires Node.js 22+. Restart Claude Code after changes.</p><div class="button-row"><button id="install" class="primary" data-i18n="install">Install hooks</button><button id="uninstall" class="secondary" data-i18n="uninstall">Remove hooks</button></div><div id="install-status" role="status"></div></article>
+      <article class="settings-card"><h2 data-i18n="attention">Notifications</h2><label><span data-i18n="notifications">Silent desktop notifications</span><input type="checkbox" id="notifications"></label><p data-i18n="notifyNote">App replies and agent waiting, error and response-end transitions. No conversation text is shown. Suppressed while this window is focused; Quiet mode pauses all notifications.</p><label><span data-i18n="pin">Keep above other windows</span><input type="checkbox" id="alwaysOnTop"></label></article>
       <article class="settings-card"><h2 data-i18n="themeTitle">Scene theme</h2><p data-i18n="themeNote">Original pixel characters. Declarative themes, without scripts or remote assets.</p><label><span data-i18n="theme">Theme</span><select id="theme"></select></label><button id="import" class="secondary" data-i18n="import">Import a theme</button></article>
       <article class="settings-card"><h2 data-i18n="privacy">Observer privacy</h2><label><span data-i18n="capture">Save final response text</span><input type="checkbox" id="captureResults"></label><p data-i18n="captureNote">Off by default. Replies stay on this device. Turning it off removes saved reply text.</p><p class="fine" data-i18n="accuracyNote">A response ending does not mean the work passed validation.</p></article>
     </div></section>

@@ -18,13 +18,15 @@ function drainInbox(root, store, { captureResults = false } = {}) {
     let stat;
     try { stat = fs.lstatSync(file); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
     if (!stat.isFile() || stat.isSymbolicLink()) continue;
-    if (stat.size > 40000) { fs.unlinkSync(file); continue; }
+    // A 16,000-character reply is up to three UTF-8 bytes per character, so the
+    // bound must hold the largest event the hook itself can write.
+    if (stat.size > 65536) { fs.unlinkSync(file); continue; }
     const event = readJSON(file, null);
     entries.push({ file, event });
   }
   entries.sort((a,b) => (a.event?.at || 0) - (b.event?.at || 0) || a.file.localeCompare(b.file));
   const changes = [];
-  for (const { event } of entries) { if (event && !captureResults) event.result = ''; const c = store.apply(event); if (c) changes.push(c); }
+  for (const { event } of entries) { if (event && typeof event === 'object' && !captureResults) event.result = ''; const c = store.apply(event); if (c) changes.push(c); }
   // Save before acknowledging the inbox. Replays after a crash are idempotent.
   if (entries.length) {
     atomicJSON(path.join(root, 'state.json'), store.export());

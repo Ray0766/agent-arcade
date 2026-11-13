@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-05",
+  "build": "dist/ai-connect-preview/win-unpacked/Agent Arcade.exe",
+  "scope": "Actual packaged Electron interface, original CLI login checks, retained WeChat pairing and real ClawBot message round trip",
+  "actualUi": {
+    "openedFinalBuild": true,
+    "claudeOriginalLoginReportedSignedIn": true,
+    "gptOriginalCodexLoginReportedSignedIn": true,
+    "loginChecksSentModelRequests": false,
+    "restoredBackend": "claude",
+    "wechatPairingRetained": true,
+    "clickedPairedWeChatConnect": true,
+    "wechatServiceReportedConnected": true,
+    "newQrRequired": false,
+    "channelStartupConfirmationRequired": false
+  },
+  "newPackageMessageRoundTrip": {
+    "verified": true,
+    "input": "[redacted private test text]",
+    "expectedReply": "[redacted private test text]",
+    "exactReplyObservedInWeChat": true,
+    "exactReplyObservedInPackagedApp": true,
+    "toolApprovalPromptsObserved": 0,
+    "channelStartupConfirmationPromptsObserved": 0,
+    "desktopStatus": "reply_ended; task result unverified",
+    "desktopLoginCompletedByUser": true,
+    "connectionLeftActive": true
+  },
+  "priorLiveMessagingReceipt": "claude-program-wechat-20261104.json",
+  "isolatedPackageUiChecks": {
+    "onboardingPassed": true,
+    "providersPassed": true,
+    "fixturesAreNotLiveAccountEvidence": true,
+    "freshProfileWorkNavigation": true,
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "narrowWidth": 430
+  },
+  "limits": [
+    "Original CLI status reports login presence, not quota or successful model usage.",
+    "A fresh sign-in and expired credential recovery were not exercised.",
+    "The earlier live WeChat file test used the same program runner before this UI packaging; it is recorded separately.",
+    "No new QQ account workflow or new messaging platform was accepted in this check."
+  ],
+  "publicationPrivacy": {
+    "redacted": true,
+    "redactedAt": "2026-11-06",
+    "originalEvidenceRetainedLocally": true,
+    "privateBackup": "work/publication-private-evidence-20261106/",
+    "note": "Private test messages, journal content, identifiers and local identity paths are replaced by explicit placeholders. Existing outcomes, counts, byte lengths, hashes and event order are unchanged. Existing content hashes describe the retained private originals, not these placeholders. Original evidence bytes are preserved outside Git.",
+    "fields": [
+      {
+        "field": "newPackageMessageRoundTrip.input",
+        "type": "private test text",
+        "originalUtf8Bytes": 78
+      },
+      {
+        "field": "newPackageMessageRoundTrip.expectedReply",
+        "type": "private test text",
+        "originalUtf8Bytes": 42
+      }
+    ]
+  }
+}

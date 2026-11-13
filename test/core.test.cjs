@@ -265,3 +265,39 @@ test('built-in themes validate; external content is not accepted as colors or sp
  theme.colors.sky='#123456';theme.sprites.running[0]='<script>alert(1)';assert.throws(()=>validateTheme(theme));
 });
 test('native icon is a PNG with expected dimensions, not an unsupported SVG',()=>{const png=require('../src/core/icon.cjs').createIcon();assert.deepEqual([...png.subarray(0,8)],[137,80,78,71,13,10,26,10]);assert.equal(png.readUInt32BE(16),32);assert.equal(png.readUInt32BE(20),32);});
+
+test('a hook racing the close does not reopen an ended session; a resume does',()=>{
+ for(const [name,extra] of [['PostToolUseFailure',{tool_name:'Bash',tool_use_id:'t1'}],['Stop',{}],['Notification',{notification_type:'permission_prompt'}]]){
+  const s=new Store();s.apply(event('UserPromptSubmit',{},10000));s.apply(event('SessionEnd',{},12000));
+  assert.equal(s.apply(event(name,extra,12001)),null);assert.equal(s.snapshot(12001)[0].state,'ended');
+ }
+ const s=new Store();s.apply(event('UserPromptSubmit',{},10000));s.apply(event('SessionEnd',{},12000));
+ assert.equal(s.apply(event('SessionStart',{},13000)).task.state,'idle');
+});
+
+test('a late hook still records its own tool fact without moving the session back',()=>{
+ const pre=(id,at,tool='Bash')=>event('PreToolUse',{tool_name:tool,tool_use_id:id},at);
+ let s=new Store();s.apply(event('UserPromptSubmit',{},1000));s.apply(pre('A',1100));s.apply(pre('B',1105));
+ s.apply(event('PostToolUse',{tool_name:'Bash',tool_use_id:'B'},1150));
+ const waiting=s.apply(event('PermissionRequest',{tool_name:'Bash',tool_use_id:'A'},1140));
+ assert.equal(waiting.task.state,'waiting');assert.equal(waiting.task.reason,'permission');assert.equal(waiting.task.updatedAt,1150);
+ s=new Store();s.apply(event('UserPromptSubmit',{},1000));s.apply(pre('A',1100));
+ s.apply(event('PermissionRequest',{tool_name:'Bash',tool_use_id:'A'},1150));s.apply(pre('B',1205));
+ assert.equal(task(s).state,'waiting');
+ assert.equal(s.apply(event('PostToolUse',{tool_name:'Bash',tool_use_id:'A'},1200)).task.state,'running');
+ assert.equal(s.apply(event('PermissionRequest',{tool_name:'Bash',tool_use_id:'A'},1190)),null);
+ s=new Store();s.apply(event('UserPromptSubmit',{},1000));s.apply(pre('A',1100));s.apply(event('Stop',{},1300));
+ assert.equal(s.apply(event('PermissionRequest',{tool_name:'Bash',tool_use_id:'A'},1200)),null);assert.equal(task(s).state,'done');
+ s.apply(event('UserPromptSubmit',{},2000));
+ assert.equal(s.apply(event('PermissionRequest',{tool_name:'Bash',tool_use_id:'old'},1500)),null);assert.equal(task(s).state,'running');
+});
+test('an elicitation wait outlives unrelated tool events until the dialog resolves',()=>{
+ const s=new Store();s.apply(event('UserPromptSubmit',{},1000));
+ s.apply(event('PreToolUse',{tool_name:'Read',tool_use_id:'B'},1100));
+ s.apply(event('Notification',{notification_type:'elicitation_dialog'},1200));
+ assert.equal(s.apply(event('PostToolUse',{tool_name:'Read',tool_use_id:'B'},1300)).task.state,'waiting');
+ assert.equal(task(s).reason,'question');
+ assert.equal(s.apply(event('Notification',{notification_type:'elicitation_complete'},1400)).task.state,'running');
+ s.apply(event('Notification',{notification_type:'elicitation_dialog'},1500));
+ assert.equal(s.apply(event('Stop',{},1600)).task.state,'done');assert.deepEqual(task(s).waitFor,[]);
+});

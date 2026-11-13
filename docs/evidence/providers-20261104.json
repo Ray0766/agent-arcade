@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-04",
+  "scope": "local unpublished source revision; owner chose code and local tests, no spare QQ account",
+  "implemented": {
+    "channels": [
+      "wechat-clawbot",
+      "qq-personal-onebot-loopback"
+    ],
+    "backends": [
+      "claude-api",
+      "claude-native",
+      "codex-local",
+      "deepseek-api"
+    ],
+    "active_connections": 1,
+    "allowed_private_senders": 1
+  },
+  "automated": {
+    "total": 262,
+    "passed": 261,
+    "failed": 0,
+    "skipped_opt_in": 1,
+    "qq": 14,
+    "codex": 13,
+    "deepseek": 18,
+    "service_matrix": 9
+  },
+  "codex_direct_live": {
+    "cli_version": "0.166.0-alpha.6",
+    "original_login_used_without_reading_auth_files": true,
+    "ordinary_chat_marker_received": true,
+    "same_thread_file_task": true,
+    "artifact_bytes": 22,
+    "artifact_utf8": "[redacted private test text]",
+    "artifact_sha256": "9fae34bb03dd3becbf0948e7749febf1922e2326e30b395062b4c8478b824083",
+    "independently_read_back": true,
+    "turn_started_then_interrupt_sent": true,
+    "actual_interrupted_notification": true,
+    "messaging_delivery_claimed": false
+  },
+  "qq": {
+    "real_loopback_websocket": true,
+    "frames_synthetic": true,
+    "bearer_and_send_echo_checked": true,
+    "same_socket_account_switch_revokes_context": true,
+    "real_account": false,
+    "napcat_installed_or_bundled": false
+  },
+  "deepseek": {
+    "default_model": "deepseek-flash",
+    "other_model": "deepseek-v4-pro",
+    "model_fixture": true,
+    "real_paid_api_request": false,
+    "local_file_tools": true,
+    "shell_tool": false,
+    "dollar_cap": false
+  },
+  "ui": {
+    "source_provider_check": true,
+    "packaged_provider_check": true,
+    "source_chat_regression": true,
+    "fixture_secrets_os_encrypted": true,
+    "unsaved_key_cleared_across_navigation": true,
+    "narrow_width": 430,
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "screenshots": "synthetic setup states only, inspected locally"
+  },
+  "limits": [
+    "WeChat is still ClawBot, not an ordinary addable personal account.",
+    "QQ supports one designated owner friend; groups and other friends are ignored.",
+    "QQ actual delivery and DeepSeek live API remain unaccepted.",
+    "Codex original settings may supply existing permissions, MCP and plugins; it is not the isolated API runner.",
+    "Current Codex and DeepSeek conversations do not restore after app restart.",
+    "Interruption does not verify independent background work stopped or roll back changes.",
+    "A completed reply is not verified task success.",
+    "No new GitHub push or release."
+  ],
+  "publicationPrivacy": {
+    "redacted": true,
+    "redactedAt": "2026-11-06",
+    "originalEvidenceRetainedLocally": true,
+    "privateBackup": "work/publication-private-evidence-20261106/",
+    "note": "Private test messages, journal content, identifiers and local identity paths are replaced by explicit placeholders. Existing outcomes, counts, byte lengths, hashes and event order are unchanged. Existing content hashes describe the retained private originals, not these placeholders. Original evidence bytes are preserved outside Git.",
+    "fields": [
+      {
+        "field": "codex_direct_live.artifact_utf8",
+        "type": "private test text",
+        "originalUtf8Bytes": 22
+      }
+    ]
+  }
+}

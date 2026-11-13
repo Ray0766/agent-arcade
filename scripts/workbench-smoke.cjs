@@ -1,0 +1,48 @@
+'use strict';
+const {_electron:electron}=require('playwright');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict'),{createHash}=require('node:crypto');
+(async()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-work-ui-')),stage=process.env.ARCADE_EXECUTABLE?'packaged':'source';
+  const file=path.join(root,'artifact.json'),content='{\n  "label": "本地测试产物",\n  "literal": "<script>window.injected=true</script>",\n  "value": 42\n}\n';
+  fs.writeFileSync(file,content);fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({language:'zh'}));
+  const env={...process.env,AGENT_ARCADE_HOME:root,AGENT_ARCADE_CLAUDE_SETTINGS:path.join(root,'settings.json')};delete env.ELECTRON_RUN_AS_NODE;
+  const args=[`--user-data-dir=${path.join(root,'profile')}`];if(!process.env.ARCADE_EXECUTABLE)args.unshift(path.resolve(__dirname,'..'));
+  const app=await electron.launch({executablePath:process.env.ARCADE_EXECUTABLE||require('electron'),args,env});
+  const report={stage,scope:'Actual local file + MCP protocol + sandboxed UI; no WeChat or model execution',checks:{}};
+  try{
+    const page=await app.firstWindow(),errors=[],network=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.route(/^https?:/,r=>{network.push(r.request().url());return r.abort();});
+    await page.locator('[data-view="work"]').click();await page.locator('#artifact-pick').waitFor();
+    await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},file);
+    await page.locator('#artifact-pick').click();
+    const viewer=page.frameLocator('#artifact-app');await viewer.locator('#artifact-body').waitFor();
+    await page.waitForFunction(()=>document.querySelector('#work-inspections')?.textContent.includes('检查完成'));
+    await viewer.locator('#artifact-body').filter({hasText:'本地测试产物'}).waitFor();
+    assert.equal(await viewer.locator('#artifact-body').textContent(),content);
+    assert.equal(await viewer.locator('#artifact-limit').isVisible(),false);
+    const hash=createHash('sha256').update(Buffer.from(content)).digest('hex');assert.match(await viewer.locator('#artifact-facts').textContent(),new RegExp(hash));
+    assert.equal(await viewer.locator('body').evaluate(()=>window.injected),undefined);
+    const isolation=await viewer.locator('body').evaluate(()=>{try{void window.parent.document.body;return false;}catch{return true;}});assert.equal(isolation,true);
+    await viewer.locator('#artifact-json').click();assert.match(await viewer.locator('#artifact-body').textContent(),/"value": 42/);
+    await viewer.locator('#artifact-text').click();assert.equal(await viewer.locator('#artifact-body').textContent(),content);
+    report.checks.fileHashMatchesBytes=true;report.checks.literalHtmlAndIframeIsolation=true;report.checks.interactiveJsonToggle=true;
+    assert.equal(await page.evaluate(async()=>{try{await window.arcade.inspectionCancel('not-owned');return false;}catch{return true;}}),true);
+    assert.equal(await page.evaluate(async()=>{try{await window.arcade.backgroundStop('not-owned');return false;}catch{return true;}}),true);
+    report.checks.unknownIdsRejected=true;
+    const huge=path.join(root,'too-large.txt');fs.writeFileSync(huge,Buffer.alloc(262145));await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},huge);
+    await page.locator('#artifact-pick').click();await page.waitForFunction(()=>document.querySelector('#work-error')?.textContent.includes('256 KiB'));report.checks.oversizedFileRejected=true;
+    await page.locator('#language').click();assert.equal(await page.locator('#work-content h1').textContent(),'Work & results');await page.locator('#language').click();
+    await page.evaluate(()=>{document.querySelector('#work-error').textContent='';const n=document.createElement('p');n.textContent='本地测试产物 · 未连接微信或模型 / Local fixture · no live model';n.style.cssText='font-size:12px;color:#655d70';document.querySelector('#work-content').prepend(n);});
+    await app.evaluate(({BrowserWindow})=>{const w=BrowserWindow.getAllWindows()[0];w.setMinimumSize(400,380);w.setContentSize(1200,900);});
+    await page.locator('#artifact-app').scrollIntoViewIfNeeded();await viewer.locator('#artifact-body').filter({hasText:'本地测试产物'}).waitFor();
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.screenshot({path:path.join('outputs',`workbench-${stage}.png`)});
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(430,760));await page.locator('#artifact-app').scrollIntoViewIfNeeded();
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:path.join('outputs',`workbench-${stage}-compact.png`)});
+    report.checks.englishChineseAndCompact=true;report.checks.noNetwork=network.length===0;assert.deepEqual(network,[]);assert.deepEqual(errors,[]);
+    report.node=await app.evaluate(()=>process.versions.node);report.sqlite=await app.evaluate(()=>{const {DatabaseSync}=process.getBuiltinModule('node:sqlite'),db=new DatabaseSync(':memory:');const version=db.prepare('select sqlite_version() as v').get().v;db.close();return version;});
+    const recovery=await page.evaluate(async()=>(await window.arcade.snapshot()).bot.recovery);assert.equal(recovery.available,true);report.checks.actualElectronSQLite=true;
+    fs.mkdirSync('outputs',{recursive:true});fs.writeFileSync(path.join('outputs',`workbench-${stage}.json`),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+  }finally{await app.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

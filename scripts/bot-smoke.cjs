@@ -12,6 +12,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
   const app=await electron.launch({executablePath,args:process.env.ARCADE_EXECUTABLE?[profile]:[path.resolve(__dirname,'..'),profile],env});
   try{
     const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.locator('nav [data-view="bot"]').click();
     await page.locator('#bot-view').waitFor();assert.equal(await page.locator('#bot-start').isDisabled(),true);
     fs.mkdirSync('outputs',{recursive:true});await page.screenshot({path:process.env.ARCADE_EXECUTABLE?'outputs/bot-packaged-setup.png':'outputs/bot-setup.png',fullPage:true});
     await page.locator('#bot-key').fill('fixture-invalid-api-key');await page.locator('#bot-save').click();
@@ -22,7 +23,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
     await page.evaluate(async workspace=>window.arcade.botConfigure({workspace}),root);
     await page.locator('#bot-budget').fill('0.5');await page.locator('#bot-budget').press('Tab');
     await page.waitForFunction(async()=> (await window.arcade.snapshot()).bot.budget===0.5);
-    await page.locator('#language').click();await page.locator('#bot-view h1').filter({hasText:'微信'}).waitFor();
+    await page.locator('#language').click();await page.locator('#bot-view h1').filter({hasText:'橘'}).waitFor();
     await page.emulateMedia({reducedMotion:'reduce'});
     // Clearly labelled synthetic output exercises long text and semantic states.
     const showFixture=()=>page.evaluate(()=>{
@@ -33,12 +34,35 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
       ]}}});document.querySelector('.bot-preview').textContent='合成界面样例 · 未连接真实微信或模型，未执行任务。';
     });await showFixture();await page.locator('#toast').waitFor({state:'hidden'});
     fs.mkdirSync('outputs',{recursive:true});await page.screenshot({path:process.env.ARCADE_EXECUTABLE?'outputs/bot-packaged-zh.png':'outputs/bot-zh.png',fullPage:true});
+    // Render-only fixture: no Claude process, QQ transport or account is used.
+    const showNativeStartup=async(language,attached,running=true)=>page.evaluate(({language,attached,running})=>{
+      window.renderBot({...data,config:{...data.config,language},bot:{...data.bot,channel:'qq',mode:'native',workspace:'F:\\Example\\native-startup',status:'connected',paired:true,incomingCount:0,outgoingAccepted:0,
+        native:{attached,paused:false,forwarded:0,replies:0,process:{owned:running,status:running?'running':'idle'}},tasks:{currentTaskId:null,pending:[],messages:[]}}});
+      document.querySelector('.bot-preview').textContent=language==='zh'?'合成界面样例 · 未连接 QQ 或 Claude，未执行任务。':'Synthetic UI fixture · no QQ or Claude connection; no task executed.';
+      document.querySelector('#bot-setup-panel').open=true;
+      return Object.fromEntries(['bot-status','bot-task-state','bot-native-process-note'].map(id=>[id,document.getElementById(id).textContent]).concat([['openHidden',document.getElementById('bot-native-open').hidden]]));
+    },{language,attached,running});
+    for(const language of ['en','zh']){
+      const unopened=await showNativeStartup(language,false,false);
+      assert.match(unopened['bot-status'],language==='zh'?/等你打开 Claude/:/Waiting for you to open Claude/);
+      assert.equal(unopened.openHidden,false);
+      const waiting=await showNativeStartup(language,false);
+      assert.match(waiting['bot-status'],language==='zh'?/等待 Claude 通道连接/:/Waiting for Claude channel/);
+      assert.match(waiting['bot-task-state'],language==='zh'?/原版终端完成通道启动提示/:/channel startup prompt in the original terminal/);
+      assert.equal(waiting.openHidden,true,'An already running Claude must not invite another launch');
+      await page.screenshot({path:`outputs/native-startup-waiting-${language}.png`,fullPage:true});
+      const attached=await showNativeStartup(language,true);
+      assert.match(attached['bot-native-process-note'],language==='zh'?/保持此 Claude 会话打开/:/Keep this Claude session open/);
+      assert.doesNotMatch(attached['bot-native-process-note']+attached['bot-task-state'],/startup|reconnect|log.?in|登录|启动提示|重新连接/i);
+      assert.equal(attached.openHidden,true);
+    }
+    await showFixture();
     await page.locator('#compact').click();await page.locator('body.compact').waitFor();
     await page.locator('#view-picker').selectOption('bot');
     await showFixture();
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     await page.screenshot({path:process.env.ARCADE_EXECUTABLE?'outputs/bot-packaged-compact.png':'outputs/bot-compact.png',fullPage:true});
-    await page.evaluate(()=>window.arcade.botForget());
+    await page.evaluate(async()=>{const state=await window.arcade.snapshot();return window.arcade.botForget({profileId:state.accounts.selectedId});});
     assert.equal(fs.existsSync(path.join(root,'bot-vault.json')),false);
     assert.deepEqual(errors,[]);
     const appRoot=await app.evaluate(({app})=>app.getAppPath());

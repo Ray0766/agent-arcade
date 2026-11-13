@@ -1,0 +1,1387 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-05",
+  "status": "in_progress_with_partial_live_acceptance",
+  "allNineFeaturesAccepted": false,
+  "scope": "Existing Electron companion implementation; each character's bound owner and its own QQ Space",
+  "publicReceipt": true,
+  "redaction": {
+    "controlledTestTextOnly": true,
+    "rawAccountIdsIncluded": false,
+    "rawMessageOrPostReceiptsIncluded": false,
+    "credentialsIncluded": false,
+    "privateFilePathsIncluded": false,
+    "privateScreenshotsIncluded": false
+  },
+  "automated": {
+    "fullSuiteCheckpoint": {
+      "tests": 560,
+      "passed": 559,
+      "failed": 0,
+      "skipped": 1,
+      "durationMs": 10860.2666,
+      "exitCode": 0,
+      "revision": "Functional closeout: conversation cancellation and explicit local-voice pacing, public-journal selection and relationship edit guards, character-import UTF-8/identity checks, companion-specific reply UI and voice phase diagnostics",
+      "boundary": "Source regression only. No new package launch or deferred real-account/human acceptance inferred."
+    },
+    "syntaxCheckpoint": {
+      "javascriptFiles": 137,
+      "valid": true,
+      "boundary": "Syntax validation of the functional-closeout source checkpoint only."
+    },
+    "laterBatchingCorrection": {
+      "tests": 44,
+      "passed": 44,
+      "failed": 0,
+      "durationMs": 4023.7147,
+      "newBoundaryCases": 6,
+      "debounceMs": 1800,
+      "maxBatchMs": 4000,
+      "additionalSingleMessageWaitMs": 900,
+      "boundary": "Targeted synthetic social/service/journal tests, subsequently covered by the 499-test integrated checkpoint and one real 1151 ms merged pair; not all interruption scenarios."
+    },
+    "laterFollowupContextCorrection": {
+      "tests": 54,
+      "passed": 54,
+      "failed": 0,
+      "durationMs": 3666.0588,
+      "newContextCases": 2,
+      "publicDraftAndPostIsolationChecksExtended": true,
+      "maxRecentFollowups": 6,
+      "maxTopicCharacters": 96,
+      "maxSummaryCharacters": 800,
+      "alsoLimitedToQuarterOfContextBudget": true,
+      "boundary": "Targeted correction after reviewed/499 checkpoint; included in the 535-test neural build subsequently launched at 22:50 Sydney. Its state-expression behavior remains live-unaccepted."
+    },
+    "voiceCardLifecycle": {
+      "passed": 16,
+      "failed": 0,
+      "simulatedVoiceAndAccountEvents": true
+    },
+    "renderer": {
+      "passedChecks": 19,
+      "screenshots": 9,
+      "syntheticIpc": true,
+      "liveAccounts": false,
+      "liveModels": false,
+      "realMessagesSent": 0,
+      "realPostsPublished": 0,
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "narrowWidthPixels": 430,
+      "reducedMotion": true,
+      "companionReplyChromeChecked": true,
+      "codingUnverifiedOutcomeWordingPreserved": true,
+      "companionChatScreenshotIndependentlyInspected": true,
+      "boundary": "Fixture-driven renderer checks and screenshot review. No native account, dialog, model, microphone or publication acceptance."
+    },
+    "reviewedFullSuiteCheckpoint": {
+      "tests": 499,
+      "passed": 498,
+      "failed": 0,
+      "skipped": 1,
+      "durationMs": 11232.9273,
+      "exitCode": 0,
+      "revision": "Editable voice review and 1800 ms batching with superseded-queue cancellation",
+      "boundary": "An automated source regression checkpoint, not packaged-runtime, live-account or human voice acceptance."
+    },
+    "reviewedSyntaxCheckpoint": {
+      "javascriptFiles": 128,
+      "valid": true,
+      "boundary": "Syntax validation of the source checkpoint only; no runtime or live acceptance is inferred."
+    },
+    "voiceRuntimeLifecycleCheckpoint": {
+      "tests": 20,
+      "passed": 20,
+      "failed": 0,
+      "durationMs": 198.0816,
+      "microphoneOpened": false,
+      "boundary": "Isolated runtime/config/provider/account-lifecycle checks, including resident reuse and backend replacement."
+    },
+    "initialNeuralFullSuiteCheckpoint": {
+      "tests": 535,
+      "passed": 534,
+      "failed": 0,
+      "skipped": 1,
+      "durationMs": 10323.6908,
+      "exitCode": 0,
+      "revision": "Optional Qwen ASR / GPT-SoVITS integration, resident voice-host reuse and current follow-up context",
+      "boundary": "Latest automated source regression, not package launch, live account continuity or human neural voice acceptance."
+    },
+    "bubbleDeliveryDiagnostics": {
+      "tests": 53,
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 3112.8403,
+      "newBoundaryCases": 7,
+      "bodyFree": true,
+      "taskBound": true,
+      "maxBubbleCount": 4,
+      "maxSnapshotRows": 10,
+      "maxRetainedRows": 10000,
+      "maxAgeDays": 30,
+      "unknownInflightOnRecovery": true,
+      "replay": false,
+      "boundary": "Targeted local database/simulated model-transport tests, also included in the 551-test checkpoint. No retrospective queue count or live suppression inferred."
+    },
+    "flowAuditCorrection": {
+      "tests": 57,
+      "passed": 57,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 3112.143,
+      "newCases": 4,
+      "firstReproducedFailures": [
+        "buffered_qq_reply_survives_new_local_turn",
+        "rejected_public_draft_detaches_next_private_current"
+      ],
+      "corrections": [
+        "cancel_superseded_buffered_work_preserving_inbound_history",
+        "await_initiative_settlement_without_failing_new_private_drain",
+        "recheck_stopped_after_async_input_admission",
+        "explicit_voice_only_skips_qq_pacing"
+      ],
+      "qqDebounceMs": 1800,
+      "qqBubbleDelayMs": 450,
+      "runningPackageIncludesCorrection": true,
+      "boundary": "Targeted synthetic transports/real local SQLite, included in the 560-test source regression and identity-matched ready runtime. Corrected edge cases were not newly exercised through real accounts in this launch.",
+      "includedInIntegratedFullSuiteTests": 560
+    },
+    "neuralFixFullSuiteCheckpoint": {
+      "tests": 551,
+      "passed": 550,
+      "failed": 0,
+      "skipped": 1,
+      "durationMs": 11106.5259,
+      "exitCode": 0,
+      "revision": "ASR main-thread initialization, QQ authenticated login-state checks, body-free bubble delivery counts and loading feedback",
+      "boundary": "Automated source regression, not human microphone quality or remaining-bubble acceptance."
+    },
+    "neuralFixSyntaxCheckpoint": {
+      "javascriptFiles": 135,
+      "valid": true,
+      "boundary": "Source syntax check, not actual account or voice acceptance."
+    },
+    "initialCompanionRendererCheckpoint": {
+      "passedChecks": 18,
+      "syntheticIpc": true,
+      "liveAccounts": false,
+      "liveModels": false,
+      "realMessagesSent": 0,
+      "realPostsPublished": 0,
+      "languages": [
+        "zh",
+        "en"
+      ],
+      "narrowWidthPixels": 430,
+      "reducedMotion": true
+    }
+  },
+  "reviewedBuildIdentity": {
+    "appVersion": "0.3.0-preview.2",
+    "electronBuildVersion": "45.2.1",
+    "sourceFilesChecked": 83,
+    "packagedSourceFiles": 83,
+    "sourceMatches": true,
+    "comparisonPrecedesLaterFollowupContextSourceCorrection": true,
+    "mismatchCount": 0,
+    "packageFieldsMatched": [
+      "name",
+      "version",
+      "main",
+      "license",
+      "dependencies"
+    ],
+    "archiveSha256": "50641b5f26160982ef18d5c31c356f63770a7acc84086a883f904f64c9b6f5df",
+    "executableSha256": "b007a3cc5b88650e8744d4b98bfebb6903f250ad267fd5823ae4da3ae4b849e4",
+    "launched": false,
+    "liveAcceptance": false,
+    "boundary": "Read-only archive/unpacked identity at build time; no application was launched by the verifier. A separate later reviewedRuntime entry records its actual launch."
+  },
+  "oldPreviewUnmergedPair": {
+    "source": "real-qq-owner-ui+real-model+sqlite",
+    "character": "鲸鱼娘 / Whale",
+    "configuredDebounceMs": 900,
+    "inputs": [
+      "[redacted private test text]",
+      "[redacted private test text]"
+    ],
+    "receivedAtUtc": [
+      "2026-11-05T10:43:09.711Z",
+      "2026-11-05T10:43:11.064Z"
+    ],
+    "arrivalGapMs": 1353,
+    "sameTask": false,
+    "taskIdHashes": [
+      "2e053be9055dba93e491c8943c6d58d904512074fa8702520904f07bf7e4037e",
+      "4fb56a93fa94a13006c2c92e52440cde059c97e70a13c9de1e2923129e6bc09d"
+    ],
+    "terminalStates": [
+      "cancelled",
+      "reply_ended"
+    ],
+    "reply": "[redacted private test text]",
+    "replyStoredAtUtc": "2026-11-05T10:43:13.565Z",
+    "replyTextSha256": "e11ccdd696f09f24f6e5e94ff2e41eb91317dbb3f84b8e4d7d9bc2c50fb7b695",
+    "matchingNonGenericSentReceipt": true,
+    "ownerQQScreenConfirmedByRoot": true,
+    "batchingAccepted": false,
+    "boundary": "The old preview missed the merge window. Terminal cancellation and the observed new reply do not establish the separate running-generation and unsent-bubble flows or the later 1800 ms implementation."
+  },
+  "structuredFactOnlyIsolation": {
+    "status": "bounded_fact_only_restart_recall_and_three_character_isolation_passed",
+    "controlledMarker": "[redacted private test marker or description]",
+    "inputMethod": "Root added one structured fact through Whale's normal relationship UI; no QQ/model message contained the answer.",
+    "baselineCapturedAtUtc": "2026-11-05T11:00:49.663Z",
+    "factCreatedAtUtc": "2026-11-05T10:59:48.753Z",
+    "factRevision": 1,
+    "factSourceMessageCount": 0,
+    "markerOccurrences": {
+      "whale": {
+        "facts": 1,
+        "messages": 0,
+        "notes": 0,
+        "actions": 0,
+        "followups": 0,
+        "publicJournal": 0
+      },
+      "ju": {
+        "facts": 0,
+        "messages": 0,
+        "notes": 0,
+        "actions": 0,
+        "followups": 0,
+        "publicJournal": 0
+      },
+      "dragon": {
+        "facts": 0,
+        "messages": 0,
+        "notes": 0,
+        "actions": 0,
+        "followups": 0,
+        "publicJournal": 0
+      }
+    },
+    "dragonWhileJuDisconnected": {
+      "question": "这轮验收里，我设置的私有书签暗号是什么？如果没有记录就直接说不知道，不要猜。",
+      "receivedAtUtc": "2026-11-05T11:01:36.452Z",
+      "reply": "[redacted private test text]",
+      "replyStoredAtUtc": "2026-11-05T11:01:41.289Z",
+      "replyTextSha256": "e3f3e81ba76da3e2e7f9d14898b06fcbfa65e47599ef210e5dde91d0384f5160",
+      "matchingNonGenericSentReceipt": true,
+      "taskState": "reply_ended",
+      "ownerQQScreenConfirmedByRoot": true,
+      "onlyJuDisconnectedConfirmedByRoot": true
+    },
+    "juAfterIndividualReconnect": {
+      "receivedAtUtc": "2026-11-05T11:03:43.159Z",
+      "sameAnswerFreeQuestion": true,
+      "firstReply": "[redacted private test text]",
+      "replyStoredAtUtc": [
+        "2026-11-05T11:03:47.976Z",
+        "2026-11-05T11:03:48.742Z",
+        "2026-11-05T11:03:49.635Z"
+      ],
+      "replyTextHashes": [
+        "593e4e038aa49ea5a675d50f9165c40ac540c4962b52819eac466941a6c83c21",
+        "89b52a5490fdc42c7f3e1b8670c2e2ab5e52dd8fb57144a7a206138a264b60e4",
+        "2a163c2167d159013550c6e3cd3a9979d87b87275ee9270f2d3ea8793aaf54a1"
+      ],
+      "matchingNonGenericSentReceipts": 3,
+      "taskState": "reply_ended",
+      "markerAbsentFromRepliesAndScopedMemory": true,
+      "ownerQQScreenConfirmedByRoot": true,
+      "noQrAndOtherAccountsStayedConnectedConfirmedByRoot": true,
+      "boundary": "The second bubble referred to old blue-note conversation context, not a new scheduled send. This is not acceptance of model-reported current appointment state."
+    },
+    "whaleAfterAppRestart": {
+      "receivedAtUtc": "2026-11-05T11:08:02.354Z",
+      "questionContainedMarker": false,
+      "replyExcerpt": "[redacted private test text]",
+      "replyStoredAtUtc": "2026-11-05T11:08:05.493Z",
+      "replyTextSha256": "6e2841a66ff47492d4626edd043bf466c7cb10a03d5862d5380226769d645091",
+      "matchingNonGenericSentReceipt": true,
+      "ownerQQScreenConfirmedByRoot": true,
+      "factIdHashRevisionCreatedUpdatedUnchanged": true,
+      "allThreeDatabasesHistoryNotesActionsMarkerCountBeforeQuestion": 0,
+      "otherTwoAccountsCurrentMarkerOccurrences": 0,
+      "independentReadOnlyCheckAtUtc": "2026-11-05T11:10:39.091Z"
+    },
+    "boundedThreeAccountIsolationPassed": true,
+    "generalAccountIsolationGuarantee": false,
+    "factOnlyRestartRecallAccepted": true,
+    "boundary": "One structured fact survived one actual app restart and was recalled without the answer in prior chat; two other real characters gave negative answers. This is not a cross-month accuracy study or an observed 120-message overflow test. No unrelated messages, raw account identifiers or credentials are exported."
+  },
+  "reviewedRuntime": {
+    "startedAtUtc": "2026-11-05T11:05:14.7715309Z",
+    "launchedObservedByRoot": true,
+    "oldThreeConnectionsStoppedThroughUI": true,
+    "allThreeReconnectedWithoutQrObservedByRoot": true,
+    "buildIdentityLaunchedFalsePreserved": true,
+    "includes1800MsBatching": true,
+    "includesLaterFollowupContextCorrection": false,
+    "boundary": "Historical actual reviewed-runtime observation, including editable review. It was later replaced by the separately recorded neural runtime; the read-only build identities remain unchanged."
+  },
+  "realMergedPair": {
+    "source": "read-only-live-SQLite-collector+root-QQ-screen-observation",
+    "character": "鲸鱼娘 / Whale",
+    "configuredDebounceMs": 1800,
+    "inputs": [
+      "[redacted private test text]",
+      "[redacted private test text]"
+    ],
+    "receivedAtUtc": [
+      "2026-11-05T11:12:09.308Z",
+      "2026-11-05T11:12:10.459Z"
+    ],
+    "arrivalGapMs": 1151,
+    "sameTask": true,
+    "taskIdHash": "6745893d3492e56b2a5c39b2dfe2fda0a1d542bc9851fd997c1e14604fbec7bc",
+    "controllerTurns": 1,
+    "taskState": "reply_ended",
+    "replies": [
+      "在。晚安，这次是真的去睡了吧？",
+      "手机放远一点，杂事明天再理。"
+    ],
+    "replyStoredAtUtc": [
+      "2026-11-05T11:12:13.594Z",
+      "2026-11-05T11:12:14.543Z"
+    ],
+    "replyTextHashes": [
+      "6905df3eb2fc3600af59859e656161cbbe16a7ba7ef946c7521741d664c7bab4",
+      "692adf455bc1e9d9118525a5401b979d31fd75802ab7d273987d6f26e0aa7570"
+    ],
+    "matchingNonGenericSentReceipts": 2,
+    "ownerSentTwoSeparateMessagesAndSawTwoBubblesConfirmedByRoot": true,
+    "boundedMergeAccepted": true,
+    "boundary": "Two inputs shared one controller turn; two reply bubbles are not two model turns. Provider HTTP count was not instrumented. This is one real timing sample, not every burst/overflow/interruption scenario or a latency benchmark."
+  },
+  "live": {
+    "source": "real-qq-owner-ui+real-model+sqlite",
+    "character": "鲸鱼娘 / Whale",
+    "provider": "DeepSeek",
+    "provenance": {
+      "database": "Read-only SQLite snapshot of the actual running relationship; no store recovery, credential access or database mutation by the collector.",
+      "screens": "Separately confirmed by the project operator in the actual application and owner QQ UI/accessibility view.",
+      "model": "Actual companion replies and public drafts; provider request logs, billing and exact model revision were not independently audited.",
+      "receiptMeaning": "A durable sent/published receipt establishes interface acceptance, not audience visibility."
+    },
+    "shortBubbles": {
+      "status": "passed_bounded_live_flow",
+      "incomingAtUtc": "2026-11-05T08:57:58.120Z",
+      "input": "[redacted private test text]",
+      "observedBubbleCount": 2,
+      "bubbleTexts": [
+        "晚上好。雨天读书，我会偏短篇和散文：雨声本身像背景白噪音，太密的长篇容易读散。选带一点湿冷质感的文字也不错，比如随笔、书信，或者节奏慢的小说，配一杯热饮刚刚好。",
+        "听的部分，爵士钢琴、氛围电子、Lo-fi 都合适，音量压低一点，让雨声占主位。想更有画面感就听电影原声；想安静做事，纯器乐比带歌词的更不容易分心。你今晚是想读书还是只听雨？"
+      ],
+      "messageStoredAtUtc": [
+        "2026-11-05T08:58:01.381Z",
+        "2026-11-05T08:58:02.330Z"
+      ],
+      "storedMessageIntervalMs": 949,
+      "distinctMatchingSentReceipts": 2,
+      "ownerSawBothBubbles": true,
+      "permissionCodeRequired": false,
+      "transportAnnouncementOrFixedResultPrefix": false,
+      "partialDeliveryAndInterruptionAccepted": false
+    },
+    "memory": {
+      "status": "bounded_corrected_restart_recall_and_forgetting_passed_fact_only_retrieval_and_isolation_unaccepted",
+      "controlledTestFact": "[redacted private test marker or description]",
+      "explicitQqSavePersisted": true,
+      "storedCorrection": {
+        "controlledValue": "[redacted private test text]",
+        "revision": 2,
+        "updatedAtUtc": "2026-11-05T10:15:04.441Z",
+        "oldMessagesBeforeCorrectionRetained": 0,
+        "oldPrivateActionTextsBlanked": 3,
+        "notesRows": 0,
+        "survivedRootObservedAppRestart": true,
+        "revisionAndUpdateTimeUnchangedAfterRestart": true,
+        "postRestartObservedAtUtc": "2026-11-05T10:21:02.578Z",
+        "modelRecallAccepted": true,
+        "structuredFactOnlyRetrievalEstablished": false,
+        "recentCorrectionCommandAndConfirmationStillPresent": true
+      },
+      "restartRecallAccepted": true,
+      "correctionAccepted": true,
+      "restartRecallInput": "[redacted private test marker or description]",
+      "restartRecallReply": "[redacted private test text]",
+      "restartRecallReplyStoredAtUtc": "2026-11-05T10:27:44.896Z",
+      "restartRecallReplySha256": "e9f128375c11557312872e797b99899a001c37d28abead66226334c203cfbfb5",
+      "ownerSawRestartRecallReply": true,
+      "longWindowFactOnlyRetrievalAccepted": false,
+      "forgettingAccepted": true,
+      "forgetting": {
+        "status": "passed_one_explicit_forget_and_subsequent_no_recall_flow",
+        "confirmationStoredAtUtc": "2026-11-05T10:32:58.584Z",
+        "sameAnswerFreeQuestionReceivedAtUtc": "2026-11-05T10:33:47.379Z",
+        "replyTexts": [
+          "[redacted private test text]",
+          "[redacted private test text]"
+        ],
+        "replyStoredAtUtc": [
+          "2026-11-05T10:33:49.942Z",
+          "2026-11-05T10:33:50.690Z"
+        ],
+        "ownerSawConfirmationAndBothReplies": true,
+        "independentReadOnlySnapshotAtUtc": "2026-11-05T10:40:06.706Z",
+        "targetFactsRemaining": 0,
+        "factsRemainingInTestScope": 0,
+        "notesRows": 0,
+        "messagesBeforeForgetConfirmation": 0,
+        "priorPrivateActionBodiesBlank": 5,
+        "priorPrivateActionsTotal": 5,
+        "oldAndCorrectedMarkerOccurrencesInPrivateTables": 0,
+        "checkedPrivateTables": [
+          "facts",
+          "messages",
+          "scoped_notes",
+          "actions",
+          "followups"
+        ],
+        "confirmationAndReplyMatchingSentReceipts": 3,
+        "distinctNonGenericReceipts": true,
+        "limits": "One relationship and one subsequent question. No fact-only long-window retrieval, account isolation, forensic SQLite erasure, or deletion of QQ history, independent acceptance files and backups established."
+      },
+      "crossAccountIsolationAccepted": false
+    },
+    "publicJournal": {
+      "status": "publication_readback_owner_view_and_bounded_postrestart_draft_continuity_passed_audience_partial",
+      "publishedAtUtc": "2026-11-05T09:05:46.606Z",
+      "publishedText": "[redacted private test text]",
+      "publishedTextSha256": "729df73be6c486037623129e12919f83c5c3b0bdc0d7f1fe6f44d793b8615a04",
+      "actionAndJournalPublished": true,
+      "matchingNonemptyPostReceipt": true,
+      "postIdOmitted": true,
+      "contentVerified": true,
+      "contentVerificationSource": "Operator observed actual application status reporting exact text readback; this boolean is not a persisted SQLite column.",
+      "ownerSawCompleteMatchingText": true,
+      "ownerVisibilitySource": "Actual owner QQ Space UI/accessibility view, independently compared with the stored text.",
+      "ownerOnlyAudienceVerified": false,
+      "nonWhitelistedAccountExcluded": null,
+      "nextDraft": {
+        "createdAtUtc": "2026-11-05T09:12:25.990Z",
+        "text": "[redacted private test text]",
+        "textSha256": "d8a27b3070a22e0b3b7f92075c2441c0878c1cc2ae324eb44157f2e70b6e54c4",
+        "state": "draft",
+        "published": false,
+        "hasPostReceipt": false,
+        "sameDayShapeThemeContinued": true,
+        "dailyPublicationAllowance": 1
+      },
+      "laterDateOrRestartContinuityAccepted": true,
+      "fullPrivateContextExclusionProvenByTheseExamples": false,
+      "continuity": {
+        "appRestartDraftAccepted": true,
+        "laterDateNarrativeQualityAccepted": false,
+        "draftCreatedAtUtc": "2026-11-05T12:07:51.442Z",
+        "secondsAfterRuntimeStart": 1061.628,
+        "publicTextSha256": "405eebb8238c1f751635d3a0d99de0ae8836b766a1844b2d8dab68a87fcf094f",
+        "state": "draft",
+        "published": false,
+        "hasPostReceipt": false,
+        "totalPublishedEntries": 1,
+        "totalDraftEntries": 2,
+        "publicThemeContinued": true,
+        "privateMarkerFoundInPublicEntries": false,
+        "boundary": "One real post-restart draft plus owner UI/SQLite evidence; no later-date narrative-quality or complete prompt privacy proof."
+      },
+      "audienceControl": {
+        "nonOwnerCharacter": "橘 / Ju",
+        "publisherCharacter": "鲸鱼娘 / Whale",
+        "samePostArguments": true,
+        "nonOwnerResult": "interface_error",
+        "nonOwnerInterfaceCode": -110,
+        "publisherReadSucceeded": true,
+        "nonOwnerExistingUnselectedFriend": false,
+        "officialPermissionMeaningEstablished": false,
+        "ownerOnlyAudienceVerified": false,
+        "boundary": "A same-post publisher-positive/non-owner-error control is partial. It does not isolate the configured whitelist from existing friendship/space privacy or prove the meaning of -110."
+      }
+    },
+    "profileMigration": {
+      "status": "credential_transfer_connection_and_fresh_chat_observed",
+      "observation": "The earlier cross-profile import failed. The normal application now confirms a readable managed credential copy for Whale, using the original business-data root, with a subsequent QQ connection.",
+      "whaleOriginalProfileWorks": true,
+      "sourceVaultsPreserved": true,
+      "managedCredentialCopyReadable": true,
+      "businessDataRootUnchanged": true,
+      "credentialTransferAccepted": true,
+      "postMigrationConnectionObserved": true,
+      "postMigrationChatVerified": true,
+      "fullPostMigrationFlowAccepted": false,
+      "simultaneousAccountsAccepted": true,
+      "boundary": "Migration and the later bounded simultaneous-connection/isolation/reconnect checks passed their recorded paths; full general recovery and ongoing login stability are not established."
+    }
+  },
+  "juApiQq": {
+    "status": "passed_bounded_live_conversation",
+    "source": "real-qq-owner-ui+real-claude-api+sqlite",
+    "character": "橘 / Ju",
+    "selectedMode": "api",
+    "companionEnabled": true,
+    "keyEnteredAndSavedDirectlyByOwner": true,
+    "qqQrCompletedByOwner": true,
+    "incomingAtUtc": "2026-11-05T09:47:22.091Z",
+    "input": "[redacted private test text]",
+    "observedBubbleCount": 4,
+    "bubbleTexts": [
+      "晚上好。好，今天不给建议，我先陪你聊。",
+      "脑子乱的时候，有时是好多事挤在一起，有时是某一件事一直绕不开。你现在是哪种感觉？",
+      "想到哪儿说到哪儿就行，不用理顺了再讲。",
+      "刚才你问群聊的事，我还记着，等你想聊的时候再说。"
+    ],
+    "messageStoredAtUtc": [
+      "2026-11-05T09:47:30.802Z",
+      "2026-11-05T09:47:31.724Z",
+      "2026-11-05T09:47:32.471Z",
+      "2026-11-05T09:47:33.392Z"
+    ],
+    "distinctMatchingSentReceipts": 4,
+    "ownerSawAllBubbles": true,
+    "recoveryTask": {
+      "inboundCount": 1,
+      "state": "reply_ended",
+      "taskIdSha256": "27986dd33a67d808007e1daa744f14cce0ba1e4b2785962e2f28b0f01748bd3a"
+    },
+    "boundedShortListeningStyleObserved": true,
+    "priorTopicReference": {
+      "sameRelationshipContextExists": true,
+      "matchingEarlierUserMessages": 2,
+      "earlierTextOmitted": true,
+      "structuredFactOrRestartAcceptance": false
+    },
+    "billingOrPromotionalCreditEntitlementVerified": false,
+    "limits": "One controlled conversation and style/context observation, not comparative style quality, memory recovery or complete card acceptance."
+  },
+  "simultaneousAccounts": {
+    "status": "bounded_three_connections_backends_isolation_and_selective_reconnect_observed",
+    "sameApplicationProcess": true,
+    "connectedCharacters": [
+      "橘 / Ju",
+      "龙娘 / Dragon",
+      "鲸鱼娘 / Whale"
+    ],
+    "neitherStoppedToConnectTheOther": true,
+    "juRealApiChatWhileWhaleConnected": true,
+    "whaleFreshChatAfterMigrationVerified": true,
+    "dragonQqSignedIn": true,
+    "dragonApplicationRoundTripVerified": true,
+    "dragonRealApiChatWhileAllThreeConnected": true,
+    "threeAccountIsolationVerified": true,
+    "selectiveDisconnectAndReconnectVerified": true,
+    "boundedIsolationScope": "One UI-only Whale fact, two other-character negative answers, then Whale positive retrieval across a full application restart.",
+    "generalIsolationGuarantee": false,
+    "continuousLoginStabilityVerified": false,
+    "boundary": "These are recorded bounded flows, not a claim all three QQ sign-ins remain available indefinitely. A subsequent sign-in-loss report is under separate investigation."
+  },
+  "dragonApiReadiness": {
+    "status": "passed_bounded_gpt_api_qq_conversation",
+    "character": "龙娘 / Dragon",
+    "selectedBackendByOwner": "GPT API",
+    "supersedesPriorLocalCodexDefault": true,
+    "localCodexOptionRetained": true,
+    "normalManagedCredentialMigrationObserved": true,
+    "qqSignedIn": true,
+    "keyEnteredReportedByOwner": true,
+    "keySavedStateVerifiedInUi": true,
+    "savedStateEvidence": "The operator saw the saved-key indicator in the normal application UI; no key value was read or exported.",
+    "applicationConnectionVerified": true,
+    "actualApiQqRoundTripVerified": true,
+    "apiCreditClaimOrBalanceVerified": false
+  },
+  "dragonApiQq": {
+    "status": "passed_bounded_live_conversation",
+    "source": "real-qq-owner-ui+real-gpt-api+sqlite",
+    "character": "龙娘 / Dragon",
+    "selectedMode": "gpt",
+    "companionEnabled": true,
+    "characterId": "codex-dragon",
+    "proactiveMessages": false,
+    "qzonePosts": false,
+    "incomingAtUtc": "2026-11-05T10:13:36.980Z",
+    "input": "[redacted private test text]",
+    "observedBubbleCount": 1,
+    "reply": "[redacted private test text]",
+    "messageStoredAtUtc": "2026-11-05T10:13:42.977Z",
+    "replyTextSha256": "aabe3830c372423363ec57ff7e2d5e9181945266cc1d29cd682b154a3cb902f2",
+    "distinctMatchingSentReceipts": 1,
+    "ownerSawMatchingReply": true,
+    "recoveryTask": {
+      "inboundCount": 1,
+      "state": "reply_ended",
+      "taskIdSha256": "b803b9c95ef8e5ef84aadad39905a1b61e0ff0be89f147ccadd0ea5beac2fefe"
+    },
+    "allThreeConnectionsObservedInNormalUi": true,
+    "fullThreeAccountIsolationVerified": false,
+    "billingOrPromotionalCreditEntitlementVerified": false
+  },
+  "liveCharacterCard": {
+    "status": "bounded_native_roundtrip_fresh_apply_editor_refresh_passed",
+    "character": "橘 / Ju",
+    "capturedAtUtc": "2026-11-05T09:22:14.512Z",
+    "source": "packaged-electron-UI-import-apply-export+independent-json-comparison",
+    "originalCardExported": true,
+    "bundledBookishExampleImportedAndPreviewed": true,
+    "appliedThenExported": true,
+    "roundTripExact": true,
+    "speechExamples": 3,
+    "completeAiAndChannelConfigurationHashUnchanged": true,
+    "liveModelStyleObservedInOneControlledReply": true,
+    "broadModelStyleQualityVerified": false,
+    "editorRefreshIssue": "Original zero-group regression was subsequently retested by a fresh actual export/import/preview/apply cycle; all three groups appeared immediately.",
+    "restoredExampleGroupsObservedByRoot": 3,
+    "freshImportApplyRefreshRepeated": true,
+    "latestFreshImport": {
+      "capturedAtUtc": "2026-11-05T11:35:00.329Z",
+      "source": "real-packaged-native-UI-export-import-apply",
+      "exportEqualsAppliedSettings": true,
+      "completeAiAndChannelConfigurationHashUnchanged": true,
+      "examples": 3,
+      "immediateEditorObservedByRoot": true,
+      "runtime": "reviewed",
+      "newModelStyleCheck": false
+    }
+  },
+  "nativeSpeechProbe": {
+    "backend": "Windows System.Speech",
+    "recognizerLocale": "zh-CN",
+    "installedVoices": [
+      "Microsoft Huihui Desktop",
+      "Microsoft Zira Desktop"
+    ],
+    "actualPlaybackStartEvent": true,
+    "cancelRequestedAfterPlaybackStartMs": 400,
+    "cancelAcknowledgedAfterPlaybackStartMs": 567,
+    "humanSpeechCaptured": false,
+    "audibilityConfirmedByListener": false,
+    "actualAiVoiceConversationAccepted": false,
+    "automaticHumanSpeechInterruptionAccepted": false,
+    "latencyBenchmark": false
+  },
+  "humanVoiceAttempt": {
+    "status": "listening_without_transcript_not_accepted",
+    "character": "橘 / Ju",
+    "attemptNumber": 2,
+    "actualIntegratedMicrophoneSession": true,
+    "listeningEvents": 1,
+    "speechOnsetEvents": 0,
+    "transcriptEvents": 0,
+    "ownerReportedNoRecognizedText": true,
+    "microphoneClosedAfterAttempt": true,
+    "defaultAndSapiInputObserved": "Steam virtual input",
+    "endpointChecksReadOnly": true,
+    "ownerChangingWindowsInputSelection": false,
+    "supersededByLaterInputSelection": true,
+    "newInputRecognitionVerified": false,
+    "apiFailureEstablished": false,
+    "heardModelReplyVerified": false,
+    "humanSpeechInterruptionVerified": false,
+    "audioRetained": false
+  },
+  "latestHumanVoiceAttempt": {
+    "status": "sony_selected_timeout_without_transcript_cause_unresolved",
+    "character": "橘 / Ju",
+    "attemptNumber": 3,
+    "inputSelectedByOwner": "Sony WH-1000XM5",
+    "defaultConsoleAndMultimediaInputVerifiedReadOnly": true,
+    "sapiInputVerifiedReadOnly": true,
+    "communicationsDefaultRemainsAnotherDevice": true,
+    "systemInputMeterActivityReportedByOwner": true,
+    "listeningEvents": 1,
+    "speechOnsetEvents": 0,
+    "transcriptEvents": 0,
+    "timeoutCode": "voice_timeout",
+    "timeoutSeconds": 30,
+    "audioRetained": false,
+    "audibilityConfirmedByOwner": null,
+    "absenceOfHardwareInputEstablished": false,
+    "apiFailureEstablished": false,
+    "recordingInterfaceRevision": "Self-operated start, transcript preview and explicit finish/send now have source and synthetic checks; real recognition remains unaccepted.",
+    "actualAiVoiceConversationAccepted": false,
+    "humanSpeechInterruptionAccepted": false
+  },
+  "laterVoiceDiagnosticsCheckpoint": {
+    "automatedTests": {
+      "total": 18,
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 191.7717
+    },
+    "automatedInputAndPlaybackSimulated": true,
+    "nativeCompileAndCapabilityCheckPassed": true,
+    "nativeCheckOpenedMicrophone": false,
+    "syntheticScreens": [
+      "no-input",
+      "ended",
+      "narrow"
+    ],
+    "audioLevelSamplingHz": 1,
+    "maximumRecentLevelSamples": 120,
+    "noSpeechHintAfterSeconds": 15,
+    "listeningLimitSeconds": 30,
+    "latestRedactedDiagnosticsRetainedPerAccount": true,
+    "diagnosticAccountLimit": 6,
+    "humanAcceptance": false
+  },
+  "manualVoiceRevisionCheckpoint": {
+    "automatedTests": {
+      "total": 21,
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 187.8281
+    },
+    "automatedRecognitionAndPlaybackSimulated": true,
+    "syntheticUiChecksPassed": 7,
+    "syntheticUiOpenedMicrophone": false,
+    "workflow": [
+      "Start speaking",
+      "Preview recognized text",
+      "Finish speaking to send"
+    ],
+    "mountStartsMicrophone": false,
+    "emptyTranscriptCallsModel": false,
+    "manualListeningLimitSeconds": 600,
+    "finishRecognitionLimitSeconds": 5,
+    "handsFreeIsSeparateOptIn": true,
+    "humanAcceptance": false
+  },
+  "manualPreviewRuntime": {
+    "source": "root-normal-desktop-ui-observation",
+    "observedLocalMinute": "2026-11-05 21:20 Australia/Sydney",
+    "actuallyStarted": true,
+    "threeAccountsReconnectedThroughUi": true,
+    "selectedCharacter": "橘 / Ju",
+    "waitingForOwnerButtonAction": true,
+    "microphoneAutomaticallyOpened": false,
+    "buildTimeLaunchedFlagModified": false,
+    "successfulRecognitionEstablishedByOpeningUi": false
+  },
+  "manualVoiceQualityObservation": {
+    "source": "owner-human-feedback-relayed-by-root",
+    "recognizedTextVisible": true,
+    "replyAudibleToOwner": true,
+    "recognitionAndReadAloudChainResponded": true,
+    "ownerReportsRecognitionVeryInaccurate": true,
+    "ownerReportsVoiceRobotic": true,
+    "quantitativeRecognitionAccuracyMeasured": false,
+    "replacementVoicesListenedAndCompared": false,
+    "qualityMeetsAcceptance": false,
+    "realSpeechInterruptionAccepted": false,
+    "speechBackend": "Windows System.Speech around the selected text model"
+  },
+  "agreedFollowupPersistence": {
+    "status": "saved_survived_restart_and_due_qq_delivery_passed_once",
+    "character": "橘 / Ju",
+    "dueAtUtc": "2026-11-05T10:24:00.000Z",
+    "createdAtUtc": "2026-11-05T10:16:17.249Z",
+    "postRestartObservedAtUtc": "2026-11-05T10:21:02.578Z",
+    "stateAtObservation": "pending",
+    "revision": 1,
+    "originalCreationTimePreserved": true,
+    "topicMatchesControlledInput": true,
+    "earlyReceipt": false,
+    "applicationRestartObservedByRoot": true,
+    "independentPersistenceCheckReadOnly": true,
+    "dueQqDeliveryAccepted": true,
+    "deliveredText": "[redacted private test text]",
+    "deliveredTextSha256": "3e44b33595cfbbbd6daf19553fcf3ef2f5074880f4ba7f54c81ec624a35d4171",
+    "deliveredMessageStoredAtUtc": "2026-11-05T10:25:00.876Z",
+    "followupSentUpdatedAtUtc": "2026-11-05T10:25:00.888Z",
+    "oneMatchingSentActionAndHistoryRow": true,
+    "appointmentAndMessageReceiptMatch": true,
+    "ownerSawMatchingQqBubble": true,
+    "changeCancelAndNoReplayAccepted": true,
+    "editCancelSuppressionPassedOnce": true,
+    "individualReconnectNoReplay": {
+      "capturedAtUtc": "2026-11-05T11:05:13.290Z",
+      "reconnectObservedByRoot": true,
+      "priorMintMatchingSentActions": 1,
+      "priorMintExactAssistantRows": 1,
+      "priorMintTimestampUnchanged": true,
+      "cancelledRevision": 3,
+      "cancelledReceiptAbsent": true,
+      "proactiveActionsSinceEditTestStart": 0,
+      "boundedNoReplayObserved": true,
+      "boundary": "One individual Ju reconnect, not yet a full-application restart/no-replay acceptance."
+    },
+    "fullAppRestartNoReplay": {
+      "capturedAtUtc": "2026-11-05T11:10:39.091Z",
+      "restartAndThreeReconnectionsObservedByRoot": true,
+      "priorMintMatchingSentActions": 1,
+      "priorMintExactAssistantRows": 1,
+      "priorMintReceiptAndTimestampUnchanged": true,
+      "cancelledRevision": 3,
+      "cancelledTimestampUnchanged": true,
+      "cancelledReceiptAbsent": true,
+      "proactiveActionsSinceEditTestStart": 0,
+      "boundedNoReplayObserved": true,
+      "boundary": "One actual app restart and bounded observation; no guarantee about every outage or future scheduling condition."
+    },
+    "editCancelAfterDue": {
+      "capturedAtUtc": "2026-11-05T11:02:01.823Z",
+      "state": "cancelled",
+      "revision": 3,
+      "sameCreatedUpdatedAndDueAsBefore": true,
+      "matchingAppointmentRows": 1,
+      "hasReceipt": false,
+      "proactiveActionsSinceTestStart": 0,
+      "afterOriginalAndEditedDue": true,
+      "keptConnectedThroughBothDueTimesObservedByRoot": true,
+      "ownerQQHadNoNoteBoxFollowupObservedByRoot": true,
+      "priorMintMatchingSentActions": 1,
+      "priorMintExactAssistantRows": 1,
+      "priorMintReceiptAndTimestampUnchanged": true,
+      "boundary": "One real edit/cancel sequence remained unsent after both times. Ju was disconnected only afterward. A subsequent reconnect/restart no-replay flow remains separate."
+    },
+    "editCancelBeforeDue": {
+      "capturedAtUtc": "2026-11-05T10:57:04.348Z",
+      "source": "root-normal-app-UI+independent-read-only-sqlite",
+      "originalDueReportedByRootUtc": "2026-11-05T10:58:00.000Z",
+      "editedDueAtUtc": "2026-11-05T10:59:00.000Z",
+      "editedTopic": "[redacted private test text]",
+      "createdAtUtc": "2026-11-05T10:53:28.129Z",
+      "updatedAtUtc": "2026-11-05T10:55:04.356Z",
+      "timeZone": "Australia/Sydney",
+      "revision": 3,
+      "state": "cancelled",
+      "matchingAppointmentRows": 1,
+      "hasReceipt": false,
+      "proactiveActionsSinceTestStart": 0,
+      "priorMintAppointmentRows": 1,
+      "priorMintMatchingSentActions": 1,
+      "priorMintExactAssistantRows": 1,
+      "dueSuppressionAccepted": false,
+      "boundary": "The capture is before both original and edited due times. Stored edit/cancellation and unchanged single mint delivery are verified; suppression after due and later restart/no-replay are not yet accepted."
+    }
+  },
+  "editableVoiceReviewCheckpoint": {
+    "automatedTests": {
+      "total": 23,
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 194.0826
+    },
+    "syntheticUiChecksPassed": 10,
+    "microphoneTested": false,
+    "finishEndsCaptureWithoutSubmitting": true,
+    "transcriptEditableBeforeSend": true,
+    "sendRequiresSingleUseCurrentAccountPanelDraft": true,
+    "draftInvalidatedOnRerecordCloseOrQqInterruption": true,
+    "laterThanRecordedFullSuite": false,
+    "packagedRealFlowAccepted": false,
+    "packagedAndLaunchedInReviewed": true,
+    "humanQualityAccepted": false
+  },
+  "nineFeatureStatus": {
+    "agreedFollowups": "bounded_due_delivery_edit_cancel_suppression_reconnect_and_full_restart_no_replay_passed",
+    "longTermMemory": "bounded_correction_forgetting_fact_only_restart_recall_and_three_character_isolation_passed",
+    "publicCharacterJournal": "bounded_publication_owner_view_and_postrestart_draft_passed_audience_exclusion_unaccepted",
+    "shortMessageBubbles": "bounded_whale_and_ju_flows_passed",
+    "portableCharacterCards": "bounded_native_roundtrip_fresh_preview_apply_immediate_editor_and_authority_preservation_passed",
+    "consecutiveMessageBatching": "one_real_1151ms_pair_merged_into_one_controller_turn_passed",
+    "interruptibleReplies": "one_real_running_generation_cancelled_and_replacement_received_passed_unsent_bubbles_unaccepted",
+    "unifiedAccounts": "bounded_three_connections_backends_isolation_selective_reconnect_and_full_restart_passed",
+    "interruptibleVoice": "bounded_neural_manual_passed_spoken_interruption_unaccepted_deferred_by_owner"
+  },
+  "limits": [
+    "These are bounded Windows, Whale/DeepSeek, Ju/Claude API and Dragon/GPT API observations, not general account, provider or model compatibility acceptance.",
+    "Owner visibility does not prove exclusion of a non-whitelisted account; an empty feed or network failure is not audience-isolation evidence.",
+    "One post-restart thematic draft establishes bounded continuity, not later-date narrative quality; absence of a private marker does not prove complete private-input exclusion.",
+    "A completed answer is not verified task success. Coding, file operations and expanded contact scope were not part of this companion check.",
+    "The nine-feature task is unfinished. Automated tests and build success cannot replace the remaining real flows.",
+    "No new public GitHub release or comparative naturalness/emotional-benefit claim is made."
+  ],
+  "realGenerationInterruption": {
+    "character": "鲸鱼娘",
+    "provider": "DeepSeek API",
+    "inputs": [
+      {
+        "text": "[redacted private test text]",
+        "textSha256": "e466203dc99ef9b4afcf1590cb3cf93ddc23b6312a0eb1b945374e9bd9ba466e",
+        "at": "2026-11-05T11:27:15.179Z"
+      },
+      {
+        "text": "[redacted private test text]",
+        "textSha256": "4daff2e97adb778bd7dcaad622f61c2bc99f455adf9ffe8689a125d650150b09",
+        "at": "2026-11-05T11:27:17.587Z"
+      }
+    ],
+    "old": {
+      "receivedAt": "2026-11-05T11:27:15.168Z",
+      "taskHash": "a64e4b44e77ed8f84c5c665f98e336bd89724a826b5750ae4c1d3a0bf52ee1d3",
+      "transitions": [
+        {
+          "observedAt": "2026-11-05T11:27:15.207Z",
+          "state": "queued",
+          "updatedAt": "2026-11-05T11:27:15.200Z"
+        },
+        {
+          "observedAt": "2026-11-05T11:27:17.057Z",
+          "state": "running",
+          "updatedAt": "2026-11-05T11:27:16.995Z"
+        },
+        {
+          "observedAt": "2026-11-05T11:27:17.710Z",
+          "state": "cancelled",
+          "updatedAt": "2026-11-05T11:27:17.620Z"
+        }
+      ]
+    },
+    "replacement": {
+      "receivedAt": "2026-11-05T11:27:17.574Z",
+      "taskHash": "6aebff5f97e75b30a7ed2bad049cee919d325302d7728181858802c147047670",
+      "transitions": [
+        {
+          "observedAt": "2026-11-05T11:27:17.617Z",
+          "state": "queued",
+          "updatedAt": "2026-11-05T11:27:17.609Z"
+        },
+        {
+          "observedAt": "2026-11-05T11:27:19.450Z",
+          "state": "running",
+          "updatedAt": "2026-11-05T11:27:19.403Z"
+        },
+        {
+          "observedAt": "2026-11-05T11:27:20.646Z",
+          "state": "reply_ended",
+          "updatedAt": "2026-11-05T11:27:20.583Z"
+        }
+      ]
+    },
+    "localCancelUpdateAfterNewReceiptMs": 46,
+    "reply": {
+      "text": "[redacted private test text]",
+      "textSha256": "0cac628426dbaa478cf84e8f936edde8df91c650db471750a93e24afb2e76087",
+      "at": "2026-11-05T11:27:20.566Z",
+      "nonGenericSentReceiptMatched": true
+    },
+    "assistantAndReplyActionCount": 1,
+    "runningObservedBeforeReplacement": true,
+    "rootObservedBothInputsAndOnlyNewReplyInQq": true,
+    "boundedGenerationInterruptionAccepted": true,
+    "unsentBubbleQueueInterruptionAccepted": false,
+    "voiceInterruptionAccepted": false,
+    "providerComputeCancellationProven": false,
+    "priorSlowAttemptsExcluded": true
+  },
+  "neuralBuildIdentity": {
+    "checkedAtUtc": "2026-11-05T11:41:42.967Z",
+    "sourceMatches": true,
+    "sourceFilesChecked": 93,
+    "noticeFilesChecked": 2,
+    "checkedFilesTotal": 95,
+    "packageFieldsChecked": 11,
+    "unpackedSourceFiles": [
+      "src/assets/voice/serena-reference.wav",
+      "src/bot/native-channel.cjs",
+      "src/core/personas.cjs"
+    ],
+    "generatedPythonCacheExcluded": true,
+    "archiveSha256": "be2ccfe0e4a066f99dd580ba559132cab7442310210c0fee16c8b09993214753",
+    "executableSha256": "82169e565949d648f10b5460ea83186cc5abec144589901a4f429d190c8169b9",
+    "reference": {
+      "relativePath": "src/assets/voice/serena-reference.wav",
+      "bytes": 318764,
+      "sha256": "20a9b9c687db1dc2e9c5783c3e915c9694e49118fff9e72dad56b1c32a37d179",
+      "readableAsUnpackedFile": true,
+      "matchesApprovedReference": true
+    },
+    "built": true,
+    "launched": false,
+    "humanVoiceAccepted": false,
+    "boundary": "Read-only package identity. The original failed comparison counted generated __pycache__; it is retained separately, and no package/source bytes were changed by this audit."
+  },
+  "realBubbleStopObservation": {
+    "character": "鲸鱼娘",
+    "firstRequestAt": "2026-11-05T11:40:39.653Z",
+    "stopReceivedAt": "2026-11-05T11:40:46.314Z",
+    "oldState": "cancelled",
+    "oldStateUpdatedAt": "2026-11-05T11:40:46.517Z",
+    "inFlightOldBubbleAttemptAt": "2026-11-05T11:40:45.893Z",
+    "inFlightOldBubbleReceiptAt": "2026-11-05T11:40:46.490Z",
+    "attemptBeforeStopMs": 421,
+    "receiptAfterStopMs": 176,
+    "oldReplyBubblesReceipted": 2,
+    "newConfirmation": {
+      "text": "[redacted private test text]",
+      "textSha256": "ecebc1644a948cff2601b3c1d8ee3a911ab3f6287a3e7e97520c5e30327cf581",
+      "receiptMatched": true
+    },
+    "noAdditionalOldReplyActionInCapturedWindow": true,
+    "fullGeneratedQueueVerified": false,
+    "remainingBubbleSuppressionAccepted": false,
+    "zeroLateMessages": false,
+    "boundary": "Actual QQ confirms the observed stop sequence and no further old story; the late old bubble had already entered attempting before stop. Neither current UI nor the scoped database exposes the complete generated task text, so exact unsent count and suppression of a known remaining queue are unaccepted.",
+    "rootObservedSequenceAndNoFurtherOldStory": true
+  },
+  "neuralRuntime": {
+    "startedAtUtc": "2026-11-05T11:50:09.8147361Z",
+    "rootObservedLaunch": true,
+    "independentProcessPathMatches": true,
+    "launcherReadBackSelectsNeural": true,
+    "previousReviewedWhaleDisconnectedThroughUi": true,
+    "napCatRestarted": false,
+    "connectedCharactersObserved": [
+      "橘 / Ju",
+      "龙娘 / Dragon",
+      "鲸鱼娘 / Whale"
+    ],
+    "localNeuralVoiceEntranceVisible": true,
+    "microphoneOpenedByOperatorForReadinessCheck": false,
+    "humanRecognitionQualityAccepted": false,
+    "humanPlaybackQualityAccepted": false,
+    "humanSpokenInterruptionAccepted": false,
+    "buildIdentityLaunchedFalsePreserved": true,
+    "boundary": "Actual launcher/process/three-connection and voice-entry observation; not microphone, synthesized-audio or human quality acceptance."
+  },
+  "neuralFixBuildIdentity": {
+    "sourceMatches": true,
+    "sourceFilesChecked": 93,
+    "additionalNoticeFilesChecked": 2,
+    "checkedFilesTotal": 95,
+    "archiveSha256": "1a3209373c2eae38e3b79ec963e593590544b3d786ef6a23e40c576fdd1945bc",
+    "executableSha256": "ecadb37e624b61cf586c315a231fa3dda16a821ece9788f99e5fd6aaad5557bb",
+    "launched": false,
+    "humanVoiceAccepted": false,
+    "boundary": "Read-only build identity; actual launch belongs in a separate runtime record."
+  },
+  "firstNeuralHumanAttempt": {
+    "source": "owner-reported-recording-failure+actual-private-diagnostic-export",
+    "mode": "push-to-talk",
+    "backend": "qwen3-asr-local",
+    "microphoneRequestAtUtc": "2026-11-05T11:52:15.082Z",
+    "errorAtUtc": "2026-11-05T11:53:45.232Z",
+    "errorCode": "voice_timeout",
+    "requestToErrorMs": 90150,
+    "asrLoadingObserved": true,
+    "microphoneListeningEventCount": 0,
+    "transcriptEventCount": 0,
+    "modelTurnStartCount": 0,
+    "playbackStartCount": 0,
+    "secondRequestStillLoadingAtExport": true,
+    "recordingSucceeded": false,
+    "recognitionAccuracyEvaluated": false,
+    "newVoiceSoundQualityEvaluated": false,
+    "humanSpokenInterruptionAccepted": false,
+    "boundary": "Pre-recording ASR model-load timeout; distinct from the earlier Windows manual-chain quality rejection. A code repair does not establish a successful retry."
+  },
+  "neuralFixRuntime": {
+    "startedAtUtc": "2026-11-05T12:11:59.8887950Z",
+    "rootObservedLaunch": true,
+    "independentProcessPathMatches": true,
+    "launcherReadBackSelectsCorrectedPackage": true,
+    "connectedCharactersObserved": [
+      "橘 / Ju",
+      "龙娘 / Dragon",
+      "鲸鱼娘 / Whale"
+    ],
+    "connectionScreenIndependentlyInspected": true,
+    "napCatRestarted": false,
+    "microphoneStartedAutomatically": false,
+    "currentVoicePanel": "Ju gentle local voice",
+    "buildIdentityLaunchedFalsePreserved": true,
+    "humanRecognitionQualityAccepted": true,
+    "humanPlaybackQualityAccepted": true,
+    "humanSpokenInterruptionAccepted": false,
+    "remainingBubbleSuppressionAccepted": false,
+    "boundary": "Actual process/hash/launcher and three-connected status observations after the startup/QQ/diagnostics fixes; no new message, microphone quality or known remaining-bubble acceptance inferred.",
+    "qualityAcceptanceBoundary": "Owner accepted one manual sample; not quantified general accuracy, acoustic naturalness or spoken interruption."
+  },
+  "neuralManualOwnerObservation": {
+    "source": "owner-feedback-in-current-task",
+    "runtime": "neural-fix",
+    "recordingSucceeded": true,
+    "recognizedSampleAccurateAccordingToOwner": true,
+    "chosenGentleVoiceHeard": true,
+    "boundedManualSampleAccepted": true,
+    "privateDiagnosticExportSavedByRoot": true,
+    "independentEventAnalysisPending": false,
+    "measuredRecognitionErrorRate": null,
+    "humanSpokenInterruptionAccepted": false,
+    "boundary": "One owner-confirmed manual retry with independently matched transcript/review/confirmation/model/playback/end events. No measured accuracy/naturalness benchmark, long-session stability or hands-free acceptance. Confirmation-to-playback includes AI and TTS; playback wall time includes synthesis gaps and is not PCM duration.",
+    "independentEventAnalysisCompleted": true,
+    "backends": {
+      "asr": "qwen3-asr-local",
+      "tts": "gpt-sovits-v2proplus-local"
+    },
+    "counts": {
+      "controllerTranscriptConfirmed": 1,
+      "asrErrors": 0,
+      "playbackStart": 1,
+      "turnPlayed": 1,
+      "controllerTranscriptReview": 1,
+      "controllerErrors": 0,
+      "modelTurnStart": 1,
+      "peakLevel": 18,
+      "asrSpeechOnset": 2,
+      "playbackEnd": 1,
+      "asrTranscript": 1,
+      "audioLevelSamples": 35,
+      "ttsErrors": 0
+    },
+    "latencyMs": {
+      "finishToMicrophoneClosed": 116,
+      "confirmationToPlaybackStart": 19813,
+      "turnStartToPlaybackStart": 19807,
+      "reviewToConfirmationUserControlled": 3856,
+      "playbackStartToEndWallTime": 79152,
+      "finishToReview": 1324,
+      "microphoneClosedToTranscript": 1202,
+      "listeningToFinishUserControlled": 8016,
+      "confirmationToTurnPlayed": 98965,
+      "startRequestToListening": 8247
+    },
+    "fullManualTurnCompleted": true,
+    "matchingPlaybackOperation": true,
+    "handsFreeStatus": "deferred_by_owner",
+    "handsFreeAcceptanceDeferredByOwner": true
+  },
+  "acceptanceSchedule": {
+    "source": "latest-owner-instruction",
+    "completeImplementationFirst": true,
+    "additionalTimedQqCooperationDeferred": true,
+    "handsFreeDeferredByOwner": true,
+    "spaceAudienceAcceptanceDeferred": true,
+    "groupImplementationExpanded": false,
+    "boundary": "Remaining live acceptance is postponed, not passed. Future group testing is a scheduling intention; current companion scope remains the bound private owner and own public diary.",
+    "guide": "../COMPANION_TEST_STAGE.md",
+    "remainingRealChecks": [
+      "space_audience_exclusion",
+      "known_remaining_bubble_suppression",
+      "hands_free_spoken_interruption"
+    ],
+    "remainingRealChecksStatus": "deferred_by_owner"
+  },
+  "realDeliveryCounterObservation": {
+    "source": "actual-profile-sqlite-read-only",
+    "character": "鲸鱼娘 / Whale",
+    "observedFromUtc": "2026-11-05T12:24:00.995Z",
+    "observedUntilUtc": "2026-11-05T12:27:01.005Z",
+    "changedSnapshots": 18,
+    "complete": true,
+    "tasks": [
+      {
+        "taskHash": "135edf06caa7fb1826cf77a87c0978cb7b59edd348605cee3d7dfb5f066ad377",
+        "firstInputAt": "2026-11-05T12:24:54.287Z",
+        "terminalStates": [
+          "reply_ended"
+        ],
+        "planned": 4,
+        "attempted": 4,
+        "accepted": 4,
+        "unknown": 0,
+        "inFlight": 0,
+        "unattemptedAtCancel": null,
+        "inFlightAtCancel": null
+      },
+      {
+        "taskHash": "c9eea52027f708c508875d9665d2bde1b3309ab68df46c1ed0135516054c5b27",
+        "firstInputAt": "2026-11-05T12:26:11.762Z",
+        "terminalStates": [
+          "reply_ended"
+        ],
+        "planned": 4,
+        "attempted": 4,
+        "accepted": 4,
+        "unknown": 0,
+        "inFlight": 0,
+        "unattemptedAtCancel": null,
+        "inFlightAtCancel": null
+      }
+    ],
+    "collectorSentMessages": false,
+    "collectorObservedQqScreen": false,
+    "remainingBubbleSuppressionAccepted": false,
+    "boundary": "Both real story tasks completed all four sends with accepted receipts. No cancellation occurred, so the trace verifies counters in the running package but not suppression of unsent output."
+  },
+  "readyBuildIdentity": {
+    "checkedAtUtc": "2026-11-05T12:37:01.761Z",
+    "sourceMatches": true,
+    "sourceFilesChecked": 93,
+    "additionalNoticeFilesChecked": 2,
+    "checkedFilesTotal": 95,
+    "packageFieldsChecked": 11,
+    "unpackedFilesChecked": 3,
+    "mismatches": 0,
+    "archiveSha256": "3dada9b56909fe7f15ca79e1a929e9555f883a9e7dfcc0f064537916d7ee65dc",
+    "executableSha256": "1183c20dadbbf3fbc1a7de0151a0737fdb24e9ac1be9602547bde3b962d4401d",
+    "launched": false,
+    "humanOrAccountAcceptanceInferred": false,
+    "boundary": "Read-only build identity. No new runtime launch or deferred acceptance follows from matching packaged files."
+  },
+  "readyRuntime": {
+    "startedAtUtc": "2026-11-05T12:38:35.8089620+00:00",
+    "startedAtSydney": "2026-11-05T23:38:35.8089620+11:00",
+    "launched": true,
+    "independentProcessAndExecutableHashMatch": true,
+    "launcherPointsToReady": true,
+    "connectedCharactersObserved": [
+      "Ju",
+      "Dragon",
+      "Whale"
+    ],
+    "threeConnectionsIndependentlyInspected": true,
+    "reconnectedWithoutQrReportedByRoot": true,
+    "napCatStopped": false,
+    "microphoneOpened": false,
+    "newModelOrPublicationTest": false,
+    "newHumanAcceptance": false,
+    "buildIdentityLaunchedFalsePreserved": true,
+    "boundary": "Actual ready runtime/process/launcher and three connected UI statuses only. No new message, microphone, spoken-interruption or public-audience acceptance; deferred checks remain deferred."
+  },
+  "implementationStatus": "nine_features_implemented_and_functional_closeout_regression_passed",
+  "newPublicReleasePublished": false,
+  "publicationPrivacy": {
+    "redacted": true,
+    "redactedAt": "2026-11-06",
+    "originalEvidenceRetainedLocally": true,
+    "privateBackup": "work/publication-private-evidence-20261106/",
+    "note": "Private test messages, journal content, identifiers and local identity paths are replaced by explicit placeholders. Existing outcomes, counts, byte lengths, hashes and event order are unchanged. Existing content hashes describe the retained private originals, not these placeholders. Original evidence bytes are preserved outside Git.",
+    "fields": [
+      {
+        "field": "oldPreviewUnmergedPair.inputs.0",
+        "type": "private test text",
+        "originalUtf8Bytes": 6
+      },
+      {
+        "field": "oldPreviewUnmergedPair.inputs.1",
+        "type": "private test text",
+        "originalUtf8Bytes": 6
+      },
+      {
+        "field": "oldPreviewUnmergedPair.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 93
+      },
+      {
+        "field": "structuredFactOnlyIsolation.controlledMarker",
+        "type": "private test marker or description",
+        "originalUtf8Bytes": 14
+      },
+      {
+        "field": "structuredFactOnlyIsolation.dragonWhileJuDisconnected.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 69
+      },
+      {
+        "field": "structuredFactOnlyIsolation.juAfterIndividualReconnect.firstReply",
+        "type": "private test text",
+        "originalUtf8Bytes": 129
+      },
+      {
+        "field": "structuredFactOnlyIsolation.whaleAfterAppRestart.replyExcerpt",
+        "type": "private test text",
+        "originalUtf8Bytes": 53
+      },
+      {
+        "field": "realMergedPair.inputs.0",
+        "type": "private test text",
+        "originalUtf8Bytes": 6
+      },
+      {
+        "field": "realMergedPair.inputs.1",
+        "type": "private test text",
+        "originalUtf8Bytes": 6
+      },
+      {
+        "field": "live.shortBubbles.input",
+        "type": "private test text",
+        "originalUtf8Bytes": 114
+      },
+      {
+        "field": "live.memory.controlledTestFact",
+        "type": "private test marker or description",
+        "originalUtf8Bytes": 59
+      },
+      {
+        "field": "live.memory.storedCorrection.controlledValue",
+        "type": "private test text",
+        "originalUtf8Bytes": 11
+      },
+      {
+        "field": "live.memory.restartRecallInput",
+        "type": "private test marker or description",
+        "originalUtf8Bytes": 105
+      },
+      {
+        "field": "live.memory.restartRecallReply",
+        "type": "private test text",
+        "originalUtf8Bytes": 32
+      },
+      {
+        "field": "live.memory.forgetting.replyTexts.0",
+        "type": "private test text",
+        "originalUtf8Bytes": 93
+      },
+      {
+        "field": "live.memory.forgetting.replyTexts.1",
+        "type": "private test text",
+        "originalUtf8Bytes": 132
+      },
+      {
+        "field": "live.publicJournal.publishedText",
+        "type": "private test text",
+        "originalUtf8Bytes": 396
+      },
+      {
+        "field": "live.publicJournal.nextDraft.text",
+        "type": "private test text",
+        "originalUtf8Bytes": 377
+      },
+      {
+        "field": "juApiQq.input",
+        "type": "private test text",
+        "originalUtf8Bytes": 105
+      },
+      {
+        "field": "dragonApiQq.input",
+        "type": "private test text",
+        "originalUtf8Bytes": 144
+      },
+      {
+        "field": "dragonApiQq.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 166
+      },
+      {
+        "field": "agreedFollowupPersistence.deliveredText",
+        "type": "private test text",
+        "originalUtf8Bytes": 54
+      },
+      {
+        "field": "agreedFollowupPersistence.editCancelBeforeDue.editedTopic",
+        "type": "private test text",
+        "originalUtf8Bytes": 66
+      },
+      {
+        "field": "realGenerationInterruption.inputs.0.text",
+        "type": "private test text",
+        "originalUtf8Bytes": 57
+      },
+      {
+        "field": "realGenerationInterruption.inputs.1.text",
+        "type": "private test text",
+        "originalUtf8Bytes": 42
+      },
+      {
+        "field": "realGenerationInterruption.reply.text",
+        "type": "private test text",
+        "originalUtf8Bytes": 21
+      },
+      {
+        "field": "realBubbleStopObservation.newConfirmation.text",
+        "type": "private test text",
+        "originalUtf8Bytes": 36
+      }
+    ]
+  }
+}

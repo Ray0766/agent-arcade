@@ -1,0 +1,75 @@
+'use strict';
+// Isolated Electron settings and OS vault. Provider states/login are explicit
+// IPC fixtures; no original CLI, account login, model or social message runs.
+const {_electron:electron}=require('playwright');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
+(async()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-onboarding-')),stage=process.env.ARCADE_EXECUTABLE?'packaged':'source';
+  fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({language:'zh',portrait:'anime'}));
+  const env={...process.env,AGENT_ARCADE_HOME:root,AGENT_ARCADE_CLAUDE_SETTINGS:path.join(root,'observer.json')};delete env.ELECTRON_RUN_AS_NODE;
+  const args=[`--user-data-dir=${path.join(root,'profile')}`];if(!process.env.ARCADE_EXECUTABLE)args.unshift(path.resolve(__dirname,'..'));
+  const app=await electron.launch({executablePath:process.env.ARCADE_EXECUTABLE||require('electron'),args,env});
+  try{
+    const page=await app.firstWindow(),errors=[],network=[];page.on('pageerror',e=>errors.push(e.stack||e.message));await page.route(/^https?:/,r=>{network.push(r.request().url());return r.abort();});
+    await app.evaluate(({ipcMain})=>{
+      globalThis.onboardingFixture={state:'signed_out',method:null,code:null,checks:[],logins:[],guides:[],pairings:0,connections:0};
+      for(const channel of ['providerStatus','providerLogin','providerGuide','botLogin','botConnect'])ipcMain.removeHandler(`arcade:${channel}`);
+      const status=provider=>({provider,installed:globalThis.onboardingFixture.state!=='not_installed',state:globalThis.onboardingFixture.state,method:globalThis.onboardingFixture.method,version:'2.1.317',checkedAt:Date.now(),code:globalThis.onboardingFixture.code});
+      ipcMain.handle('arcade:providerStatus',(_e,provider)=>{globalThis.onboardingFixture.checks.push(provider);return status(provider);});
+      ipcMain.handle('arcade:providerLogin',(_e,provider)=>{globalThis.onboardingFixture.logins.push(provider);return {provider,opened:true,code:'opened',status:status(provider)};});
+      ipcMain.handle('arcade:providerGuide',(_e,provider)=>{globalThis.onboardingFixture.guides.push(provider);return {opened:true};});
+      ipcMain.handle('arcade:botLogin',()=>{globalThis.onboardingFixture.pairings++;return null;});
+      ipcMain.handle('arcade:botConnect',()=>{globalThis.onboardingFixture.connections++;return {status:'disconnected'};});
+    });
+    await page.locator('#connections-view').waitFor();assert.equal(await page.locator('.partner-choice').count(),3);
+    assert.equal(await page.locator('nav [data-view="work"]').count(),1,'fresh-profile navigation finishes initializing');await page.locator('nav [data-view="work"]').click();await page.locator('#work-view').waitFor();await page.locator('nav [data-view="connections"]').click();await page.locator('#connections-view').waitFor();
+    await page.locator('[data-provider="claude"]').click();await page.locator('#provider-check').waitFor();
+    assert.equal((await page.evaluate(()=>window.arcade.snapshot())).bot.mode,'claude');
+    assert.equal(await page.locator('#onboarding-key').count(),0);
+    assert.equal(await page.locator('[data-onboard-channel="wechat"]').isEnabled(),false);
+    await page.locator('#provider-check').click();await page.locator('#provider-login-status').filter({hasText:'尚未登录'}).waitFor();
+    await page.locator('#provider-login').click();await page.locator('#provider-login-status').filter({hasText:'登录窗口已打开'}).waitFor();
+    await app.evaluate(()=>{globalThis.onboardingFixture.state='not_installed';});
+    await page.locator('#provider-check').click();await page.locator('#provider-install-guide').waitFor();await page.locator('#provider-install-guide').click();
+    await app.evaluate(()=>{globalThis.onboardingFixture.state='unknown';});
+    await page.locator('#provider-check').click();await page.locator('#provider-login-status').filter({hasText:'尚未确认'}).waitFor();
+    assert.equal(await page.locator('[data-onboard-channel="qq"]').isEnabled(),false);
+    await app.evaluate(()=>{globalThis.onboardingFixture.state='signed_in';globalThis.onboardingFixture.method='api_key';});
+    await page.locator('#provider-check').click();await page.locator('#provider-login-status').filter({hasText:'API 凭证'}).waitFor();
+    assert.match(await page.locator('#provider-login-status').innerText(),/不代表订阅额度/);
+    assert.equal(await page.locator('[data-onboard-channel="qq"]').isEnabled(),false,'work folder is still missing');
+    await page.evaluate(workspace=>window.arcade.botConfigure({workspace}),root);
+    await app.evaluate(()=>{globalThis.onboardingFixture.code='unsupported_version';});await page.locator('#provider-check').click();await page.locator('#provider-login-status').filter({hasText:'需要更新'}).waitFor();
+    assert.equal(await page.locator('[data-onboard-channel="qq"]').isEnabled(),false,'valid auth cannot bypass unsupported version');
+    await app.evaluate(()=>{globalThis.onboardingFixture.code=null;});await page.locator('#provider-check').click();
+    await page.locator('[data-onboard-channel="qq"]').waitFor({state:'visible'});assert.equal(await page.locator('[data-onboard-channel="qq"]').isEnabled(),true);
+    await page.locator('[data-onboard-channel="qq"]').click();await page.locator('#bot-view').waitFor();assert.equal((await page.evaluate(()=>window.arcade.snapshot())).bot.channel,'qq');
+    assert.equal(await app.evaluate(()=>globalThis.onboardingFixture.pairings),0);
+    await page.locator('nav [data-view="connections"]').click();
+    await page.locator('[data-provider="gpt"]').click();assert.equal((await page.evaluate(()=>window.arcade.snapshot())).bot.mode,'codex');
+    await page.locator('[data-method="api"]').click();await page.locator('#onboarding-key').fill('fixture-onboarding-openai-key');await page.locator('#onboarding-key-save').click();
+    await page.locator('#onboarding-key-state').filter({hasText:'已加密保存'}).waitFor();assert.match(await page.locator('#onboarding-key-state').innerText(),/尚未验证/);assert.equal(await page.locator('#onboarding-key').inputValue(),'');
+    await page.locator('#onboarding-key-guide').click();
+    await page.locator('#onboarding-key').fill('fixture-unsaved-api-key');await page.locator('[data-provider="deepseek"]').click();
+    assert.equal(await page.locator('[data-method="local"]').count(),0);assert.equal(await page.locator('#onboarding-key').inputValue(),'');assert.equal((await page.evaluate(()=>window.arcade.snapshot())).bot.hasKey,false);
+    await page.locator('#onboarding-key').fill('fixture-onboarding-deepseek-key');await page.locator('#onboarding-key-save').click();await page.locator('#onboarding-key-state').filter({hasText:'已加密保存'}).waitFor();
+    assert.doesNotMatch(fs.readFileSync(path.join(root,'bot-vault.json'),'utf8'),/fixture-onboarding/);
+    await page.locator('[data-provider="claude"]').click();await app.evaluate(()=>{globalThis.onboardingFixture.state='signed_in';globalThis.onboardingFixture.method='claude.ai';});await page.locator('#provider-check').click();await page.locator('#provider-login-status').filter({hasText:'原版账号已登录'}).waitFor();
+    await page.locator('[data-onboard-channel="wechat"]').click();await page.locator('#bot-view').waitFor();assert.equal((await page.evaluate(()=>window.arcade.snapshot())).bot.channel,'wechat');assert.equal(await app.evaluate(()=>globalThis.onboardingFixture.pairings),1);
+    await page.locator('nav [data-view="connections"]').click();
+    await page.evaluate(()=>window.renderConnections({...data,bot:{...data.bot,paired:true}}));assert.equal(await page.locator('[data-onboard-channel="wechat"]').innerText(),'连接微信');
+    await page.locator('[data-onboard-channel="wechat"]').click();await page.locator('#bot-view').waitFor();assert.equal(await app.evaluate(()=>globalThis.onboardingFixture.connections),1);assert.equal(await app.evaluate(()=>globalThis.onboardingFixture.pairings),1,'paired connection does not request another QR');await page.locator('nav [data-view="connections"]').click();
+    await page.evaluate(()=>window.renderConnections({...data,bot:{...data.bot,status:'connected',paired:true}}));assert.equal(await page.locator('[data-provider="gpt"]').isEnabled(),false);assert.equal(await page.locator('[data-method="api"]').isEnabled(),false);
+    await page.evaluate(()=>window.renderConnections(data));
+    await page.locator('#onboarding-planned summary').click();assert.equal(await page.locator('.connection-item .planned').count(),5);assert.equal(await page.locator('.connection-item:has(.planned) button').count(),0);await page.locator('#onboarding-planned summary').click();
+    fs.mkdirSync('outputs',{recursive:true});
+    const capture=async(name)=>{await page.locator('#connections-view').evaluate(node=>node.scrollTop=0);await page.locator('.onboarding-header').evaluate(node=>{let note=node.querySelector('.fixture-label');if(!note){note=document.createElement('small');note.className='fixture-label';note.textContent='合成验收画面 · 登录状态为测试输入，未登录真实账号';note.style.cssText='display:block;color:#6d6579;margin-top:10px';node.append(note);}});await page.screenshot({path:`outputs/onboarding-${stage}-${name}.png`,fullPage:true});};
+    await app.evaluate(({BrowserWindow})=>{const w=BrowserWindow.getAllWindows()[0];w.setMinimumSize(400,380);w.setContentSize(1180,900);});await capture('zh');
+    await page.locator('#language').click();await page.locator('#provider-login-status').filter({hasText:'Signed in to the original app'}).waitFor();
+    await page.locator('#provider-check').focus();await page.evaluate(()=>window.renderConnections(data));assert.equal(await page.locator('#provider-check').evaluate(n=>n===document.activeElement),true,'unchanged polling keeps focus');
+    await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(430,820));await page.waitForFunction(()=>innerWidth===430);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await capture('en-narrow');
+    assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+    const fixture=await app.evaluate(()=>globalThis.onboardingFixture);assert.deepEqual(fixture.guides,['claude','gpt']);assert.deepEqual(fixture.logins,['claude']);
+    const receipt={stage,ui:'passed',synthetic:true,liveAccounts:false,liveModels:false,freshProfileStartsAtAI:true,freshProfileWorkNavigationReady:true,localAndAPIChoices:true,deepSeekHasNoConsumerLogin:true,noKeyInRendererSnapshot:!JSON.stringify(await page.evaluate(()=>window.arcade.snapshot())).includes('fixture-onboarding'),encryptedAPIStorage:true,loginStates:['signed_out','not_installed','unknown','signed_in'],apiCredentialIsNotSubscription:true,unsupportedVersionBlocksConnection:true,chatRequiresAccountAndFolder:true,qqDoesNotPairWeChat:true,pairedWeChatConnectsWithoutRescan:true,activeConnectionLocksSwitches:true,plannedEntriesHaveNoActions:true,languages:['zh','en'],narrowWidth:430};fs.writeFileSync(`outputs/onboarding-${stage}.json`,JSON.stringify(receipt,null,2)+'\n');console.log(JSON.stringify(receipt));
+  }finally{await app.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

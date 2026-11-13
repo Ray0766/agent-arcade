@@ -1,0 +1,59 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
+const {QCECredentialStore,verifyQCEListener,QCE_ENDPOINT,QCE_BINDING_CODES}=require('../src/bot/qq-qce-binding.cjs');
+const {QQRuntimeManager}=require('../src/bot/qq-runtime.cjs'),{QQNodeRuntimeManager}=require('../src/bot/qq-node-runtime.cjs');
+const ACCOUNT='100001',OTHER='100002',TOKEN='SYNTHETICQCE'.padEnd(40,'0');
+const SCOPE={profileId:'synthetic-profile',qqAccountId:ACCOUNT,workScope:'a'.repeat(64)};
+const scope=(more={})=>({...SCOPE,...more});
+function temporary(t){const root=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-qce-binding-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));return root;}
+function vault(){const key=crypto.randomBytes(32);return {available:true,isEncryptionAvailable(){return this.available;},encryptString(text){const iv=crypto.randomBytes(12),c=crypto.createCipheriv('aes-256-gcm',key,iv);return Buffer.concat([iv,c.update(text,'utf8'),c.final(),c.getAuthTag()]);},decryptString(bytes){const d=crypto.createDecipheriv('aes-256-gcm',key,bytes.subarray(0,12));d.setAuthTag(bytes.subarray(-16));return Buffer.concat([d.update(bytes.subarray(12,-16)),d.final()]).toString('utf8');}};}
+function store(t,io){const root=temporary(t),v=vault(),s=new QCECredentialStore({root,vault:v,io});return {root,v,s};}
+function save(s,value=TOKEN,sc=SCOPE){return s.save(sc,{token:value,expectedRevision:s.status(sc).revision});}
+test('explicit save/reopen/replace/remove uses only independent encrypted QCE storage and exact safe states',t=>{
+ assert.equal(TOKEN.length,40);const {root,v,s}=store(t);assert.deepEqual(Object.keys(s.status(SCOPE)).sort(),['revision','saved','state']);const empty=s.status(SCOPE);assert.equal(empty.state,'empty');const saved=save(s);assert(saved.saved);assert.notEqual(saved.revision,empty.revision);
+ const file=path.join(root,'qq-qce-credentials.bin'),bytes=fs.readFileSync(file);for(const value of [TOKEN,ACCOUNT,SCOPE.profileId,SCOPE.workScope])assert.equal(bytes.includes(Buffer.from(value)),false);
+ const reopened=new QCECredentialStore({root,vault:v});assert.deepEqual(reopened.status(SCOPE),saved);assert.equal(reopened.capture(SCOPE).token,TOKEN);const old=reopened.capture(SCOPE);const next=save(reopened,TOKEN.slice(0,-1)+'2');assert.notEqual(next.revision,old.revision);assert.throws(()=>reopened.assertCurrent(SCOPE,old.revision),{code:'qce_credential_revision_changed'});
+ const removed=reopened.remove(SCOPE,{expectedRevision:next.revision});assert.equal(removed.removed,true);assert.equal(removed.saved,false);assert.notEqual(removed.revision,next.revision);assert.throws(()=>reopened.capture(SCOPE),{code:'qce_credential_missing'});assert.deepEqual(new QCECredentialStore({root,vault:v}).status(SCOPE),{state:'empty',saved:false,revision:removed.revision});
+});
+test('scope changes and ABA never transfer a token or reuse old revisions',t=>{
+ const {s}=store(t);const first=save(s),moved=scope({qqAccountId:OTHER});assert.equal(s.status(moved).state,'scope_changed');assert.throws(()=>s.capture(moved),{code:'qce_credential_scope_changed'});save(s,TOKEN,moved);assert.equal(s.status(SCOPE).state,'scope_changed');save(s);assert.throws(()=>s.assertCurrent(SCOPE,first.revision),{code:'qce_credential_revision_changed'});assert.throws(()=>s.save(SCOPE,{token:TOKEN,expectedRevision:first.revision}),{code:'qce_credential_revision_changed'});
+});
+test('malformed/unsafe inputs and unavailable encryption cannot save or expose another credential',t=>{
+ const {s,v,root}=store(t),revision=s.status(SCOPE).revision;for(const token of [undefined,'',TOKEN+'x',TOKEN.slice(0,-1)+'\n','x'.repeat(40)+' ','a'.repeat(64)])assert.throws(()=>s.save(SCOPE,{token,expectedRevision:revision}),{code:'qce_invalid_token'});assert.throws(()=>s.status({...SCOPE,url:'http://other'}),{code:'qce_invalid_request'});assert.throws(()=>s.save(SCOPE,{token:TOKEN,expectedRevision:revision,port:40653}),{code:'qce_invalid_request'});assert.deepEqual(fs.readdirSync(root),[]);
+ v.available=false;assert.equal(s.status(SCOPE).state,'locked');assert.throws(()=>s.save(SCOPE,{token:TOKEN,expectedRevision:revision}),{code:'qce_encryption_unavailable'});assert.deepEqual(fs.readdirSync(root),[]);
+});
+test('foreign or same-byte replacement and corrupt/undecryptable files lock without overwriting',t=>{
+ for(const kind of ['same-bytes','corrupt','wrong-key']){const root=temporary(t),v=vault(),s=new QCECredentialStore({root,vault:v});save(s);const file=path.join(root,'qq-qce-credentials.bin'),before=fs.readFileSync(file);if(kind==='same-bytes'){fs.renameSync(file,path.join(root,'retained-original'));fs.writeFileSync(file,before,{flag:'wx'});}else if(kind==='corrupt')fs.writeFileSync(file,'SYNTHETIC CORRUPT');const next=kind==='wrong-key'?new QCECredentialStore({root,vault:vault()}):s;assert.equal(next.status(SCOPE).state,'locked');const preserved=fs.readFileSync(file);assert.throws(()=>next.save(SCOPE,{token:TOKEN,expectedRevision:crypto.randomUUID()}),{code:'qce_credentials_locked'});assert.deepEqual(fs.readFileSync(file),preserved);}
+});
+test('hard-linked credential files are refused and the independent original bytes are preserved',t=>{
+ const {root,s}=store(t);save(s);const file=path.join(root,'qq-qce-credentials.bin'),before=fs.readFileSync(file);fs.linkSync(file,path.join(root,'other-link'));assert.equal(s.status(SCOPE).state,'locked');assert.deepEqual(fs.readFileSync(file),before);
+});
+test('lost rename acknowledgement accepts only exact owned ciphertext readback; precommit failure locks',t=>{
+ for(const applied of [false,true]){const io=Object.create(fs);io.renameSync=(a,b)=>{if(applied)fs.renameSync(a,b);throw Error('SYNTHETIC I/O FAILURE');};const {root,v,s}=store(t,io);if(applied){const result=save(s);assert(result.saved);assert.deepEqual(new QCECredentialStore({root,vault:v}).status(SCOPE),result);}else{assert.throws(()=>save(s),{code:'qce_storage_write_unknown'});assert.equal(s.status(SCOPE).state,'locked');assert.equal(fs.existsSync(path.join(root,'qq-qce-credentials.bin')),false);}}
+});
+
+function runtimeFixture(t,engine='managed-shell'){
+ const root=temporary(t),node=engine==='managed-node',runtime=Object.create(node?QQNodeRuntimeManager.prototype:QQRuntimeManager.prototype);
+ const launcher=path.join(root,node?'node.exe':'NapCatWinBootMain.exe'),qqExe=node?launcher:path.join(root,'QQ.exe'),manager={pid:700001,createdAt:'2026-11-07T00:00:00Z',executable:process.execPath};
+ const supervisor={pid:700002,parentPid:manager.pid,createdAt:'2026-11-07T00:00:01Z',executable:launcher,name:node?'node.exe':'NapCatWinBootMain.exe',accountId:ACCOUNT},worker={pid:700003,parentPid:supervisor.pid,createdAt:'2026-11-07T00:00:02Z',executable:qqExe,name:node?'node.exe':'QQ.exe',accountId:ACCOUNT};
+ const proof=r=>({pid:r.pid,createdAt:r.createdAt,executable:r.executable,...(node?{parentPid:r.parentPid}:{})}),rootProof=proof(supervisor),instanceId=crypto.randomUUID();
+ const install={available:true,installationKind:engine,launcher,qqExe,workDir:root,configDir:root,core:path.join(root,'napcat.mjs'),selectedNapcatVersion:'4.18.42',napcatVersion:'4.18.42',accounts:[ACCOUNT],selectionDigest:'b'.repeat(64)};
+ const descriptor={codeRoot:root,installationId:'c'.repeat(64),descriptorSha256:'d'.repeat(64),current:{manifestSha256:'e'.repeat(64)}};
+ const lease={version:node?2:1,...(node?{engine:'managed-node',installationId:descriptor.installationId,descriptorSha256:descriptor.descriptorSha256,manifestSha256:descriptor.current.manifestSha256,spawnManager:manager}:{}),instance:instanceId,token:crypto.randomUUID(),manager,accountId:ACCOUNT,runtime:rootProof,runtimeTree:[proof(supervisor),proof(worker)]};const file=path.join(root,'lease.json');fs.writeFileSync(file,JSON.stringify(lease));
+ const state={rows:[supervisor,worker],listeners:[{pid:worker.pid,port:40653,address:'0.0.0.0'}],snapshots:0,inspects:0,listenerReads:0,current:true,onSnapshot:null,onInspect:null,onListeners:null};
+ Object.assign(runtime,{managed:{},id:instanceId,platform:'win32',closing:false,pending:new Set(),runs:new Map([[ACCOUNT,{lease:{file,...lease},proof:rootProof}]]),stopTraceContexts:new Map(),instance:()=>({...install}),nodeLayout:{read:()=>descriptor}});
+ runtime.host={snapshot:async()=>{state.snapshots++;state.onSnapshot?.();return structuredClone(state.rows);},inspect:async pids=>{state.inspects++;state.onInspect?.();return structuredClone(state.rows.filter(p=>pids.includes(p.pid)));},listeners:async()=>{state.listenerReads++;state.onListeners?.();return structuredClone(state.listeners);}};
+ const check=()=>{if(!state.current)throw Error('SYNTHETIC CONTEXT CHANGED');};return {runtime,state,install,root,worker,supervisor,verify:opts=>verifyQCEListener({runtime,qqAccountId:ACCOUNT,assertCurrent:check,...opts})};
+}
+test('owned Shell and production Node tree rules verify two separate snapshots/inspects/listeners without HTTP or token discovery',async t=>{
+ for(const engine of ['managed-shell','managed-node']){const f=runtimeFixture(t,engine),first=await f.verify();assert.deepEqual(Object.keys(first).sort(),['endpointId','host','ownershipVerified','port']);assert.equal(first.host,QCE_ENDPOINT.host);assert.equal(first.port,40653);assert.equal(first.ownershipVerified,true);assert.match(first.endpointId,/^[a-f0-9]{64}$/);assert.equal(f.state.snapshots,2);assert.equal(f.state.inspects,2);assert.equal(f.state.listenerReads,2);assert.deepEqual(await f.verify(),first);}
+});
+test('foreign, multiple, unsupported-address and conhost listeners cannot receive a credential',async t=>{
+ for(const scenario of ['foreign','multiple','lan','conhost']){const f=runtimeFixture(t,'managed-node');if(scenario==='foreign')f.state.listeners[0].pid=799999;if(scenario==='multiple')f.state.listeners.push({pid:799999,port:40653,address:'127.0.0.1'});if(scenario==='lan')f.state.listeners[0].address='192.0.2.20';if(scenario==='conhost'){const row={pid:700004,parentPid:f.supervisor.pid,createdAt:'2026-11-07T00:00:03Z',executable:path.join(process.env.SystemRoot||'C:\\Windows','System32','conhost.exe'),name:'conhost.exe'};f.state.rows.push(row);f.state.listeners[0].pid=row.pid;}await assert.rejects(f.verify(),{code:'qce_listener_unverified'});}
+});
+test('PID reuse, reparenting, late worker, listener movement and changed lease fail across observation rounds',async t=>{
+ for(const scenario of ['reuse','parent','late-worker','port','lease']){const f=runtimeFixture(t,'managed-node');f.state.onSnapshot=()=>{if(f.state.snapshots!==2)return;if(scenario==='reuse')f.worker.createdAt='2026-11-07T01:00:00Z';if(scenario==='parent')f.worker.parentPid=799999;if(scenario==='late-worker')f.state.rows.push({...f.worker,pid:700004});if(scenario==='port')f.state.listeners[0].pid=f.supervisor.pid;if(scenario==='lease'){const run=f.runtime.runs.get(ACCOUNT),value=JSON.parse(fs.readFileSync(run.lease.file));value.token=crypto.randomUUID();fs.writeFileSync(run.lease.file,JSON.stringify(value));}};await assert.rejects(f.verify(),e=>QCE_BINDING_CODES.includes(e.code));}
+});
+test('old run/context, pending operation, cancellation and wrong NapCat version fail before final proof',async t=>{
+ for(const scenario of ['context','run','pending','cancelled','version']){const f=runtimeFixture(t),controller=new AbortController();if(scenario==='version')f.install.selectedNapcatVersion='4.18.41';else f.state.onInspect=()=>{if(scenario==='context')f.state.current=false;if(scenario==='run')f.runtime.runs.set(ACCOUNT,{...f.runtime.runs.get(ACCOUNT)});if(scenario==='pending')f.runtime.pending.add(ACCOUNT);if(scenario==='cancelled')controller.abort();};await assert.rejects(f.verify({signal:controller.signal}),e=>QCE_BINDING_CODES.includes(e.code));}
+});

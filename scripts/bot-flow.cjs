@@ -101,9 +101,9 @@ async function main() {
     await waitFor(() => service.snapshot().status === 'connected', 'connected fixture');
 
     receive('Prepare the synthetic report. Ask before the fixture print action.');
-    await waitFor(() => sent.some(text => /\/allow\s+\S+/.test(text)), 'one-time approval request');
-    const approval = sent.find(text => /\/allow\s+\S+/.test(text)).match(/\/allow\s+(\S+)/)[1];
-    receive(`/allow ${approval}`);
+    await waitFor(() => sent.some(text => /同意\s+[A-Z0-9]{6}\b/.test(text)), 'one-time approval request');
+    const approval = sent.find(text => /同意\s+[A-Z0-9]{6}\b/.test(text)).match(/同意\s+(\S+)/)[1];
+    receive(`同意 ${approval}`);
     await waitFor(() => permissions.length === 1 && sent.some(text => text.includes('Synthetic report prepared.')), 'reply delivery');
     assert.equal(permissions[0].behavior, 'allow');
     assert.equal(permissions[0].cancelled, false);
@@ -117,9 +117,9 @@ async function main() {
 
     const sentBeforeCancel = sent.length;
     receive('Prepare another synthetic report; this task will be cancelled while waiting.');
-    await waitFor(() => sent.slice(sentBeforeCancel).some(text => /\/allow\s+\S+/.test(text)), 'second approval request');
-    const cancelledCode = sent.slice(sentBeforeCancel).find(text => /\/allow\s+\S+/.test(text)).match(/\/allow\s+(\S+)/)[1];
-    receive('/cancel');
+    await waitFor(() => sent.slice(sentBeforeCancel).some(text => /同意\s+[A-Z0-9]{6}\b/.test(text)), 'second approval request');
+    const cancelledCode = sent.slice(sentBeforeCancel).find(text => /同意\s+[A-Z0-9]{6}\b/.test(text)).match(/同意\s+(\S+)/)[1];
+    receive('停止');
     await waitFor(() => permissions.length === 2 && queryClosed === 2, 'cancelled SDK fixture closes');
     assert.equal(permissions[1].behavior, 'deny');
     assert.equal(permissions[1].cancelled, true);
@@ -136,9 +136,11 @@ async function main() {
     assert.equal(finalSnapshot.currentTaskId, null);
     assert.equal(finalSnapshot.queue.length, 0);
     assert.equal(finalSnapshot.pending.length, 0);
-    assert(sent.some(text => text.includes('回复结束（任务结果未验证）')));
+    assert(sent.some(text => text.startsWith('Synthetic report prepared.')));
+    assert(!sent.some(text => text.startsWith('回复结束（任务结果未验证）')));
+    assert.equal(finalSnapshot.tasks[0].outcome,'reply_ended');
     const publicText = text => {
-      let output = text.replace(/\/(allow|deny|answer)\s+\S+/g, '/$1 [nonce]');
+      let output = text.replace(/\/(allow|deny|answer)\s+\S+/g, '/$1 [nonce]').replace(/(同意|拒绝)\s+[A-Z0-9]{6}\b/g,'$1 [code]');
       for (let index = 0; index < finalSnapshot.tasks.length; index++) {
         output = output.replaceAll(finalSnapshot.tasks[index].id.slice(0, 8), `fixture-${index + 1}`);
       }
@@ -153,7 +155,7 @@ async function main() {
       checks: { paired_fixture: true, owner_message_dispatched: true, explicit_tool_approval: true,
         stale_nonce_rejected_without_new_task: true, cancel_denied_pending_tool: true,
         cancellation_overrode_late_success_shaped_result: true, cancelled_nonce_rejected: true,
-        reply_boundary_label_keeps_outcome_unverified: true, queries_closed: queryClosed },
+        natural_reply_preserves_unverified_internal_outcome: true, queries_closed: queryClosed },
       counts: { received_messages: messageSequence, model_fixtures: prompts.length,
         permission_callbacks: permissions.length, sent_messages: sent.length },
       connection_states: states,

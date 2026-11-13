@@ -1,0 +1,33 @@
+{
+  "stage": "packaged",
+  "ui": "passed",
+  "synthetic": true,
+  "liveWeChat": false,
+  "liveModel": false,
+  "setupFocusAndPolling": true,
+  "screenshotStateCheckedBeforeAndAfter": true,
+  "realTimestampsOnly": true,
+  "messageTextEscaped": true,
+  "clipboardRoundTrip": true,
+  "clipboardBounds": true,
+  "messageNodePreserved": true,
+  "readingPositionPreserved": true,
+  "latestMessageNavigation": true,
+  "compactNoHorizontalOverflow": true,
+  "localPortraitLoaded": true,
+  "portraitPersisted": true,
+  "unknownPortraitIgnored": true,
+  "appearancePreservesExecutionMode": true,
+  "plannedConnectionsHaveNoActions": true,
+  "viewportChecks": [
+    [
+      1280,
+      820
+    ],
+    [
+      430,
+      720
+    ]
+  ],
+  "limitations": "Renderer fixtures do not establish live delivery, native execution, or task success."
+}

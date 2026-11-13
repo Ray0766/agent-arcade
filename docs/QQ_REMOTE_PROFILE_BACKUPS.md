@@ -1,0 +1,17 @@
+# Remote connection configuration backups
+
+In **QQ accounts → Remote instances → Remote QQ process → Connection configuration backups**, explicitly read the list, then preview and confirm one backup or restoration. This stays in the same window and uses the independent supervisor connection. Opening this section does not contact the service.
+
+The remote administrator must separately enable profileBackups.enabled in the supervisor configuration; the example defaults to false. Start/Stop authority and the existing WebUI management permissions do not enable it. This extension supports only the configured managed Shell 4.18.42 instance and its fixed OneBot JSON file. It accepts neither a client-supplied file path nor another QQ account.
+
+Before creating or restoring a backup, explicitly stop the instance and resolve outstanding management records. The service obtains the existing configuration lease and repeats the stopped/installation checks. Listing backup metadata does not stop QQ. A preview expires after 60 seconds; Back or leaving the panel discards it. Read again before another preview.
+
+**Backup** preserves the exact current bytes. A malformed current configuration can be preserved, but is not an eligible restoration source. **Restore** first preserves the old bytes, then writes and reads back the selected backup. The preview shows only bounded redacted differences, or all three selected server counts when the current file cannot be parsed. It never returns tokens, original JSON, arbitrary field names or server paths. Existing unknown fields remain part of the exact restored file. Ports and OneBot tokens may change, so verify the connection afterward; no companion API key is modified and QQ is never started automatically.
+
+File completion and management-lock cleanup are separate facts. A successful byte readback with unconfirmed lock cleanup still requires inspecting the original management record before another write or Start. Losing a response is an unknown outcome: query the original request, never automatically retry it. Explicitly ending local recovery retains the complete unknown receipt and changes no remote file, lock or outcome. Turning the capability off does not remove existing query access.
+
+Backups remain on the service host; the desktop lists at most the latest 100 entries from a bounded scan. Nothing is automatically deleted. This is not a full QQ data, chat-history or account-login backup, and it is not a backup download feature. Server ledger v6 and desktop encrypted-link v6 preserve earlier operation families; desktop reading alone does not rewrite a v1–v5 container. The new endpoint alone permits a 128 KiB metadata response so a complete maximum-size redacted preview is never truncated. Other response limits are unchanged.
+
+## Verification boundary
+
+The candidate is exercised through temporary NTFS files, SQLite, authenticated loopback TLS, the actual desktop IPC registrations/client/panel, and an isolated renderer. Process inventory, installation metadata, vault and credentials are synthetic; no QQ process, model, user profile or real remote host is used. Light and dark narrow-window previews retain the existing typography. These checks do not establish real remote deployment, QQ reconnection after changed tokens, or target-host operating-system encryption. Actual deployment and user-account restoration remain separate acceptance steps.

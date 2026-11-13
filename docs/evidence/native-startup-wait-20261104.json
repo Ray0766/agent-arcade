@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-04",
+  "scope": "local Claude Channels startup wait; QQ auth separate",
+  "observations": {
+    "threeQQBridgesOnlineAndIdentityMatched": true,
+    "claudeAuthStatusLoggedIn": true,
+    "claudeAuthMethod": "claude.ai",
+    "oldAppNativeProcessObservedStopped": true
+  },
+  "fix": {
+    "renewStartupLeaseOnlyForVerifiedOwnedRunningProcess": true,
+    "attachedHeartbeatSeconds": 90,
+    "unstartedOrUnmanagedStartupLeaseSeconds": 300,
+    "noPermissionBypass": true,
+    "noAutomaticReplay": true
+  },
+  "verification": {
+    "focusedTestsPassed": 47,
+    "fullSuite": {
+      "total": 314,
+      "passed": 313,
+      "failed": 0,
+      "skipped": 1,
+      "skip": "Opt-in real Windows launch/stop process-tree test"
+    },
+    "syntaxFiles": 82,
+    "sourceBotUI": "passed",
+    "desktopUI": "passed",
+    "packagedBotUI": "passed",
+    "virtualClockStartupWaitSeconds": 480,
+    "uiScreenshotsAreSynthetic": true
+  },
+  "deployment": {
+    "previewPath": "dist/native-startup-preview/win-unpacked/Agent Arcade.exe",
+    "juOriginalProfileReused": true,
+    "oldJuExitedViaFileExit": true,
+    "otherTwoAppInstancesPreserved": true,
+    "qqConnectedAndOwnerFriendshipObserved": true,
+    "nativeProcessStarted": true,
+    "uiState": "Waiting for Claude channel"
+  },
+  "limitations": [
+    "Official custom Channels startup confirmation still required.",
+    "No real elapsed five-minute waiting acceptance in this check; timeout regression uses a virtual clock.",
+    "No QQ-to-AI chat or task success inferred from bridge/process state.",
+    "No push or release."
+  ]
+}

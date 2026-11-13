@@ -1,0 +1,36 @@
+{
+  "instanceId": "00000000-0000-4000-8000-000000000001",
+  "expectedQQ": "12345001",
+  "recovery": {
+    "pendingUpdateRecords": false,
+    "pendingUpdateLocks": false,
+    "orphanCleanup": false
+  },
+  "stateDir": "C:\\ArcadeSupervisor\\state",
+  "tokenFile": "C:\\ArcadeSupervisor\\control-token.txt",
+  "installation": {
+    "componentStoreRoot": "C:\\ArcadeManagedQQ\\components",
+    "setupId": "00000000-0000-4000-8000-000000000002",
+    "lockRoot": "C:\\Users\\Example\\AppData\\Local\\AgentArcade\\qq-runtime-locks",
+    "webuiPort": 6099
+  },
+  "listen": {
+    "host": "127.0.0.1",
+    "port": 9444
+  },
+  "tls": {
+    "certFile": "C:\\ArcadeSupervisor\\cert.pem",
+    "keyFile": "C:\\ArcadeSupervisor\\key.pem"
+  },
+  "passkeys": {
+    "enabled": false,
+    "origin": "https://webui.example.invalid",
+    "recoveryRouteDeclared": false
+  },
+  "profileBackups": {
+    "enabled": false
+  },
+  "componentRepair": {
+    "enabled": false
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-04",
+  "kind": "protocol-fixtures-and-local-sqlite",
+  "scope": "WeChat supplied voice text, inline quoted context, durable receipt dedupe and uncertain recovery",
+  "unitCommand": "node --test test/weixin.test.cjs test/journal.test.cjs test/bot-service.test.cjs",
+  "unitPassed": 34,
+  "unitFailed": 0,
+  "environment": "normal Windows process; sandbox atomic-renames were restricted",
+  "sqliteProbeCommand": "node scripts/sqlite-probe.cjs",
+  "systemNode": "24.18.0",
+  "electron": "45.2.1",
+  "electronNode": "24.22.1",
+  "actualSqliteRestartProbe": {
+    "system": { "duplicateSuppressed": true, "uncertainAfterRestart": 1 },
+    "electron": { "duplicateSuppressed": true, "uncertainAfterRestart": 1 }
+  },
+  "limitations": [
+    "No real WeChat message was sent or received by this verification.",
+    "No model request or original Claude session was started.",
+    "Phone availability of transcription and reference fields is unverified.",
+    "Receipt persistence does not resume model execution or prove task success.",
+    "Quote IDs without inline content are not resolved from stored transcripts.",
+    "Node 24 built-in SQLite is documented as release candidate."
+  ]
+}

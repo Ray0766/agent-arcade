@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-04",
+  "scope": "Real desktop WeChat ClawBot -> retained paired WeChat transport -> original local Claude program runner -> WeChat reply",
+  "platform": "Windows x64",
+  "claudeVersionObservedByOriginalAuthStatus": "2.1.318",
+  "authMethod": "claude.ai",
+  "credentialHandling": "Original CLI login only; no credential file read, copied or injected by the application",
+  "migration": {
+    "from": "native (interactive Channels)",
+    "to": "claude (original CLI program mode)",
+    "pairingRetained": true,
+    "newQrScanRequired": false,
+    "channelStartupConfirmationRequired": false
+  },
+  "liveChecks": {
+    "ordinaryChat": {
+      "passed": true,
+      "toolApprovals": 0,
+      "replyObservedInWeChat": true
+    },
+    "write": {
+      "passed": true,
+      "targetAbsentBeforeApproval": true,
+      "exactTool": "Write",
+      "oneTimeApprovals": 1,
+      "artifact": "work/wechat-flow-acceptance-20261104-01/wechat-program-proof-20261104.txt",
+      "expectedUtf8": "[redacted private test text]",
+      "actualBytes": 24,
+      "exactBytesMatch": true,
+      "sha256": "271663ff1827609919f23a77313ee59a4d7024760a4954d17a56ec488859ea26",
+      "replyWithActualPathObservedInWeChat": true,
+      "independentReadback": true
+    }
+  },
+  "buildScope": "claude-program-preview packaged runner; new AI-first onboarding packaging is recorded separately",
+  "limitations": [
+    "One Windows device, account and current original CLI version.",
+    "This receipt does not establish ordinary personal-WeChat friend-account support; the channel is ClawBot.",
+    "No new original CLI sign-in or expired credential recovery was exercised; an existing login was retained.",
+    "Stop, denial, long-running command cancellation and network outage were not re-accepted over WeChat in this run.",
+    "A delivered reply alone is not task success; only the fixed file task has independent artifact validation."
+  ],
+  "publicationPrivacy": {
+    "redacted": true,
+    "redactedAt": "2026-11-06",
+    "originalEvidenceRetainedLocally": true,
+    "privateBackup": "work/publication-private-evidence-20261106/",
+    "note": "Private test messages, journal content, identifiers and local identity paths are replaced by explicit placeholders. Existing outcomes, counts, byte lengths, hashes and event order are unchanged. Existing content hashes describe the retained private originals, not these placeholders. Original evidence bytes are preserved outside Git.",
+    "fields": [
+      {
+        "field": "liveChecks.write.expectedUtf8",
+        "type": "private test text",
+        "originalUtf8Bytes": 24
+      }
+    ]
+  }
+}

@@ -15,6 +15,21 @@ const questionInput = () => ({ questions: [{
 }] });
 const prepare = extra => optionsFor({workspace, key, configDir, request: async () => ({allow:false}), ...extra});
 
+test('API persona style can be disabled without changing tool policy or factual reporting', () => {
+  const on=prepare(), off=prepare({persona:{enabled:false,selection:'sprout'}}), sprout=prepare({persona:{enabled:true,selection:'sprout'}});
+  try {
+    assert.match(on.options.systemPrompt,/fictional interface character is Ju/);
+    assert.match(sprout.options.systemPrompt,/fictional interface character is Sprout/);
+    assert.doesNotMatch(off.options.systemPrompt,/Conversation presentation|Ju|Sprout|本龙/);
+    for(const prepared of [on,off,sprout]) {
+      assert.match(prepared.options.systemPrompt,/Each tool action needs an explicit one-time approval/);
+      assert.match(prepared.options.systemPrompt,/Never claim a task passed validation merely because your reply ended/);
+      assert.equal(prepared.options.permissionMode,'default');
+      assert.equal(prepared.options.hooks.PreToolUse[0].onFailure,'block');
+    }
+  } finally {on.cleanup();off.cleanup();sprout.cleanup();}
+});
+
 function queryFixture(events, {error, start} = {}) {
   const seen = {closed:0, messages:[], options:null};
   const queryImpl = ({prompt, options}) => {

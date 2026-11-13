@@ -1,0 +1,115 @@
+{
+  "checkedAt": "2026-11-04T10:54:20.020Z",
+  "scope": "Read-only identity and online checks of three real local personal-QQ OneBot bridges, followed by app UI setup checks; no QQ-to-AI conversation or task acceptance.",
+  "platform": "Windows",
+  "versions": {
+    "napcatDesktop": "3.5.19",
+    "napcat": "4.18.42",
+    "qqSideBySideComponent": "9.9.36-53644",
+    "agentArcadeElectron": "45.2.1",
+    "agentArcadeBuild": "Local unpacked preview newer than published 0.3.0-preview.2",
+    "napcatVersionEvidence": "Version selected and installation completion observed in NapCat Desktop; not the bundle's internal package.json version."
+  },
+  "installation": {
+    "authorizedByOwner": true,
+    "existingQQInstallationPreserved": true,
+    "napcatDesktopMsiSha256": "ba7f9e0a6e1dfbf550dd4fe12cdb886c400dc864858de24d414cee1e3bc6c536",
+    "bundledWithAgentArcade": false
+  },
+  "method": {
+    "helper": "work/qq-trio/check-login.cjs",
+    "privateReceipt": "work/qq-trio/login-check.json",
+    "actions": ["get_login_info", "get_status"],
+    "expectedIdentity": "Compared user_id with each owner's privately supplied account binding; account numbers omitted from this receipt.",
+    "readOnly": true,
+    "messagesSent": 0,
+    "friendListQueried": false,
+    "aiStarted": false,
+    "connectionClosedAfterCheck": true
+  },
+  "routes": [
+    {
+      "role": "Ju/orange",
+      "intendedBackend": "Local Claude Code",
+      "endpoint": "ws://127.0.0.1:3001/",
+      "configured": true,
+      "accountMatches": true,
+      "online": true,
+      "good": true
+    },
+    {
+      "role": "Dragon Girl",
+      "intendedBackend": "Local Codex/GPT",
+      "endpoint": "ws://127.0.0.1:3002/",
+      "configured": true,
+      "accountMatches": true,
+      "online": true,
+      "good": true
+    },
+    {
+      "role": "Whale Girl",
+      "intendedBackend": "DeepSeek API",
+      "endpoint": "ws://127.0.0.1:3003/",
+      "configured": true,
+      "accountMatches": true,
+      "online": true,
+      "good": true
+    }
+  ],
+  "appConnectionInspection": {
+    "date": "2026-11-04",
+    "method": "Observed Agent Arcade UI after saving settings and using Test connection; separate from the timestamped bridge-only helper above.",
+    "confirmedRoutes": [
+      {
+        "role": "Ju/orange",
+        "settingsSaved": true,
+        "accountMatches": true,
+        "online": true,
+        "ownerIsFriend": true,
+        "appReceivingStarted": true,
+        "connectedStateObserved": true,
+        "nativeProcessLaunched": true,
+        "nativeState": "awaiting_user_channel_confirmation",
+        "nativeReadyVerified": false
+      },
+      {
+        "role": "Dragon Girl",
+        "settingsSaved": true,
+        "accountMatches": true,
+        "online": true,
+        "ownerIsFriend": true,
+        "appReceivingStarted": true,
+        "connectedStateObserved": true
+      },
+      {
+        "role": "Whale Girl",
+        "settingsSaved": true,
+        "accountMatches": true,
+        "online": true,
+        "ownerIsFriend": true,
+        "independentWorkspaceSelected": true,
+        "appReceivingStarted": true,
+        "connectedStateObserved": true
+      }
+    ],
+    "pendingRoutes": [],
+    "savedConfigReadback": "All three bot configs matched their intended backend, loopback port, owner binding and separate workspace. No vault contents were included in this receipt.",
+    "aiConversationVerified": false
+  },
+  "diagnosisAndRecovery": {
+    "observedMismatch": "Dragon Girl was logged in through the instance labeled Ju. NapCat selected the actual account's network configuration, which had no WebSocket servers; the labeled instance's port failed to connect.",
+    "correction": "Created separate instances with matching account bindings and loopback ports; restarted the affected instance through NapCat Desktop.",
+    "duplicateLogin": "Earlier Ju duplicate-login errors cleared after independently restarting its instance. No blanket logout of ordinary QQ accounts was required; the original conflicting process was not independently identified.",
+    "verifiedAfterRecovery": true
+  },
+  "passed": true,
+  "passMeaning": "All three bridges returned the expected account and an online/good snapshot at the recorded time.",
+  "limitations": [
+    "The intended backend column is configuration intent, not a verified QQ-to-AI route.",
+    "The separate UI inspection confirms all three app bridge connections. Ju's original Claude Code process was launched but awaits the owner's custom-channel confirmation; native readiness has not been verified.",
+    "No real QQ-to-AI-to-QQ chat, file action, permission, stop or reconnect flow was exercised by this check.",
+    "An online snapshot does not establish message delivery, task success, long-term account availability or broad release compatibility.",
+    "Three independent app processes are a temporary local arrangement, not multi-account routing inside one window.",
+    "Private account numbers, tokens, credentials and chat content are omitted. No push or release was performed."
+  ]
+}

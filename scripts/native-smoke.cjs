@@ -16,7 +16,7 @@ async function until(predicate){const end=Date.now()+7000;while(!predicate()){if
   const app=await electron.launch({executablePath,args:process.env.ARCADE_EXECUTABLE?[profile]:[path.resolve(__dirname,'..'),profile],env});
   let broker,client,launch;
   try{
-    const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('#bot-mode').waitFor();assert.equal(await page.locator('.version').textContent(),'v0.3');
+    const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('nav [data-view="bot"]').click();await page.locator('#bot-mode').waitFor();assert.equal(await page.locator('.version').textContent(),'v0.3');
     assert.equal(await page.locator('#bot-mode').inputValue(),'api');
     await page.locator('#bot-key').fill('fixture-invalid-api-key');await page.locator('#bot-save').click();
     await page.waitForFunction(async()=> (await window.arcade.snapshot()).bot.hasKey);
@@ -28,7 +28,7 @@ async function until(predicate){const end=Date.now()+7000;while(!predicate()){if
     assert.equal((await page.evaluate(()=>window.arcade.snapshot())).bot.hasKey,true);
     await page.locator('#bot-mode').selectOption('native');await page.locator('#language').click();
     await page.locator('#bot-native-options').filter({hasText:'Ctrl+C'}).waitFor();
-    await page.evaluate(()=>window.arcade.botForget());assert.equal(fs.existsSync(path.join(root,'bot-vault.json')),false);
+    await page.evaluate(async()=>{const state=await window.arcade.snapshot();return window.arcade.botForget({profileId:state.accounts.selectedId});});assert.equal(fs.existsSync(path.join(root,'bot-vault.json')),false);
     const outbound=[];broker=await new NativeBroker({send:async text=>outbound.push(text)}).start();const capability=broker.token;
     const appRoot=await app.evaluate(({app})=>app.getAppPath());
     launch=createNativeLaunch({root,workspace:root,node:process.execPath,cli:process.execPath,sourceDir:path.join(appRoot,'src','bot'),url:broker.url,token:capability});

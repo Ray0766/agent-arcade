@@ -1,0 +1,100 @@
+{
+  "date": "2026-11-04",
+  "milestone": "personal QQ setup and local acceptance",
+  "published": false,
+  "liveQQ": false,
+  "napCatInstalled": false,
+  "newLiveModelCalls": false,
+  "suite": {
+    "total": 283,
+    "passed": 282,
+    "failed": 0,
+    "skipped": 1,
+    "skip": "opt-in native process test"
+  },
+  "syntaxFiles": 78,
+  "qqAdapterTests": 24,
+  "qqSetupTests": 8,
+  "qqFlowTests": 3,
+  "flow": {
+    "transport": "real loopback OneBot fixture",
+    "runner": "scripted fixture",
+    "storage": "actual SQLite",
+    "fileReadback": true,
+    "directChat": true,
+    "allowDeny": true,
+    "stop": true,
+    "reconnectNoReplay": true
+  },
+  "sourceUI": {
+    "stage": "source",
+    "ui": "passed",
+    "synthetic": true,
+    "liveQQ": false,
+    "liveDeepSeek": false,
+    "liveCodex": false,
+    "osVault": "fixture credentials encrypted",
+    "providerKeysIsolated": true,
+    "unsavedKeyClearedAcrossNavigation": true,
+    "qqSettingsSaved": true,
+    "qqTokenGeneratedAndNotRotated": true,
+    "qqClipboardConfig": true,
+    "qqReadOnlyAccountCheck": true,
+    "qqUnknownStates": true,
+    "qqOfflineAndFriendMissing": true,
+    "qqAuthenticationFailure": true,
+    "qqCheckingDisablesControls": true,
+    "qqCheckCancelled": true,
+    "qqTokenAbsentFromSnapshotAndUI": true,
+    "avatarFollowsBackend": true,
+    "narrowWidth": 430,
+    "languages": [
+      "zh",
+      "en"
+    ]
+  },
+  "packagedUI": {
+    "stage": "packaged",
+    "ui": "passed",
+    "synthetic": true,
+    "liveQQ": false,
+    "liveDeepSeek": false,
+    "liveCodex": false,
+    "osVault": "fixture credentials encrypted",
+    "providerKeysIsolated": true,
+    "unsavedKeyClearedAcrossNavigation": true,
+    "qqSettingsSaved": true,
+    "qqTokenGeneratedAndNotRotated": true,
+    "qqClipboardConfig": true,
+    "qqReadOnlyAccountCheck": true,
+    "qqUnknownStates": true,
+    "qqOfflineAndFriendMissing": true,
+    "qqAuthenticationFailure": true,
+    "qqCheckingDisablesControls": true,
+    "qqCheckCancelled": true,
+    "qqTokenAbsentFromSnapshotAndUI": true,
+    "avatarFollowsBackend": true,
+    "narrowWidth": 430,
+    "languages": [
+      "zh",
+      "en"
+    ]
+  },
+  "chatRegression": "passed",
+  "packagedSourcesMatched": 15,
+  "packagedWs": "8.22.1",
+  "screenshot": {
+    "file": "qq-setup.png",
+    "synthetic": true,
+    "openedForReview": true,
+    "sha256": "0728bf9ea9ea17479d4649a65a52c74b955ea2e9174ea1ecef80c3e39299235b"
+  },
+  "limits": [
+    "No real QQ account or phone round trip",
+    "No installed NapCat version acceptance",
+    "One owner in friend private text only",
+    "No automatic friend acceptance",
+    "Read-only metadata is not evidence of message delivery or task success",
+    "No comparative usability improvement measured"
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "date": "2026-11-04",
+  "scope": "local unpublished WeChat usability revision; one bounded live Windows acceptance run",
+  "automated": {
+    "unit_tests": {
+      "total": 207,
+      "passed": 206,
+      "failed": 0,
+      "skipped_opt_in": 1
+    },
+    "windows_process_opt_in": {
+      "passed": 9,
+      "failed": 0,
+      "executor": "self-created harmless Node parent and child, not Claude"
+    },
+    "bot_protocol": {
+      "transport": "fixture",
+      "model": "fixture",
+      "tasks": 2,
+      "outgoing_messages": 8
+    },
+    "native_mcp": "actual system Node, stdio MCP and authenticated loopback HTTP; model and WeChat mocked",
+    "ui": "source and packaged Electron, 1280px and 430px, explicit synthetic conversations"
+  },
+  "verified_behaviors": [
+    "Ordinary message forwarding is quiet; reply text has no fixed diagnostic prefix.",
+    "Six-character Chinese approval is one use with the original expiry and rate-limited lookup.",
+    "Status resends a pending permission without extending TTL or changing context.",
+    "Managed stop waits for captured process identity and exit; unowned processes are not killed.",
+    "Resume uses the recorded UUID; rejected resume preserves an existing launch.",
+    "Early process exit becomes visible without waiting for the attachment lease.",
+    "Reset revokes old client, reply and approval identifiers without replaying tasks.",
+    "Transient local polling retries preserve cursor within a bounded 30-second window."
+  ],
+  "new_live_wechat_acceptance": {
+    "pairing": "owner completed ClawBot QR confirmation; encrypted pairing survived app restart",
+    "ordinary_chat": true,
+    "ordinary_chat_evidence": "two real replies visibly received in WeChat, with no fixed result prefix or reply-tool permission request",
+    "actual_file_task": true,
+    "artifact": {
+      "name": "acceptance.txt",
+      "bytes": 21,
+      "utf8_exact": "[redacted private test text]",
+      "trailing_newline": false,
+      "sha256": "43570170d7ba1523a934b9682776be77af75df8b83c01a83f442027176446432",
+      "independently_read_back": true,
+      "content_and_modification_time_unchanged_after_restart": true
+    },
+    "short_allow_and_deny": true,
+    "permission_evidence": "approved Write created the artifact; denied Bash produced no start/completion marker and the model reported refusal without retry",
+    "stop_while_claude_working": true,
+    "stop_evidence": {
+      "fixture": "foreground Node wait bounded to 90 seconds; no network, file reads or subprocesses",
+      "started_marker_and_live_node_identity_checked": true,
+      "typed_wechat_stop": true,
+      "owned_claude_main_process_exited": true,
+      "fixture_node_process_exited": true,
+      "completion_marker_absent": true,
+      "stop_receipt_visibly_received": true,
+      "independent_background_jobs_verified": false
+    },
+    "resume_and_reconnect": true,
+    "resume_evidence": {
+      "app_disconnected_closed_rebuilt_and_reopened": true,
+      "same_session_uuid_new_process_identity": true,
+      "original_cli_confirmation_completed_by_owner": true,
+      "channel_reattached": true,
+      "fresh_chat_reply_visibly_received": true,
+      "prior_file_and_wait_start_record_unchanged": true,
+      "old_approval_rejected_while_new_write_remained_pending": true
+    },
+    "live_discovered_issue": "a bare issued short code was previously forwarded as an ordinary message",
+    "bare_code_fix": {
+      "tested_after_rebuild": true,
+      "format_guidance_and_original_request_visibly_received": true,
+      "permission_remained_pending": true,
+      "unapproved_file_absent": true,
+      "final_explicit_denial_received": true,
+      "no_pending_permissions_at_end": true
+    },
+    "screenshots": "actual desktop WeChat states inspected; raw account screenshots and approval codes are not published"
+  },
+  "limitations": [
+    "Live evidence covers one account, current Windows/Claude version and the controlled local-mode workflow; it is not broad reliability or usability benchmarking.",
+    "Original interactive CLI confirmation was required during resume; the flow is not fully unattended.",
+    "API mode, phone voice/quote delivery, network outage/sleep recovery and independent background jobs were not live-accepted in this run.",
+    "Force termination is not graceful cancellation or rollback; independent background jobs remain unverified.",
+    "Reply ended, idle and done do not prove task success.",
+    "No new GitHub push or release was performed for this revision."
+  ],
+  "publicationPrivacy": {
+    "redacted": true,
+    "redactedAt": "2026-11-06",
+    "originalEvidenceRetainedLocally": true,
+    "privateBackup": "work/publication-private-evidence-20261106/",
+    "note": "Private test messages, journal content, identifiers and local identity paths are replaced by explicit placeholders. Existing outcomes, counts, byte lengths, hashes and event order are unchanged. Existing content hashes describe the retained private originals, not these placeholders. Original evidence bytes are preserved outside Git.",
+    "fields": [
+      {
+        "field": "new_live_wechat_acceptance.artifact.utf8_exact",
+        "type": "private test text",
+        "originalUtf8Bytes": 21
+      }
+    ]
+  }
+}

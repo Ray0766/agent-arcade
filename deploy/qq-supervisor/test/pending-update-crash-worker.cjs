@@ -1,0 +1,7 @@
+'use strict';
+// Deliberate crash of this exact test-only service child, never QQ.
+const fs=require('node:fs'),path=require('node:path');
+const {createService}=require('../../../src/qq-supervisor/server.cjs'),{SupervisorPendingUpdate}=require('../../../src/qq-supervisor/pending-update.cjs'),{QQPendingUpdateRecovery}=require('../../../src/bot/qq-pending-update-recovery.cjs');
+const {managedRuntime}=require('./runtime-fixture.cjs'),{material}=require('./helpers.cjs');
+async function main(){const config=JSON.parse(fs.readFileSync(process.argv[2],'utf8')),mode=process.argv[3],r=managedRuntime(config),marker=path.join(r.paths.configDir,'napcat-update.json');fs.writeFileSync(marker,'SYNTHETIC_CRASH_PLAN');const io=Object.create(fs);io.linkSync=(from,to)=>{fs.linkSync(from,to);if(mode==='linked'&&from===marker)process.exit(86);};io.unlinkSync=file=>{fs.unlinkSync(file);if(mode==='unlinked'&&file===marker)process.exit(86);};let armed=false;const service=await createService({config,tls:material,runtimeFactory:()=>r.adapter,pendingUpdateFactory:(c,args)=>new SupervisorPendingUpdate(c,{...args,helperFactory:args=>new QQPendingUpdateRecovery({...args,io})}),storeOptions:{hook:phase=>{if(armed&&mode==='attempted'&&phase==='afterCommit')process.exit(86);}}});await service.listen();armed=true;process.stdout.write(JSON.stringify({port:service.server.address().port,ledgerId:service.store.ledgerId})+'\n');process.stdin.once('data',()=>process.exit(86));}
+main().catch(()=>{process.stderr.write('synthetic_recovery_worker_failed\n');process.exitCode=1;});

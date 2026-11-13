@@ -1,0 +1,34 @@
+{
+  "checkedAtLocalDate": "2026-11-05",
+  "timeZone": "Australia/Sydney",
+  "kind": "documentation_and_installed_protocol_schema_review",
+  "cliVersion": "codex-cli 0.166.0-alpha.6",
+  "schemaCommand": "codex app-server generate-json-schema --experimental --out work/codex-no-tools-schema",
+  "schemaFiles": [
+    "v2/ThreadStartParams.json",
+    "v2/TurnStartParams.json",
+    "v2/ConfigReadResponse.json"
+  ],
+  "findings": {
+    "threadStartGlobalToolChoiceField": false,
+    "turnStartGlobalToolChoiceField": false,
+    "dynamicToolsIsNotBuiltinToolRemoval": true,
+    "emptyEnvironmentsDisablesEnvironmentAccessOnly": true,
+    "toolsV2Properties": ["web_search"],
+    "documentedVerifiableAllToolsOffContractFound": false,
+    "readOnlySandboxIsNotNoTools": true
+  },
+  "decision": "Keep local Codex companion mode disabled; retain the existing task backend.",
+  "modelCalls": 0,
+  "toolActions": 0,
+  "messagesSent": 0,
+  "credentialsRead": false,
+  "accountConfigurationChanged": false,
+  "runnerChanged": false,
+  "qqAcceptance": "not performed",
+  "sources": [
+    "https://learn.chatgpt.com/docs/app-server",
+    "https://learn.chatgpt.com/docs/config-file/config-reference",
+    "https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations"
+  ]
+}

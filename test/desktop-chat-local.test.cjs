@@ -1,0 +1,11 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path');
+const root=process.env.ARCADE_DESKTOP_LOCAL_ROOT||path.resolve(__dirname,'..');
+const {DesktopChat}=require(path.join(root,'src/bot/desktop-chat.cjs'));
+const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {resolve,promise};};
+function fixture(){const calls=[];const service={socialReply:async text=>{calls.push(['channel',text]);return {outcome:'reply_ended'};},localReply:async text=>{calls.push(['local',text]);return {outcome:'reply_ended'};}};let context={accountId:'a',kind:'local',service,dispatcher:{},scope:'local-scope',character:'ju',settings:'{}',generation:1};const chat=new DesktopChat({getContext:()=>context});const open=()=>chat.open({accountId:'a',contextId:chat.snapshot().contextId,panelId:'panel'});return {chat,service,calls,open,setKind:kind=>{context={...context,kind};}};}
+const send=(f,s,id='one')=>f.chat.send({...s,requestId:id,text:'本地问题'});
+test('local kind calls only local reply, with no channel identity fields',async()=>{const f=fixture(),s=f.open();assert.equal((await send(f,s)).outcome,'reply_ended');assert.deepEqual(f.calls,[['local','本地问题']]);});
+test('legacy or channel kind retains the original reply method',async()=>{for(const kind of [undefined,'channel']){const f=fixture();f.setKind(kind);await send(f,f.open());assert.deepEqual(f.calls,[['channel','本地问题']]);}});
+test('a source change invalidates the session even for identical account and provider',async()=>{const f=fixture(),s=f.open();f.setKind('channel');assert.notEqual(f.chat.snapshot().contextId,s.contextId);await assert.rejects(send(f,s),{code:'changed'});await send(f,f.open());assert.deepEqual(f.calls,[['channel','本地问题']]);});
+test('switching source aborts old local reply and late completion cannot become channel output',async()=>{const f=fixture(),gate=deferred();let signal;f.service.localReply=async(_text,opts)=>{signal=opts.signal;await gate.promise;return {outcome:'reply_ended'};};const old=send(f,f.open());await new Promise(r=>setImmediate(r));f.setKind('channel');const next=f.open();assert.equal(signal.aborted,true);await send(f,next,'next');gate.resolve();assert.equal((await old).outcome,'cancelled');assert.deepEqual(f.calls,[['channel','本地问题']]);});

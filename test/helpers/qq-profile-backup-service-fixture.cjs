@@ -1,0 +1,19 @@
+'use strict';
+// Real production HTTPS/SQLite/managed selector + synthetic component/process data.
+const fs=require('node:fs'),path=require('node:path'),{randomUUID}=require('node:crypto');
+const {fixture:shell}=require('./qq-shell-owner-fixture.cjs'),A=require('./qq-supervisor-app-fixture.cjs');
+const {createService}=require('../../src/qq-supervisor/server.cjs'),{SupervisorRuntime}=require('../../src/qq-supervisor/runtime.cjs'),{SupervisorProfileBackups}=require('../../src/qq-supervisor/profile-backups.cjs');
+const {QQSupervisorClient}=require('../../src/bot/qq-supervisor-client.cjs'),{QQSupervisorLinks}=require('../../src/bot/qq-supervisor-links.cjs'),{QQSupervisorPanel}=require('../../src/bot/qq-supervisor-panel.cjs');
+const {QQProfileBackups}=require('../../src/bot/qq-profile-backups.cjs');
+async function fixture(t,{enabled=true,helperFactory,clientFactory}={}){
+ const cleanup=[],f=shell({after:fn=>cleanup.push(fn)}),stateDir=path.join(f.base,'service'),appRoot=path.join(f.base,'client');fs.mkdirSync(stateDir);fs.mkdirSync(appRoot);const config={instanceId:randomUUID(),expectedQQ:f.account,stateDir,token:A.TOKEN,installation:{componentStoreRoot:f.root,lockRoot:f.lockRoot,setupId:f.setupId},profileBackups:{enabled}};
+ const file=path.join(f.configDir,`onebot11_${f.account}.json`),original=Buffer.from('\uFEFF'+JSON.stringify({network:{websocketServers:[{enable:true,host:'127.0.0.1',port:3001,token:'SYNTHETIC_SECRET_NEVER_RETURN',name:'PRIVATE_NAME'}],httpServers:[],httpSseServers:[]},unknown:'PRIVATE_UNKNOWN'},null,2)+'\r\n');fs.writeFileSync(file,original);
+ const runtime=new SupervisorRuntime(config,{managerFactory:()=>f.runtime}),service=await createService({config,tls:A.material,runtimeFactory:()=>runtime,profileBackupsFactory:(c,o)=>new SupervisorProfileBackups(c,{...o,helperFactory:helperFactory||((o)=>new QQProfileBackups(o))})});await service.listen();
+ const options={origin:`https://remote.arcade.invalid:${service.server.address().port}`,trust:{caPem:A.material.caPem},instanceId:config.instanceId,expectedQQ:f.account,token:A.TOKEN,lookup:async()=>[{address:A.REMOTE,family:4}],connect:A.mappedSocket},clients=[],parent={remoteId:randomUUID(),remoteRevision:randomUUID(),panelId:randomUUID(),expectedQQ:f.account,parentGeneration:1,contextKey:{synthetic:true},origin:'https://webui.arcade.invalid'},base={remoteId:parent.remoteId,panelId:parent.panelId},links=new QQSupervisorLinks({root:appRoot,vault:A.vault});
+ const entry=links.create({remoteId:parent.remoteId,remoteRevision:parent.remoteRevision,expectedQQ:f.account,label:'合成工作室',origin:options.origin,instanceId:config.instanceId,trust:options.trust,token:A.TOKEN}),ref={...base,supervisorId:entry.supervisorId};
+ const makeClient=e=>{const c=clientFactory?clientFactory({...e,lookup:options.lookup,connect:options.connect}):new QQSupervisorClient({...e,lookup:options.lookup,connect:options.connect});clients.push(c);return c;};
+ const makePanel=(l=links)=>new QQSupervisorPanel({links:l,captureParent:()=>structuredClone(parent),clientFactory:makeClient}),panel=makePanel();await panel.list(base);
+ t.after(async()=>{await panel.close();for(const c of clients)await c.close();await service.close();for(const fn of cleanup.reverse())await fn();});
+ return {...f,config,runtime,service,file,original,appRoot,links,parent,base,entry,ref,panel,makePanel,makeClient,options,clients,vault:A.vault,backupRoot:path.join(stateDir,'profile-backups'),defer:fn=>cleanup.push(fn),async preview(action='backup',row){await panel.profileBackupRead(ref);return panel.profileBackupPreview({...ref,action,backupId:row?.id??null,sha256:row?.sha256??null});},async confirm(action='backup',row){const p=await this.preview(action,row);return panel.profileBackupConfirm({...base,ticketId:p.preview.ticketId});}};
+}
+module.exports={fixture};

@@ -1,0 +1,87 @@
+{
+  "startedAt": "2026-11-04T08:50:37.976Z",
+  "finishedAt": "2026-11-04T08:50:42.162Z",
+  "scope": "Real DeepSeek API with the current Windows unpacked preview's Dispatcher and file tools; messaging transport is a local test fixture, not QQ or WeChat.",
+  "modelRequested": "deepseek-flash",
+  "thinking": false,
+  "endpoint": "https://api.deepseek.com/chat/completions",
+  "httpStatuses": [
+    200,
+    200,
+    200
+  ],
+  "packagedRuntimeMatchesSource": [
+    "deepseek-runner.cjs",
+    "dispatcher.cjs",
+    "file-tools.cjs"
+  ],
+  "credentialHandling": "The owner saved the key in the app. The helper used Electron safeStorage in memory; no plaintext credential was logged or exported. Its temporary copy of OS-encrypted profile key metadata was removed after the test.",
+  "chat": {
+    "passed": true,
+    "prompt": "[redacted private test text]",
+    "reply": "[redacted private test text]",
+    "toolRequests": 0,
+    "outgoingMessages": 1,
+    "outcome": "reply_ended"
+  },
+  "write": {
+    "passed": true,
+    "sameSession": true,
+    "tool": "Write",
+    "relativePath": "deepseek-proof.txt",
+    "expectedContent": "[redacted private test text]",
+    "fileAbsentBeforeApproval": true,
+    "exactExpectedArguments": true,
+    "permissionRequests": 1,
+    "approvalCount": 1,
+    "approvalMethod": "The test harness checked the exact filename and content, then submitted the actual one-time Dispatcher confirmation. This was authorized test automation, not a manual owner click or a blanket permission.",
+    "confirmationAccepted": true,
+    "outcome": "reply_ended",
+    "reply": "[redacted private test text]",
+    "independentVerification": {
+      "method": "Read bytes from disk outside the model and compare the exact marker; repeat independently from PowerShell after helper exit.",
+      "bytes": 23,
+      "contentExact": true,
+      "newline": false,
+      "sha256": "b94fbec174da1c1406d1f70e1445c575eb587af5c98d56abe4c1fad1cc1af0ef",
+      "artifact": "work/deepseek-live-2026-11-04T08-50-37-976Z/deepseek-proof.txt"
+    }
+  },
+  "passed": true,
+  "limitations": [
+    "No real QQ or WeChat account-to-DeepSeek round trip; no social messages were sent.",
+    "Denial, cancellation, reconnect and other file tools retain local fixture coverage; they were not exercised against the real API in this run.",
+    "A two-turn check does not establish broad model quality, reliability, cost or latency benchmarks.",
+    "The application still labels reply_ended separately from verified task success; file success here comes from independent byte verification.",
+    "This is a local preview beyond the published release. No push or release was performed."
+  ],
+  "publicationPrivacy": {
+    "redacted": true,
+    "redactedAt": "2026-11-06",
+    "originalEvidenceRetainedLocally": true,
+    "privateBackup": "work/publication-private-evidence-20261106/",
+    "note": "Private test messages, journal content, identifiers and local identity paths are replaced by explicit placeholders. Existing outcomes, counts, byte lengths, hashes and event order are unchanged. Existing content hashes describe the retained private originals, not these placeholders. Original evidence bytes are preserved outside Git.",
+    "fields": [
+      {
+        "field": "chat.prompt",
+        "type": "private test text",
+        "originalUtf8Bytes": 126
+      },
+      {
+        "field": "chat.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 315
+      },
+      {
+        "field": "write.expectedContent",
+        "type": "private test text",
+        "originalUtf8Bytes": 23
+      },
+      {
+        "field": "write.reply",
+        "type": "private test text",
+        "originalUtf8Bytes": 312
+      }
+    ]
+  }
+}

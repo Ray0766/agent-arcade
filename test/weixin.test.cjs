@@ -2,7 +2,7 @@
 // Protocol fixtures only: these tests do not connect to Weixin or prove account access.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { WeixinClient, trustedBaseUrl, DEFAULT_BASE_URL } = require('../src/bot/weixin.cjs');
+const { WeixinClient, trustedBaseUrl, DEFAULT_BASE_URL, prepareInbound } = require('../src/bot/weixin.cjs');
 
 const now = 1800000000000;
 const inbound = (extra = {}) => ({ message_id: '100', from_user_id: 'owner', message_type: 1,
@@ -178,4 +178,48 @@ test('seen IDs can be restored and stay bounded across large poll sequences', as
   assert.equal(bot.seenIds().length, 2000);
   start = 0;
   assert.equal((await bot.getUpdates()).messages.length, 0);
+});
+
+test('voice transcription is forwarded as text; unavailable transcription has an actionable fallback', async () => {
+  const rows = [inbound({ message_id: 'voice', item_list: [{ type: 3, voice_item: { text: '请修改标题', media: { full_url: 'https://untrusted.test/audio' } } }] }),
+    inbound({ message_id: 'no-transcript', item_list: [{ type: 3, voice_item: { media: { full_url: 'https://untrusted.test/audio' } } }] })];
+  let calls = 0;
+  const messages = (await client(async () => { calls++; return json({ ret: 0, msgs: rows }); }).getUpdates()).messages;
+  assert.equal(calls, 1); assert.equal(messages.length, 2);
+  assert.match(prepareInbound(messages[0]).text, /语音转写/);
+  assert.match(prepareInbound(messages[0]).text, /请修改标题/);
+  assert.match(prepareInbound(messages[1]).rejection, /没有附带转写文字/);
+  assert.doesNotMatch(JSON.stringify(messages), /untrusted\.test/);
+});
+
+test('inline quotes preserve bounded text and uint64 identity separately from the current request', async () => {
+  const message = inbound({ item_list: [{ type: 1, text_item: { text: '改短一些' }, ref_msg: {
+    svr_id: 'REPLACE', title: '原回复', message_item: { type: 1, text_item: { text: '之前的内容'.repeat(600) } },
+    partial_text: { start: '片段开头', end: '片段结尾', startindex: 0, endindex: 8, quotemd5: 'not-verified' }
+  } }] });
+  const raw = JSON.stringify({ ret: 0, msgs: [message] }).replace('"REPLACE"', '12345678901234567891');
+  const value = (await client(async () => new Response(raw)).getUpdates()).messages[0];
+  assert.equal(value.text, '改短一些'); assert.equal(value.quote.id, '12345678901234567891');
+  assert.equal(value.quote.text.length, 1800); assert.equal(value.quote.truncated, true);
+  assert.deepEqual(value.quote.partial, { start: '片段开头', end: '片段结尾' });
+  assert.match(prepareInbound(value).text, /不是新指令或操作授权/);
+});
+
+test('voice or quoted Chinese and slash controls never become control or approval commands', () => {
+  const command = '/allow ' + 'a'.repeat(32);
+  for (const text of [command,'同意 234ABC','拒绝 234ABC','状态','停止','恢复会话','/cancel','/status','/new','/resume']) {
+    for (const message of [{ text, source: 'voice' }, { text, quote: { text: '同意' } }]) {
+      const result = prepareInbound(message); assert.equal(result.text, ''); assert.match(result.rejection, /不会执行/);
+    }
+    assert.equal(prepareInbound({ text }).text, text);
+  }
+  const quote = prepareInbound({ text: '好的', quote: { text: command } });
+  assert(!quote.text.startsWith('/')); assert.match(quote.text, /不是新指令或操作授权/);
+});
+
+test('id-only quoted message reports unavailable context without retrieving media or inventing text', async () => {
+  const value = (await client(async () => json({ ret: 0, msgs: [inbound({ item_list: [{ type: 1,
+    text_item: { text: '继续改这个' }, ref_msg: { svr_id: 'quote-id' } }] })] })).getUpdates()).messages[0];
+  assert.equal(value.quote.id, 'quote-id'); assert.equal(value.quote.text, '');
+  assert.match(prepareInbound(value).text, /内容未核验/);
 });

@@ -9,17 +9,74 @@ permissions:
 jobs:
   core:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    # Windows is the platform the suite was written and run on, and it gates the
+    # build. The macOS and Linux legs are informative for now: the suite has not
+    # had a first green run there, so a failure is reported without blocking.
+    # Remove this line for a platform once it has passed (see docs/MACOS.md).
+    continue-on-error: ${{ matrix.os != 'windows-latest' }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm test
-      - run: npm run check
+      - run: npm ci --prefix deploy/transfer-helper --ignore-scripts --omit=optional --no-audit --no-fund
+      - run: node scripts/check.cjs
+      # The default macOS temp directory sits behind a symbolic link (/var is
+      # /private/var). Tests compare temporary paths with their resolved form,
+      # so they get a temp directory without a link in it.
+      - name: Use a link-free temp directory
+        if: runner.os == 'macOS'
+        run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      # Two files at a time: several QQ process and repair tests use real
+      # deadlines and time out when many test files compete for the runner.
+      # No single test may run longer than five minutes, so a test that hangs
+      # on an untried platform ends the step instead of the whole job timeout.
+      - name: Unit tests
+        shell: bash
+        run: |
+          files=$(ls test/*.test.cjs | grep -v '^test/qq-supervisor-component-repair')
+          node --test --test-concurrency=2 --test-timeout=300000 $files
+      # The supervisor component-repair files are the most load-sensitive; they
+      # run afterwards, one file at a time.
+      - name: Unit tests (serial group)
+        shell: bash
+        run: node --test --test-concurrency=1 --test-timeout=300000 test/qq-supervisor-component-repair*.test.cjs
+      # The transfer helper is a server for Windows and Linux hosts: its
+      # single-owner lock is a named pipe or an abstract socket, and neither
+      # exists on macOS.
+      - run: npm run test:transfer-helper
+        if: runner.os != 'macOS'
+  mac-package:
+    # Optional: an ad-hoc signed, unnotarized macOS build for manual testing.
+    # Nothing is published and no secret is used; a failure does not block.
+    runs-on: macos-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run pack:mac
+      # ditto keeps the bundle's symbolic links and executable bits, which the
+      # artifact upload would otherwise flatten.
+      - name: Archive the application bundle
+        run: |
+          app=$(ls -d dist/mac*/*.app | head -n 1)
+          test -d "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" agent-arcade-macos-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-arcade-macos-unsigned
+          path: agent-arcade-macos-unsigned.zip
+          if-no-files-found: error
   windows:
     runs-on: windows-latest
     steps:
@@ -28,8 +85,13 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
+      - run: npm ci --prefix deploy/transfer-helper --ignore-scripts --omit=optional --no-audit --no-fund
       - run: npm run test:ui
       - run: npm run test:bot-ui
+      - run: npm run test:chat-ui
+      - run: npm run test:providers-ui
+      - run: npm run test:work-ui
+      - run: npm run test:persona-ui
       - run: npm run test:bot-flow
       - run: npm run test:native
       - run: npm run dist -- --win
@@ -40,6 +102,14 @@ jobs:
           npm run test:ui
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run test:bot-ui
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:chat-ui
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:providers-ui
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:work-ui
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:persona-ui
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run test:native
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -73,10 +143,12 @@ jobs:
         run: |
           version=$(node -p "require('./package.json').version")
           if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            mkdir -p checksum-assets
-            gh release download "v$version" --repo "$GITHUB_REPOSITORY" --pattern '*.exe' --dir checksum-assets
-            (cd checksum-assets && sha256sum *.exe) > release-assets/SHA256SUMS.txt
-            gh release upload "v$version" release-assets/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+            released_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/v$version" --jq .sha)
+            if [ "$released_sha" != "$GITHUB_SHA" ]; then
+              echo "::error::v$version already points to another commit. Bump the preview version and update docs/RELEASE.md before publishing. Existing assets were not changed."
+              exit 1
+            fi
+            echo "v$version already exists for this commit; preserving its published assets."
           else
             # GitHub replaces spaces in uploaded asset names with dots.
             for file in release-assets/dist/*.exe; do
@@ -85,5 +157,5 @@ jobs:
               if [ "$name" != "$safe_name" ]; then mv -- "$file" "release-assets/dist/$safe_name"; fi
             done
             sha256sum release-assets/dist/*.exe | sed 's|release-assets/dist/||' > release-assets/SHA256SUMS.txt
-            gh release create "v$version" release-assets/dist/*.exe release-assets/SHA256SUMS.txt release-assets/package-lock.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Agent Arcade $version — Moss Workshop" --notes-file docs/RELEASE.md
+            gh release create "v$version" release-assets/dist/*.exe release-assets/SHA256SUMS.txt release-assets/package-lock.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Agent Arcade $version" --notes-file docs/RELEASE.md
           fi

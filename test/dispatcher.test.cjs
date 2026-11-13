@@ -14,18 +14,38 @@ function setup(execute, options = {}) {
 const permission = { kind:'permission',tool:'Bash',input:{command:'node -e "console.log(123)"'} };
 const reply = (sessionId='session-1',text='Synthetic reply') => ({sessionId,text,outcome:'reply_ended'});
 
+test('an unconfirmed backend interruption stays explicit and never publishes partial model output',async()=>{
+ const notice='已请求中断，未收到确认；请检查本机 Codex。';
+ const h=setup(async()=>({sessionId:'thread-fixture',outcome:'cancelled',text:'PARTIAL_MODEL_TEXT',notice}));
+ await h.receive('Fixture interruption');await h.dispatcher.whenIdle();await h.dispatcher.sendChain;
+ assert.equal(h.sent.at(-1).text,notice);assert(!h.sent.some(item=>item.text.includes('PARTIAL_MODEL_TEXT')));
+ assert.equal(h.dispatcher.snapshot().tasks[0].state,'cancelled');
+});
+
+test('a stop request cannot overwrite an explicit unconfirmed-process error',async()=>{
+ const gate=deferred(),entered=deferred();
+ const notice='已请求停止，但尚未确认本机 Claude 进程退出。请在电脑端检查。';
+ const h=setup(async({signal})=>{entered.resolve();await gate.promise;assert.equal(signal.aborted,true);return {outcome:'error',text:'PARTIAL_NOT_A_REPLY',notice};});
+ await h.receive('Controlled long task');await entered.promise;
+ await h.receive('停止');gate.resolve();await h.dispatcher.whenIdle();await h.dispatcher.sendChain;
+ assert.equal(h.dispatcher.snapshot().tasks[0].state,'error');
+ assert.equal(h.sent.at(-1).text,notice);assert(!h.sent.some(item=>item.text.includes('PARTIAL_NOT_A_REPLY')));
+ h.dispatcher.stop();
+});
+
 test('messages are deduplicated and tasks run serially with explicit conversation resume',async()=>{
  const gates=[deferred(),deferred()],calls=[];let active=0,peak=0;
  const h=setup(async request=>{const index=calls.length;calls.push(request);peak=Math.max(peak,++active);const result=await gates[index].promise;active--;return result;});
  const first=await h.receive('First task','same');const duplicate=await h.receive('First task','same');
- assert(first.accepted);assert(duplicate.duplicate);await h.receive('Second task','next');
+ assert(first.accepted);assert(duplicate.duplicate);assert.equal(h.sent.length,0,'Ordinary input has no receipt message');await h.receive('Second task','next');
  assert.equal(calls.length,1);assert.equal(calls[0].resume,undefined);
  calls[0].onUpdate('A local progress update');await flush();assert(!h.sent.some(m=>m.text.includes('local progress')));
  gates[0].resolve(reply('saved-session','First response'));
  await until(()=>calls.length===2);assert.equal(calls[1].prompt,'Second task');assert.equal(calls[1].resume,'saved-session');assert.equal(peak,1);
  gates[1].resolve(reply('saved-session','Second response'));await until(()=>!h.dispatcher.current);
  await h.dispatcher.sendChain;
- assert(h.sent.some(m=>m.text.includes('回复结束（任务结果未验证）')));
+ assert.deepEqual(h.sent.map(m=>m.text),['这条需求已排队，当前任务结束后处理。','First response','Second response']);
+ assert(h.dispatcher.snapshot().tasks.every(t=>t.outcome==='reply_ended'),'Plain chat text does not change the unverified result state');
  assert.equal(h.dispatcher.snapshot().tasks.length,2);
  await h.receive('/new');assert.equal(h.dispatcher.snapshot().hasSession,false);h.dispatcher.stop();
 });
@@ -43,10 +63,10 @@ test('parallel incoming prompts retain order and the waiting queue is bounded to
 test('permission requires an explicit one-use code and ordinary text cannot enqueue work',async()=>{
  const answers=[];const h=setup(async({request})=>{answers.push(await request(permission));answers.push(await request(permission));return reply();});
  await h.receive('Do a harmless synthetic task');await until(()=>h.dispatcher.snapshot().pending.length===1);
- const first=h.dispatcher.snapshot().pending[0].code;assert.match(first,/^[a-f0-9]{32}$/);
+ const {code:first,alias}=h.dispatcher.snapshot().pending[0];assert.match(first,/^[a-f0-9]{32}$/);assert.match(alias,/^[2-9A-HJ-NP-Z]{6}$/);
  const beforeStatus=h.sent.length;await h.receive('/status');
  const status=h.sent.slice(beforeStatus);assert(status.some(m=>m.text.startsWith('当前：')&&!m.text.includes(first)));
- assert(status.some(m=>m.text.includes(first)&&m.text.includes('可读取、修改文件或影响本机')));
+ assert(status.some(m=>m.text.includes(alias)&&m.text.includes('可读取、修改文件或影响本机')));
  assert.equal((await h.receive('Please do something else')).reason,'confirmation_pending');assert.equal(h.dispatcher.snapshot().queue.length,0);
  await h.receive(`/allow ${first}`);await until(()=>h.dispatcher.snapshot().pending[0]?.code!==first);
  const second=h.dispatcher.snapshot().pending[0].code;assert.notEqual(second,first);
@@ -119,7 +139,7 @@ test('oversized or sensitive tool JSON is denied rather than truncated for autho
  });
  await h.receive('Reject invalid requests');await until(()=>!h.dispatcher.current);await h.dispatcher.sendChain;
  assert.deepEqual(decisions,[{allow:false},{allow:false},{allow:false}]);
- assert(!h.sent.some(m=>m.text.includes('/allow ')));assert(!JSON.stringify(h.dispatcher.snapshot()).includes('PRIVATE_AUTH_SECRET'));h.dispatcher.stop();
+ assert(!h.sent.some(m=>/同意 [2-9A-HJ-NP-Z]{6}/.test(m.text)));assert(!JSON.stringify(h.dispatcher.snapshot()).includes('PRIVATE_AUTH_SECRET'));h.dispatcher.stop();
 });
 
 test('tool cancellation removes its pending permission and abort listener',async()=>{
@@ -134,9 +154,67 @@ test('tool cancellation removes its pending permission and abort listener',async
 test('a permission message queued behind a slow send is suppressed after tool cancellation',async()=>{
  const sendGate=deferred(),tool=new AbortController(),sent=[];let decision;
  const h=setup(async({request})=>{decision=await request({...permission,signal:tool.signal});return reply();},{send:async text=>{sent.push(text);if(sent.length===1)await sendGate.promise;}});
- const received=h.receive('Slow acknowledgement');await until(()=>h.dispatcher.snapshot().pending.length===1);
- tool.abort();await until(()=>!h.dispatcher.current);sendGate.resolve();await received;await h.dispatcher.sendChain;
- assert.deepEqual(decision,{allow:false});assert(!sent.some(text=>text.includes('/allow ')));h.dispatcher.stop();
+ const inFlight=h.dispatcher._deliver('Fixture in-flight delivery',{contextToken:'CONTEXT_TOKEN_SECRET'});await flush();
+ const received=h.receive('Permission behind another delivery');await until(()=>h.dispatcher.snapshot().pending.length===1);
+ tool.abort();await until(()=>!h.dispatcher.current);sendGate.resolve();await Promise.all([inFlight,received]);await h.dispatcher.sendChain;
+ assert.deepEqual(decision,{allow:false});assert(!sent.some(text=>/同意 [2-9A-HJ-NP-Z]{6}/.test(text)));h.dispatcher.stop();
+});
+
+test('Chinese short confirmations are exact, one use, and cannot turn ordinary agreement into authorization',async()=>{
+ const decisions=[];const h=setup(async({request})=>{decisions.push(await request(permission));decisions.push(await request(permission));return reply();});
+ await h.receive('Two synthetic operations');await until(()=>h.dispatcher.snapshot().pending.length===1);
+ const first=h.dispatcher.snapshot().pending[0];
+ assert.equal((await h.receive('好的')).reason,'confirmation_pending');assert.equal(decisions.length,0);
+ assert.equal((await h.receive(`同意 ${first.alias} 然后继续`)).reason,'wrong_confirmation');assert.equal(decisions.length,0);
+ await h.receive(`同意 ${first.alias.toLowerCase()}`);await until(()=>h.dispatcher.snapshot().pending[0]?.code!==first.code);
+ const second=h.dispatcher.snapshot().pending[0];assert.notEqual(second.alias,first.alias);
+ assert.equal((await h.receive(`同意 ${first.alias}`)).reason,'stale_code');assert.equal(decisions.length,1);
+ await h.receive(`拒绝 ${second.alias}`);await until(()=>!h.dispatcher.current);
+ assert.deepEqual(decisions,[{allow:true},{allow:false}]);h.dispatcher.stop();
+});
+
+test('API bare issued confirmation codes never approve or enqueue another task; ordinary words and hashes remain chat',async()=>{
+ const calls=[];let decision;const h=setup(async p=>{calls.push(p.prompt);if(calls.length===1)decision=await p.request(permission);return reply();});
+ await h.receive('One permission');await until(()=>h.dispatcher.snapshot().pending.length===1);const p=h.dispatcher.snapshot().pending[0];
+ for(const text of [p.alias.toLowerCase(),p.code.toUpperCase()]){
+   assert.equal((await h.receive(text)).reason,'bare_confirmation');assert.equal(decision,undefined);assert.equal(calls.length,1);
+   assert.equal(h.dispatcher.snapshot().pending[0].expiresAt,p.expiresAt);assert.equal(h.dispatcher.snapshot().queue.length,0);assert.equal(h.dispatcher.approvalCodes.failures,0);
+   assert.match(h.sent.at(-1).text,/只发送确认码不会批准/);assert(h.sent.at(-1).text.includes(`同意 ${p.alias}`));assert(h.sent.at(-1).text.includes(permission.input.command.replaceAll('"','\\"')));
+ }
+ await h.receive(`拒绝 ${p.alias}`);await until(()=>!h.dispatcher.current);assert.deepEqual(decision,{allow:false});
+ for(const text of [p.alias,p.code]){assert.equal((await h.receive(text)).reason,'bare_confirmation');assert.equal(calls.length,1);assert.match(h.sent.at(-1).text,/确认码已失效/);}
+ const ordinary=['BANANA','CHERRY'].find(value=>value!==p.alias),hash=['a'.repeat(32),'b'.repeat(32)].find(value=>value!==p.code);
+ await h.receive(ordinary);await until(()=>!h.dispatcher.current);await h.receive(hash);await until(()=>!h.dispatcher.current);
+ assert.deepEqual(calls,['One permission',ordinary,hash]);h.dispatcher.stop();
+});
+
+test('AskUserQuestion still accepts plain answers that happen to be issued confirmation codes',async()=>{
+ for(const answerKind of ['current','previous']){
+   let answer;const h=setup(async({request})=>{await request(permission);answer=await request({kind:'question',tool:'AskUserQuestion',questions:[{question:'Which code should be printed?'}]});return reply();});
+   await h.receive('Ask for a code as data');await until(()=>h.dispatcher.snapshot().pending[0]?.kind==='permission');
+   const previous=h.dispatcher.snapshot().pending[0].alias;await h.receive(`拒绝 ${previous}`);await until(()=>h.dispatcher.snapshot().pending[0]?.kind==='question');
+   const value=answerKind==='current'?h.dispatcher.snapshot().pending[0].alias:previous;
+   assert.equal((await h.receive(value)).answer,true);await until(()=>!h.dispatcher.current);assert.deepEqual(answer,{allow:true,answer:value});h.dispatcher.stop();
+ }
+});
+
+test('short-code guessing is bounded and status recovers full-code approval without renewing expiry',async()=>{
+ let now=1000,decision;const h=setup(async({request})=>{decision=await request(permission);return reply();},{now:()=>now});
+ await h.receive('Rate limited permission');await until(()=>h.dispatcher.snapshot().pending.length===1);
+ const original=h.dispatcher.snapshot().pending[0];
+ for(let i=0;i<8;i++)await h.receive('同意 000000');
+ assert.equal((await h.receive(`同意 ${original.alias}`)).reason,'code_rate_limit');assert.equal(decision,undefined);
+ assert.match(h.sent.at(-1).text,/5 分钟/);now+=1000;
+ await h.receive('状态');assert.equal(h.dispatcher.snapshot().pending[0].expiresAt,original.expiresAt);
+ assert(h.sent.some(m=>m.text.includes(`/allow ${original.code}`)&&m.text.includes(permission.input.command.replaceAll('"','\\"'))));
+ await h.receive(`/allow ${original.code}`);await until(()=>!h.dispatcher.current);assert.deepEqual(decision,{allow:true});h.dispatcher.stop();
+});
+
+test('Chinese stop preserves cancellation and invalidates its short permission code',async()=>{
+ let signal,decision;const h=setup(async p=>{signal=p.signal;decision=await p.request(permission);return reply();});
+ await h.receive('Stop this task');await until(()=>h.dispatcher.snapshot().pending.length===1);
+ const alias=h.dispatcher.snapshot().pending[0].alias;await h.receive('停止');await until(()=>!h.dispatcher.current);
+ assert(signal.aborted);assert.deepEqual(decision,{allow:false});assert.equal((await h.receive(`同意 ${alias}`)).reason,'stale_code');h.dispatcher.stop();
 });
 
 test('delivery failure remains separate from execution outcome and status can resend the result',async()=>{

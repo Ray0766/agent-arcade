@@ -4,6 +4,15 @@ Agent Arcade has an independent **local hook observer** and two optional WeChat 
 
 Saved API/WeChat credentials use Electron OS encryption without plaintext fallback. Connections are opt-in with no startup replay/resume; only the paired owner's complete fresh text is accepted. API mode has a bounded serial queue, expiring task-bound codes and a fail-closed hook/host callback for every tool. Its cancellation invalidates requests and waits for execution to settle. These controls are not an OS sandbox: approved Windows commands may affect other files or the network. Use a disposable project for acceptance; do not expose this as a multi-user service.
 
+The API forms show saved-key status without returning the key to the renderer.
+Leaving an input blank keeps the stored credential; changing companions clears
+unsaved secret drafts. Credential submissions bind the rendered registered
+profile and provider/channel context, so a delayed old form cannot silently
+write to the newly selected target. Clearing credentials retains its explicit
+whole-profile meaning and prevents overlapping credential writes or migration
+until cleanup settles. These checks do not protect against another process
+running as the same operating-system user.
+
 API mode gives the SDK an API key, a small OS-environment allowlist, isolated configuration, disabled ambient hooks/plugins/MCP and subprocess credential scrubbing. Local mode does not read/copy Claude login credentials or set an API key; the user authenticates in the unmodified CLI. Existing CLI permissions and user/project behavior remain relevant, while MCP servers are restricted by the generated launch config. Read or previously allowed operations may not prompt again. Local permission fields are upstream previews; masked/omitted/oversized previews are refused remotely. A sent verdict does not prove it was adopted before a local decision.
 
 Local mode opens a temporary capability-authenticated HTTP broker bound to 127.0.0.1. The 256-bit capability and a per-attachment ID bind its requests; sequence gaps and uncertain MCP writes close the relay rather than replay input silently. The capability is in a private per-connection MCP config, not OS-encrypted, and is revoked on close; cleanup attempts to remove that config. This file contains neither Claude nor WeChat credentials, and the renderer/copied command receives only its path. This is not protection against another process running as the same OS user. Keep portable runtime paths alive while the original CLI uses them; generate a fresh command after reconnecting.

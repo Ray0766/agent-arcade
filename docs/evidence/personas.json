@@ -1,0 +1,17 @@
+{
+  "stage": "packaged",
+  "defaultClaude": "claude-ju",
+  "providerAvatarFilesLoaded": 6,
+  "plannedBackendsRemainUnavailable": true,
+  "voiceSettingPersisted": true,
+  "characterSwitchAndInvalidValue": true,
+  "pixelStyleKeepsIdentity": true,
+  "nativeAndApiSameClaudePersona": true,
+  "languages": [
+    "zh",
+    "en"
+  ],
+  "narrowWidth": 430,
+  "noNetwork": true,
+  "livePersonaReply": false
+}

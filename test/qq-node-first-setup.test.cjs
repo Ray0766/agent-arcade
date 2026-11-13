@@ -1,0 +1,47 @@
+'use strict';
+// Injected services and local temporary directories; no native QQ execution.
+const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{randomUUID}=require('node:crypto');
+const {QQFirstSetup,validateFirstSetupRequest}=require('../src/bot/qq-first-setup.cjs');
+const VERSION='4.18.42',SHELL='napcat-shell-4.18.42-02e5ff0f79916c1e',NODE='napcat-node-4.18.42-77397ac38d66f463',HASH='a'.repeat(64);
+function fixture(t){
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-node-setup-route-')),shellId=randomUUID(),nodeId=randomUUID(),ticketId=randomUUID(),calls=[],state={pending:null,preparedNode:true,nodeReadable:true,recoverable:false};
+  for(const [dir,id]of [['qq-installations',shellId],['qq-node-installations',nodeId]])fs.mkdirSync(path.join(root,dir,id),{recursive:true});
+  const console={runtime:{host:{snapshot:async()=>[]}},epoch:0,busy:new Set(),check(){},installationSelection:()=>({current:{kind:'legacy'},previous:null,canReturn:false}),setManagedSetup:async(value,options)=>{options.assertCurrent();calls.push(['use',value]);return{committed:true,automaticStart:false,installation:{current:{kind:value.engine||'managed-shell',setupId:value.setupId},previous:{kind:'legacy'},canReturn:true}};}};
+  const service=(engine,versionId)=>({
+    packages:{root,stage:async({signal})=>{calls.push([engine,'stage']);await state.pending;if(signal.aborted)throw Object.assign(Error('private'),{code:'cancelled'});return{version:VERSION,sha256:versionId.slice(-16)+'0'.repeat(48)};}},
+    prepared:{root,listPrepared:async()=>({items:engine==='managed-node'&&!state.preparedNode?[]:[{version:VERSION,versionId,manifestSha256:HASH}],issues:[]}),prepare:async()=>{calls.push([engine,'prepare']);return{version:VERSION,versionId,manifestSha256:HASH};},resolvePrepared:async()=>({version:VERSION,versionId,manifestSha256:HASH})},
+    setup:{root,discardTickets:()=>calls.push([engine,'discard']),inspect:async()=>({ticketId,expiresAt:Date.now()+10000,canInitialize:true,compatibility:'not-tested',qq:{version:'9.9.36.53644',architecture:'x64',size:256,sha256:HASH,signature:{status:'Valid'}}}),initialize:async(options)=>{options.assertCurrent();calls.push([engine,'create',options]);return{committed:true,setupId:engine==='managed-node'?nodeId:shellId,current:{versionId},automaticStart:false};},inspectRecovery:async({setupId})=>{if(!state.recoverable)throw Error('not recoverable');return{setupId,expectedDigest:HASH,temporaryLinksToRemove:1,descriptorPreserved:true,automaticStart:false};},confirmRecovery:async options=>{options.assertCurrent();calls.push([engine,'recover']);return{committed:true,recovered:true,setupId:options.setupId,automaticStart:false};}},
+    readSetup:({setupId})=>{if(engine==='managed-node'&&!state.nodeReadable)throw Error('private');return{engine,setupId,descriptorSha256:HASH,current:{versionId},qq:{version:'9.9.31-49738'}};}
+  });
+  const shell=service('managed-shell',SHELL),node=service('managed-node',NODE),coordinator=new QQFirstSetup({componentStoreRoot:root,console,capture:()=> 'visible-account',programPicker:async()=>{calls.push(['picker']);return path.join(root,'QQ.exe');},...shell,nodePackages:node.packages,nodePrepared:node.prepared,nodeSetup:node.setup,readNodeSetup:node.readSetup});
+  t.after(async()=>{await coordinator.close();const real=fs.realpathSync(root);assert(real.toLowerCase().startsWith(fs.realpathSync(os.tmpdir()).toLowerCase()+path.sep));fs.rmSync(real,{recursive:true,force:true});});
+  return{root,shellId,nodeId,ticketId,calls,state,console,shell,node,coordinator};
+}
+test('switching route lists both namespaces without downloading, selecting or executing',async t=>{
+  const f=fixture(t),result=await f.coordinator.execute({action:'set-engine',engine:'managed-node'});
+  assert.equal(result.state.engine,'managed-node');assert.equal(result.state.preparedVersionId,NODE);assert.deepEqual(result.state.setups.map(x=>x.engine),['managed-shell','managed-node']);assert.equal(result.state.capabilities.length,2);assert(!f.calls.some(x=>['stage','create','use','picker'].includes(x[1]||x[0])));assert.doesNotMatch(JSON.stringify(result),/qq-node-installations|manifestSha256|signature|token|private/i);
+});
+test('Node create has no program ticket, consumes current preparation and never selects',async t=>{
+  const f=fixture(t);await f.coordinator.execute({action:'set-engine',engine:'managed-node'});const result=await f.coordinator.execute({action:'create',engine:'managed-node'});assert(result.committed);assert.equal(result.engine,'managed-node');const request=f.calls.find(x=>x[1]==='create')[2];assert.equal(request.versionId,NODE);assert(!Object.hasOwn(request,'ticketId'));assert(!f.calls.some(x=>x[0]==='use'||x[0]==='picker'));await assert.rejects(f.coordinator.execute({action:'create',engine:'managed-node'}),{code:'prepared_required'});
+});
+test('Shell preparation never enables Node and Node cannot open a program picker',async t=>{
+  const f=fixture(t);f.state.preparedNode=false;await f.coordinator.execute({action:'status'});await f.coordinator.execute({action:'choose-program'});await f.coordinator.execute({action:'set-engine',engine:'managed-node'});assert.equal(f.coordinator.snapshot().program,null);await assert.rejects(f.coordinator.execute({action:'create',engine:'managed-node'}),{code:'prepared_required'});await assert.rejects(f.coordinator.execute({action:'choose-program',engine:'managed-node'}),{code:'invalid_request'});await f.coordinator.execute({action:'prepare',engine:'managed-node'});assert.equal(f.coordinator.snapshot().preparedVersionId,NODE);assert.equal(f.calls.filter(x=>x[0]==='picker').length,1);assert(f.calls.some(x=>x[0]==='managed-node'&&x[1]==='prepare'));
+});
+test('route changes revoke Shell tickets, old actions and pending recovery previews',async t=>{
+  const f=fixture(t);await f.coordinator.execute({action:'status'});await f.coordinator.execute({action:'choose-program'});await f.coordinator.execute({action:'set-engine',engine:'managed-node'});await assert.rejects(f.coordinator.execute({action:'prepare',engine:'managed-shell'}),{code:'changed'});await assert.rejects(f.coordinator.execute({action:'prepare'}),{code:'changed'});await f.coordinator.execute({action:'set-engine',engine:'managed-shell'});await assert.rejects(f.coordinator.execute({action:'create',ticketId:f.ticketId}),{code:'stale_ticket'});
+  f.state.nodeReadable=false;f.state.recoverable=true;await f.coordinator.execute({action:'status'});await f.coordinator.execute({action:'recovery-preview',setupId:f.nodeId});await f.coordinator.execute({action:'set-engine',engine:'managed-node'});await assert.rejects(f.coordinator.execute({action:'recovery-confirm',engine:'managed-node',setupId:f.nodeId,expectedDigest:HASH}),{code:'preview_required'});
+});
+test('route cannot change during preparation; cancellation settles before another route',async t=>{
+  const f=fixture(t);let release;f.state.pending=new Promise(r=>{release=r;});await f.coordinator.execute({action:'set-engine',engine:'managed-node'});const preparing=f.coordinator.execute({action:'prepare',engine:'managed-node'});await new Promise(r=>setImmediate(r));await assert.rejects(f.coordinator.execute({action:'set-engine',engine:'managed-shell'}),{code:'operation_in_progress'});const cancelled=f.coordinator.execute({action:'cancel',engine:'managed-node'}),rejected=assert.rejects(preparing,{code:'cancelled'});release();await rejected;await cancelled;await f.coordinator.execute({action:'set-engine',engine:'managed-shell'});assert(!f.calls.some(x=>x[1]==='prepare'));assert.equal(f.console.busy.size,0);
+});
+test('use and recovery dispatch from the listed record, never a caller engine or raw path',async t=>{
+  const f=fixture(t);await f.coordinator.execute({action:'status'});const result=await f.coordinator.execute({action:'use',setupId:f.nodeId,engine:'managed-shell'});assert.equal(result.installation.current.kind,'managed-node');assert.deepEqual(f.calls.find(x=>x[0]==='use')[1],{engine:'managed-node',setupId:f.nodeId,descriptorSha256:HASH});
+  f.state.nodeReadable=false;f.state.recoverable=true;await f.coordinator.execute({action:'status'});await f.coordinator.execute({action:'recovery-preview',setupId:f.nodeId});await f.coordinator.execute({action:'recovery-confirm',setupId:f.nodeId,expectedDigest:HASH});assert(f.calls.some(x=>x[0]==='managed-node'&&x[1]==='recover'));assert(!f.calls.some(x=>x[0]==='managed-shell'&&x[1]==='recover'));
+});
+test('ambiguous setup IDs in two namespaces cannot select either installation',async t=>{
+  const f=fixture(t);fs.renameSync(path.join(f.root,'qq-node-installations',f.nodeId),path.join(f.root,'qq-node-installations',f.shellId));const view=await f.coordinator.execute({action:'status'});assert.equal(view.state.lastCode,'setup_unavailable');assert(view.state.setups.every(x=>x.state==='unavailable'));await assert.rejects(f.coordinator.execute({action:'use',setupId:f.shellId}),{code:'setup_unavailable'});
+});
+test('fixed engine discriminator rejects alternate components, URLs and Node program tickets',()=>{
+  for(const request of [{action:'set-engine'},{action:'set-engine',engine:'node'},{action:'prepare',engine:'__proto__'},{action:'prepare',engine:'managed-node',url:'https://example.invalid'},{action:'create',engine:'managed-node',ticketId:randomUUID()},{action:'create',engine:'managed-shell'}])assert.throws(()=>validateFirstSetupRequest(request),{code:'invalid_request'});
+});

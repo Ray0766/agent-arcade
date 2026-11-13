@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-04",
+  "type": "real-cli-empty-prompt-background-lifecycle",
+  "version": "2.1.317",
+  "platform": "win32",
+  "modelTaskRequested": false,
+  "channelsConnected": false,
+  "steps": [
+    {"step": "create", "state": "blocked", "ownedIdResolved": true},
+    {"step": "stop", "state": "stopped"},
+    {"step": "resume", "state": "working"},
+    {"step": "final-stop", "state": "stopped"}
+  ],
+  "noVerifiedTaskSuccess": true,
+  "limitations": [
+    "Empty prompt only; no workload or artifact success test.",
+    "WeChat Channels and remote permissions were not connected.",
+    "Provider requests and cost were not instrumented.",
+    "Current Windows build replaces --session-id during --bg; binding uses the random launch tag, returned short ID and observed UUID."
+  ]
+}

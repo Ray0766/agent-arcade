@@ -20,4 +20,4 @@ The example above is abbreviated, **not** importable. Use the complete built-in 
 
 The app supplies construction/attention/smoke/parcel scenery and animations. You control character pixels and scene colors; semantic labels remain consistent. This makes themes reviewable and keeps a theme from lying about an agent's state. Respect reduced motion, avoid low-contrast characters, and use original artwork.
 
-Include a screenshot, author, theme JSON, and MIT license statement in a theme pull request. Original Sprout Bot source is `scripts/create-assets.cjs`; running it regenerates the two built-ins and banner.
+Include a screenshot, author, theme JSON, and an AGPL-3.0-compatible license statement in a theme pull request. Original Sprout Bot source is `scripts/create-assets.cjs`; running it regenerates the two built-ins and banner.

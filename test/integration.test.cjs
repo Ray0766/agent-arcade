@@ -60,3 +60,18 @@ test('independent real observer processes correlate official ID-less permissions
  send('PostToolUse',{tool_use_id:'a',tool_input:{command:'PRIVATE_COMMAND',description:'first'}});assert.equal(s.snapshot()[0].state,'running');
  assert.equal(fs.readFileSync(path.join(root,'observer-key')).length,32);
 });
+
+test('inbox keeps the longest captured CJK reply and survives a non-object file',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-inbox-'));
+ try{
+  const inbox=path.join(root,'inbox');fs.mkdirSync(inbox,{recursive:true});
+  const {normalize}=require('../src/core/events.cjs');
+  const stop=normalize({session_id:'s1',hook_event_name:'Stop',cwd:'/demo',last_assistant_message:'汉'.repeat(16000)},{now:2000,captureResults:true});
+  atomicJSON(path.join(inbox,`${stop.at}-${stop.id}.json`),stop);
+  assert(fs.statSync(path.join(inbox,`${stop.at}-${stop.id}.json`)).size>40000);
+  fs.writeFileSync(path.join(inbox,'1000-primitive.json'),'5');
+  const s=new Store();const changes=drainInbox(root,s);
+  assert.equal(changes.length,1);assert.equal(s.snapshot(2000)[0].state,'done');
+  assert.equal(fs.readdirSync(inbox).length,0);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});

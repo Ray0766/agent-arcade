@@ -6,6 +6,7 @@ const http = require('node:http');
 const path = require('node:path');
 const {Client} = require('@modelcontextprotocol/sdk/client/index.js');
 const {StdioClientTransport} = require('@modelcontextprotocol/sdk/client/stdio.js');
+const {InMemoryTransport} = require('@modelcontextprotocol/sdk/inMemory.js');
 const {z} = require('zod');
 const {createChannel} = require('../src/bot/native-channel.cjs');
 const {NativeBroker} = require('../src/bot/native-broker.cjs');
@@ -13,6 +14,26 @@ const TOKEN = 'a'.repeat(64), CLIENT = 'b'.repeat(32), URL = 'http://127.0.0.1:4
 const json = value => new Response(JSON.stringify(value), {headers:{'Content-Type':'application/json'}});
 const permission = (id='abcde', extra={}) => ({method:'notifications/claude/channel/permission_request',
   params:{request_id:id,tool_name:'Write',description:'Synthetic file action',input_preview:'{"file_path":"fixture.txt"}',...extra}});
+
+test('real MCP initialization exposes bounded persona style while preserving native channel rules', async () => {
+  for(const persona of [undefined,{enabled:false,selection:'default'},{enabled:true,selection:'sprout'}]) {
+    const channel=createChannel({url:URL,token:TOKEN,persona,fetchImpl:async(url,options)=>{
+      if(url.endsWith('/attached'))return json({client_id:CLIENT});
+      if(url.includes('/events?'))return new Promise((resolve,reject)=>{if(options.signal.aborted)reject(Error('aborted'));else options.signal.addEventListener('abort',()=>reject(Error('aborted')),{once:true});});
+      return json({});
+    }});
+    const client=new Client({name:'persona-fixture',version:'0.0.0'},{capabilities:{}}),[clientTransport,serverTransport]=InMemoryTransport.createLinkedPair();
+    try {
+      await channel.start(serverTransport);await client.connect(clientTransport);
+      const instructions=client.getInstructions();
+      if(persona?.enabled===false)assert.doesNotMatch(instructions,/Conversation presentation|Ju|Sprout|本龙/);
+      else assert.match(instructions,persona?.selection==='sprout'?/fictional interface character is Sprout/:/fictional interface character is Ju/);
+      assert.match(instructions,/Do not send task-received confirmations/);
+      assert.match(instructions,/Never claim a change, test or successful outcome without evidence/);
+      assert.match(instructions,/follow the CLI's permissions/);
+    } finally {await channel.close();await client.close();}
+  }
+});
 const waitFor = async predicate => {
   const end = Date.now() + 3000;
   while (!predicate()) {if (Date.now()>end) throw Error('Fixture condition timed out'); await new Promise(resolve=>setTimeout(resolve,5));}
@@ -197,6 +218,86 @@ test('fixture resync-required closes the relay without reattachment or message r
   assert.equal(mcp.closed,1);
 });
 
+test('fixture poll reconnects beyond three failures with its committed cursor and no message replay', async t => {
+  const mcp=new FakeMCP(), errors=[], cursors=[], delays=[];let elapsed=0, polls=0, attachments=0;
+  const first={seq:1,type:'message',id:'recovery-first',text:'First synthetic task'};
+  const channel=createChannel({url:URL,token:TOKEN,mcp,onError:code=>errors.push(code),now:()=>elapsed,sleep:async ms=>{elapsed+=ms;delays.push(ms);},fetchImpl:async url=>{
+    const parsed=new globalThis.URL(url);
+    if(parsed.pathname==='/attached'){attachments++;return json({client_id:CLIENT});}
+    if(parsed.pathname==='/events'){
+      cursors.push(parsed.searchParams.get('after'));polls++;
+      if(polls===1)return json({events:[first]});
+      if(polls<=6)throw Error('Synthetic temporary network loss');
+      return json({events:[first,{seq:2,type:'message',id:'recovery-second',text:'Second synthetic task'}],closed:true});
+    }
+    return json({});
+  }});
+  t.after(()=>channel.close());await channel.start({});mcp.oninitialized();await channel.done;
+  assert.equal(attachments,1);assert.deepEqual(cursors,['0','1','1','1','1','1','1']);
+  assert.deepEqual(delays,[250,500,1000,2000,2000]);assert.deepEqual(errors,[]);
+  assert.deepEqual(mcp.sent.map(event=>event.params.meta.task_id),['recovery-first','recovery-second']);
+});
+
+test('fixture recovery is bounded to thirty seconds and never silently reattaches', async t => {
+  let elapsed=0;const delays=[];
+  const {channel,calls,errors}=await fixture(t,{'/events':()=>{throw Error('Synthetic persistent network loss');}},
+    {now:()=>elapsed,sleep:async ms=>{elapsed+=ms;delays.push(ms);}});
+  await channel.done;assert.equal(elapsed,30000);assert(delays.every(ms=>ms>0&&ms<=2000));
+  assert.deepEqual(errors,['bridge_recovery_expired']);assert.equal(calls.filter(call=>call.url.endsWith('/attached')).length,1);
+  assert(calls.filter(call=>call.url.includes('/events?')).every(call=>call.url.endsWith('after=0')));
+});
+
+test('fixture a hanging recovery request is bounded by the remaining window', {timeout:3000},async t=>{
+  let attempts=0,hangingSignal;
+  const {channel,errors}=await fixture(t,{'/events':options=>{
+    if(++attempts===1)throw Error('Synthetic initial network loss');
+    hangingSignal=options.signal;
+    return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(Error('Synthetic request timed out')),{once:true}));
+  }},{reconnectMs:350,timeoutMs:30000});
+  await channel.done;assert.equal(hangingSignal?.aborted,true);assert.deepEqual(errors,['bridge_recovery_expired']);
+  assert(attempts>=2);
+});
+
+test('fixture successful polling resets the recovery window', async t => {
+  let elapsed=0,polls=0;const errors=[];
+  const mcp=new FakeMCP(),channel=createChannel({url:URL,token:TOKEN,mcp,onError:code=>errors.push(code),now:()=>elapsed,sleep:async ms=>{elapsed+=ms;},fetchImpl:async url=>{
+    if(url.endsWith('/attached'))return json({client_id:CLIENT});
+    if(url.includes('/events?')){
+      polls++;
+      if(polls===17)return json({events:[{seq:1,type:'message',id:'recovery-reset',text:'Synthetic task'}]});
+      if(polls===34)return json({events:[],closed:true});
+      return new Response('{}',{status:503});
+    }
+    return json({});
+  }});
+  t.after(()=>channel.close());await channel.start({});mcp.oninitialized();await channel.done;
+  assert(elapsed>30000);assert.deepEqual(errors,[]);assert.equal(mcp.sent.length,1);
+});
+
+test('fixture access denial, expired configuration and malformed responses are never retried',async t=>{
+  for(const [status,body,error] of [[401,'{}','bridge_access_denied'],[403,'{}','bridge_access_denied'],[404,'{}','bridge_request_rejected'],[409,'{}','resync_required'],[200,'not json','invalid_bridge_response']]){
+    await t.test(String(status)+' '+error,async t=>{
+      let waits=0;const {channel,calls,errors}=await fixture(t,{'/events':()=>new Response(body,{status})},{sleep:async()=>{waits++;}});
+      await channel.done;assert.equal(waits,0);assert.equal(calls.filter(call=>call.url.includes('/events?')).length,1);assert.deepEqual(errors,[error]);
+    });
+  }
+});
+
+test('fixture explicit close aborts an outstanding reconnect wait without another poll',async t=>{
+  let waitingSignal,elapsed=0;
+  const {channel,calls,mcp,errors}=await fixture(t,{'/events':()=>{throw Error('Synthetic network loss');}},
+    {now:()=>elapsed,sleep:async(ms,signal)=>{
+      elapsed+=ms;
+      if(ms<2000)return;
+      waitingSignal=signal;
+      await new Promise(resolve=>signal.addEventListener('abort',resolve,{once:true}));
+    }});
+  await waitFor(()=>waitingSignal);const polls=calls.filter(call=>call.url.includes('/events?')).length;
+  await channel.close();await channel.done;
+  assert.equal(waitingSignal.aborted,true);assert.equal(mcp.closed,1);assert.deepEqual(errors,[]);
+  assert.equal(calls.filter(call=>call.url.includes('/events?')).length,polls);
+});
+
 test('fixture real NativeBroker accepts attachment, a 128-event batch and explicit detach revocation', async t => {
   const broker=await new NativeBroker({send:async()=>{}}).start(), mcp=new FakeMCP();
   const channel=createChannel({url:broker.url,token:broker.token,mcp});
@@ -249,7 +350,7 @@ test('fixture real stdio MCP handshake negotiates 2025-11-25 and relays local HT
     }else send(res,url.pathname==='/reply'?{accepted:true}:{});
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const env={ARCADE_BRIDGE_URL:`http://127.0.0.1:${server.address().port}`,ARCADE_BRIDGE_TOKEN:TOKEN};
+  const env={ARCADE_BRIDGE_URL:`http://127.0.0.1:${server.address().port}`,ARCADE_BRIDGE_TOKEN:TOKEN,ARCADE_PERSONA_VOICE:'0',ARCADE_PERSONA_SELECTION:'sprout'};
   for(const name of ['PATH','Path','SystemRoot','WINDIR','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA'])if(process.env[name])env[name]=process.env[name];
   const transport=new StdioClientTransport({command:process.execPath,args:[path.resolve(__dirname,'../src/bot/native-channel.cjs')],env,stderr:'pipe'});
   let negotiated='', stderr='';
@@ -264,6 +365,7 @@ test('fixture real stdio MCP handshake negotiates 2025-11-25 and relays local HT
   });
   transport.stderr?.on('data',chunk=>{stderr=(stderr+String(chunk)).slice(-4000);});
   await client.connect(transport);
+  assert.doesNotMatch(client.getInstructions(),/Conversation presentation|Ju|Sprout|本龙/);
   assert.equal(negotiated,'2025-11-25');
   assert.deepEqual(client.getServerCapabilities().experimental,{'claude/channel':{},'claude/channel/permission':{}});
   await waitFor(()=>received.some(event=>event.method==='notifications/claude/channel')).catch(error=>{

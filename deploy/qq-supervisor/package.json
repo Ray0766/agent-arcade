@@ -1,0 +1,14 @@
+{
+  "name": "@agent-arcade/qq-supervisor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Optional explicit Windows QQ runtime supervisor",
+  "engines": {"node": ">=24.18.0 <25"},
+  "scripts": {
+    "prepare-app": "node build.cjs",
+    "start": "node app/src/qq-supervisor/cli.cjs",
+    "test": "node --test test/*.test.cjs"
+  },
+  "dependencies": {"yauzl": "3.4.0"}
+}
