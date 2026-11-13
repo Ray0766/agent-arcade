@@ -27,7 +27,7 @@
 - 笔记提议、反思、群聊调度员（没有任何服务商被探测过是否返回 logprobs）。
 - 任务看板的真实派发：`--permission-mode acceptEdits` 是否被 `--bg` 接受、实际放行范围、新 worktree 的信任提示、`--permission-mode default` 在 Claude Code 2.1.318 是否仍被接受（其帮助文本列的是 `manual`）。
 - 首次使用路径里密钥被拒／额度不足等分类提示（只用 DeepSeek 的测试替身走过）。
-- macOS 上的一切（见 `docs/MACOS.md`）。
+- macOS：2026-11-14 已在真实 Mac 上用假密钥和服务商替身由脚本驱动过一遍，修了三处；真实密钥、真人操作和需要 Claude Code 2.1.317+ 的部分仍未验收，逐项见 `docs/MACOS.md` 末尾清单。
 
 在 Windows 上由用户真实打开过的：`single-window-open-st-20261113` 与 `single-window-redesign-bothouse-20261113` 两个包在真实档案上启动过，数据库迁移成功；更细的真人验收没有记录。
 
@@ -47,4 +47,4 @@
 
 1. `npm ci`，然后按 `docs/MACOS.md` 从源码启动；先走一遍其中的未验证清单，从风险最高的开始。
 2. 用全新档案：原机器上保存的 API key 用 Windows 系统加密，无法迁移，需要重新填写。
-3. 看 GitHub Actions 的 `macos-latest` 结果：这条流水线从未运行过，预计还有需要修或跳过的测试。
+3. 看 GitHub Actions 的 `macos-latest` 结果：首次运行失败 13 项，已修并在真实 Mac 上本地通过；在 GitHub 上见到绿色后再去掉该平台的 `continue-on-error`。

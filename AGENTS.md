@@ -8,7 +8,8 @@
 
 ## 接手提示 — 2026-11-14
 
-- 项目正从 Windows 迁到 macOS 继续开发并适配 macOS。新机器上先读 [接手说明](docs/HANDOFF.md) 与 [macOS 说明](docs/MACOS.md)；`WORK_LOG.md`、`outputs/`、`work/`、`dist/` 不随仓库走，下方检查点里的包名、进程号、备份路径只对原 Windows 机器有效。macOS 上的一切尚未在真实 Mac 上运行过。
+- 项目正从 Windows 迁到 macOS 继续开发并适配 macOS。新机器上先读 [接手说明](docs/HANDOFF.md) 与 [macOS 说明](docs/MACOS.md)；`WORK_LOG.md`、`outputs/`、`work/`、`dist/` 不随仓库走，下方检查点里的包名、进程号、备份路径只对原 Windows 机器有效。macOS 上的一切在写下本条时尚未在真实 Mac 上运行过。
+- 2026-11-14（Mac）：已在真实 Mac（macOS 27.2.1，Apple Silicon）上从源码启动并打出未公证的包；过程中修了三处：预加载脚本读不到启动参数导致界面自认为是 Windows、单窗口守卫并发启动报错、`npm test` 在默认临时目录下大面积失败。只用假密钥和服务商替身由脚本驱动真实窗口，真实密钥、真实模型、系统弹窗、人工操作与需要 Claude Code 2.1.317+ 的工作区功能均未验收；逐项状态以 [macOS 说明](docs/MACOS.md) 末尾清单为准。单元测试入口改为 `npm test`（`scripts/test.cjs`）。
 
 ## 当前运行检查点 — 2026-11-08
 
