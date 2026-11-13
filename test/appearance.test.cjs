@@ -24,7 +24,8 @@ test('Invalid saved appearance recovers to system and native listeners detach on
 test('Actual preload seed applies saved light before styles despite dark system; invalid arguments never become CSS',()=>{
  const vm=require('node:vm'),sourceRoot=process.env.ARCADE_APPEARANCE_ROOT||path.resolve(__dirname,'..');let arcade;
  const preload=fs.readFileSync(path.join(sourceRoot,'src/preload.cjs'),'utf8'),renderer=fs.readFileSync(path.join(sourceRoot,'src/ui/appearance.js'),'utf8');
- const expose=args=>{vm.runInNewContext(preload,{process:{argv:args},require:()=>({contextBridge:{exposeInMainWorld:(_name,value)=>arcade=value},ipcRenderer:{}})});};
+ // Loaded as Electron's sandbox loads it: `process` is an argument, not a global (helpers/sandboxed-preload.cjs).
+ const expose=args=>{arcade=require('./helpers/sandboxed-preload.cjs').runSandboxedPreload({argv:args,source:preload}).arcade;};
  expose(['electron','--arcade-appearance=dark','--arcade-color-scheme=dark','--arcade-appearance=light','--arcade-color-scheme=light']);const root={dataset:{},style:{}},events=[];let mediaListener;const window={arcade,matchMedia:()=>({matches:true,addEventListener:(_name,fn)=>mediaListener=fn}),dispatchEvent:event=>events.push(event)};
  vm.runInNewContext(renderer,{window,document:{documentElement:root},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}}});assert.equal(root.dataset.colorScheme,'light');assert.equal(root.style.colorScheme,'light');assert.equal(root.dataset.appearance,'light');mediaListener();assert.equal(root.dataset.colorScheme,'light');assert.equal(events.length,1);
  expose(['--arcade-appearance=constructor','--arcade-color-scheme=url(private)']);assert.equal(arcade.initialAppearance.preference,'system');assert.equal(arcade.initialAppearance.colorScheme,null);

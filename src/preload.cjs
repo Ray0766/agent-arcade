@@ -1,7 +1,10 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 // Only enumerated, non-sensitive startup colours cross the preload boundary.
-const startupArgs=Array.isArray(globalThis.process?.argv)?globalThis.process.argv:[];
+// Electron hands a sandboxed preload its `process` as an argument of the
+// function it wraps this file in. It is not a property of globalThis there, so
+// it must be read by name; `typeof` keeps a context without one working.
+const startupArgs=typeof process!=='undefined'&&Array.isArray(process?.argv)?process.argv:[];
 const startupArgument=name=>startupArgs.findLast(value=>typeof value==='string'&&value.startsWith(name+'='))?.slice(name.length+1);
 const startupPreference=startupArgument('--arcade-appearance'),startupScheme=startupArgument('--arcade-color-scheme');
 const initialAppearance=Object.freeze({preference:['light','dark','system'].includes(startupPreference)?startupPreference:'system',colorScheme:['light','dark'].includes(startupScheme)?startupScheme:null});

@@ -10,6 +10,7 @@ const {findCodexExecutable} = require('../src/bot/codex-runner.cjs');
 const {discoverNative, createNativeLaunch, shLiteral} = require('../src/bot/native-launch.cjs');
 const integration = require('../src/core/integration.cjs');
 const {instanceEndpoint, removeStaleSocket} = require('../src/core/single-instance.cjs');
+const {runSandboxedPreload} = require('./helpers/sandboxed-preload.cjs');
 const voice = require('../src/voice/runtime.cjs');
 
 const macSource = {PATH: '/usr/bin:/bin', HOME: '/Users/owner', TMPDIR: '/var/folders/x/T/', LANG: 'zh_CN.UTF-8', LC_ALL: 'zh_CN.UTF-8', SHELL: '/bin/zsh', USER: 'owner',
@@ -173,8 +174,8 @@ test('voice: Windows speech is reported unavailable on macOS with a reason, befo
 });
 
 test('preload bridge: macOS and Linux get no QQ-management or voice functions; the default and Windows bridges are complete', () => {
-  const source = fs.readFileSync(path.resolve(__dirname, '../src/preload.cjs'), 'utf8');
-  const expose = argv => { let api; vm.runInNewContext(source, {process: {argv}, require: () => ({contextBridge: {exposeInMainWorld: (_name, value) => { api = value; }}, ipcRenderer: {invoke: async () => null, on() {}, removeListener() {}}})}); return api; };
+  // Loaded as Electron's sandbox loads it: `process` is an argument, not a global (helpers/sandboxed-preload.cjs).
+  const expose = argv => runSandboxedPreload({argv}).arcade;
   const full = expose([]), windows = expose(['--arcade-platform=win32']);
   assert.deepEqual(Object.keys(windows), Object.keys(full));
   assert.deepEqual({...full.platform}, {os: 'win32', modifier: 'Ctrl', managedQQ: true, voice: true});
