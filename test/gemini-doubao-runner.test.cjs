@@ -1,4 +1,5 @@
 'use strict';
+const {until}=require('./helpers/until.cjs');
 // Synthetic HTTP bodies and temporary local files; no provider credentials or calls.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const gemini=require('../src/bot/gemini-runner.cjs'),doubao=require('../src/bot/doubao-runner.cjs');
@@ -44,7 +45,7 @@ for(const p of providers){
   test(`${p.name}: cancellation while awaiting permission prevents write and close prevents reuse`,async t=>{
     const f=fixture(t,p,[p.call('cancel','Write',{path:'cancelled.txt',content:'no'})]);let approval;const controller=new AbortController();
     const pending=f.run({prompt:'write',signal:controller.signal,request:request=>{approval=request;return new Promise(()=>{});}});
-    while(!approval)await new Promise(resolve=>setImmediate(resolve));controller.abort();assert.equal((await pending).outcome,'cancelled');assert(approval.signal.aborted);assert.deepEqual(fs.readdirSync(f.root),[]);await f.run.close();assert.equal((await f.run({prompt:'again',request:async()=>({allow:true})})).outcome,'error');
+    await until(()=>approval);controller.abort();assert.equal((await pending).outcome,'cancelled');assert(approval.signal.aborted);assert.deepEqual(fs.readdirSync(f.root),[]);await f.run.close();assert.equal((await f.run({prompt:'again',request:async()=>({allow:true})})).outcome,'error');
   });
   test(`${p.name}: stalled fetch and response reads cancel locally without retry or raw errors`,async t=>{
     const controller=new AbortController(),f=fixture(t,p,[()=>new Promise(()=>{})]);const pending=f.run({prompt:'wait',signal:controller.signal,request:async()=>({allow:true})});controller.abort();assert.equal((await pending).outcome,'cancelled');assert.equal(f.requests.length,1);

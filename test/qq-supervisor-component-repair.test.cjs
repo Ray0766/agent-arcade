@@ -1,4 +1,5 @@
 'use strict';
+const {until}=require('./helpers/until.cjs');
 const test=require('./helpers/platform-skip.cjs').ownedIpcTest,assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),https=require('node:https'),{randomUUID,createHash}=require('node:crypto');
 const {fixture:shell,deferred}=require('./helpers/qq-shell-code-repair-fixture.cjs');
 const tls=require('./helpers/qq-remote-tls-fixture.cjs');
@@ -40,7 +41,7 @@ test('submitted work survives HTTP response loss and is later queried without an
  const entered=deferred(),release=deferred();const f=await fixture(t,{wrap:h=>{const original=h.confirm.bind(h);h.confirm=async req=>{entered.resolve();await release.promise;return original(req);};}}),p=await f.preview(),input=confirm(p),running=f.start('POST','/confirmations',input);const caught=running.promise.catch(()=>null);await entered.promise;running.req.destroy();release.resolve();await caught;let result;for(let n=0;n<100;n++){result=await f.request('GET','/operations/'+input.requestId);if(result.operation.phase!=='attempted')break;await new Promise(r=>setTimeout(r,5));}assert.equal(result.operation.phase,'completed',JSON.stringify(result));assert.equal(result.operation.result.committed,true);assert.equal(f.state.stageCalls,1);
 });
 test('service mutex rejects competing discard during prepare instead of claiming a cancelled write',async t=>{
- const f=await fixture(t),read=await f.request('GET','/inspection');f.state.stageHeld=deferred();const pending=f.request('POST','/previews',{action:'repair',observationId:read.inspection.observationId,operationId:null});while(!f.state.stageCalls)await new Promise(r=>setImmediate(r));const rejected=await f.request('POST','/discard',{});assert.equal(rejected.code,'busy');f.state.stageHeld.resolve();assert.equal((await pending).ok,true);assert.equal((await f.request('POST','/discard',{})).discarded,true);
+ const f=await fixture(t),read=await f.request('GET','/inspection');f.state.stageHeld=deferred();const pending=f.request('POST','/previews',{action:'repair',observationId:read.inspection.observationId,operationId:null});await until(()=>f.state.stageCalls);const rejected=await f.request('POST','/discard',{});assert.equal(rejected.code,'busy');f.state.stageHeld.resolve();assert.equal((await pending).ok,true);assert.equal((await f.request('POST','/discard',{})).discarded,true);
 });
 test('v6 populated records survive v7 migration, shared IDs conflict and disabled reopen still queries',async t=>{
  const f=await fixture(t,{enabled:null});await f.service.close();const old=await SupervisorStore.open({...f.config,profileBackups:{enabled:true}});const backup={requestId:randomUUID(),action:'backup',backupId:null,sha256:null,currentSha256:'a'.repeat(64),ticketId:randomUUID(),expectedDigest:'b'.repeat(64)};old.beginProfileBackup(backup);const ledger=old.ledgerId;await old.close();

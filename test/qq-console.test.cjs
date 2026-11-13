@@ -1,4 +1,5 @@
 'use strict';
+const {until}=require('./helpers/until.cjs');
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {QQConsole}=require('../src/bot/qq-console.cjs');
 const id='123456789';
@@ -28,7 +29,7 @@ test('renderer snapshot has real state fields but no management tokens or QR URL
 
 test('a pending refresh preserves the last state; completed status failure is remembered without extra checks',async t=>{
  const f=fixture(t);statusRun(f);let batches=0,statuses=0;const original=f.runtime.getConnections;f.runtime.getConnections=async ids=>{batches++;return original(ids);};
- const first=await f.manager.refresh();let reject;f.client.status=()=>{statuses++;return new Promise((resolve,r)=>{reject=r;});};const pending=f.manager.refresh();while(!reject)await new Promise(r=>setImmediate(r));
+ const first=await f.manager.refresh();let reject;f.client.status=()=>{statuses++;return new Promise((resolve,r)=>{reject=r;});};const pending=f.manager.refresh();await until(()=>reject);
  assert.equal(f.manager.snapshot(),first);assert.equal(f.manager.statusIssues.size,0);reject(Object.assign(Error('PRIVATE_RAW'),{code:'timeout'}));const failed=await pending;
  assert.equal(failed.instances[0].login.state,'unknown');assert.equal(failed.instances[0].lastStatusIssue.code,'timeout');assert.equal(failed.instances[0].lastStatusIssue.phase,'webui-status');assert(!JSON.stringify(failed).includes('PRIVATE_RAW'));
  const remembered=failed.instances[0].lastStatusIssue;f.client.status=async()=>{statuses++;return{state:'online',online:true,identityVerified:true,accountId:id};};const recovered=await f.manager.refresh();
@@ -45,7 +46,7 @@ test('offline remains offline and is not turned into an observation failure',asy
 });
 
 test('a stale completed refresh cannot publish its diagnostic or replace the current snapshot',async t=>{
- const f=fixture(t);statusRun(f);const first=await f.manager.refresh();let reject;f.client.status=()=>new Promise((resolve,r)=>{reject=r;});const pending=f.manager.refresh();while(!reject)await new Promise(r=>setImmediate(r));f.manager.refreshRevision++;reject(Object.assign(Error('synthetic'),{code:'timeout'}));await assert.rejects(pending,{code:'changed'});assert.equal(f.manager.snapshot(),first);assert.equal(f.manager.statusIssues.size,0);await f.manager.close();
+ const f=fixture(t);statusRun(f);const first=await f.manager.refresh();let reject;f.client.status=()=>new Promise((resolve,r)=>{reject=r;});const pending=f.manager.refresh();await until(()=>reject);f.manager.refreshRevision++;reject(Object.assign(Error('synthetic'),{code:'timeout'}));await assert.rejects(pending,{code:'changed'});assert.equal(f.manager.snapshot(),first);assert.equal(f.manager.statusIssues.size,0);await f.manager.close();
 });
 
 test('replacement runs, changed proof, removed accounts and new manager epochs cannot inherit an old issue',async t=>{
@@ -55,7 +56,7 @@ test('replacement runs, changed proof, removed accounts and new manager epochs c
 });
 
 test('a run replaced while status is pending does not receive that old failure',async t=>{
- const f=fixture(t),run=statusRun(f);let reject;f.client.status=()=>new Promise((resolve,r)=>{reject=r;});const pending=f.manager.refresh();while(!reject)await new Promise(r=>setImmediate(r));f.runtime.runs.set(id,{proof:{...run.proof,createdAt:'2026-11-08T00:00:02.0000000Z'}});reject(Object.assign(Error('synthetic'),{code:'timeout'}));const state=await pending;assert(!state.instances[0].lastStatusIssue);assert.equal(f.manager.statusIssues.size,0);await f.manager.close();
+ const f=fixture(t),run=statusRun(f);let reject;f.client.status=()=>new Promise((resolve,r)=>{reject=r;});const pending=f.manager.refresh();await until(()=>reject);f.runtime.runs.set(id,{proof:{...run.proof,createdAt:'2026-11-08T00:00:02.0000000Z'}});reject(Object.assign(Error('synthetic'),{code:'timeout'}));const state=await pending;assert(!state.instances[0].lastStatusIssue);assert.equal(f.manager.statusIssues.size,0);await f.manager.close();
 });
 
 test('last status issue is isolated to its own runtime account and unknown stages do not leak',async t=>{

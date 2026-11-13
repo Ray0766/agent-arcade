@@ -1,4 +1,5 @@
 'use strict';
+const {until}=require('./helpers/until.cjs');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -310,7 +311,7 @@ test('late unrecorded QQ descendants prevent clearing an abandoned lease',async 
 
 test('close waits for an in-flight start and stops only its owned accounts',async t=>{
   const f=fixture(t);await f.manager.start(A);let release;const original=f.host.start;f.host.start=async plan=>{await new Promise(r=>{release=r;});return original(plan);};
-  const starting=f.manager.start(B);while(!release)await new Promise(r=>setImmediate(r));const closing=f.manager.close();
+  const starting=f.manager.start(B);await until(()=>release);const closing=f.manager.close();
   await assert.rejects(f.manager.start(A),{code:'manager_closing'});assert.equal(f.state.stops.length,0);release();await starting;
   const result=await closing;assert(result.closed);assert.deepEqual(result.stopped,[A,B]);assert.deepEqual(result.failures,[]);assert.equal(f.state.stops.length,2);assert.equal(f.state.rows.length,1);assert.deepEqual(await f.manager.close(),result);
 });
