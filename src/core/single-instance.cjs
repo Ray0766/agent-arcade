@@ -52,6 +52,15 @@ function notifyPrimary(endpoint){
   });
 }
 
+// A socket file is identified by its inode, device and creation time, so a file
+// that was replaced under the same name is never mistaken for the one seen before.
+function socketIdentity(endpoint,fileSystem=fs){
+  try{const stat=fileSystem.lstatSync(endpoint);return stat.isSocket()?{ino:stat.ino,dev:stat.dev,uid:stat.uid,birth:stat.birthtimeMs}:null;}
+  catch{return null;}
+}
+const sameSocket=(a,b)=>!!a&&!!b&&a.ino===b.ino&&a.dev===b.dev&&a.birth===b.birth;
+const isSocketFile=(endpoint,platform=process.platform)=>platform!=='win32'&&typeof endpoint==='string'&&endpoint.startsWith('/');
+
 function bindPrimary(endpoint,onRaise,onLost){
   return new Promise((resolve,reject)=>{
     const sockets=new Set();let closed=false,lost=false,closing;
@@ -77,41 +86,86 @@ function bindPrimary(endpoint,onRaise,onLost){
       closing=new Promise(done=>{for(const socket of sockets)socket.destroy();server.close(()=>done());});
       return closing;
     };
+    // Closing a listening server removes the file at its path, whoever owns that
+    // file by then. A starter that finds its file replaced must therefore let go
+    // without closing: it stops answering and no longer keeps the process alive.
+    const abandon=()=>{closed=true;for(const socket of sockets)socket.destroy();server.removeAllListeners('close');server.removeAllListeners('error');server.on('error',()=>{});server.unref();};
     const failed=error=>{server.close(()=>{});reject(error);};server.once('error',failed);
+    let identity=null;
     server.listen(endpoint,()=>{
       server.removeListener('error',failed);
       // The desktop must quit normally if ownership is unexpectedly lost. Keep
       // a still-listening pipe until its normal close, including service cleanup.
       const ownershipLost=()=>{if(!closed&&!lost){lost=true;onLost();}};
       server.on('error',ownershipLost);server.on('close',ownershipLost);
-      resolve({primary:true,close});
+      resolve({primary:true,close,abandon,identity});
     });
+    // net binds inside listen(), so this is the file this process just created.
+    // After a failed bind the promise is rejected and the value is never used.
+    if(isSocketFile(endpoint))identity=socketIdentity(endpoint);
   });
 }
 
 // Windows pipes and Linux abstract sockets vanish with their owner. A macOS (or
 // other Unix) socket is a file that survives a crash or a forced kill, and its
 // leftover would block every later start. Remove it only when it is a socket
-// file owned by this user; the caller has just seen that nothing is listening.
-function removeStaleSocket(endpoint,{platform=process.platform,fileSystem=fs,uid=typeof process.getuid==='function'?process.getuid():undefined}={}){
-  if(platform==='win32'||typeof endpoint!=='string'||!endpoint.startsWith('/'))return false;
+// file owned by this user and, when the caller names the file it watched being
+// refused, only when it is still that same file.
+function removeStaleSocket(endpoint,{platform=process.platform,fileSystem=fs,uid=typeof process.getuid==='function'?process.getuid():undefined,expected}={}){
+  if(!isSocketFile(endpoint,platform))return false;
   try{
     const stat=fileSystem.lstatSync(endpoint);
     if(!stat.isSocket()||!Number.isInteger(uid)||stat.uid!==uid)return false;
+    if(expected!==undefined&&!sameSocket(expected,{ino:stat.ino,dev:stat.dev,birth:stat.birthtimeMs}))return false;
     fileSystem.unlinkSync(endpoint);return true;
   }catch{return false;}
 }
 
-async function acquireSingleInstance({namespace='agent-arcade',onRaise=()=>{},onLost=()=>{}}={}){
+// How a leftover socket file is told from a live owner. A refused connection is
+// the only evidence that nobody listens, and one refusal is not enough: another
+// starter may be between creating the file and listening on it. The age of the
+// file never decides removal (a long-running owner has an old file); it only
+// decides how long to keep asking before the refusals are believed.
+const STALE={refusals:4,retryMs:60,freshMs:1500,settleMs:150,acquireMs:8000};
+// macOS reports EEXIST, not EADDRINUSE, when two starters bind the same path at
+// the same moment.
+const IN_USE=new Set(['EADDRINUSE','EEXIST','EACCES','EPERM']);
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+async function acquireSingleInstance({namespace='agent-arcade',onRaise=()=>{},onLost=()=>{},timing=STALE}={}){
   if(typeof onRaise!=='function'||typeof onLost!=='function')throw failure('INSTANCE_UNAVAILABLE');
-  const endpoint=instanceEndpoint({namespace});
-  for(let attempt=0;attempt<2;attempt++){
-    try{return await bindPrimary(endpoint,onRaise,onLost);}
-    catch(error){if(!['EADDRINUSE','EACCES','EPERM'].includes(error.code))throw failure('INSTANCE_UNAVAILABLE');}
+  const endpoint=instanceEndpoint({namespace}),fileSocket=isSocketFile(endpoint),deadline=Date.now()+timing.acquireMs;
+  let watched=null,refusals=0,removed=false;
+  for(let attempt=0;;attempt++){
+    let guard=null;
+    try{guard=await bindPrimary(endpoint,onRaise,onLost);}
+    catch(error){if(!IN_USE.has(error.code))throw failure('INSTANCE_UNAVAILABLE');}
+    if(guard){
+      if(!fileSocket)return {primary:true,close:guard.close};
+      // After removing a leftover, another starter that judged the same leftover
+      // stale could have removed this new file in the same instant. Give it the
+      // time to show, then check that the path still leads to this process.
+      if(removed)await pause(timing.settleMs);
+      if(sameSocket(guard.identity,socketIdentity(endpoint)))return {primary:true,close:guard.close};
+      guard.abandon();
+    }
     try{await notifyPrimary(endpoint);return {primary:false,close:async()=>{}};}
-    catch(error){if(!error.retry||attempt===1)throw error;removeStaleSocket(endpoint);}
+    catch(error){
+      if(!error.retry)throw error;
+      // A pipe or abstract socket has no leftover: one bounded retry, as before.
+      if(!fileSocket){if(attempt>=1)throw error;continue;}
+    }
+    if(Date.now()>=deadline)throw failure('INSTANCE_UNAVAILABLE');
+    const current=socketIdentity(endpoint);
+    // No socket file: the owner closed normally in between, so bind again
+    // shortly. Something that is not a socket is never removed; the short
+    // pause keeps that case from spinning until the deadline.
+    if(!current){watched=null;refusals=0;await pause(Math.min(timing.retryMs,15));continue;}
+    if(sameSocket(watched,current))refusals++;else{watched=current;refusals=1;}
+    const fresh=Date.now()-current.birth<timing.freshMs;
+    if(refusals>=timing.refusals&&!fresh&&removeStaleSocket(endpoint,{expected:watched})){removed=true;watched=null;refusals=0;continue;}
+    await pause(timing.retryMs);
   }
-  throw failure('INSTANCE_UNAVAILABLE');
 }
 
-module.exports={acquireSingleInstance,instanceEndpoint,removeStaleSocket};
+module.exports={acquireSingleInstance,instanceEndpoint,removeStaleSocket,socketIdentity,STALE_TIMING:Object.freeze({...STALE})};

@@ -8,7 +8,7 @@ const vm=require('node:vm');
 const {spawn}=require('node:child_process');
 const {EventEmitter}=require('node:events');
 const {randomBytes}=require('node:crypto');
-const {acquireSingleInstance,instanceEndpoint}=require('../src/core/single-instance.cjs');
+const {acquireSingleInstance,instanceEndpoint,socketIdentity,STALE_TIMING}=require('../src/core/single-instance.cjs');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const namespace=()=>`arcade-guard-test-${randomBytes(8).toString('hex')}`;
 const protocol='agent-arcade-window-v1';
@@ -102,6 +102,74 @@ test('an exited owned helper cannot leave a Windows or Linux abstract pipe locke
   const name=namespace(),child=helper(name,'fixture-crash-profile');t.after(()=>child.close());
   assert.equal((await child.ready).primary,true);child.child.kill();await child.exited;
   const fresh=await acquireSingleInstance({namespace:name});assert.equal(fresh.primary,true);await fresh.close();
+});
+
+// The remaining cases are about a socket that is a file (macOS and other Unix).
+// A Windows pipe or a Linux abstract socket leaves nothing behind.
+const fileSocketOnly={skip:['win32','linux'].includes(process.platform)&&'Windows pipes and Linux abstract sockets leave no file behind'};
+async function leftover(t,name){
+  const child=helper(name,'fixture-leftover-profile');t.after(()=>child.close());
+  assert.equal((await child.ready).primary,true);child.child.kill('SIGKILL');await child.exited;
+  const endpoint=instanceEndpoint({namespace:name}),identity=socketIdentity(endpoint);
+  assert(identity,'a killed owner leaves its socket file behind');t.after(()=>fs.rmSync(endpoint,{force:true}));
+  return {endpoint,identity};
+}
+
+test('a socket file left by a killed owner is replaced, but only after repeated refused connections',fileSocketOnly,async t=>{
+  const name=namespace(),{endpoint,identity}=await leftover(t,name),timing={...STALE_TIMING,freshMs:0,retryMs:50,refusals:4,settleMs:20};
+  const started=Date.now(),fresh=await acquireSingleInstance({namespace:name,timing});t.after(()=>fresh.close());
+  assert.equal(fresh.primary,true);
+  // Four refusals with a pause after each of the first three: one refusal alone removes nothing.
+  assert(Date.now()-started>=3*timing.retryMs,'the leftover was removed before the refusals were repeated');
+  const replaced=socketIdentity(endpoint);assert(replaced);assert.notDeepEqual(replaced,identity);
+  const second=await acquireSingleInstance({namespace:name,timing});assert.equal(second.primary,false);
+  await fresh.close();assert.equal(socketIdentity(endpoint),null);
+});
+
+test('a new socket file is given time to start listening before refusals are believed',fileSocketOnly,async t=>{
+  const name=namespace(),{endpoint,identity}=await leftover(t,name),timing={...STALE_TIMING,freshMs:900,retryMs:20,refusals:2,settleMs:20};
+  const age=Date.now()-identity.birth;assert(age<timing.freshMs-300,'fixture: the leftover must still be new');
+  // Whatever the outcome, the guard is closed so a failed check cannot keep this file's process alive.
+  let done=false,guard;t.after(()=>guard?.close());const pending=acquireSingleInstance({namespace:name,timing}).then(value=>{done=true;guard=value;return value;});
+  // Far more than two refusals fit in this wait; the file is new, so it stays.
+  await new Promise(resolve=>setTimeout(resolve,300));
+  assert.equal(done,false);assert.deepEqual(socketIdentity(endpoint),identity);
+  const fresh=await pending;assert.equal(fresh.primary,true);
+  assert(Date.now()-identity.birth>=timing.freshMs);await fresh.close();
+});
+
+test('the age of a live owner\'s socket file never removes it',fileSocketOnly,async t=>{
+  const name=namespace(),endpoint=instanceEndpoint({namespace:name});let raised=0;
+  const owner=await acquireSingleInstance({namespace:name,onRaise:()=>raised++});t.after(()=>owner.close());
+  const identity=socketIdentity(endpoint);await new Promise(resolve=>setTimeout(resolve,60));
+  const second=await acquireSingleInstance({namespace:name,timing:{...STALE_TIMING,freshMs:0,refusals:1,retryMs:1}});
+  assert.equal(second.primary,false);assert.equal(raised,1);assert.deepEqual(socketIdentity(endpoint),identity);
+});
+
+test('something that is not a socket at the endpoint is left alone and the start fails closed',fileSocketOnly,async t=>{
+  const name=namespace(),endpoint=instanceEndpoint({namespace:name});
+  fs.writeFileSync(endpoint,'not a socket',{flag:'wx'});t.after(()=>fs.rmSync(endpoint,{force:true}));
+  // Connecting to it fails with an error that is not "nobody listens", so nothing is retried or removed.
+  await assert.rejects(acquireSingleInstance({namespace:name,timing:{...STALE_TIMING,acquireMs:250}}),{code:'INSTANCE_UNKNOWN'});
+  assert.equal(fs.readFileSync(endpoint,'utf8'),'not a socket');
+});
+
+test('a starter whose new socket file was replaced lets go without removing the replacement',fileSocketOnly,async t=>{
+  const name=namespace(),{endpoint,identity}=await leftover(t,name),timing={...STALE_TIMING,freshMs:0,retryMs:20,refusals:2,settleMs:400};
+  let lost=0,raisedHere=0,raisedThere=0,guard;t.after(()=>guard?.close());
+  const pending=acquireSingleInstance({namespace:name,timing,onRaise:()=>raisedHere++,onLost:()=>lost++}).then(value=>guard=value);
+  // Wait until the starter has replaced the leftover with its own file ...
+  let mine;for(const until=Date.now()+3000;Date.now()<until;await new Promise(resolve=>setTimeout(resolve,2))){
+    mine=socketIdentity(endpoint);if(mine&&mine.ino!==identity.ino)break;mine=null;
+  }
+  assert(mine,'fixture: the starter never bound its own file');
+  // ... then act as another starter that removed that file in the same instant and listens itself.
+  fs.unlinkSync(endpoint);
+  const rival=net.createServer(socket=>{socket.on('error',()=>{});let text='';socket.on('data',chunk=>{text+=chunk;if(!text.endsWith('\n'))return;raisedThere++;socket.end(JSON.stringify({protocol,event:'ack',nonce:JSON.parse(text).nonce})+'\n');});});
+  await new Promise(resolve=>rival.listen(endpoint,resolve));t.after(()=>new Promise(resolve=>rival.close(resolve)));
+  const theirs=socketIdentity(endpoint),result=await pending;
+  assert.equal(result.primary,false);assert.equal(raisedThere,1);assert.equal(raisedHere,0);assert.equal(lost,0);
+  await result.close();assert.deepEqual(socketIdentity(endpoint),theirs,'letting go must not remove the other starter\'s file');
 });
 
 function bootstrap({primary=true,worker=false,error,earlyRaise=false}={}){
