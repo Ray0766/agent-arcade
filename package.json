@@ -12,7 +12,7 @@
   "scripts": {
     "start": "electron .",
     "demo": "electron . --demo",
-    "test": "node --test test/*.test.cjs",
+    "test": "node scripts/test.cjs",
     "test:transfer-helper": "npm --prefix deploy/transfer-helper test",
     "test:ui": "node scripts/smoke.cjs",
     "test:bot-ui": "node scripts/bot-smoke.cjs",

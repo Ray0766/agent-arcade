@@ -31,7 +31,9 @@ test('background creation is opt-in, ownership persists before launch and comman
   await manager.create({workspace: root, prompt: 'Do not execute tools; literal $(private) --all'});
   const bg = calls.find(call => call.args[0] === '--bg');
   assert.deepEqual(bg.args.slice(-4), ['--permission-mode', 'default', '--', 'Do not execute tools; literal $(private) --all']);
-  assert.doesNotMatch(fs.readFileSync(manager.file, 'utf8'), /private|prompt/);
+  // Neither the prompt text nor a field holding it is persisted. The pattern names the prompt's own words:
+  // a bare /private/ also matches the workspace path on macOS, where temporary folders live under /private.
+  assert.doesNotMatch(fs.readFileSync(manager.file, 'utf8'), /\$\(private\)|Do not execute tools|"prompt"/);
   assert.equal(manager.snapshot().jobs[0].state, 'blocked');
   await assert.rejects(manager.stop('11223344'), /not created/);
   await assert.rejects(manager.stop('--all'), /exact owned/);

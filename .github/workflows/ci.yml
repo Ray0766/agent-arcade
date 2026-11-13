@@ -27,12 +27,10 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix deploy/transfer-helper --ignore-scripts --omit=optional --no-audit --no-fund
       - run: node scripts/check.cjs
-      # The default macOS temp directory sits behind a symbolic link (/var is
-      # /private/var). Tests compare temporary paths with their resolved form,
-      # so they get a temp directory without a link in it.
-      - name: Use a link-free temp directory
-        if: runner.os == 'macOS'
-        run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      # scripts/test.cjs is the same entry as `npm test`. The default macOS temp
+      # directory sits behind a symbolic link (/var is /private/var) and tests
+      # compare temporary paths with their resolved form, so the script hands
+      # them the resolved directory. It changes nothing on Windows.
       # Two files at a time: several QQ process and repair tests use real
       # deadlines and time out when many test files compete for the runner.
       # No single test may run longer than five minutes, so a test that hangs
@@ -41,12 +39,12 @@ jobs:
         shell: bash
         run: |
           files=$(ls test/*.test.cjs | grep -v '^test/qq-supervisor-component-repair')
-          node --test --test-concurrency=2 --test-timeout=300000 $files
+          node scripts/test.cjs --test-concurrency=2 --test-timeout=300000 $files
       # The supervisor component-repair files are the most load-sensitive; they
       # run afterwards, one file at a time.
       - name: Unit tests (serial group)
         shell: bash
-        run: node --test --test-concurrency=1 --test-timeout=300000 test/qq-supervisor-component-repair*.test.cjs
+        run: node scripts/test.cjs --test-concurrency=1 --test-timeout=300000 test/qq-supervisor-component-repair*.test.cjs
       # The transfer helper is a server for Windows and Linux hosts: its
       # single-owner lock is a named pipe or an abstract socket, and neither
       # exists on macOS.
