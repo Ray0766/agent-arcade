@@ -1,6 +1,8 @@
 'use strict';
 // Runs the unit tests: node scripts/test.cjs [node --test options] [test files]
-// With no file named, every test/*.test.cjs runs.
+// With no file named, every test/*.test.cjs of the current directory runs. That
+// directory is the repository root for `npm test`, and deploy/transfer-helper
+// for that package's own `npm test`, which shares this entry.
 //
 // The one thing this adds to a plain `node --test` is a temporary directory
 // whose path is already in its resolved form. The fixtures create their folders
@@ -35,7 +37,9 @@ function allTests(directory = path.join(root, 'test')) {
 if (require.main === module) {
   const {options, files} = split(process.argv.slice(2)), temp = tempEnvironment(), env = {...process.env, ...temp};
   if (Object.keys(temp).length) console.error(`Temporary directory for this run: ${Object.values(temp)[0]}`);
-  const result = spawnSync(process.execPath, ['--test', ...options, ...(files.length ? files : allTests())], {cwd: root, env, stdio: 'inherit'});
+  const cwd = process.cwd();
+  if (!files.length && !fs.existsSync(path.join(cwd, 'test'))) { console.error(`No test folder in ${cwd}. Run this from the repository root or from deploy/transfer-helper.`); process.exit(1); }
+  const result = spawnSync(process.execPath, ['--test', ...options, ...(files.length ? files : allTests(path.join(cwd, 'test')))], {cwd, env, stdio: 'inherit'});
   if (result.error) throw result.error;
   process.exit(result.status === null ? 1 : result.status);
 }

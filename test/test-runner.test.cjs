@@ -32,4 +32,8 @@ test('test runner: options and files are told apart, and the default is every te
   assert.deepEqual(split(['--test-concurrency=2', 'test/a.test.cjs', '--test-timeout=5', 'test/b.test.cjs']), {options: ['--test-concurrency=2', '--test-timeout=5'], files: ['test/a.test.cjs', 'test/b.test.cjs']});
   const files = allTests();
   assert(files.length > 300); assert(files.every(name => /^test[\\/][^\\/]+\.test\.cjs$/.test(name))); assert(files.some(name => name.endsWith('test-runner.test.cjs')));
+  // The transfer helper's own `npm test` shares this entry and must find its own three files, not the repository's.
+  const helper = allTests(require('node:path').resolve(__dirname, '../deploy/transfer-helper/test'));
+  assert.deepEqual(helper.map(name => name.replace(/\\/g, '/')), ['test/boundaries.test.cjs', 'test/recovery.test.cjs', 'test/service.test.cjs']);
+  assert.match(require('../deploy/transfer-helper/package.json').scripts.test, /scripts\/test\.cjs/);
 });

@@ -7,7 +7,7 @@
   "engines": {"node": ">=24.18.0 <25"},
   "scripts": {
     "start": "node ../../src/transfer-helper/cli.cjs",
-    "test": "node --test test/*.test.cjs"
+    "test": "node ../../scripts/test.cjs"
   },
   "dependencies": {
     "@tus/server": "2.4.7",
