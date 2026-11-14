@@ -1,6 +1,26 @@
 # Active delivery scope — single-window companion application
 
-Updated 2026-11-08; runtime timestamps belong to their individual receipts. Continue in this worktree and conversation; preserve existing code, uncommitted changes, original characters and local account data. This is the current scope and state, not a release claim. Historical package checkpoints remain in the linked feature evidence and [the preserved scope snapshot](history/ACTIVE_GOAL_20261106_BEFORE_CONSOLIDATION.md). Detailed local progress and private receipts are kept separately from public documentation.
+## Session closed — 2026-11-14
+
+The owner ended development in this conversation and will continue in a new one.
+The forward scope is App-first companionship and macOS adaptation; QQ expansion
+and the independent QQ core are paused. Start with [HANDOFF](HANDOFF.md),
+[MACOS](MACOS.md) and the [new-session prompt](NEXT_SESSION_PROMPT.md).
+3D characters are a later plan, not a prerequisite for the current gaps.
+This Windows closeout made documentation changes only: no product
+implementation, product tests or application/account operations. The owner
+then authorized committing and pushing these handoff documents. The
+three read-only audits found the built-in Wiki/rule prompt gap, task-board
+history/rework gaps and macOS Claude child-cleanup limit; none was implemented.
+Audit baseline: `6715dbf`; before the documentation delivery, this branch was
+fast-forwarded to remote `f43ef0d`, which includes the first real-Mac run and
+CI fixes documented in MACOS. Real-model and human acceptance remain separate.
+The dated runtime sections below are historical Windows
+observations, not the current running app or a direction to resume QQ work.
+
+## Historical Windows scope — 2026-11-08
+
+Runtime timestamps below belong to their individual receipts; these sections describe the scope at that date and do not override the current handoff. Preserve existing code, uncommitted changes, original characters and local account data. Historical package checkpoints remain in the linked feature evidence and [the preserved scope snapshot](history/ACTIVE_GOAL_20261106_BEFORE_CONSOLIDATION.md). Detailed local progress and private receipts are kept separately from public documentation.
 
 ## Current operated package — fixed QCE adapters, 2026-11-08 local
 

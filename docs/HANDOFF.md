@@ -2,11 +2,26 @@
 
 本文件随仓库走。`WORK_LOG.md`、`outputs/`、`work/`、`dist/` 都在 `.gitignore` 里，只存在于原 Windows 机器上；在新机器上请新建自己的 `WORK_LOG.md`。
 
+新会话可直接复制 [完整接手提示词](NEXT_SESSION_PROMPT.md)。本次文档交接使用分支 **`codex/companion-nine`**；在 Mac 上请先同步这一分支并保留当地未提交改动，不要只拉默认分支。
+
+## 本会话收尾与远端同步（2026-11-14）
+
+用户要求停止本 Windows 会话的功能开发，改在新会话继续；收尾只做阅读、审计和文档整理，未修改产品源码、未运行产品测试、未操作应用窗口或账号。三个并行审计均已停止，无待整合代码或半成品。审计基线为 `6715dbf`（桌面 smoke 脚本已更新）；随后按用户的文档提交／推送要求，先快进同步远端至 `f43ef0d`，保留本地接手文档改动。该远端版本包含下面所述的 Mac 实机与 CI 修复，不能再把 macOS 整体标成“从未运行”。
+
+新会话继续以 **App 内陪伴和 macOS 适配** 为范围，QQ 不扩展、独立 QQ 核心实验保持暂停。优先可修的三处代码缺口如下，均尚未实施：
+
+- 内置角色：Wiki 开关与读取回调已有，但 `LocalConversation.customReply` 对非角色库角色回落旧提示词路径，未注入笔记和批准规则；`test/wiki-pipeline.test.cjs` 还断言内置角色不读取。接入须保持逐条批准、每角色开关默认关闭及上下文预算。
+- 任务看板：`TaskBoard.summary` 仅返回 `finishedToday`；生产创建看板时未接 `deliver`，返工理由只记录。历史任务入口与实际返工均待实现，不能把建议中的“同 worktree 新一轮”写成已具备能力。
+- macOS 本机 Claude：停止目前只处理主 CLI，子进程清理由 CLI 负责。独立 POSIX 进程组是待评估方案，尚无代码或真机验证。
+
+本机仍为 Windows；远端记录了真实 Mac 上的隔离启动、服务商替身驱动的窗口流程和打包，以及 macOS CI 连续通过后成为阻断检查。真实密钥／模型、系统弹窗、人工输入及需要新版 Claude Code 的工作区流程仍未验收；逐项以 [MACOS.md](MACOS.md) 的清单为准。本次文档同步没有重新执行这些验证。旧 Windows 包名与进程号不能作为当前运行状态。3D 角色仅列入后续计划，不启动建模，也不阻塞当前功能补齐。
+
 ## 先读
 
 1. [AGENTS.md](../AGENTS.md)：用户定案与工作规范。检查点里提到的包名、进程号、`work/…` 备份路径只对原 Windows 机器有效。
-2. [docs/MACOS.md](MACOS.md)：macOS 上支持什么、隐藏什么、怎么从源码运行和打包，以及**从未在真实 Mac 上验证过的事项清单**。
-3. [docs/DECISIONS.md](DECISIONS.md) 顶部的 2026-11-13 条目、[docs/SILLYTAVERN_PARITY.md](SILLYTAVERN_PARITY.md)、[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
+2. [docs/MACOS.md](MACOS.md)：macOS 上支持什么、隐藏什么、怎么从源码运行和打包，以及**实机已验证与仍未验证的逐项清单**。
+3. [docs/ACTIVE_GOAL.md](ACTIVE_GOAL.md)：当前交接范围；其中旧 Windows 检查点保留历史语境。
+4. [docs/DECISIONS.md](DECISIONS.md) 顶部的 2026-11-13 条目、[docs/SILLYTAVERN_PARITY.md](SILLYTAVERN_PARITY.md)、[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
 
 ## 现在的产品
 
@@ -19,7 +34,7 @@
 
 ## 验证到什么程度（重要）
 
-以下**全部只有单元测试和隔离窗口里的合成数据截图**，没有经过真实模型、真实数据源或真人日常使用：
+以下 App 功能**尚无真实模型、真实数据源或真人日常使用的端到端验收**；已有单元测试、隔离窗口合成数据，以及下述 Mac 上服务商替身驱动的运行记录，不能相互替代：
 
 - 直连 Claude 的会话 runner、各家流式返回、24000 字符上下文、采样参数。
 - 角色库对话的完整往返（重新生成、续写、分支、群聊发言轮换）。
@@ -38,7 +53,7 @@
 - 「返工」原因只记录，不会送达会话。
 - 笔记检索没有停用词与分数门槛，可能有噪声。
 - 内置角色在空对话里没有第一句问候。
-- 若干 `scripts/*-ui-smoke.cjs` 引用了已移动的控件（`#desktop-local-stop`、`#onboarding-local-sample`、`#desktop-conversation-local`、旧页名「连接搭档」），未更新。
+- 七个主要桌面 smoke 脚本已在 `6715dbf` 更新（smoke、bot、chat、providers、workbench、persona、native）；既有日志记录了隔离源码运行通过，本次未重跑。其他专项脚本仍须按实际使用检查，不能视为全部已更新；打包 exe 与标准 bootstrap 的回归仍待确认。
 - README 中两处表述未逐条核对：「应用没有自己的服务器」、沿用自旧版的「有真实使用记录」的功能列表。
 - 全量测试在 Windows 高并发下，`test/qq-supervisor-component-repair*.test.cjs` 等少数 live 测试会超时；CI 已把它们放到串行步骤。
 - 普通 QQ 依赖的 NapCat 上游仓库已于 2026-11-12 清空；QQ 为可选的既有能力，不再扩展。替代方案未调研。
