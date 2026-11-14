@@ -47,4 +47,4 @@
 
 1. `npm ci`，然后按 `docs/MACOS.md` 从源码启动；先走一遍其中的未验证清单，从风险最高的开始。
 2. 用全新档案：原机器上保存的 API key 用 Windows 系统加密，无法迁移，需要重新填写。
-3. 看 GitHub Actions 的 `macos-latest` 结果：首次运行失败 13 项，已修并在真实 Mac 上本地通过；在 GitHub 上见到绿色后再去掉该平台的 `continue-on-error`。
+3. GitHub Actions 的 `macos-latest`：首次运行失败 13 项，已修；2026-11-14 在 GitHub 上连续三轮通过后去掉了该平台的 `continue-on-error`，现在和 Windows 一样卡合并。`ubuntu-latest` 仍不卡合并，剩 56 项失败集中在 QQ 待处理锁的 6 个测试文件，尚未排查。

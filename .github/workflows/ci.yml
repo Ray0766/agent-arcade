@@ -13,11 +13,11 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    # Windows is the platform the suite was written and run on, and it gates the
-    # build. The macOS and Linux legs are informative for now: the suite has not
-    # had a first green run there, so a failure is reported without blocking.
-    # Remove this line for a platform once it has passed (see docs/MACOS.md).
-    continue-on-error: ${{ matrix.os != 'windows-latest' }}
+    # Windows and macOS gate the build. macOS joined after three green runs in
+    # a row (2026-11-14, see docs/MACOS.md). The Linux leg is informative for
+    # now: it still fails in the QQ pending-lock tests, so a failure there is
+    # reported without blocking. Remove this line once it has passed.
+    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4

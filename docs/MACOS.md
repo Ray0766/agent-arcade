@@ -136,11 +136,13 @@ The proprietary Claude Agent SDK is excluded from every package, as on Windows.
 ## Tests and CI
 
 `.github/workflows/ci.yml` runs `npm ci`, `node scripts/check.cjs` and the unit
-tests on `windows-latest`, `macos-latest` and `ubuntu-latest`. Only the Windows
-leg blocks the build. The macOS leg failed 13 tests on its first run (PR #1);
-those are fixed and the same commands pass on a real Mac (4916 tests, 0
-failures, 687 skipped), but the leg has not been seen green on GitHub yet, so
-it stays `continue-on-error` until it has. Linux is still unexamined.
+tests on `windows-latest`, `macos-latest` and `ubuntu-latest`. The Windows and
+macOS legs block the build. The macOS leg failed 13 tests on its first run
+(PR #1); those are fixed, the same commands pass on a real Mac, and the leg was
+green on GitHub three runs in a row on 2026-11-14 (heads `47c7630`, `d16bf4e`,
+`184c4d8`), after which its `continue-on-error` was removed. Linux stays
+`continue-on-error`: it fails 56 tests, all in six QQ pending-lock files, which
+nobody has looked into yet.
 
 `npm test` and all three CI legs go through `scripts/test.cjs`. It runs
 `node --test` with a temporary directory that is already in its resolved form:
@@ -242,7 +244,8 @@ the script path), so no shell parses either path.
   terminal** (see above).
 - **Fonts.** The Windows fonts stay first in the stack; macOS falls through to
   the system font and PingFang SC / Hiragino Sans GB.
-- **CI.** The macOS and Linux test legs do not block the build yet.
+- **CI.** The macOS test leg blocks the build like the Windows one; the Linux
+  leg does not yet.
 
 ## Checklist on a real Mac
 
@@ -368,12 +371,12 @@ Packaging
 - [ ] The packaged app opens on a second Mac after the Gatekeeper steps above.
 - [x] The packaged app contains no `@anthropic-ai/claude-agent-sdk*` directory,
       and the files listed in `asarUnpack` are under `app.asar.unpacked`.
-- [ ] The CI job `mac-package` and the `macos-latest` test leg have each been
+- [x] The CI job `mac-package` and the `macos-latest` test leg have each been
       looked at once; every failing test is either fixed or skipped with a
       stated reason, then `continue-on-error` is removed for that platform.
-      *Looked at: `mac-package` was green; the test leg's 13 failures are fixed
-      and its commands pass locally. Left to do: see the leg green on GitHub,
-      then remove `continue-on-error` for macOS.*
+      *`mac-package` green on every run. The test leg's 13 failures were fixed,
+      none by skipping; it was then green three runs in a row and
+      `continue-on-error` was removed for macOS.*
 
 Channels (none has been connected from macOS)
 
