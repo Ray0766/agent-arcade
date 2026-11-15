@@ -23,6 +23,8 @@
     "test:bot-flow": "node scripts/bot-flow.cjs",
     "test:native": "node scripts/native-smoke.cjs",
     "check": "node scripts/check.cjs",
+    "check:release": "node scripts/check-release-workflows.cjs",
+    "check:first-run": "node scripts/check-first-run-docs.cjs",
     "prepack": "node scripts/build-icon.cjs",
     "pack": "electron-builder --dir",
     "predist": "node scripts/build-icon.cjs",

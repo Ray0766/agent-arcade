@@ -8,18 +8,20 @@ Agent Arcade is an open-source desktop app for chatting with AI characters on yo
 
 ## Choose the version first
 
-Availability checked on **2026-11-14**:
+Availability read-only checked on **2026-11-15**:
 
 | Version | What you can obtain | First-use route |
 | --- | --- | --- |
 | **Public 0.3.0-preview.2** | [Windows executable, checksum and lockfile](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2). This is the older WeChat task/observer preview, licensed under MIT. | Use its [version-specific instructions](docs/releases/0.3.0-preview.2.md): WeChat ClawBot pairing and a task backend. It does **not** have the App-first key card described below. |
 | **Development 0.4.0-preview.1** | Source on `codex/companion-nine`, with reproducible baseline `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4` (AGPL-3.0-only). **Not a published release.** | Follow [Run from source](#run-from-source), then [First run](#first-run). |
-| **Local fixes after that baseline** | Additional uncommitted App/macOS repairs and an ad-hoc signed, unnotarized arm64 build exist only in the maintainer's working tree. | They are absent from a fresh clone and the public executable; see the [validation summary](docs/VALIDATION.md#public-first-use-evidence--2026-11-14). |
+| **Local fixes after that baseline** | A separately frozen, uncommitted App/macOS candidate has additional repairs and a local ad-hoc signed, unnotarized arm64 build. | Absent from the remote baseline and public executable. This documentation/readiness branch does not integrate those repairs. See [candidate identities](docs/CANDIDATE_STATUS.md) and the [validation summary](docs/VALIDATION.md#public-first-use-evidence--2026-11-14). |
 
 **There is no publicly downloadable Mac candidate package.** A local build or
 an Actions artifact is not a published Mac release. Mac users currently need
 source; platform limits and build instructions are in [macOS notes](docs/MACOS.md).
 A plain clone without the branch below selects the older default `main`.
+
+The next acceptance path prioritizes **Chinese desktop text companionship for people who already have an API key**. QQ expansion stays frozen and 3D characters remain a later plan; existing Work and channel features are retained. Both languages use the same [first-run guide](docs/FIRST_RUN.md).
 
 ## What the development source provides
 
@@ -48,7 +50,7 @@ separately there and are not included in the pinned source below.
 
 ## First run
 
-**For the development source below, with a fresh profile.** For the public
+**For the development source below, with a fresh profile.** The shared [中文 / English first-run guide](docs/FIRST_RUN.md) covers the exact source, UI and acceptance boundary. For the public
 Windows 0.3.0-preview.2 app, use its version-specific instructions in the table.
 
 1. Run `npm start`. It opens **Companion → Chat / 陪伴 → 对话** with an AI-key card.
@@ -68,8 +70,9 @@ WeChat, QQ and other channels, and the Work side, can be set up later or never.
 
 ## Run from source
 
-Requires Git and [Node.js 22.13 or newer](https://nodejs.org/); Node 24.x is
-used for the recorded development checks. Use a **new directory** for these
+Requires Git; use [Node.js 24.18+ within the 24.x line](https://nodejs.org/)
+for the documented development/test route. The pinned package declares a
+22.13 minimum, but that is not the complete-suite test requirement. Use a **new directory** for these
 commands; do not switch or reset an existing checkout with local changes.
 The detached checkout pins the documented remote baseline rather than any
 later branch changes or the maintainer's uncommitted repairs.

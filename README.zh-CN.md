@@ -2,11 +2,25 @@
 
 # Agent Arcade
 
-[English](README.md) · [构建状态](https://github.com/Ray0766/agent-arcade/actions) · [下载](https://github.com/Ray0766/agent-arcade/releases) · [制作主题](docs/THEMES.md)
+[English](README.md) · [构建状态](https://github.com/Ray0766/agent-arcade/actions) · [公开 Windows 预览版 0.3.0-preview.2](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2) · [制作主题](docs/THEMES.md)
 
-Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 角色聊天。它以 AGPL-3.0 发布，不设收费功能；应用在本机运行，聊天记录和记忆保存在本机，模型由你自带的一个 API key 调用（Claude、GPT、DeepSeek、Gemini 或豆包任选其一）。当前源码版本是 0.4.0-preview.1，属于预览版，优先支持 Windows。
+Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 角色聊天。它以 AGPL-3.0 发布，不设收费功能；应用在本机运行，聊天记录和记忆保存在本机，模型由你自带的一个 API key 调用（Claude、GPT、DeepSeek、Gemini 或豆包任选其一）。这里描述的是 **0.4.0-preview.1 开发源码**，与可下载的旧 Windows 版不同。请先按下表选择版本。
 
-## 能做什么
+## 先选对版本
+
+公开可获得版本已于 **2026-11-15** 只读核对：
+
+| 版本 | 实际能拿到什么 | 首次使用路径 |
+| --- | --- | --- |
+| **公开版 0.3.0-preview.2** | [Windows 可执行文件、校验和、依赖锁文件](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，属于旧版微信派活／观察器，沿用 MIT 许可。 | 按[该版本说明](docs/releases/0.3.0-preview.2.md)配对微信 ClawBot 和任务后端；它**没有**下文的 App 首用密钥卡片。 |
+| **开发源码 0.4.0-preview.1** | 远端 `codex/companion-nine`，固定基线 `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`，AGPL-3.0-only，**尚未发布**。 | 按[从源码运行](#从源码运行)取精确提交，再按[第一次使用](#第一次使用)操作。 |
+| **基线之后的本地候选修复** | 另行冻结的未提交 App／macOS 修复，以及本地 ad-hoc 签名、未公证的 arm64 包。 | 不在远端固定基线或公开版中；本说明／采用准备分支也未整合这些修复。见[候选身份摘要](docs/CANDIDATE_STATUS.md)与[验证摘要](docs/VALIDATION.md#public-first-use-evidence--2026-11-14)。 |
+
+**目前没有公开可下载的 Mac 候选包。** 本地包和 Actions artifact 不等于公开发布。Mac 用户目前需要从源码运行；构建与平台边界见 [macOS 说明](docs/MACOS.md)。不带分支的普通 clone 会取得较旧的默认 `main`。
+
+本轮优先验证**已有 API key 的中文桌面文本陪伴**。QQ 不扩展，3D 角色留作后续；既有工作区与渠道能力继续保留。中英文共用[首次使用指南](docs/FIRST_RUN.md)。
+
+## 开发源码能做什么
 
 - **和角色聊天。**保存一个 API key 后，在“对话”页直接和内置角色聊。每个角色有自己的聊天记录，以及你可以查看、改正和删除的记忆。
 - **角色库。**导入 SillyTavern 角色卡（PNG 或 JSON，V1／V2／V3），带开场白与备选开场白、世界书、作者注释、预设、正则脚本，以及消息的编辑、重新生成和分支。卡里的文字只当资料用，卡内脚本和扩展不会运行。逐项对照见 [SillyTavern 功能对照](docs/SILLYTAVERN_PARITY.md)。
@@ -19,20 +33,22 @@ Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 
 
 ## 现在的状态
 
-这是预览版。下面几类请分开看：
+App 优先路径仍是开发候选，请区分证据层级：
 
-- **只有自动测试和合成数据截图，还没有被真实使用验证过：**角色库与 SillyTavern 移植功能（世界书、预设、采样、编辑／重新生成／分支、正则、流式回复、群聊）、笔记提议与反思、提醒的数据源和角色转告、任务看板的派出流程、三种布局，以及“粘贴一个 key 就开始聊”的首次使用流程。它们没有用真实模型、真实日历／文件夹／订阅源或真实 Claude Code 会话完整跑过。
-- **有范围明确的真实使用记录：**经 QQ 渠道与内置角色的陪伴聊天（Claude API、GPT API、DeepSeek，2026-11-05）、本机 Claude 程序模式的派活流程、Claude Code 观察器。通过的范围和没有通过的项目见[九项验收表](docs/COMPANION_ACCEPTANCE.md)与[验证说明](docs/VALIDATION.md)。
-- **还没有用真实凭据验收：**Gemini API 与豆包 API 两个入口。
-- macOS 源码启动、假密钥隔离对话与打包已有有界真机证据；当前缺口和验收边界见 [App／macOS 交付表](docs/APP_MACOS_PROGRESS.md)与 [macOS 说明](docs/MACOS.md)。本地文件／ICS 提醒测试使用真实临时文件和措辞模型替身，不代表用户数据已验收。
-- GitHub 上已发布的安装包是 0.3.0-preview.2，**不包含**上面较新的功能；目前要用到它们，需要[从源码运行](#从源码运行)。0.4.0-preview.1 还没有发布。
-- 每一步做了什么、证据在哪里，记在 [WORK_LOG.md](WORK_LOG.md)。
+- **组件／自动检查与隔离窗口：**角色卡、世界书、预设、采样、消息操作、流式、群聊、笔记／反思、来源提醒、布局和任务看板。测试可以使用真实文件、SQLite 和 Electron 窗口，同时仍使用模型替身；这不是真实模型或真人验收。
+- **早期版本的有界实用记录：**QQ 陪伴回复（Claude／GPT／DeepSeek）、部分本机 Claude 派活与观察器事件，不能代替新 App 优先路径的验收。见[九项验收表](docs/COMPANION_ACCEPTANCE.md)与[已跟踪验证摘要](docs/VALIDATION.md#public-first-use-evidence--2026-11-14)。
+- **macOS：**源码启动、假 key 的系统加密保存、模型替身对话和 ad-hoc 打包有有界证据。后续本地候选另有保留既有真实档案的维护记录，但本轮未重跑，也未调用模型。版本归属见[候选身份摘要](docs/CANDIDATE_STATUS.md)。真实模型、钥匙串／通知等系统弹窗、真实中文输入法及真人日常使用仍未验收。
+- **真实提供商缺口：**Gemini／豆包的真实凭据和调用，以及 App 优先路径的记忆／提醒质量与完整首条真实回复，仍未验收。
+
+公开证据见 [docs/VALIDATION.md](docs/VALIDATION.md)。`WORK_LOG.md`、原始 `outputs/` 回执和本地包路径是私有／本机维护记录，不是首次 clone 需要的文件或公开下载入口。固定源码不包含后续未提交修复。
 
 ## 第一次使用
 
-1. 打开应用，它停在“对话”页。
+**适用于下文的开发源码与新档案。**中英文共用[首次使用指南](docs/FIRST_RUN.md)；公开 Windows 0.3.0-preview.2 请按版本表中的旧版说明。
+
+1. 运行 `npm start`，进入 **陪伴 → 对话 / Companion → Chat**，看到 AI 密钥卡片。
 2. 选一个 AI：Claude、GPT、DeepSeek、Gemini 或豆包。
-3. 粘贴这个服务的 API key 并保存。密钥用操作系统的加密保存在本机；调用按该服务计费。
+3. 粘贴这个服务的 API key，点击 **保存并开始聊天 / Save and start chatting**。密钥用操作系统的加密保存在本机；调用按该服务计费。
 4. 开始聊天。App 内对话的消息会发给你选的 AI 服务；默认的 App 对话不需要 Agent Arcade 服务器；可选的 Messenger 和远程管理路线需要另行部署服务，见对应说明。
 
 已经有角色卡：到“角色”页点“导入角色卡…”，打开导入的角色，再点“用这个角色聊天”。
@@ -47,14 +63,18 @@ Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 
 
 ## 从源码运行
 
-需要 [Node.js 22.13 或更新版本](https://nodejs.org/)。
+需要 Git；建议安装 [Node.js 24.18+（24.x）](https://nodejs.org/)，与完整测试要求一致。固定基线的 package engines 下限仍为 22.13，这不代表完整测试也只需该版本。请使用**新目录**，不要切换或重置已有未提交改动的 checkout。以下 detached checkout 固定远端基线，不会取得之后的分支变动或维护者本地修复。
 
 ```sh
-git clone https://github.com/Ray0766/agent-arcade.git
-cd agent-arcade
+git clone --branch codex/companion-nine --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
+cd agent-arcade-companion
+git checkout --detach 3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4
+git rev-parse HEAD
 npm ci
 npm start
 ```
+
+`git rev-parse HEAD` 应输出 `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`。[精确源码树](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4)的包版本为 `0.4.0-preview.1`，含 App 首用卡片；版本号和构建成功都不等于已经发布。
 
 - `npm start` 执行 `electron .`：启动应用本身，使用上面的数据目录。
 - `npm run demo` 执行 `electron . --demo`：同一个应用，只是“工作 › 会话”页显示内置的示例会话（与真实观测分开）；演示状态下不发桌面通知，不加载提醒的数据源，也不运行定时反思。它用的仍是同一个数据目录，不是隔离的试用环境。

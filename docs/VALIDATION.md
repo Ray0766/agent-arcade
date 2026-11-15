@@ -9,6 +9,31 @@ can obtain from what exists only in the maintainer's working tree. This
 open a system prompt, sign in, or call a real/paid model. Results below are
 previously recorded observations, not new acceptance from this edit.
 
+### Documentation alignment — 2026-11-15
+
+The English corrections above the historical records were preserved and aligned
+with the Chinese README and the shared [first-run guide](FIRST_RUN.md). The
+next acceptance path prioritizes Chinese desktop text companionship using an
+existing API key. This documentation work checked source/UI labels, local links,
+tracked targets and exact source commands; it did not install dependencies,
+launch the App, open real profiles, call models or rerun prior product tests.
+
+[Candidate status](CANDIDATE_STATUS.md) and the [sanitized identity manifest](evidence/candidate-20261115.json)
+separate the public release, remote `3edf1ce` source, a frozen 75-path dirty
+maintenance candidate, and this adoption-readiness branch. This branch does
+not integrate the 75-path repair set. Previous maintenance claims of 5,000
+tests, 455 packaged source-file byte comparisons, and retention of an existing
+saved key/two chat rows belong to that separate candidate. They are inherited
+records, not this task's new execution, a fresh first-run real-model pass or
+human/system-dialog acceptance. The identity summary retains the specific
+source/package association and limits without exposing private data.
+
+Use Node.js **24.18+ within 24.x** for the complete test suite; the baseline's
+`engines` minimum of 22.13 does not establish full-suite compatibility.
+The [contribution guide](../CONTRIBUTING.md) covers its optional transfer-helper
+install and tests. Nothing in this documentation pass changes provider charges
+or authorizes a real/paid call.
+
 ### Obtainable versions
 
 | Delivery | Exact identity and availability | What its evidence does not establish |
@@ -17,13 +42,25 @@ previously recorded observations, not new acceptance from this edit.
 | Public development source | Branch `codex/companion-nine`, pinned baseline [`3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4), package `0.4.0-preview.1`. The README pins that commit after explicitly cloning the branch. | A version string, branch or successful build is not a published release. An ordinary default-branch clone obtains older `main`. |
 | Later local development candidate | Uncommitted repairs after `3edf1ce`; local arm64 App with ad-hoc signature, unnotarized. The same package version is still `0.4.0-preview.1`. | Not included in the pinned source, a released binary or a public Mac download. No immutable public revision identifies these repairs yet. |
 
-GitHub release assets and the branch ref were read-only checked on 2026-11-14:
+GitHub release assets were read-only rechecked through the GitHub connector on
+2026-11-15; the branch identity follows the candidate manifest and the earlier
+2026-11-14 ref check:
 [release metadata](https://api.github.com/repos/Ray0766/agent-arcade/releases?per_page=10),
 [branch ref](https://api.github.com/repos/Ray0766/agent-arcade/git/ref/heads/codex/companion-nine).
 No public `0.4.0-preview.1` release or downloadable Mac candidate was present.
-The CI `mac-package` job uploads an optional test artifact; the current
-`prerelease` job publishes Windows assets on a qualifying `main` push.
-An artifact or local `/private/tmp` path is not a public installer.
+The pinned `3edf1ce` workflow still has its historical automatic Windows
+release job. In this adoption-readiness branch, that `prerelease` job is
+removed: CI on `main`, pull requests and manual dispatch only validates and
+builds artifacts, with read-only repository contents permissions. This local
+workflow change has not been pushed or run on GitHub. It adds no replacement
+publication workflow or Release-upload interface. `npm run check:release` and
+`test/release-safety.test.cjs` guard against reintroducing the earlier automatic
+publishing path; they do not constitute a release or human acceptance.
+
+Any future publication requires explicit owner authorization, a committed
+source identity bound to the tested package hashes, and the outstanding real-key,
+model/native-dialog and human acceptance gates. An artifact or local
+`/private/tmp` path is not a public installer.
 
 ### App-first and Mac evidence
 

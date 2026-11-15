@@ -1,6 +1,6 @@
 # Agent Arcade 0.4.0-preview.1 — App-first development candidate
 
-**Unpublished release-note draft, checked 2026-11-14.** The available public
+**Unpublished release-note draft, checked 2026-11-15.** The available public
 release is still [0.3.0-preview.2 for Windows](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2),
 with its older WeChat task/observer workflow. Its archived instructions are in
 [the version-specific notes](https://github.com/Ray0766/agent-arcade/blob/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4/docs/releases/0.3.0-preview.2.md).
@@ -8,12 +8,29 @@ That executable does not contain the App-first key card described here.
 No 0.4.0-preview.1 release has been published, and **no public Mac candidate
 package is available**. Local packages and CI artifacts are not release assets.
 
+## Publication readiness
+
+This adoption-readiness branch removes the automatic `prerelease` job. Its CI
+on `main`, pull requests and manual dispatch validates and builds artifacts
+with read-only repository contents permissions; it has no publication workflow
+or Release-upload interface. The pinned `3edf1ce` workflow below predates this
+change. This branch has not been pushed, and the revised CI has not run on
+GitHub. `npm run check:release` and `test/release-safety.test.cjs` check the local
+workflow boundary; a passing guard is not authorization to publish.
+
+Future publication needs explicit owner authorization, a committed source
+identity matched to the tested package hashes, and completion of the remaining
+real-key/model, native-dialog and human acceptance gates. Replace this draft
+with that candidate's actual platform, identity and evidence before publishing;
+do not attach a same-version package from a different source tree.
+
 ## Get the documented source
 
 The development branch is `codex/companion-nine`; this draft's reproducible
 baseline is [`3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4).
 A plain clone selects the older default `main`. In a **new directory**, with
-Git and Node.js 22.13+ installed (recorded checks use Node 24.x):
+Git and Node.js 24.18+ within 24.x installed (the pinned package minimum is
+22.13; the complete test suite requires 24.18+):
 
 ```sh
 git clone --branch codex/companion-nine --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
@@ -29,7 +46,15 @@ commit says `0.4.0-preview.1`. Do not reset an existing working copy to follow
 these instructions. Later local, uncommitted repairs are not in this checkout;
 the version number alone cannot distinguish those working-tree builds.
 
+This readiness branch does not integrate the separately frozen uncommitted
+repairs. See [candidate identities](CANDIDATE_STATUS.md) before interpreting
+local package or test records as evidence for this source.
+
 ## First use of the development candidate
+
+Both README languages use the same [中文 / English first-run guide](FIRST_RUN.md).
+The next acceptance path prioritizes Chinese desktop text companionship with
+an existing API key; QQ expansion remains frozen and 3D stays deferred.
 
 1. Start with a fresh profile and open **Companion → Chat / 陪伴 → 对话**.
 2. Choose Claude, GPT, DeepSeek, Gemini or Doubao.
@@ -78,7 +103,7 @@ per-account memory boundaries remain in force.
 
 ## Evidence and unfinished acceptance
 
-The [tracked validation page](https://github.com/Ray0766/agent-arcade/blob/codex/companion-nine/docs/VALIDATION.md)
+The [tracked validation page](VALIDATION.md)
 separates public-release evidence, the pinned development baseline and later
 uncommitted local checks. Raw work logs, private screenshots and local build
 paths are not public evidence or downloads.
