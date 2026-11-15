@@ -65,17 +65,58 @@ function restoreSyntheticBackup({temporaryRoot,dataRoot,backupFolder,manifest}){
  }
  return {retained,restoredRoot:data,files,walFiles:wal,shmFiles:shm,permissionSource:'manifest.sourceMode'};
 }
+// Test-only envelope: accepts no credential except this harness's literal fake
+// key. Determinism is intentional for fixtures and is not a security design.
+function createSyntheticVault(namespace,crypto,Bytes){
+ if(!/^[a-z0-9-]{1,64}$/.test(namespace))throw Error('Invalid synthetic vault namespace.');
+ const stats={availability:0,encrypt:0,decrypt:0,rejected:0};
+ const magic=Bytes.from('AA-SYNTHETIC-NO-OS-1\0'),key=crypto.createHash('sha256').update('fixture-only:'+namespace).digest();
+ const invalid=()=>{stats.rejected++;throw Error('Only this harness synthetic credential envelope is allowed.');};
+ function canonical(text){
+  if(typeof text!=='string'||text.length>4096)return invalid();let value;try{value=JSON.parse(text);}catch{return invalid();}
+  if(!value||typeof value!=='object'||Array.isArray(value))return invalid();
+  const keys=Object.keys(value);if(keys.some(name=>name!=='deepseekKey')||keys.length>1||keys.length===1&&value.deepseekKey!=='fixture-integrated-mac-api-key')return invalid();
+  return JSON.stringify(value);
+ }
+ function encryptString(text){
+  const plain=canonical(text),nonce=crypto.createHash('sha256').update(plain).digest().subarray(0,12),cipher=crypto.createCipheriv('aes-256-gcm',key,nonce);
+  const body=Bytes.concat([cipher.update(plain,'utf8'),cipher.final()]);stats.encrypt++;return Bytes.concat([magic,nonce,cipher.getAuthTag(),body]);
+ }
+ function decryptString(bytes){
+  if(!Bytes.isBuffer(bytes)||bytes.length<magic.length+28||bytes.length>8192||!bytes.subarray(0,magic.length).equals(magic))return invalid();
+  try{const at=magic.length,decipher=crypto.createDecipheriv('aes-256-gcm',key,bytes.subarray(at,at+12));decipher.setAuthTag(bytes.subarray(at+12,at+28));const text=Bytes.concat([decipher.update(bytes.subarray(at+28)),decipher.final()]).toString('utf8');const plain=canonical(text);stats.decrypt++;return plain;}catch{return invalid();}
+ }
+ const vault=Object.freeze({
+  isEncryptionAvailable(){stats.availability++;return true;},
+  async isAsyncEncryptionAvailable(){stats.availability++;return true;},
+  encryptString,decryptString,
+  async encryptStringAsync(text){return encryptString(text);},
+  async decryptStringAsync(bytes){return decryptString(bytes);},
+  getSelectedStorageBackend(){return 'synthetic-no-os';},
+  setUsePlainTextEncryption(){return invalid();},
+ });
+ return {vault,stats};
+}
 // Executed only on the paused production bootstrap call frame. Do not require
 // main or bootstrap here: the packaged entry must continue through both itself.
-function fixturePrelude(config){
+function fixturePrelude(config,createVault){
  // This runs on the first arbitrary JS pause, which can precede bootstrap's
  // CommonJS wrapper. Do not depend on a frame-local require or Electron being
  // initialized yet. Failure leaves the child paused; the host kills it first.
- const require=process.getBuiltinModule('module').createRequire(process.resourcesPath+'/app.asar/package.json');
- const path=require('node:path'),crypto=require('node:crypto');
+ const modules=process.getBuiltinModule('module'),require=modules.createRequire(process.resourcesPath+'/app.asar/package.json');
+ const path=require('node:path'),crypto=require('node:crypto'),Bytes=require('node:buffer').Buffer;
+ if(config.vaultMode!=='synthetic-no-os')throw Error('OS vault access is disabled in this harness.');
  if(process.platform!=='darwin'||!process.env.AGENT_ARCADE_HOME?.startsWith(config.root+'/'))throw Error('Unsafe fixture process.');
  const src=path.join(process.resourcesPath,'app.asar','src');
  const probe=globalThis.__integratedMacSmoke={earlyInstalled:false,identityCalls:0,requests:0,blockedNetwork:0,blockedChildren:0,guard:null,app:null};
+ const {vault,stats}=createVault(config.namespace,crypto,Bytes),electronProxies=new WeakMap(),load=modules._load;
+ probe.syntheticVaultStats=stats;probe.syntheticStorageReads=0;
+ // Install before any production safeStorage consumer can load. Do not read
+ // the native property even once: Electron exposes it as a lazy getter.
+ modules._load=function(request,parent,isMain){
+  const exported=Reflect.apply(load,this,[request,parent,isMain]);if(request!=='electron')return exported;
+  let proxy=electronProxies.get(exported);if(!proxy){proxy=new Proxy(exported,{get(target,property){if(property==='safeStorage'){probe.syntheticStorageReads++;return vault;}return Reflect.get(target,property,target);}});electronProxies.set(exported,proxy);}return proxy;
+ };
  const identity=require(path.join(src,'core/app-identity.cjs')),configure=identity.configureAppIdentity;
  const single=require(path.join(src,'core/single-instance.cjs')),acquire=single.acquireSingleInstance;
  let runtimeInstalled=false;
@@ -112,7 +153,7 @@ function fixturePrelude(config){
  probe.earlyInstalled=true;
  return {installed:true,earlyIsolation:true,fixtureHash:crypto.createHash('sha256').update(config.namespace).digest('hex')};
 }
-function preludeExpression(config){return `(${fixturePrelude.toString()})(${JSON.stringify(config)})`;}
+function preludeExpression(config){return `(${fixturePrelude.toString()})(${JSON.stringify({...config,vaultMode:'synthetic-no-os'})},(${createSyntheticVault.toString()}))`;}
 class Inspector {
  constructor(socket){
   this.socket=socket;this.sequence=0;this.pending=new Map();this.pauses=[];this.scripts=new Map();
@@ -185,7 +226,7 @@ function isolatedEnvironment(root,home,source=process.env){
 async function launchBundle({bundle,root,home,profile,identity,provider,chromium,fuses,output,round}){
  // If Electron ignores --inspect-brk it could hit the owner's global guard.
  // Prove support statically before the process can execute a single App line.
- const wire=await fuses.getCurrentFuseWire(bundle);assert.equal(wire[fuses.FuseV1Options.EnableNodeCliInspectArguments],49,'Inspector CLI fuse must be enabled before launching an isolated test copy.');
+ const wire=await fuses.getCurrentFuseWire(bundle);assert.equal(wire[fuses.FuseV1Options.EnableNodeCliInspectArguments],49,'Inspector CLI fuse must be enabled before launching an isolated test copy.');assert.equal(wire[fuses.FuseV1Options.EnableCookieEncryption],48,'Cookie encryption must be disabled before a no-OS-vault fixture can launch.');
  const executableName=command('/usr/libexec/PlistBuddy',['-c','Print :CFBundleExecutable',path.join(bundle,'Contents/Info.plist')]).trim();
  if(!executableName||/[\/\\]/.test(executableName))throw Error('Invalid bundle executable.');
  const executable=path.join(bundle,'Contents/MacOS',executableName),env=isolatedEnvironment(root,home),log=fs.createWriteStream(path.join(output,round+'-process.log'),{flags:'wx'});
@@ -209,8 +250,8 @@ async function launchBundle({bundle,root,home,profile,identity,provider,chromium
   const browserEndpoint=await until(()=>/DevTools listening on (ws:\/\/127\.0\.0\.1:\d+\/[^\s]+)/.exec(buffer)?.[1]);
   browser=await chromium.connectOverCDP(browserEndpoint);page=await until(()=>browser.contexts().flatMap(context=>context.pages()).find(candidate=>candidate.url().includes('app.asar')));page.setDefaultTimeout(15000);
   await page.waitForFunction(()=>!!window.arcade?.snapshot);
-  const scope=await inspector.evaluate('({name:__integratedMacSmoke.app.getName(),profile:__integratedMacSmoke.app.getPath("userData"),packaged:__integratedMacSmoke.app.isPackaged,identityCalls:__integratedMacSmoke.identityCalls,guard:__integratedMacSmoke.guard})');
-  assert.equal(scope.name,identity.name);assert.equal(scope.profile,profile);assert.equal(scope.packaged,true);assert(scope.identityCalls>=2);assert.equal(scope.guard?.namespace,identity.namespace);assert.equal(scope.guard.primary,true);assert(scope.guard.endpoint.includes(identity.namespace));scope.inspectorCliFuse='enabled';
+  const scope=await inspector.evaluate('({name:__integratedMacSmoke.app.getName(),profile:__integratedMacSmoke.app.getPath("userData"),packaged:__integratedMacSmoke.app.isPackaged,environment:{platform:process.platform,arch:process.arch,versions:process.versions},identityCalls:__integratedMacSmoke.identityCalls,guard:__integratedMacSmoke.guard})');
+  assert.equal(scope.name,identity.name);assert.equal(scope.profile,profile);assert.equal(scope.packaged,true);assert(scope.identityCalls>=2);assert.equal(scope.guard?.namespace,identity.namespace);assert.equal(scope.guard.primary,true);assert(scope.guard.endpoint.includes(identity.namespace));scope.inspectorCliFuse='enabled';scope.preflightCookieEncryptionFuse='already_disabled_read_only';scope.vaultMode='synthetic-no-os';
   startupComplete=true;return {page,inspector,scope,breakpoint,close};
  }catch(error){await close();throw error;}
 }
@@ -222,18 +263,31 @@ async function run(options){
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'arcade-integrated-mac-'))),home=path.join(root,'data'),profile=path.join(root,'electron-profile');fs.mkdirSync(home,{mode:0o700});fs.mkdirSync(profile,{mode:0o700});
  fs.writeFileSync(path.join(home,'config.json'),JSON.stringify({language:'zh',notifications:false}));
  const suffix=randomBytes(6).toString('hex'),identity={name:'agent-arcade-integrated-'+suffix,bundleId:'io.github.agentarcade.integrated.'+suffix,namespace:'arcade-integrated-'+suffix};
- const receipt={schema:1,synthetic:true,realOwnerProfileOpened:false,realAccount:false,realModel:false,humanAcceptance:false,vault:'Electron safeStorage / dedicated test Keychain service',identity,artifacts:[],checks:[],screenshots:[],errors:[],limits:['Inspector-scoped process wrappers are test instrumentation, not a pristine distribution or human acceptance.','Only the test-copy bundle ID/signature changes; production ASAR stays byte-for-byte unchanged.','System Keychain, Gatekeeper, notification/file dialogs, IME, sleep/wake and second-machine acceptance remain manual.','Earlier source/build evidence is not rerun by this scripted synthetic acceptance.'],temporaryRoot:root};
+ const receipt={schema:1,synthetic:true,realOwnerProfileOpened:false,realAccount:false,realModel:false,humanAcceptance:false,vault:'Synthetic deterministic AES-GCM fixture; no OS encryption',vaultMode:'synthetic-no-os',osKeychainAccessed:false,osEncryptionAccepted:false,crossBuildKeychain:'manual_pending_after_observed_acl_prompt',identity,artifacts:[],checks:[],screenshots:[],errors:[],limits:['Inspector-scoped process wrappers are test instrumentation, not a pristine distribution or human acceptance.','Only the test-copy bundle ID/signature changes; production ASAR stays byte-for-byte unchanged.','System Keychain, Gatekeeper, notification/file dialogs, IME, sleep/wake and second-machine acceptance remain manual.','Earlier source/build evidence is not rerun by this scripted synthetic acceptance.','Prior real safeStorage same-build observations are separate; cross-build Keychain acceptance remains pending after an observed ACL prompt.'],temporaryRoot:root};
  let live,provider;
- const pass=text=>receipt.checks.push(text),snapshot=()=>live.page.evaluate(()=>arcade.snapshot());
+ const pass=text=>{receipt.checks.push(text);receipt.phase='after-check-'+receipt.checks.length;},snapshot=()=>live.page.evaluate(()=>arcade.snapshot());
  const shot=async name=>{
-  await live.page.evaluate(()=>{let label=document.getElementById('synthetic-package-smoke-label');if(!label){label=document.createElement('div');label.id='synthetic-package-smoke-label';label.textContent='SCRIPTED / SYNTHETIC · FAKE KEY · LOCAL PROVIDER';Object.assign(label.style,{position:'fixed',right:'6px',top:'4px',zIndex:'2147483647',font:'11px sans-serif',background:'#fff4b5',color:'#222',padding:'4px',pointerEvents:'none'});document.body.append(label);}});
+  await live.page.evaluate(()=>{let label=document.getElementById('synthetic-package-smoke-label');if(!label){label=document.createElement('div');label.id='synthetic-package-smoke-label';label.textContent='SCRIPTED / SYNTHETIC · NO OS VAULT · LOCAL PROVIDER';Object.assign(label.style,{position:'fixed',right:'6px',top:'4px',zIndex:'2147483647',font:'11px sans-serif',background:'#fff4b5',color:'#222',padding:'4px',pointerEvents:'none'});document.body.append(label);}});
   const file=name+'.png';await live.page.screenshot({path:path.join(output,file),fullPage:true,animations:'disabled'});receipt.screenshots.push(file);
  };
- const idle=()=>live.page.waitForFunction(async()=>{const s=await arcade.snapshot();return !s.desktopChat?.busy&&!s.bot?.local?.streaming&&document.getElementById('desktop-chat-stop')?.hidden===true;});
+ const idle=()=>live.page.waitForFunction(async()=>{const s=await arcade.snapshot();return !s.desktopChat?.busy&&!s.bot?.local?.busy&&!s.bot?.local?.streaming&&document.getElementById('desktop-chat-stop')?.hidden===true;});
+ const requestAfter=async before=>{const deadline=Date.now()+10000;while(provider.fixture.calls.length<=before){if(Date.now()>deadline)throw Error('No local provider request after explicit action.');await delay(10);}return provider.fixture.serial;};
+ const completeReply=async(serial,{appended=false}={})=>{
+  const expected=`合成服务商回复 ${serial}：这是隔离产物测试。`;
+  await live.page.waitForFunction(async({expected,appended})=>{const last=(await arcade.snapshot()).bot.local.history.at(-1);return last?.role==='assistant'&&(appended?last.text.includes(expected):last.text===expected);},{expected,appended});
+  await idle();
+  await live.page.waitForFunction(expected=>document.getElementById('bot-messages')?.textContent.includes(expected)&&!document.querySelector('.desktop-stream'),expected);
+  return expected;
+ };
+ const ensureChatReady=async()=>{
+  await live.page.waitForFunction(()=>['desktop-chat-input','desktop-local-start'].some(id=>document.getElementById(id)?.getClientRects().length));
+  if(await live.page.locator('#desktop-local-start').isVisible()){assert.equal((await snapshot()).bot.local.canStart,true,'Only explicitly resume a configured synthetic companion.');await live.page.locator('#desktop-local-start').click();}
+  await live.page.locator('#desktop-chat-input').waitFor();
+ };
  const send=async(text,{finish=true}={})=>{
   const before=provider.fixture.calls.length;await live.page.locator('#desktop-chat-input').fill(text);await live.page.locator('#desktop-chat-send').click();
-  const deadline=Date.now()+10000;while(provider.fixture.calls.length<=before){if(Date.now()>deadline)throw Error('No local provider request after Send.');await delay(10);}
-  if(finish){await idle();await live.page.waitForFunction(async()=>{const s=await arcade.snapshot();return s.bot.local.history.at(-1)?.role==='assistant';});}
+  const serial=await requestAfter(before);
+  if(finish){await completeReply(serial);await live.page.waitForFunction(()=>document.getElementById('desktop-chat-input')?.value==='');}
  };
  try{
   for(const [index,artifact] of options.artifacts.entries()){
@@ -251,11 +305,11 @@ async function run(options){
   await launch('first');assert.equal(await live.page.evaluate(()=>arcade.platform.os),'darwin');await live.page.locator('#first-run-card').waitFor();await shot('first-run');
   pass('Actual final archives unpack; test copy preserves production ASAR/main and acquires an independent real bootstrap guard before main.');
   await live.page.locator('#first-run-card [data-provider="deepseek"]').click();await live.page.locator('#first-run-key').fill(FAKE_KEY);await live.page.locator('#first-run-save').click();await live.page.locator('#desktop-chat-input').waitFor();
-  assert.equal((await snapshot()).bot.credentialState,'ready');assert.equal(provider.fixture.calls.length,0);pass('Mac first-run saves a synthetic key with actual dedicated-service safeStorage, without a model call or channel login.');
+  assert.equal((await snapshot()).bot.credentialState,'ready');assert.equal(provider.fixture.calls.length,0);pass('Mac first-run saves only the literal fake key through a synthetic no-OS vault shim, without a model call or channel login.');
   await send('SYNTHETIC_WHALE_TURN',{finish:false});await live.page.locator('.desktop-stream').waitFor();await shot('streaming');await idle();
   assert(provider.fixture.calls.at(-1).keyMatched&&provider.fixture.calls.at(-1).noTools&&provider.fixture.calls.at(-1).stream);pass('Production API runner streams from the loopback stand-in with the fake key and no execution tools.');
-  await live.page.locator('[data-tool="regenerate"]').last().click();await live.page.waitForFunction(()=>document.querySelector('.desktop-message-swipe-count')?.textContent==='2/2');await idle();
-  const beforeContinue=provider.fixture.calls.length;await live.page.locator('[data-tool="continue"]').last().click();await live.page.waitForFunction(()=>document.querySelector('#desktop-chat-stop')?.hidden===false);await idle();assert.equal(provider.fixture.calls.length,beforeContinue+1);
+  receipt.phase='regenerate';const beforeRegenerate=provider.fixture.calls.length;await live.page.locator('[data-tool="regenerate"]').last().click();const regeneratedSerial=await requestAfter(beforeRegenerate);await completeReply(regeneratedSerial);await live.page.waitForFunction(()=>document.querySelector('.desktop-message-swipe-count')?.textContent==='2/2');
+  const beforeContinue=provider.fixture.calls.length;receipt.phase='continue';await live.page.locator('[data-tool="continue"]').last().click();const continuedSerial=await requestAfter(beforeContinue);await completeReply(continuedSerial,{appended:true});assert.equal(provider.fixture.calls.length,beforeContinue+1);receipt.phase='edit';
   await live.page.locator('[data-tool="edit"]').last().click();await live.page.locator('.desktop-message-edit-area').fill('SYNTHETIC_OWNER_EDIT');await live.page.locator('.desktop-message-edit-foot button').filter({hasText:'保存'}).click();await live.page.locator('.desktop-message-edit-area').waitFor({state:'detached'});assert.match(await live.page.locator('#bot-messages').innerText(),/SYNTHETIC_OWNER_EDIT/);pass('Real message IPC preserves regenerated alternatives, continuation and explicit owner editing.');
   provider.fixture.mode='hold';await send('SYNTHETIC_STOP',{finish:false});await live.page.locator('#desktop-chat-stop').click();await idle();await live.page.locator('#desktop-chat-status').filter({hasText:/这次回复已停止/}).waitFor();provider.fixture.mode='reply';pass('Stop cancels the held local stream without a late assistant commit.');
   for(const [mode,pattern] of [[401,/密钥/],[429,/额度|余额|用量|频率/],['network',/网络|连接/]]){
@@ -278,10 +332,10 @@ async function run(options){
   await live.close();live=null;
   const stateFile=path.join(home,'.update-state.json'),beforeBackups=fs.readdirSync(path.join(home,'update-backups')).filter(name=>!name.startsWith('.')).length;
   receipt.actualBuildId=JSON.parse(fs.readFileSync(stateFile,'utf8')).buildId;
-  await launch('restart');await live.page.locator('#desktop-chat-input').waitFor();const reopened=await snapshot();assert.equal(reopened.bot.credentialState,'ready');assert.deepEqual(reopened.bot.local.history.map(row=>row.text),before);assert.equal(sha(vault),vaultBefore);
+  await launch('restart');const reopened=await snapshot();assert.equal(reopened.bot.credentialState,'ready');assert.deepEqual(reopened.bot.local.history.map(row=>row.text),before);assert.equal(sha(vault),vaultBefore);
   assert.equal(fs.readdirSync(path.join(home,'update-backups')).filter(name=>!name.startsWith('.')).length,beforeBackups);
-  await send('SYNTHETIC_AFTER_RESTART');assert(provider.fixture.calls.at(-1).keyMatched);await shot('restarted');pass('Same-build cold restart retains the same encrypted fake-key bytes and SQLite history without creating another update snapshot.');
-  const stats=await live.inspector.evaluate('({identityCalls:__integratedMacSmoke.identityCalls,blockedNetwork:__integratedMacSmoke.blockedNetwork,blockedChildren:__integratedMacSmoke.blockedChildren,requests:__integratedMacSmoke.requests})');receipt.processProbe=stats;assert.equal(stats.blockedNetwork,0);assert.equal(stats.blockedChildren,0);assert.deepEqual(receipt.errors,[]);
+  await ensureChatReady();await send('SYNTHETIC_AFTER_RESTART');assert(provider.fixture.calls.at(-1).keyMatched);await shot('restarted');pass('Same-build cold restart retains the synthetic credential envelope and SQLite history without creating another update snapshot.');
+  const stats=await live.inspector.evaluate('({identityCalls:__integratedMacSmoke.identityCalls,blockedNetwork:__integratedMacSmoke.blockedNetwork,blockedChildren:__integratedMacSmoke.blockedChildren,requests:__integratedMacSmoke.requests,vaultMode:"synthetic-no-os",syntheticStorageReads:__integratedMacSmoke.syntheticStorageReads,syntheticVaultStats:__integratedMacSmoke.syntheticVaultStats})');receipt.processProbe=stats;assert.equal(stats.blockedNetwork,0);assert.equal(stats.blockedChildren,0);assert.deepEqual(receipt.errors,[]);
   await live.close();live=null;assert.equal(sha(archive),receipt.artifacts[0].asarSha256);for(const row of receipt.artifacts)assert.equal(sha(path.join(row.bundle,'Contents/Resources/app.asar')),row.asarSha256);
   if(options.seedApp){
    // This older App is seed input only. Never launch or modify its original path.
@@ -294,7 +348,7 @@ async function run(options){
    await live.page.locator('#desktop-chat-input').fill('记住：SYNTHETIC_升级偏好松针绿');await live.page.locator('#desktop-chat-send').click();await live.page.waitForFunction(async()=>JSON.stringify((await arcade.snapshot()).bot.local.memory).includes('SYNTHETIC_升级偏好松针绿'));await idle();
    const oldSnapshot=await snapshot(),oldHistory=oldSnapshot.bot.local.history.map(row=>row.text),oldMemory=oldSnapshot.bot.local.memory.facts.map(row=>({id:row.id,text:row.text})),upgradeVault=path.join(upgradeHome,'bot-vault.json'),oldVaultHash=sha(upgradeVault),oldBuildId=JSON.parse(fs.readFileSync(path.join(upgradeHome,'.update-state.json'),'utf8')).buildId;
    await shot('seed-old-synthetic');await live.close();live=null;
-   live=await launchBundle({bundle,root,home:upgradeHome,profile:upgradeProfile,identity,provider:provider.url,chromium,fuses,output,round:'upgrade-new'});await live.page.locator('#desktop-chat-input').waitFor();const updated=await snapshot();assert.equal(updated.bot.credentialState,'ready');assert.deepEqual(updated.bot.local.history.map(row=>row.text),oldHistory);assert.deepEqual(updated.bot.local.memory.facts.map(row=>({id:row.id,text:row.text})),oldMemory);assert.equal(sha(upgradeVault),oldVaultHash);
+   live=await launchBundle({bundle,root,home:upgradeHome,profile:upgradeProfile,identity,provider:provider.url,chromium,fuses,output,round:'upgrade-new'});const updated=await snapshot();assert.equal(updated.bot.credentialState,'ready');assert.deepEqual(updated.bot.local.history.map(row=>row.text),oldHistory);assert.deepEqual(updated.bot.local.memory.facts.map(row=>({id:row.id,text:row.text})),oldMemory);assert.equal(sha(upgradeVault),oldVaultHash);
    const newBuildId=JSON.parse(fs.readFileSync(path.join(upgradeHome,'.update-state.json'),'utf8')).buildId;assert.notEqual(newBuildId,oldBuildId);
    const backupRoot=path.join(upgradeHome,'update-backups'),manifests=fs.readdirSync(backupRoot).filter(name=>!name.startsWith('.')).map(name=>({folder:path.join(backupRoot,name),manifest:JSON.parse(fs.readFileSync(path.join(backupRoot,name,'manifest.json'),'utf8'))}));
    const matching=manifests.find(item=>item.manifest.previousBuildId===oldBuildId&&item.manifest.buildId===newBuildId);assert(matching,'New App must cold-backup synthetic old-build data before store migration.');const transition=matching.manifest;assert(transition.databases>0);
@@ -305,19 +359,20 @@ async function run(options){
     try{db=new DatabaseSync(backup,{readOnly:true,allowExtension:false});assert.equal(Object.values(db.prepare('PRAGMA quick_check').get())[0],'ok');checkedDatabases++;}finally{db?.close();}
    }
    assert.equal(checkedDatabases,transition.databases);
-   await send('SYNTHETIC_UPGRADE_CONTINUATION');assert(provider.fixture.calls.at(-1).keyMatched);await shot('upgrade-new-retained');await live.close();live=null;
+   await ensureChatReady();await send('SYNTHETIC_UPGRADE_CONTINUATION');assert(provider.fixture.calls.at(-1).keyMatched);await shot('upgrade-new-retained');await live.close();live=null;
    assert.equal(sha(oldAsar),oldHash);assert.equal(sha(archive),receipt.artifacts[0].asarSha256);receipt.upgrade={tested:true,oldPackageVersion:oldMetadata.version,newPackageVersion:receipt.artifacts[0].packageVersion,oldAsarSha256:oldHash,newAsarSha256:receipt.artifacts[0].asarSha256,previousBuildId:oldBuildId,newBuildId,databases:transition.databases,historyRetained:true,memoryRetained:true,vaultBytesRetained:true,originalSeedBundleUnchanged:true};pass('An isolated older production package seeds synthetic key/chat/memory; the new archive-extracted App preserves them and creates the exact changed-build cold snapshot.');
    const recovery=restoreSyntheticBackup({temporaryRoot:root,dataRoot:upgradeHome,backupFolder:matching.folder,manifest:transition});
-   live=await launchBundle({bundle,root,home:upgradeHome,profile:upgradeProfile,identity,provider:provider.url,chromium,fuses,output,round:'restore-new'});await live.page.locator('#desktop-chat-input').waitFor();const restored=await snapshot();
+   live=await launchBundle({bundle,root,home:upgradeHome,profile:upgradeProfile,identity,provider:provider.url,chromium,fuses,output,round:'restore-new'});const restored=await snapshot();
    assert.equal(restored.bot.credentialState,'ready');assert.deepEqual(restored.bot.local.history.map(row=>row.text),oldHistory);assert.deepEqual(restored.bot.local.memory.facts.map(row=>({id:row.id,text:row.text})),oldMemory);assert.equal(sha(upgradeVault),oldVaultHash);
    const recoveredBackups=path.join(upgradeHome,'update-backups'),recoveredManifests=fs.readdirSync(recoveredBackups).filter(name=>!name.startsWith('.')).map(name=>JSON.parse(fs.readFileSync(path.join(recoveredBackups,name,'manifest.json'),'utf8')));assert(recoveredManifests.some(item=>item.previousBuildId===oldBuildId&&item.buildId===newBuildId));
+   await ensureChatReady();
    await send('SYNTHETIC_AFTER_MANUAL_RESTORE');assert(provider.fixture.calls.at(-1).keyMatched);await shot('restored-synthetic-profile');await live.close();live=null;assert(fs.existsSync(recovery.retained));
    receipt.restore={tested:true,synthetic:true,automaticRestore:false,sameMappedRoot:true,historyRetained:true,memoryRetained:true,vaultBytesRetained:true,repeatedColdBackup:true,...recovery};pass('Synthetic profile restored as documented: newer data retained by rename, complete backup root copied to its mapped path with WAL/SHM/modes, and the new App reopens the fake key/chat/memory.');
   }else receipt.upgrade={tested:false,reason:'No --seed-app supplied; cross-build update retention remains untested in this run.'};
   receipt.provider={requests:provider.fixture.calls.length,allFakeKey:provider.fixture.calls.every(call=>call.keyMatched),allToolFree:provider.fixture.calls.every(call=>call.noTools),abortedStreams:provider.fixture.aborted};receipt.passed=true;
- }catch(error){receipt.failure=error.message;if(live)await shot('failure').catch(()=>{});throw error;}
+ }catch(error){receipt.failure=error.message;receipt.failureStack=error.stack;if(live)await shot('failure').catch(()=>{});throw error;}
  finally{if(live)await live.close().catch(error=>{receipt.shutdownFailure=error.message;});if(provider)await provider.close();fs.writeFileSync(path.join(output,'receipt.json'),JSON.stringify(receipt,null,2)+'\n');}
  console.log(JSON.stringify({passed:receipt.passed,checks:receipt.checks.length,screenshots:receipt.screenshots.length,output}));
 }
-module.exports={artifactType,parseArgs,contained,preludeExpression,fixturePrelude,isolatedEnvironment,Inspector,restoreSyntheticBackup};
+module.exports={artifactType,parseArgs,contained,preludeExpression,fixturePrelude,isolatedEnvironment,Inspector,restoreSyntheticBackup,createSyntheticVault};
 if(require.main===module)run(parseArgs(process.argv.slice(2))).catch(error=>{console.error(error.message);process.exitCode=1;});
