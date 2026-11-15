@@ -3,6 +3,10 @@
 This is a tracked, sanitized status summary. It does not publish a package or
 turn maintenance records into independent/human acceptance.
 
+## Current local integration
+
+The later integration worktree now combines the 75-path repair snapshot and all eight preparation commits as local version `0.4.0-preview.2`. See [the current integration report](MACOS_INTEGRATION_20261115.md) for new source/build/evidence identities. The historical rows and earlier test records below describe the preceding capture and preparation branch; their “not integrated” statements do not describe the new integration branch. No public download or release is created.
+
 ## Which product can someone obtain?
 
 | State | Identity | Availability / evidence boundary |

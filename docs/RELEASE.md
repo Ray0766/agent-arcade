@@ -8,6 +8,8 @@ That executable does not contain the App-first key card described here.
 No 0.4.0-preview.1 release has been published, and **no public Mac candidate
 package is available**. Local packages and CI artifacts are not release assets.
 
+> Later local candidate: **0.4.0-preview.2**, unpublished. Integration/build evidence is in [MACOS_INTEGRATION_20261115](MACOS_INTEGRATION_20261115.md). The pinned 3edf1ce and earlier preparation descriptions below retain their own scope; they are not the new artifact identity.
+
 ## Publication readiness
 
 This adoption-readiness branch removes the automatic `prerelease` job. Its CI

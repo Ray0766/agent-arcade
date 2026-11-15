@@ -1,5 +1,9 @@
 # Active delivery scope — single-window companion application
 
+## Integrated macOS candidate — 2026-11-15
+
+The owner authorized integration, local commits and new native packaging. The 75-path snapshot and eight preparation commits are now present together; version `0.4.0-preview.2` is a local unpublished candidate. Current commands, source/artifact identities and remaining gates are recorded in [MACOS_INTEGRATION_20261115](MACOS_INTEGRATION_20261115.md). Historical uncommitted/preparation statements below retain their original scope. No owner App/profile or real model is used in this execution.
+
 ## Local update retention and companion switching — 2026-11-15
 
 The owner requested data backup before update/Keychain repairs, then reported
