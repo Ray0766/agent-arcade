@@ -28,7 +28,10 @@ for(const mode of ['reply','abort','close'])test(`real POSIX ${mode} cleans an o
     });`;
   let owned;const other=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});
   const controller=new AbortController();
-  const runner=createClaudeProgramRunner({workspace:folder,executable:process.execPath,spawnImpl:(_cli,_args,options)=>{owned=spawn(process.execPath,['-e',script],options);return owned;},interruptTimeoutMs:30,exitTimeoutMs:500,requestTimeoutMs:1000,taskTimeoutMs:8000});
+  // Exercise the production 2 s exit-confirmation budget. A 500 ms override
+  // intermittently expires during macOS orphan reaping even with CI's pool of
+  // two files. Keep the real group/descendant/unrelated-process assertions.
+  const runner=createClaudeProgramRunner({workspace:folder,executable:process.execPath,spawnImpl:(_cli,_args,options)=>{owned=spawn(process.execPath,['-e',script],options);return owned;},interruptTimeoutMs:30,exitTimeoutMs:2000,requestTimeoutMs:1000,taskTimeoutMs:8000});
   try{
     const pending=runner({prompt:'synthetic local process fixture',signal:controller.signal});
     await until(()=>fs.existsSync(marker));const ids=JSON.parse(fs.readFileSync(marker,'utf8'));
