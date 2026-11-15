@@ -1,5 +1,9 @@
 # Active delivery scope — single-window companion application
 
+## Stable Mac signing follow-up — 2026-11-15
+
+Read-only user/System keychain inspection found zero usable code-signing identities. Strict certificate preflight is implemented and tested; stable repackaging is blocked on an installed signing identity and has not run. No App, real profile or saved API key/chat was opened. See [MAC_SIGNING_STATUS_20261115](MAC_SIGNING_STATUS_20261115.md) for commands, results and the owner prerequisite. Earlier candidate/build evidence below retains its original identity.
+
 ## Integrated macOS candidate — 2026-11-15
 
 The owner authorized integration, local commits and new native packaging. The 75-path snapshot and eight preparation commits are now present together; version `0.4.0-preview.2` is a local unpublished candidate. Current commands, source/artifact identities and remaining gates are recorded in [MACOS_INTEGRATION_20261115](MACOS_INTEGRATION_20261115.md). Historical uncommitted/preparation statements below retain their original scope. No owner App/profile or real model is used in this execution.

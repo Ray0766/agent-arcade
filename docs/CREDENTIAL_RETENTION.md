@@ -7,6 +7,10 @@ separately in that companion's `local-companion/social-memory.sqlite`.
 The normal data root is `~/.agent-arcade`; replacing the `.app` bundle does not
 replace it. Keep the same data root and registered companion directories.
 
+## Stable-signing follow-up — 2026-11-15
+
+The owner requested a prompt-free update path without more automated Keychain dialogs. Read-only inspection found **zero currently usable code-signing identities** in the user search list and System keychain. Stable rebuilding is blocked on an installed certificate/private-key pair; no replacement package or App launch was attempted. The packaging wrapper now checks an explicitly selected identity by exact name/SHA-1, resolves it to one certificate fingerprint and forces signing. Missing/ambiguous identities fail before electron-builder; see [the signing inspection and next step](MAC_SIGNING_STATUS_20261115.md). This changes build tooling only, not saved-key/chat formats or their identities.
+
 ## Before an updated build opens data
 
 The normal desktop bootstrap acquires its single-window guard first. Main then
@@ -38,13 +42,18 @@ For repeat distribution with an installed signing certificate, explicitly choose
 the same identity on every build:
 
 ```sh
-AGENT_ARCADE_MAC_SIGN_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
-  npm run pack:mac -- -c.directories.output=/private/tmp/agent-arcade-candidate
+export AGENT_ARCADE_MAC_SIGN_IDENTITY='REPLACE_WITH_40_HEX_CERTIFICATE_SHA1'
+node scripts/build-mac.cjs --check-signing
+npm run pack:mac -- --require-stable-signing -c.directories.output=/private/tmp/agent-arcade-candidate
 ```
 
-The name above is a placeholder, not a bundled certificate. The wrapper passes
-the selection as one argument and lets a missing/unusable identity fail the
-build; it does not silently fall back. Certificate provisioning, hardened runtime,
+The fingerprint above is a placeholder, not a bundled certificate. A full exact
+installed certificate name is also accepted and resolved to its SHA-1 fingerprint;
+substring/ambiguous selection is refused. The wrapper passes the pinned hash and
+`forceCodeSigning=true`, and a missing/unusable identity stops packaging. The
+`--require-stable-signing` flag also refuses an unset selection. Legacy local
+packaging without that flag/selection remains ad-hoc and does not meet the
+update-stability requirement. Certificate provisioning, hardened runtime,
 notarization and real Gatekeeper/Keychain acceptance are separate release work.
 An ad-hoc candidate is not a guarantee of prompt-free updates.
 
