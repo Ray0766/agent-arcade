@@ -11,6 +11,7 @@ The later integration worktree now combines the 75-path repair snapshot and all 
 
 | State | Identity | Availability / evidence boundary |
 | --- | --- | --- |
+| Current local integration | `codex/integrated-macos-20261115`, `0.4.0-preview.2`, build source `8e837c44db08183060e77edddf1941d0ff609ada` | Newly rebuilt arm64 DMG/ZIP; local, ad-hoc signed and unnotarized. See [new integration evidence](MACOS_INTEGRATION_20261115.md). Actual package synthetic checks are separate from real-model/human acceptance. |
 | Published preview | `v0.3.0-preview.2`, target `fd81d161ac1f8417a237aeddf166d7717fb449df` | Old Windows observer/task preview; not the App-first candidate. [Public assets](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2) rechecked read-only on 2026-11-15. No public Mac candidate asset was found. |
 | Committed development baseline | `codex/companion-nine` at `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`, package `0.4.0-preview.1` | Exact public source entrance in [FIRST_RUN](FIRST_RUN.md). A developer candidate, not evidence of a successful real first reply. |
 | Existing local repair candidate | Same Git base, branch `codex/mac-update-retention`, **75 uncommitted paths** frozen 2026-11-15 18:29 AEDT | Local Mac App only; source includes later companion, storage and Mac fixes. Not downloadable from Releases. Its version string alone is insufficient identity. |

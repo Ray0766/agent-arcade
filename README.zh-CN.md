@@ -16,7 +16,7 @@ Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 
 | --- | --- | --- |
 | **公开版 0.3.0-preview.2** | [Windows 可执行文件、校验和、依赖锁文件](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，属于旧版微信派活／观察器，沿用 MIT 许可。 | 按[该版本说明](docs/releases/0.3.0-preview.2.md)配对微信 ClawBot 和任务后端；它**没有**下文的 App 首用密钥卡片。 |
 | **开发源码 0.4.0-preview.1** | 远端 `codex/companion-nine`，固定基线 `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`，AGPL-3.0-only，**尚未发布**。 | 按[从源码运行](#从源码运行)取精确提交，再按[第一次使用](#第一次使用)操作。 |
-| **基线之后的本地候选修复** | 另行冻结的未提交 App／macOS 修复，以及本地 ad-hoc 签名、未公证的 arm64 包。 | 不在远端固定基线或公开版中；本说明／采用准备分支也未整合这些修复。见[候选身份摘要](docs/CANDIDATE_STATUS.md)与[验证摘要](docs/VALIDATION.md#public-first-use-evidence--2026-11-14)。 |
+| **本地整合版 0.4.0-preview.2** | 已提交到 `codex/integrated-macos-20261115`，包含 75 路径修复快照及八个准备提交；新构建 arm64 DMG／ZIP，ad-hoc 签名、未公证。 | 仅本地可得，不在远端固定源码或公开版中。精确构建提交、包校验和与合成验证见[整合报告](docs/MACOS_INTEGRATION_20261115.md)。真实模型、安装与真人门槛仍未通过。 |
 
 **目前没有公开可下载的 Mac 候选包。** 本地包和 Actions artifact 不等于公开发布。Mac 用户目前需要从源码运行；构建与平台边界见 [macOS 说明](docs/MACOS.md)。不带分支的普通 clone 会取得较旧的默认 `main`。
 

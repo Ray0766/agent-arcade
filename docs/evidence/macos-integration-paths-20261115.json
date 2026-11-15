@@ -1,0 +1,633 @@
+{
+  "schema": 1,
+  "kind": "source-only-integration-map",
+  "originalBase": "3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4",
+  "preparationHead": "24fce66763bd8de8e2ea74877e31512d8c4f0500",
+  "snapshotCapturedAt": "2026-11-15T21:27:50.543175+11:00",
+  "independentAuditHead": "816e28ca762a8a9b0c27c98d508c91654a22b04b",
+  "originalPathCount": 75,
+  "originalPaths": [
+    {
+      "path": "src/bot/companion-knowledge.cjs",
+      "snapshotSha256": "aff20556209486404c85e1fdd69c3dec35ea84297553ad0c987db58bb7ec1eb8",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/companion-notifier.cjs",
+      "snapshotSha256": "91d2117192751fea92b94fb9f7fdc86d327f11ef173a24889649162a41f3549c",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/local-companion.cjs",
+      "snapshotSha256": "c9d81132a03d807d62705d02f94060c31fc61e808c26c188537913e031d8ea3c",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/st/local-pipeline.cjs",
+      "snapshotSha256": "d66e8fb15e9f68798f476a2a10ae02e7bd3ebd137bd7dcbbe67b58fcdef940f9",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/wiki/wiki-recall.cjs",
+      "snapshotSha256": "447fed95e1445806450f1ba112c5606ec9556ea30a1acf8e02d45baf92d6cd06",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/wiki/wiki-search.cjs",
+      "snapshotSha256": "1f9fad88bea25473d1394d431aab721019835ca5ce9d4803ccd30e365fcf822c",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/sources/registry.cjs",
+      "snapshotSha256": "92af3b9a6f897af8a6e82d7cdb6e8013cea8f8afc019050d1537f719ad0eed96",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/desktop-chat.js",
+      "snapshotSha256": "7b264b278545b646410e8f3f546fabc92c4d51d98dd2141c1d99f1198f4276ab",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/st-settings.js",
+      "snapshotSha256": "9c30518d6866453e8d4284468ea006569d832150d51d2125d4de7fe06ee2859e",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/companion-notifier.test.cjs",
+      "snapshotSha256": "32fe2c522883c57e412f2be52be0b58d9542d7e4db6bc8cd313100d379538537",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/sources-registry.test.cjs",
+      "snapshotSha256": "7fd6ea699c5045e8650ebbabb3c1f5ddaa6bedd40fe16cfb34f1b93913951836",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/st-local-messages.test.cjs",
+      "snapshotSha256": "141b340995b39c6a1be9ca3790595fde11d86b6f912dd8c0a63bf85f6a4a1b2e",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/st-local-pipeline.test.cjs",
+      "snapshotSha256": "56082eb9badfc9714bc03a034b353f7c54de878adcceb9fdea5e7e6a8d6d5591",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/st-local-streaming.test.cjs",
+      "snapshotSha256": "9259550d9619d03b766db5e5225f1c1be868605212c46de6c9bc1775c58b212e",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/wiki-pipeline.test.cjs",
+      "snapshotSha256": "9a79cea2b137c6c37332dabf452f758fdb85e6c098c12e3599dc1c8b89b5bcf8",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/wiki-search.test.cjs",
+      "snapshotSha256": "845e395ba486533e694e2c118c69ee0d057e7265cbf9af67a408fda9cc9a828c",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/local-builtin-pipeline.test.cjs",
+      "snapshotSha256": "225e3fa3ed31112a719c19fcfdc9a878099222b51ce9ad0c9422d0d71054a376",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/sources-companion-flow.test.cjs",
+      "snapshotSha256": "eb502d03a091256f5b8cc09330d436134b0852ea2f98531608e5364f950043db",
+      "group": "A",
+      "integrationCommit": "b1c67b493f49f41b29e394074d06cee4714a228e",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/claude-program-runner.cjs",
+      "snapshotSha256": "f092e5aaf29d6777beb3d86d2f6c88e0aece45f236ad9a95e978978a5e859e67",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/native-launch.cjs",
+      "snapshotSha256": "a744aa91c5cf165f3692a76e6e4f5cbac158d27ec50bcc5984ce74427e6dd0f4",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/task-board.cjs",
+      "snapshotSha256": "e0aec4c9a143726b4e1217e92dfa07bf189a61567a91ce44daa53bfb9559075c",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/task-worktree.cjs",
+      "snapshotSha256": "df095e43c27183d8eb0334457ed5ba297d24861b5d0662169664cdc3e207e3b1",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/tasks.js",
+      "snapshotSha256": "8bf6554da78bef52963dfb9ad288c8f7d185a46138a91461997240147f69bba2",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/claude-program-runner.test.cjs",
+      "snapshotSha256": "1f7cc1dacb06f3a80fc1301040fe0ea601653d0c8e3931467a53e9ec7c4e11b1",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/platform-discovery.test.cjs",
+      "snapshotSha256": "047dfc3675be042347acd2c137622dca43db666251aae3000f38ea9d802edd85",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/task-board.test.cjs",
+      "snapshotSha256": "8c36e560c24f9ba3d4a2d6c7fcc1cbc6a03fa3574847ad44da201fd0837eb1f5",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/task-launch.test.cjs",
+      "snapshotSha256": "c29af0c5bc768319d6aa3913122f14db63b57800accfd4090d6bea023515a194",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/task-worktree.test.cjs",
+      "snapshotSha256": "8cffeabba98143c2758ca3a72c5bb4f1bfa70676da64294d55748366244deeff",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "scripts/task-board-ui-smoke.cjs",
+      "snapshotSha256": "eb19e27cd90748ebaa7f7a3d018cccfa32674ebfb6228dab3024a4e03c462597",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/claude-program-process-group.test.cjs",
+      "snapshotSha256": "aa9253560941336c20f687b022169bce1a5a6dbde8b252ab86a6d4bcc83aff00",
+      "group": "B",
+      "integrationCommit": "bd9573a1618a6bb7cddeb5dfda040fc7827e7e0a",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "package.json",
+      "snapshotSha256": "14d15e90d032b18bf8ee425b29a8079536f458fd35bb13fad5e1480b40671fdc",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bootstrap.cjs",
+      "snapshotSha256": "edbd6949a0ad3766b59e847dc3e27effcdec82914d34f164df1d84a198fdbb95",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/service.cjs",
+      "snapshotSha256": "2b9ae961f133d11efd49cff78c3c76e15e18a8f56657c2ab8b5dca5460759755",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/bot/st/local-settings.cjs",
+      "snapshotSha256": "58a56f779166278fba43274920e076c4ec20275a7014f12407f6855543991c99",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/main.cjs",
+      "snapshotSha256": "ca484797d7820f0cfdeab7b2edfd75b2b73b0b43164d98bbbd23ca44f8c560cf",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/preload.cjs",
+      "snapshotSha256": "27e33f64e1663b9488b6ae21a605224749bf7ac07a592dcb5a7fafbf094afb57",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/accounts.js",
+      "snapshotSha256": "d2fc278fb773fc6eb11a74fbbb4e8dadc40c19ee4957bee0c7ac66445518dcb4",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/bot.js",
+      "snapshotSha256": "e506531f344ec5bfb54e0096f844a229261324b9776f727dfd221943f1b6d3c4",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/companions.css",
+      "snapshotSha256": "0ae3b48006d6fe177d979bb42c073ccd1398b6a1af270d842d7e22b85cdf0108",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/first-run.css",
+      "snapshotSha256": "bb0279aa07563c1ebdface345d5460d3a95b6ded940eaed33790290dcb899fcc",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/first-run.js",
+      "snapshotSha256": "ac23986916a271b70907e61e828984dbddf120d2dee2fe2def3f04a8d2a413d4",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/layout-immersive.js",
+      "snapshotSha256": "9bb979a3305b0a440ac64212981dc24e2baeefaf7a55b19c1a773f32e47297a5",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/ui/layout-minimal.css",
+      "snapshotSha256": "ae91fd2e2dcaf6d1d74fa4a99a164f39ef8a075821bb0a16f4bcea4fdc1b2edb",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/credential-entrypoints.test.cjs",
+      "snapshotSha256": "347327cad8510d4becd0c054213f365c6979d0cdc241df0e22c5b4a5624945ec",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/credential-scope-ipc.test.cjs",
+      "snapshotSha256": "8ce07bfc08c776cf5b326420592298c8dfa565a94e6a218fe9ac6bc767b92799",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/single-instance.test.cjs",
+      "snapshotSha256": "57d72f3a92a839e84efa232df820b0438f086aa08cd077e2ad3f85663e06520c",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/st-local-settings.test.cjs",
+      "snapshotSha256": "01cb6721dec14e9a6215eb54b9f5b81b9c2541869d317caa6b029d17f36e6d22",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "scripts/app-macos-smoke.cjs",
+      "snapshotSha256": "32944812ecd7cabe17a338a804318733629f743d4b34067de6309db0811ecc19",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "scripts/build-mac.cjs",
+      "snapshotSha256": "01f5426d3899ecf71c4b0d94dc782295fd1034664c3c7218cc8a5062837506eb",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "scripts/companion-switcher-ui-smoke.cjs",
+      "snapshotSha256": "93461f78e711269d73d9c4b0d6ef9168ffa7b93b9a0d9e41c5853b58c7bbeadf",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "scripts/credential-recovery-ui-smoke.cjs",
+      "snapshotSha256": "08eb17daf28e5de6f0ed669f26ef2217a34b231c7aa34f9adbfee8feadb50e7b",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "scripts/mac-package-smoke.cjs",
+      "snapshotSha256": "b30753c9dd3b40ad13a7d43b36a4ebb59c478609b200f842f50df9b731b79472",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "scripts/mac-update-retention-smoke.cjs",
+      "snapshotSha256": "9926c98bab6d52f5784b1b32280b4ee43de474ddab7aedfa94f34ac2f11a4790",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/core/app-identity.cjs",
+      "snapshotSha256": "475c8c2ac62c2d15278c5685734032e4e5f7f6e7a1da8602e57bd5a1091137db",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "src/core/update-backup.cjs",
+      "snapshotSha256": "358ae5f79c3f7779456545ffc48ef6fddcab68eccc6a08863457b17fba5726c0",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/app-persona-selection.test.cjs",
+      "snapshotSha256": "4e482b3d5ad33f642ae61bb023eaeb889e1d125e116a31311fa20dd77f88aa2b",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/credential-recovery.test.cjs",
+      "snapshotSha256": "17051fd6f9190c8e335048743bff7c9cb850e043e3aa3a68406036b14575a8d4",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/update-backup.test.cjs",
+      "snapshotSha256": "d8dacae7be6b3a87f9c61ddbd4276c754916388b4d933d0a284adf3bed6e9628",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "test/update-identity.test.cjs",
+      "snapshotSha256": "afad6d28bae4aed17368ada534ea55e6d57fc728ff654244352c57158dd75463",
+      "group": "C",
+      "integrationCommit": "d318a3186e9cc54e9ebbbd5b6a04ea69eb557bae",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "AGENTS.md",
+      "snapshotSha256": "a115f6904996174a86a4ab3ac089ad2d4c757361d252f2371d2cf3febde1be2d",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "README.md",
+      "snapshotSha256": "9dc51590a744edd9b7f787aa75451d9c0829a2d7f38b8826d2feb0ad0e33a84f",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "README.zh-CN.md",
+      "snapshotSha256": "17da2d8bc5d9d122a2289e84f01fe575f793b5538717e420178da8e2d3f5cab9",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/ACTIVE_GOAL.md",
+      "snapshotSha256": "934f64277249dfb2e416f11ccd415576d10837272a30425f492ef0afcb1d61bd",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/DECISIONS.md",
+      "snapshotSha256": "4e5221f3a31dd35350ec2b644802ba9d4a4dac79f530f2eb36bfd6c0845a87b4",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/DESKTOP_CHAT.md",
+      "snapshotSha256": "a0b67f90f51bda1bb1d02d3098394d543a4ac5aa7c837666aeeda03380a4cbc5",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/HANDOFF.md",
+      "snapshotSha256": "5679f4bfb2ce09ac4b379504c77fc60deda64e078b23732b6fb5beba1a9dbe61",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/MACOS.md",
+      "snapshotSha256": "0755e5290917b3227cc5396bd9bc7db4b4b6c8aec847358f8332ff6920015dfb",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/NEXT_SESSION_PROMPT.md",
+      "snapshotSha256": "a477ae79d6625b97b9751b9294d68316bc1a3fbe29e740b5bd0f7e0e6613bc3c",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/RELEASE.md",
+      "snapshotSha256": "bd665edc78d984fc31482c9ac5bda1a6d8c8344e65b9b0b07a8f436962e1d82d",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/SILLYTAVERN_PARITY.md",
+      "snapshotSha256": "ad696ee957544707619b9979a7adb0f51888df106f93f13526f95395e8590e04",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "snapshotSha256": "040ee470d7b7df2ab796ec34b4eabfcaeee3a727b25f5d51dee102c41bfcc10e",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/APP_MACOS_PROGRESS.md",
+      "snapshotSha256": "9592a7ff8de2bf781e58ea16c03fa626d84c020d8b450bc89c4f8a391c91b7f1",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/CREDENTIAL_RETENTION.md",
+      "snapshotSha256": "889b645c3378abc486f556079946c3e255f0c4eadf38af1ebdda7b6d894ba540",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/TASK_BOARD.md",
+      "snapshotSha256": "52d8c4004b78d1267221aac13903688286dce8aa350e6fe8246a3311b8ffcb9d",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    },
+    {
+      "path": "docs/UPDATE_BACKUPS.md",
+      "snapshotSha256": "90b9413d40609110b75a72065fcd86aa8cd9004bad09021341aed8cd8d7e4b15",
+      "group": "D",
+      "integrationCommit": "090e0fc45b620fc056fdcaf495ad505a96dc6274",
+      "commitBlobVerified": true
+    }
+  ],
+  "preparationCommits": [
+    {
+      "originalCommit": "11963fecf9acd0682f3c4cc586df06799391cd02",
+      "integratedCommit": "05a3b591b90925b54076f27bcc4561112f62fb7b",
+      "subject": "docs: bound adoption work and preserve the existing repair snapshot",
+      "sameStablePatchId": true,
+      "originalPatchId": "a913685614b012271936cdcbf3dfc94c7f08526a",
+      "integratedPatchId": "a913685614b012271936cdcbf3dfc94c7f08526a"
+    },
+    {
+      "originalCommit": "4a95a196b5dfb503fc0e993aa6077398144eb585",
+      "integratedCommit": "387d7e7cad7e8a0a08b5c742bd6ea56fcac0e254",
+      "subject": "chore: bind the existing local candidate to frozen source and evidence",
+      "sameStablePatchId": true,
+      "originalPatchId": "693f58c5dcaac0f0d02702c38c5b2af889c249aa",
+      "integratedPatchId": "693f58c5dcaac0f0d02702c38c5b2af889c249aa"
+    },
+    {
+      "originalCommit": "f46f20e6bc3b238038d30408fa21f1a10027cb33",
+      "integratedCommit": "8984e572525ec235d25c90448137cb0e8e129c69",
+      "subject": "docs: align bilingual first use and decouple verification from publication",
+      "sameStablePatchId": false,
+      "originalPatchId": "8ad0b020e373593e33c9f8b602d6124e83903b4b",
+      "integratedPatchId": "3d80a4ce26f00732ff3e0d00815320a166d0c98f"
+    },
+    {
+      "originalCommit": "4355439ece57d6d043a2f7d3e161e54c4570ce2f",
+      "integratedCommit": "c50e19c6d64197fe31f276542540bd1c870ed240",
+      "subject": "test: prove companion context, notice controls and recovery with fixed offline cases",
+      "sameStablePatchId": true,
+      "originalPatchId": "b26feaf30e854d60e63348bd86aa747410584c9f",
+      "integratedPatchId": "b26feaf30e854d60e63348bd86aa747410584c9f"
+    },
+    {
+      "originalCommit": "4f20b3f95023385d83012932dba472af4bbd8255",
+      "integratedCommit": "14636bc4145c69209497bd4d763375ae6eb142eb",
+      "subject": "docs: record focused entrance, migration and context inspection methods",
+      "sameStablePatchId": true,
+      "originalPatchId": "723d9bc343d86c0e52a0a4b9563990aae65b26b0",
+      "integratedPatchId": "723d9bc343d86c0e52a0a4b9563990aae65b26b0"
+    },
+    {
+      "originalCommit": "323ee141f06f98ec1af7e7767205b98a809a3c6e",
+      "integratedCommit": "63256a0644cb67830ab3e7ac5382ca61ef67bd1b",
+      "subject": "build: fix affected minimatch versions and preserve matcher compatibility",
+      "sameStablePatchId": true,
+      "originalPatchId": "05c75ee73513bf41926a2c57b707b2034d39e679",
+      "integratedPatchId": "05c75ee73513bf41926a2c57b707b2034d39e679"
+    },
+    {
+      "originalCommit": "78ce14112e76c60c3f52cef898f80c15c6229227",
+      "integratedCommit": "d8a6df9648e658691127873702612262e193ea3e",
+      "subject": "docs: prepare labelled demos, human acceptance and first-user follow-up",
+      "sameStablePatchId": true,
+      "originalPatchId": "e568cfaaaa9cc2fa4b1965c2f3817ce3aa92beb4",
+      "integratedPatchId": "e568cfaaaa9cc2fa4b1965c2f3817ce3aa92beb4"
+    },
+    {
+      "originalCommit": "24fce66763bd8de8e2ea74877e31512d8c4f0500",
+      "integratedCommit": "8785834de58e7754f82a499d7fee5ffd687f63d7",
+      "subject": "docs: close the adoption execution with source-bound evidence and owner gates",
+      "sameStablePatchId": true,
+      "originalPatchId": "59b0f5fd7f472e55f0960d3e7ea92e1bf81ffcc4",
+      "integratedPatchId": "59b0f5fd7f472e55f0960d3e7ea92e1bf81ffcc4"
+    }
+  ],
+  "conflicts": [
+    {
+      "path": "README.md",
+      "commit": "f46f20e",
+      "hunks": 5,
+      "resolution": "Later bilingual/version/CI acceptance wording in reviewed hunks; non-conflicting original content retained. Current integration identity will be added separately."
+    },
+    {
+      "path": "README.zh-CN.md",
+      "commit": "f46f20e",
+      "hunks": 2,
+      "resolution": "Later bilingual/version/CI acceptance wording in reviewed hunks; non-conflicting original content retained. Current integration identity will be added separately."
+    },
+    {
+      "path": "docs/RELEASE.md",
+      "commit": "f46f20e",
+      "hunks": 3,
+      "resolution": "Later bilingual/version/CI acceptance wording in reviewed hunks; non-conflicting original content retained. Current integration identity will be added separately."
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "commit": "f46f20e",
+      "hunks": 2,
+      "resolution": "Later bilingual/version/CI acceptance wording in reviewed hunks; non-conflicting original content retained. Current integration identity will be added separately."
+    }
+  ],
+  "excludedOriginalPaths": [],
+  "limits": [
+    "Only source/test/document paths were imported; ignored runtime profiles and credentials were not staged.",
+    "Snapshot scope is the 75 captured paths, not every ignored file or future parallel edit."
+  ]
+}

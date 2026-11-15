@@ -1,0 +1,409 @@
+{
+  "schema": 1,
+  "kind": "integrated-macos-candidate-local-evidence",
+  "recordedAt": "2026-11-15T22:19:52.767288+11:00",
+  "branch": "codex/integrated-macos-20261115",
+  "buildSourceCommit": "8e837c44db08183060e77edddf1941d0ff609ada",
+  "buildSourceClean": true,
+  "verificationHarnessCommit": "8aad1c8e1e57d7a8ec68bec0079b3a4b5620e240",
+  "evidenceCommit": "Resolve the commit containing this receipt with git log -1 --format=%H -- docs/evidence/macos-integration-20261115.json; the final delivery records its full hash.",
+  "version": "0.4.0-preview.2",
+  "environment": {
+    "buildNode": "24.21.0",
+    "npm": "11.19.0",
+    "electron": "45.2.1",
+    "electronBuilder": "26.18.1",
+    "macOS": "27.2.1",
+    "macOSBuild": "26B131",
+    "arch": "arm64",
+    "packagedRuntime": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "versions": {
+        "node": "24.22.1",
+        "acorn": "8.18.0",
+        "ada": "4.0.0",
+        "amaro": "1.1.11",
+        "ares": "1.34.9",
+        "brotli": "1.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.3",
+        "merve": "1.2.2",
+        "modules": "150",
+        "napi": "10",
+        "nbytes": "0.1.4",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.70.0",
+        "nghttp3": "",
+        "ngtcp2": "",
+        "openssl": "0.0.0",
+        "simdjson": "4.6.11",
+        "simdutf": "7.7.0",
+        "sqlite": "3.53.4",
+        "tz": "2026e",
+        "undici": "7.30.1",
+        "unicode": "17.0",
+        "uv": "1.52.1",
+        "uvwasi": "0.0.23",
+        "v8": "15.6.75.25-electron.0",
+        "zlib": "1.3.2.1-motley",
+        "zstd": "1.6.0",
+        "electron": "45.2.1",
+        "chrome": "156.0.8078.75"
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "path": "/private/tmp/agent-arcade-integration-build-20261115/artifacts/Agent Arcade-0.4.0-preview.2-arm64.dmg",
+      "bytes": 155471568,
+      "sha256": "dfede15513b8aed7c1accb5a2c15049ae964f2632ee954bee0f867b380ec22a6"
+    },
+    {
+      "path": "/private/tmp/agent-arcade-integration-build-20261115/artifacts/Agent Arcade-0.4.0-preview.2-arm64-mac.zip",
+      "bytes": 154482694,
+      "sha256": "0e9c9d92682898b96cdb85fe22e37e879284da400f1de33b74c34ab10d10d5d1"
+    }
+  ],
+  "sourceArchive": {
+    "sourceCommit": "8e837c44db08183060e77edddf1941d0ff609ada",
+    "version": "0.4.0-preview.2",
+    "main": "src/bootstrap.cjs",
+    "allSrcFilesMatch": true,
+    "srcFiles": 455,
+    "archiveSha256": "11bd09f42ab1ebad1b59558b91549a35a69b7278b6a3f9b97219bc667226f58a",
+    "excludedSdkAbsent": true
+  },
+  "source": {
+    "codeFiles": 415,
+    "codeTreeSha256": "35cabe89d278abbafbd77157319e9356f662b3b3c9864daf4828dc1109f6e41e",
+    "packageSha256": "eba8cfba8f2dda97cbf59ec799247afbcf785e7bb157a5a13b7d35535b4d80c2",
+    "lockSha256": "4673bb2f7270fa317985a2b3618af41374897818c7bcbbcbb6329d3791eebd3f",
+    "sourceFingerprint": "febddf1180978a72ef7ceae0c800febae4b1fe1c1f72900eb1649f2a658a94a5",
+    "runtimeBuildId": "c2e3e0a0b786fc17afe331d28fa83f2e25f5411955d2801247b5725b1a9c67cc"
+  },
+  "signature": {
+    "kind": "adhoc",
+    "bundleId": "io.github.agentarcade.desktop",
+    "teamIdentifier": null,
+    "codesignVerifyDeepStrict": true,
+    "cdHash": "1453eadfaf45d48c257f8bd84624e8992a698fc4",
+    "notarized": false,
+    "stapled": false,
+    "staplerExit": 65
+  },
+  "validation": {
+    "directed": {
+      "total": 191,
+      "pass": 190,
+      "skip": 1,
+      "fail": 0
+    },
+    "fullRegression": {
+      "total": 5020,
+      "pass": 4303,
+      "skip": 717,
+      "fail": 0,
+      "durationMs": 25912.948958,
+      "commit": "8e837c44db08183060e77edddf1941d0ff609ada"
+    },
+    "syntaxFiles": 961,
+    "firstRunAtBuild": {
+      "links": 285,
+      "anchors": 34,
+      "commandSets": 4
+    },
+    "releaseGuard": {
+      "verificationWorkflows": 1,
+      "readOnly": true,
+      "publishes": false
+    },
+    "auditFull": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "auditProduction": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "fixedCases": {
+      "executionCommit": "816e28ca762a8a9b0c27c98d508c91654a22b04b",
+      "summary": {
+        "cases": 20,
+        "requiredCases": 19,
+        "requiredPass": 19,
+        "requiredFailures": 0,
+        "exploratoryCases": 1,
+        "exploratoryPass": 0,
+        "exploratoryGaps": 1,
+        "errors": 0
+      },
+      "all85LoadedFilesMatchFinalArchive": true,
+      "m09": [
+        {
+          "query": "地下铁路乘车凭证的代号？",
+          "storedInNotebook": true,
+          "approvedProposals": 1,
+          "readEnabled": true,
+          "lexicalSelected": false,
+          "selectedForPrompt": false,
+          "markerInPrompt": false,
+          "stage": "not-selected-by-lexical-retrieval"
+        }
+      ],
+      "unexpectedFetchAttempts": 0,
+      "harnessTests": 4
+    },
+    "packageHarnessSafety": {
+      "tests": 8,
+      "pass": 8,
+      "fail": 0
+    },
+    "realSafeStoragePartial": {
+      "fullyPassed": false,
+      "completedChecks": 9,
+      "sameBuildFakeKeyAndChatRetained": true,
+      "crossBuildKeychain": "pending_after_observed_authorization_prompt",
+      "dedicatedTestServiceOnly": true,
+      "ownerProfileOpened": false
+    },
+    "syntheticPackage": {
+      "passed": true,
+      "checks": [
+        "Actual final archives unpack; test copy preserves production ASAR/main and acquires an independent real bootstrap guard before main.",
+        "Mac first-run saves only the literal fake key through a synthetic no-OS vault shim, without a model call or channel login.",
+        "Production API runner streams from the loopback stand-in with the fake key and no execution tools.",
+        "Real message IPC preserves regenerated alternatives, continuation and explicit owner editing.",
+        "Stop cancels the held local stream without a late assistant commit.",
+        "401/429/network errors retain drafts; a new explicit Send recovers after the stand-in is restored.",
+        "All three built-in personas keep separate synthetic histories while retaining the same DeepSeek configuration/key.",
+        "Three production layouts render Chat, Characters, Notes, Notices and Settings without horizontal overflow.",
+        "Same-build cold restart retains the synthetic credential envelope and SQLite history without creating another update snapshot.",
+        "An isolated older production package seeds synthetic key/chat/memory; the new archive-extracted App preserves them and creates the exact changed-build cold snapshot.",
+        "Synthetic profile restored as documented: newer data retained by rename, complete backup root copied to its mapped path with WAL/SHM/modes, and the new App reopens the fake key/chat/memory."
+      ],
+      "screenshots": [
+        "first-run.png",
+        "streaming.png",
+        "classified-error.png",
+        "immersive-chat.png",
+        "messenger-chat.png",
+        "minimal-chat.png",
+        "persona-before-restart.png",
+        "restarted.png",
+        "seed-old-synthetic.png",
+        "upgrade-new-retained.png",
+        "restored-synthetic-profile.png"
+      ],
+      "vaultMode": "synthetic-no-os",
+      "osKeychainAccessed": false,
+      "osEncryptionAccepted": false,
+      "cookieEncryptionFuse": "already_disabled_read_only; no fuse modified",
+      "provider": {
+        "requests": 15,
+        "allFakeKey": true,
+        "allToolFree": true,
+        "abortedStreams": 1
+      },
+      "rendererErrors": [],
+      "upgrade": {
+        "tested": true,
+        "oldPackageVersion": "0.4.0-preview.1",
+        "newPackageVersion": "0.4.0-preview.2",
+        "oldAsarSha256": "3ad4bce6b2c3fd7d32336d08b892ea0a36e47d740be82f792a354fff4d51a66e",
+        "newAsarSha256": "11bd09f42ab1ebad1b59558b91549a35a69b7278b6a3f9b97219bc667226f58a",
+        "previousBuildId": "695b3353eeb6165f038ae8d03cecd02de2d34c2ba98d49daf3a649df78363d38",
+        "newBuildId": "c2e3e0a0b786fc17afe331d28fa83f2e25f5411955d2801247b5725b1a9c67cc",
+        "databases": 3,
+        "historyRetained": true,
+        "memoryRetained": true,
+        "vaultBytesRetained": true,
+        "originalSeedBundleUnchanged": true
+      },
+      "restore": {
+        "tested": true,
+        "synthetic": true,
+        "automaticRestore": false,
+        "sameMappedRoot": true,
+        "historyRetained": true,
+        "memoryRetained": true,
+        "vaultBytesRetained": true,
+        "repeatedColdBackup": true,
+        "files": 10,
+        "walFiles": 0,
+        "shmFiles": 0,
+        "permissionSource": "manifest.sourceMode"
+      },
+      "allFiveOwnedProcessesExited": true
+    },
+    "firstRunAfterEvidence": {
+      "links": 285,
+      "anchors": 32,
+      "commandSets": 4
+    },
+    "additionalDocumentation": {
+      "localTargets": 14,
+      "allTrackedAndPresent": true
+    }
+  },
+  "preservation": {
+    "snapshotCapturedAt": "2026-11-15T21:27:50.543175+11:00",
+    "scopePaths": 75,
+    "omittedPaths": [],
+    "postBuildChecks": {
+      "original": {
+        "branch": "codex/mac-update-retention",
+        "head": "3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4",
+        "sameBranchHeadStatus": true,
+        "checkedFiles": 75,
+        "changedSnapshotFiles": []
+      },
+      "preparation": {
+        "branch": "codex/adoption-readiness-20261115",
+        "head": "24fce66763bd8de8e2ea74877e31512d8c4f0500",
+        "sameBranchHeadStatus": true,
+        "checkedFiles": 0,
+        "changedSnapshotFiles": []
+      }
+    },
+    "ignoredProfilesAndPrivateMaterialsImported": false
+  },
+  "localEvidence": {
+    "base": "outputs/integration-20261115 (ignored; not a public download)",
+    "files": [
+      {
+        "file": "full-tests.txt",
+        "sha256": "fac68e255b5668cd1d91efbb8501b34a003772a31d2a6ba76d15e0aa02183744"
+      },
+      {
+        "file": "full-test-skips.json",
+        "sha256": "bb8aa32d19780ea898759a9c71135bcbcc62ae23fb2790f505da0480d57defee"
+      },
+      {
+        "file": "targeted-tests.txt",
+        "sha256": "7dbd07d77b9fc69ac8e51ec14aaec39ac52880c06c7ed1fa34e1c55f83f1f949"
+      },
+      {
+        "file": "syntax-check.txt",
+        "sha256": "038cf01db1c160e2eb1948d5be93d927aa6b7f46b36789a2415df28b0a0e0743"
+      },
+      {
+        "file": "first-run-final.txt",
+        "sha256": "30536a0d8ade195b5210f1d08cf7767386a17cfa31964c917d75cbe0aa815abd"
+      },
+      {
+        "file": "release-final.txt",
+        "sha256": "d9c309a7c2d689062a9e6a971287db1fd4a7d68aabbbd4016527413b2a3da15a"
+      },
+      {
+        "file": "audit-full.json",
+        "sha256": "bf1f8cc1e74dc2b54265e5a323b74c50640a8b1e1ad002a201f007d32ea58209"
+      },
+      {
+        "file": "audit-production.json",
+        "sha256": "bf1f8cc1e74dc2b54265e5a323b74c50640a8b1e1ad002a201f007d32ea58209"
+      },
+      {
+        "file": "companion-cases-integrated.json",
+        "sha256": "556dadadc631a816d0de4bc36504c811075d3dac6d195277225028afec03dd88"
+      },
+      {
+        "file": "companion-cases-run.json",
+        "sha256": "309fcd52131ba2bf5e79305a5a8b2029a23b6b3cadd56fca62386b83f1d7277c"
+      },
+      {
+        "file": "case-package-binding.json",
+        "sha256": "d2b0404f7c65b352c867f4b030d62a6005b5874808e5e45a2ecc9b6592d512d8"
+      },
+      {
+        "file": "all-source-archive-match.json",
+        "sha256": "046d464d14e7ad3bc80d1990d29d85e757047f30620412869a5c0ae8ad6db231"
+      },
+      {
+        "file": "source-archive-identity.json",
+        "sha256": "597588777c8475dac1eeef9cd8917849f5a1e731f0fff1ca01ccdebf1e9c9d80"
+      },
+      {
+        "file": "signature-display.txt",
+        "sha256": "9ca449efcfcd60e4a94c1593b43850d99873997b06e377c433ed12f76c3fadd2"
+      },
+      {
+        "file": "signature-verify.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "native-dependencies.txt",
+        "sha256": "5573b1bf877b0eb5130fec9ee73152fb31df9145db30dc1a217464b76891b557"
+      },
+      {
+        "file": "notarization-check.txt",
+        "sha256": "530834ecea55dcd7d528730db84ed0f7283b3e9e48c8204ab025c5f46c357303"
+      },
+      {
+        "file": "dmg-verify.txt",
+        "sha256": "e1732a7c1f8841cc8516f1246b57f8df9bc939e0362f4c4761931b267c8c6eb1"
+      },
+      {
+        "file": "zip-verify.txt",
+        "sha256": "c880c85d818c8a73372aff8e8cf285dccabeb5aa3dc78aff9be77bb64d26a9f8"
+      },
+      {
+        "file": "keychain-signature-comparison.txt",
+        "sha256": "91590584d9912dd461d5ff78e66c35155b02bfff96dcda6b61b1754b69047760"
+      },
+      {
+        "file": "package-harness-final-tests.txt",
+        "sha256": "cdabfe0be885c65ff4b20bf35567cb7d4e1f3ca6cda53d4a6790ef263a8c65ef"
+      },
+      {
+        "file": "package-smoke-attempt5/receipt.json",
+        "sha256": "e911e937d2fe57051516457dc53b13ef06a1893152458f1b0584610bad844a32"
+      },
+      {
+        "file": "package-smoke-synthetic-final/receipt.json",
+        "sha256": "800009e3aa91434a44dc3ae5ed317da33f081f143ac97e4ad196bf375945ac1c"
+      },
+      {
+        "file": "first-run-evidence-final.txt",
+        "sha256": "a7a6da91b490a40ca80f4d6f17369487114cd2980b496b54e580c07934e8a4c4"
+      },
+      {
+        "file": "extra-document-links.txt",
+        "sha256": "84f7d7ddfe9d766105b7e2493aaa32918d87298e3c1d6bb1ac8c4a43229a829b"
+      }
+    ],
+    "nativeBuildLogSha256": "0e4e06e2bcc9801721309ea089d7cf6420c06f281fb4f407426667cda9e29b96"
+  },
+  "knownLimits": [
+    "Cross-build real Keychain authorization observed and not passed; no repeated automated OS access.",
+    "Only Apple Silicon macOS runtime independently checked; extra x64 outputs not accepted.",
+    "No real model, owner profile, human installation, external trial or seven-day return accepted.",
+    "Nonfatal BrowserWindow hide/minimize MaxListenersExceededWarning observed in package logs; long-run impact not established.",
+    "Initial builder created a public x64 Electron download cache file outside the intended tmp cache boundary; left intact and disclosed in the execution report.",
+    "Production artifact unchanged; synthetic verification uses process-local identity/transport/vault substitutes."
+  ],
+  "publication": {
+    "pushed": false,
+    "published": false,
+    "releaseCreated": false,
+    "installerUploaded": false
+  },
+  "acceptance": {
+    "sourceIntegrated": true,
+    "nativeArm64ArtifactIntegrityVerified": true,
+    "syntheticPackageFlowsVerified": true,
+    "crossBuildOsCredentialsAccepted": false,
+    "realModelAccepted": false,
+    "humanAccepted": false,
+    "externalAdoptionProven": false
+  }
+}

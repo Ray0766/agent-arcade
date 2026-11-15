@@ -48,9 +48,11 @@ commit says `0.4.0-preview.1`. Do not reset an existing working copy to follow
 these instructions. Later local, uncommitted repairs are not in this checkout;
 the version number alone cannot distinguish those working-tree builds.
 
-This readiness branch does not integrate the separately frozen uncommitted
-repairs. See [candidate identities](CANDIDATE_STATUS.md) before interpreting
-local package or test records as evidence for this source.
+The earlier readiness-only branch did not integrate the separately frozen
+repairs. The current local integration does: its newly built `0.4.0-preview.2`
+archives and full source hash are recorded in [the integration report](MACOS_INTEGRATION_20261115.md).
+They are not available through the pinned public-source command above. See
+[candidate identities](CANDIDATE_STATUS.md) before interpreting package or test records.
 
 ## First use of the development candidate
 

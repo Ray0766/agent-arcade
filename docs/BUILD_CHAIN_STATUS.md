@@ -4,6 +4,10 @@ The Electron/Node/SQLite stack is retained. No measured benefit justifies a
 replacement. This change addresses the reproduced build dependency advisory,
 not a new companion feature or a claim of complete application security.
 
+## Later integrated native build
+
+The repairs and prepared lock are now integrated on `codex/integrated-macos-20261115`, with a fresh `0.4.0-preview.2` native arm64 DMG/ZIP built from a clean committed source. Full commands, artifact hashes, build-source identity and actual package checks are in [the integration report](MACOS_INTEGRATION_20261115.md). This closes the earlier preparation-only native-build gap for this Apple Silicon machine, not Intel/Windows/Linux or real-user acceptance. The earlier observations below retain their original scope.
+
 ## Recheck and decision
 
 - `npm audit --json` on the original lock reported **six moderate dependency
