@@ -65,11 +65,13 @@ rejected. Static `codesign` verification separately checks the actual artifact.
 Actual builds unlock only the dedicated signing Keychain using the protected
 local configuration; errors are sanitized. The child gets that Keychain,
 required signing, no timestamp service, no notarization and `publish=never`.
+The npm entry and profile flags are normalized to one literal `publish=never`;
+a real builder-parser test prevents duplicate flags becoming an array.
 Inherited signing-import and Apple service credentials are excluded. Invalid
 profiles cannot silently become ad-hoc builds.
 
 Actual preflight returned `ready:true`, the exact fingerprint above and
-`localOnly:true`. Directed identity/backup tests passed **29/29**, with zero
+`localOnly:true`. Directed identity/backup tests passed **30/30**, with zero
 failures/skips; the profile tests use fixtures and never read the real password.
 Two different harmless binary copies were signed but never executed. Their
 CDHashes differ, but both have exactly:

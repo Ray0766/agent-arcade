@@ -94,7 +94,16 @@ function prepareMacBuild(argv,env=process.env,inspection){
   const selectedEnv={...env,AGENT_ARCADE_MAC_SIGN_IDENTITY:requested};
   if(profile){
     macArgs(args,selectedEnv);
-    for(let i=0;i<args.length;i++)if(/^(?:--publish|-p)=/.test(args[i])&&!/^(?:--publish|-p)=never$/.test(args[i])||['--publish','-p'].includes(args[i])&&args[i+1]!=='never')throw signingError('A local-only signing profile cannot publish a build.');
+    // npm's dist entry already supplies --publish never. Forward exactly one
+    // value: yargs turns repeated values into an array, which is not "never".
+    const filtered=[];
+    for(let i=0;i<args.length;i++){
+      if(['--publish','-p'].includes(args[i])){if(args[++i]!=='never')throw signingError('A local-only signing profile cannot publish a build.');}
+      else if(/^(?:--publish|-p)=/.test(args[i])){if(!/^(?:--publish|-p)=never$/.test(args[i]))throw signingError('A local-only signing profile cannot publish a build.');}
+      else if(/^-p.+/.test(args[i]))throw signingError('Use --publish never for local-only signing.');
+      else filtered.push(args[i]);
+    }
+    args.splice(0,args.length,...filtered);
   }
   const identities=installedIdentities({...inspection,keychainFile:profile?.keychainFile,localProfile:profile});
   if(!requested){

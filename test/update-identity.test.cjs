@@ -120,6 +120,16 @@ test('a pinned profile rejects policy overrides, other installed identities and 
   for(const args of [['--config=other.yml'],['-c','other.yml'],['-c.mac.identity=-'],['--config.mac.sign=false'],['-c.forceCodeSigning=false'],['-c.mac.timestamp=https://example.invalid'],['-c.mac.notarize=true'],['--publish=always'],['--publish','always'],['-p','always'],['-p=always']])assert.throws(()=>prepareMacBuild(args,{},f.inspect));
   for(const output of ['0 valid identities found',`1) ${SHA_B} "Other"`, `1) ${SHA_A} "Changed name"`])assert.throws(()=>prepareMacBuild([],{}, {...f.inspect,exec:()=>output}));
 });
+test('the real builder receives one publish-never value when npm and profile both specify it',t=>{
+  const f=fixture(t),builder=require('electron-builder/out/builder');
+  for(const flags of [[],['--publish','never'],['--publish=never'],['-p','never'],['-p=never'],['--publish','never','--publish=never']]){
+    const plan=prepareMacBuild([...flags,'--mac','dmg:arm64','zip:arm64'],{},f.inspect);
+    const parsed=builder.normalizeOptions(builder.configureBuildCommand(builder.createYargs()).parse(plan.args));
+    assert.equal(parsed.publish,'never');assert.equal(parsed.config.mac.identity,SHA_A);
+    assert.equal(plan.args.filter(arg=>arg==='--publish=never').length,1);
+  }
+  assert.throws(()=>prepareMacBuild(['-pnever'],{},f.inspect),/Use --publish never/);
+});
 test('only a verified pinned local self-leaf may have the exact NOT_TRUSTED metadata suffix',t=>{
   const f=fixture(t),untrusted=`1) ${SHA_A} "${NAME_A}" (CSSMERR_TP_NOT_TRUSTED)\n1 valid identities found\n`;
   f.profile.certificateTrust='pinned-self-signed-local-only';f.save();
