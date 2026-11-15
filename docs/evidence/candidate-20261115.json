@@ -1,0 +1,4215 @@
+{
+  "schema": 1,
+  "kind": "static-candidate-identity",
+  "source": {
+    "git": null,
+    "legacyBuildFingerprint": "702394ffd774f6afd78aef84e73c9762c70bd76f67606913840b93d502dba744",
+    "package": {
+      "name": "agent-arcade",
+      "version": "0.4.0-preview.1",
+      "main": "src/bootstrap.cjs",
+      "sha256": "14d15e90d032b18bf8ee425b29a8079536f458fd35bb13fad5e1480b40671fdc"
+    },
+    "lockSha256": "8193a032cce462d5d6434be2e45561528efde609a40098b32ae277d11eae0592",
+    "codeTreeSha256": "35cabe89d278abbafbd77157319e9356f662b3b3c9864daf4828dc1109f6e41e",
+    "codeFiles": [
+      {
+        "path": "src/assets/voice/serena-reference.json",
+        "bytes": 2324,
+        "sha256": "6e1ddfb06d7e5e47f47b04055da7e6aa7533d0a97c0ba1e1430b12db8bca8b37"
+      },
+      {
+        "path": "src/auth/windows-webauthn.cjs",
+        "bytes": 15185,
+        "sha256": "797fa45dad03bea936c34a9467decb1cd76db8737d848d989a70cf67b49574b2"
+      },
+      {
+        "path": "src/bootstrap.cjs",
+        "bytes": 2128,
+        "sha256": "edbd6949a0ad3766b59e847dc3e27effcdec82914d34f164df1d84a198fdbb95"
+      },
+      {
+        "path": "src/bot/account-manager.cjs",
+        "bytes": 17569,
+        "sha256": "ef014508bb6ff286e7a487ded06c88b2726a2a62a3d7af245d8dc2ec71af774f"
+      },
+      {
+        "path": "src/bot/api-file-runner.cjs",
+        "bytes": 10854,
+        "sha256": "abe1f55e9a7d53e62b111f1c4f5ec10629c30e68ba347fe221fd4082afdd958a"
+      },
+      {
+        "path": "src/bot/approval-codes.cjs",
+        "bytes": 2611,
+        "sha256": "71d90ac28fe94c3e6e4b33ea578dcf56cd2350843014f6fd7702c6c8388262e5"
+      },
+      {
+        "path": "src/bot/background-sessions.cjs",
+        "bytes": 14039,
+        "sha256": "e33350275875be7b9387297f911082ad7c06e7ee9e7f761f13efd0368f3b75ae"
+      },
+      {
+        "path": "src/bot/character-cards.cjs",
+        "bytes": 10290,
+        "sha256": "38bcf8779580d6e366778b596379483a6ba233d9d80559d76d14164956663b77"
+      },
+      {
+        "path": "src/bot/character-library.cjs",
+        "bytes": 7712,
+        "sha256": "62dac278363bd72ad66d5c2d09ce1149e2db67ee2d572183f78df16b1495d987"
+      },
+      {
+        "path": "src/bot/claude-direct-runner.cjs",
+        "bytes": 5145,
+        "sha256": "161b53a351c818b213cde1f46b6dc1f103d06f9b01ae44d4a2c28c58458a665f"
+      },
+      {
+        "path": "src/bot/claude-program-runner.cjs",
+        "bytes": 19577,
+        "sha256": "f092e5aaf29d6777beb3d86d2f6c88e0aece45f236ad9a95e978978a5e859e67"
+      },
+      {
+        "path": "src/bot/claude-sessions.cjs",
+        "bytes": 7702,
+        "sha256": "105336a526c90657a97dedb48202acac7fecbf46dee3b58d16b31917923be99f"
+      },
+      {
+        "path": "src/bot/codex-runner.cjs",
+        "bytes": 19317,
+        "sha256": "f04922e670d88145373fd659deea988dae63e4b13083140b97cea3157d4130d4"
+      },
+      {
+        "path": "src/bot/commands.cjs",
+        "bytes": 895,
+        "sha256": "f054730cc33e2d528154a80825115783b8518bea4ef0c9447f8ac66fbaddccfe"
+      },
+      {
+        "path": "src/bot/companion-image.cjs",
+        "bytes": 2809,
+        "sha256": "df527828f7e5f51c779156aa84afbe1e671be72786940c0996b22613be321eef"
+      },
+      {
+        "path": "src/bot/companion-knowledge.cjs",
+        "bytes": 14282,
+        "sha256": "aff20556209486404c85e1fdd69c3dec35ea84297553ad0c987db58bb7ec1eb8"
+      },
+      {
+        "path": "src/bot/companion-notifier.cjs",
+        "bytes": 14155,
+        "sha256": "91d2117192751fea92b94fb9f7fdc86d327f11ef173a24889649162a41f3549c"
+      },
+      {
+        "path": "src/bot/deepseek-runner.cjs",
+        "bytes": 13377,
+        "sha256": "4d2bee1b38e74aae54d70a90edb0146d4d30ce402423fe1b9a1268ad40bc5f41"
+      },
+      {
+        "path": "src/bot/desktop-chat.cjs",
+        "bytes": 15288,
+        "sha256": "b045a7e46aa3b820f6cfaf423bd3485e8c7d026a22f160e0db0c07fe193ca47d"
+      },
+      {
+        "path": "src/bot/desktop-conversations.cjs",
+        "bytes": 5541,
+        "sha256": "3cb4d82ad42b92d357c67fa505473d017c51e36647cb104e6b75eeaf56a12aa5"
+      },
+      {
+        "path": "src/bot/dispatcher-scorer.cjs",
+        "bytes": 9077,
+        "sha256": "9a441d46953c6da297b3fdfdcff286fe8f77007865fba775bb86c64bdda862ae"
+      },
+      {
+        "path": "src/bot/dispatcher.cjs",
+        "bytes": 19102,
+        "sha256": "9da703e7cb51b864f7be6eef77fd6e391fca31a5bd9001471945d4837b8344c0"
+      },
+      {
+        "path": "src/bot/doubao-runner.cjs",
+        "bytes": 3362,
+        "sha256": "0586e58d9838c2cf4a5c4a296c92777f6174d6293281a50d0dee80ef4e389c72"
+      },
+      {
+        "path": "src/bot/feishu-sdk.cjs",
+        "bytes": 5440,
+        "sha256": "c8ef1e4c9b8e204e245d78830d4b4b993f9c7ac21516fdeb7dcb2185b8eba6fe"
+      },
+      {
+        "path": "src/bot/feishu.cjs",
+        "bytes": 12363,
+        "sha256": "9d052119545c0c61dc1a61e8c52c9fbab2ab411f7d18f6b008d1711d3fd1be17"
+      },
+      {
+        "path": "src/bot/file-tools.cjs",
+        "bytes": 8292,
+        "sha256": "968abc5072eaaa26034165969f4487ad8e8c5019be5ea364adc7456a2ea4d01c"
+      },
+      {
+        "path": "src/bot/gemini-runner.cjs",
+        "bytes": 6315,
+        "sha256": "ea7295f328df9bcacfcb550da06fa8dd436d1025155455ccb39b260c6b30e12a"
+      },
+      {
+        "path": "src/bot/generation.cjs",
+        "bytes": 6743,
+        "sha256": "b46354591d6d9f4dffc5cdfbfe5a3487f8d422a480e4498bdc8c8dd16fc0525d"
+      },
+      {
+        "path": "src/bot/gpt-runner.cjs",
+        "bytes": 15735,
+        "sha256": "067d006b272bfc7d6fd7d0c0f59be7daa2cb90701ff9878a74f4c5f73cf3c63c"
+      },
+      {
+        "path": "src/bot/group-dispatcher.cjs",
+        "bytes": 16680,
+        "sha256": "781f8d62f161a7a754319f1e364925dc1aec7ffc582624b044ccbeec9881aca5"
+      },
+      {
+        "path": "src/bot/journal.cjs",
+        "bytes": 14156,
+        "sha256": "299764549b37ac572956cce4c3326cf74574c5fe3e90620ec578700fc7b4c4f6"
+      },
+      {
+        "path": "src/bot/local-companion.cjs",
+        "bytes": 83710,
+        "sha256": "c9d81132a03d807d62705d02f94060c31fc61e808c26c188537913e031d8ea3c"
+      },
+      {
+        "path": "src/bot/manual-qq-receipts.cjs",
+        "bytes": 5102,
+        "sha256": "79fb7ad663d9bdff8134ab33dff3b1a2d49a6cf2c799c0a9f745cdf9a80420ec"
+      },
+      {
+        "path": "src/bot/messenger-channel-policy.cjs",
+        "bytes": 3644,
+        "sha256": "819d8e2089cb42997d46fdd2fcb96c7e9d41c98c010293a343512e215cd3f5ad"
+      },
+      {
+        "path": "src/bot/messenger-relay.cjs",
+        "bytes": 8392,
+        "sha256": "abac24280f70265a0348e2848e551d3fe46d176e09cd9a209bbcdbae9967614b"
+      },
+      {
+        "path": "src/bot/messenger-transport.cjs",
+        "bytes": 7052,
+        "sha256": "3d798172901ecbdcfdefe52067d57f405ea84c5bd483be134f6a3c09e1b25920"
+      },
+      {
+        "path": "src/bot/messenger.cjs",
+        "bytes": 8534,
+        "sha256": "ebb50c87157b286fa488d843c87ab825827c2a1deb4c49aadd738593be861cff"
+      },
+      {
+        "path": "src/bot/napcat-webui.cjs",
+        "bytes": 11378,
+        "sha256": "fb40ec00a6e29d555386acb7f4feebcda450ac070a5a4cdb247d1b4778147358"
+      },
+      {
+        "path": "src/bot/native-broker.cjs",
+        "bytes": 17780,
+        "sha256": "8916cb2c3d7ba514ffb0beff075c8a7cdac67f992266cfd1bee3a162dc7ffef2"
+      },
+      {
+        "path": "src/bot/native-channel.cjs",
+        "bytes": 15093,
+        "sha256": "f9b9721123aaaca0b66f7c57fb332f0edf5465c4e044d1a734737fc4186d6562"
+      },
+      {
+        "path": "src/bot/native-launch.cjs",
+        "bytes": 5088,
+        "sha256": "a744aa91c5cf165f3692a76e6e4f5cbac158d27ec50bcc5984ce74427e6dd0f4"
+      },
+      {
+        "path": "src/bot/native-process.cjs",
+        "bytes": 8922,
+        "sha256": "ee3c0492946c59ae4a66da19ec88f719475d4dca8e45fbb01fb1067eb93d6ce2"
+      },
+      {
+        "path": "src/bot/provider-login.cjs",
+        "bytes": 9882,
+        "sha256": "84681071906e6d8974f940d85b55c92387942df0368dd31232ae312070395f5f"
+      },
+      {
+        "path": "src/bot/qq-avatar-session.cjs",
+        "bytes": 11047,
+        "sha256": "fd09d07df299cc6baa4440a08ff7f89aa91c63e450e27e616e15afec405115e3"
+      },
+      {
+        "path": "src/bot/qq-avatar-store.cjs",
+        "bytes": 8508,
+        "sha256": "57723cb2d82395d1bb9c615ea750668ee4a2145347aede1976fdd5ed1aba156a"
+      },
+      {
+        "path": "src/bot/qq-avatar.cjs",
+        "bytes": 3576,
+        "sha256": "a3b964c886d5c0a0b2857a9fd578059d380193f6270779abcbb2c0f2c568424d"
+      },
+      {
+        "path": "src/bot/qq-builtin-offline-replies.cjs",
+        "bytes": 11259,
+        "sha256": "457ac32f7778ccb76a92697b49902ae68efc5abd1d3ceeebbb047e1c6dce79b0"
+      },
+      {
+        "path": "src/bot/qq-companion-launch-context.cjs",
+        "bytes": 6856,
+        "sha256": "d7e86b9ac9db38b4bea692b7a7fd989ce76d17e040c06c94a40b49422433a0f1"
+      },
+      {
+        "path": "src/bot/qq-companion-launch.cjs",
+        "bytes": 11245,
+        "sha256": "8743f4bd198d7dec4e4d82ba95919d6eb261c0f7e5c55eb65e63d11310d88da6"
+      },
+      {
+        "path": "src/bot/qq-component-lock-recovery.cjs",
+        "bytes": 19149,
+        "sha256": "522387d837e3c3dcca63b2b6a14356ce683bd9dcba5c4388218eab1d1c02fe67"
+      },
+      {
+        "path": "src/bot/qq-component-package.cjs",
+        "bytes": 18442,
+        "sha256": "03c1133bfa2c8fe590c060b3641ab6bfdd3dd96a00ebb3ade92f98f360aecc19"
+      },
+      {
+        "path": "src/bot/qq-component-preparation-recovery.cjs",
+        "bytes": 24497,
+        "sha256": "f5d6c8ca5bc12ac72c229f4317cffed784b71a461d9890398bdf42e07fef5e41"
+      },
+      {
+        "path": "src/bot/qq-component-prepared.cjs",
+        "bytes": 25431,
+        "sha256": "a417ce01b3d3f0eac5e563a9e7dfa676477581283842008cef71b3d774e84524"
+      },
+      {
+        "path": "src/bot/qq-component-repair.cjs",
+        "bytes": 16566,
+        "sha256": "9f8b9bf927fcee8973c08dd646b4aa7ce7b0a2e8bdcbe034704fb159bed910ac"
+      },
+      {
+        "path": "src/bot/qq-component-selection.cjs",
+        "bytes": 28112,
+        "sha256": "bf16d14115472a80547586fbb5cd3528c30af586e6512fc3fcd3eb09b8515341"
+      },
+      {
+        "path": "src/bot/qq-components.cjs",
+        "bytes": 49240,
+        "sha256": "ba395895a25006bcba466b6182f6bf1ab1ba152aebcf2ea36872371fcda0b60b"
+      },
+      {
+        "path": "src/bot/qq-console.cjs",
+        "bytes": 46205,
+        "sha256": "4b8aee86c5046a41ebeaa8ca31eee376ca24291b5dbb37f1c0df38c56f7adb6c"
+      },
+      {
+        "path": "src/bot/qq-contact-admin-session.cjs",
+        "bytes": 13642,
+        "sha256": "8ac4aa62e058068935e980ef1612d153ca2f7c7991322fc254a8ff55d99a7f4e"
+      },
+      {
+        "path": "src/bot/qq-contact-admin-transport.cjs",
+        "bytes": 4903,
+        "sha256": "3651c9f2906dee03033f936dec9105a3245815fe4db3ed4a5096e17c149611b2"
+      },
+      {
+        "path": "src/bot/qq-contact-admin.cjs",
+        "bytes": 10754,
+        "sha256": "d80e8af83ea786d97e0d44ed7ccc7bd94d6f41c97e117053e9d78e3a63517598"
+      },
+      {
+        "path": "src/bot/qq-diagnostic-report.cjs",
+        "bytes": 11203,
+        "sha256": "c1f2ff72ed4d0d9209e31c347a4e57ca0a20c5dde00bebea676431acc0909e98"
+      },
+      {
+        "path": "src/bot/qq-directory.cjs",
+        "bytes": 9138,
+        "sha256": "9e61e1ac6b44a8854b428602eaaef5ca6ffadde13bff5faaa5332d80dd54ab7c"
+      },
+      {
+        "path": "src/bot/qq-first-setup-panel.cjs",
+        "bytes": 2809,
+        "sha256": "13344283eadac7a6520424e16bb73d25cdbfeb31b0144070c36efccbffb3134c"
+      },
+      {
+        "path": "src/bot/qq-first-setup.cjs",
+        "bytes": 22049,
+        "sha256": "4ac9c7517c2588b9a6fe14c294883db9e48831cc4c45290a8d1b25669465b0bf"
+      },
+      {
+        "path": "src/bot/qq-friend-requests-panel.cjs",
+        "bytes": 6291,
+        "sha256": "06ee19486664909790b1809796c7aa255febcd25bc02544737639bd6b44bd617"
+      },
+      {
+        "path": "src/bot/qq-friend-requests.cjs",
+        "bytes": 8623,
+        "sha256": "327684e25d85a4f99447a0e302db321e9034274bada686bf0ca187ff2ac823d3"
+      },
+      {
+        "path": "src/bot/qq-group-admin-session.cjs",
+        "bytes": 13019,
+        "sha256": "44c9397ad37a8fba8809b9ab32af061418f25fac39a32b34fe40babc4817acff"
+      },
+      {
+        "path": "src/bot/qq-group-admin-transport.cjs",
+        "bytes": 7953,
+        "sha256": "788a00f5b64aeff15335ab59a4532507c843780edaeca44e933dc9f9f2e83a21"
+      },
+      {
+        "path": "src/bot/qq-group-admin.cjs",
+        "bytes": 13504,
+        "sha256": "94c66c9ed46d4df87731701864a71a530bf904a3e5bfbfc7943d85522fc27cc7"
+      },
+      {
+        "path": "src/bot/qq-group-members.cjs",
+        "bytes": 9641,
+        "sha256": "20db5364bb00df30e75d2a7e39e1882a8b2c04eeab6aed3cd496151b88b86733"
+      },
+      {
+        "path": "src/bot/qq-group-profile-session.cjs",
+        "bytes": 13068,
+        "sha256": "b0a699db7f0860f758e3eaff46fe917c565380c21a5628b1f5ff01e1df4afc63"
+      },
+      {
+        "path": "src/bot/qq-group-profile-transport.cjs",
+        "bytes": 5458,
+        "sha256": "fe6c19f32cc5a017bb1ba2d0786707095f3975db1058237338b467d94eb721a2"
+      },
+      {
+        "path": "src/bot/qq-group-profile.cjs",
+        "bytes": 8915,
+        "sha256": "13bd96deb658d9dacb2faaf4daddbc15ffc5e2ba684b755a5ee362c434545f84"
+      },
+      {
+        "path": "src/bot/qq-healthy-orphan-receipt.cjs",
+        "bytes": 3219,
+        "sha256": "e3d94f2f92e0b6c26a78d4643e5785598a26598c52b356660125727a1a75f7f5"
+      },
+      {
+        "path": "src/bot/qq-held-zip-reader.cjs",
+        "bytes": 759,
+        "sha256": "995df2d00715cb2c80ce385890f713e30668c2474a56cd94de72a3eff5f9735e"
+      },
+      {
+        "path": "src/bot/qq-history-image.cjs",
+        "bytes": 11664,
+        "sha256": "b471711acadba3b18e19956ef16558f9cc2bf90a0dc5c14537103dbe3d482d32"
+      },
+      {
+        "path": "src/bot/qq-image-download.cjs",
+        "bytes": 9759,
+        "sha256": "7261d48a631aab74433e680096ebe253b83e60fb7e87884fdcdfce3f35da3131"
+      },
+      {
+        "path": "src/bot/qq-image-source.cjs",
+        "bytes": 1618,
+        "sha256": "794cad8f285419132d2e1566ea1dd6948a68c00ca0a0815c970c039134f8e655"
+      },
+      {
+        "path": "src/bot/qq-inbound-image.cjs",
+        "bytes": 12119,
+        "sha256": "9fd927f9b7d7b1a68e74d9aab71671805da40cf20657a0d63e313746485e7efa"
+      },
+      {
+        "path": "src/bot/qq-inbound-voice.cjs",
+        "bytes": 18249,
+        "sha256": "3112c845745a217b235b6b8a54b90c1e14d740143f8633556a2b254a2df04a4c"
+      },
+      {
+        "path": "src/bot/qq-installation-settings.cjs",
+        "bytes": 5479,
+        "sha256": "7a9563b2036e5d9d27a52dafaaeaf6d1b3be873e545eac6e74e68063581376da"
+      },
+      {
+        "path": "src/bot/qq-managed-layout.cjs",
+        "bytes": 3252,
+        "sha256": "97f18e77f666ce7b841a78211e863351abfe02e1335aeab077875895c910942f"
+      },
+      {
+        "path": "src/bot/qq-managed-node-code-repair.cjs",
+        "bytes": 38580,
+        "sha256": "fecb1ec0616b9c493ddc1576a2cb4157de181b6f44ce717694005cda03a11248"
+      },
+      {
+        "path": "src/bot/qq-managed-node-layout.cjs",
+        "bytes": 4617,
+        "sha256": "d3137ac92ea19d4a3633c6e457df4c026a27e712928912480672feb75d8c7898"
+      },
+      {
+        "path": "src/bot/qq-managed-node-repair-metadata.cjs",
+        "bytes": 8200,
+        "sha256": "1e1bee3760eaab7eb88a2b39f48026962f4f4ef9a0ca840e2a6df6094914816c"
+      },
+      {
+        "path": "src/bot/qq-managed-node-setup.cjs",
+        "bytes": 19784,
+        "sha256": "4759acd1ac81be1485ec82cab00df59b7818420aee065a5bc98cf40d80378467"
+      },
+      {
+        "path": "src/bot/qq-managed-setup.cjs",
+        "bytes": 23440,
+        "sha256": "16a05a6a1c522cf314767d41e4a3dd0b9a9364ea552b6d63bfd6de8f8a87b5f9"
+      },
+      {
+        "path": "src/bot/qq-managed-shell-code-repair.cjs",
+        "bytes": 37253,
+        "sha256": "3cc53fea1bf7628345ecd38d7d6a7de7e38e7e687fa0b51b8a700d2bee378bb9"
+      },
+      {
+        "path": "src/bot/qq-managed-shell-repair-metadata.cjs",
+        "bytes": 7688,
+        "sha256": "6fb3c2005593fdb56a075b168d061b97f7c2ceaa8136e6eb36d475baf745bed3"
+      },
+      {
+        "path": "src/bot/qq-management-client.cjs",
+        "bytes": 1303,
+        "sha256": "c0169f850c3f687d6b29aaad8780dc4f89d42451d23372b84c6c45030be48d30"
+      },
+      {
+        "path": "src/bot/qq-media-file.cjs",
+        "bytes": 2775,
+        "sha256": "1e2ffde2cb1848e56345600a647408bd21e70b1e58b03914c270d4034fe01f2d"
+      },
+      {
+        "path": "src/bot/qq-media.cjs",
+        "bytes": 12106,
+        "sha256": "fab57e137715102c13a073cc44c6178a8d6aea6722c62fd99b95bea852ef4595"
+      },
+      {
+        "path": "src/bot/qq-native-passkey-maintenance.cjs",
+        "bytes": 17338,
+        "sha256": "8c22e3e11f9af54d3aaef3bb7b80c15dfdb663f8adb33b67ff8e0fee866fc3c9"
+      },
+      {
+        "path": "src/bot/qq-node-code-gate.cjs",
+        "bytes": 4463,
+        "sha256": "5af0b14ee56d59f0b9902bac78849e4b3d0f608ab9ad57ca331a8845447309cc"
+      },
+      {
+        "path": "src/bot/qq-node-host.cjs",
+        "bytes": 5808,
+        "sha256": "cba4c93a7aece375d349b5540d00c462faa3fd3d97b0fba57d44ae7e93a29f75"
+      },
+      {
+        "path": "src/bot/qq-node-repair-fs.cjs",
+        "bytes": 9693,
+        "sha256": "c14a628d6a05330d1fcec3b84c092725c3f4215b2782c276094b9b691d2cc251"
+      },
+      {
+        "path": "src/bot/qq-node-repair-history.cjs",
+        "bytes": 16781,
+        "sha256": "dc4ded1b5f43f52b1d7e0f01a14959aabddb98146e4f7541d16baaa569d3d60b"
+      },
+      {
+        "path": "src/bot/qq-node-repair-panel.cjs",
+        "bytes": 15998,
+        "sha256": "4d122c98a8ad5fca2d7223a47b6c8029c31d764d5e53f2383921d8f7f97e3f74"
+      },
+      {
+        "path": "src/bot/qq-node-repair-stage.cjs",
+        "bytes": 8907,
+        "sha256": "e3c442888bee4b1ae38ca34695dc2b418068a172197dbd640bbd8921fe6871e5"
+      },
+      {
+        "path": "src/bot/qq-node-runtime.cjs",
+        "bytes": 28728,
+        "sha256": "3146d4c948e7b8de392b6c79c501948fdd05bfe684593c1958135114bcc5e36c"
+      },
+      {
+        "path": "src/bot/qq-node-selection.cjs",
+        "bytes": 11681,
+        "sha256": "ffb328ae7356a51ed5d2bc76d4d499bf48c3f48437d055601b224081606659d4"
+      },
+      {
+        "path": "src/bot/qq-node-webui.cjs",
+        "bytes": 3472,
+        "sha256": "9dccbe0365f84f048983550a2a7a17ad67dc68b9f85136ebb83d6ae77a371f03"
+      },
+      {
+        "path": "src/bot/qq-owner-composer.cjs",
+        "bytes": 6904,
+        "sha256": "b1e47cb06e344b70d3f7a031b236a4972f7f598e0db98959b13dcd9b1717f953"
+      },
+      {
+        "path": "src/bot/qq-owner-friend-setup.cjs",
+        "bytes": 10471,
+        "sha256": "05d110c3e81a3e4dc019f9e8c0571ba6eeedfda1de1fa6fedb4104935902cf29"
+      },
+      {
+        "path": "src/bot/qq-owner-history-session.cjs",
+        "bytes": 12552,
+        "sha256": "e3549d08c798ca7b77c2b1456677a6b2c8c4ed826dacbf328f4f832f81bba060"
+      },
+      {
+        "path": "src/bot/qq-owner-history.cjs",
+        "bytes": 8446,
+        "sha256": "932c029b0ef06a941cd7213f0a8417dd5dce5af936eb050923e56c46fbd8918c"
+      },
+      {
+        "path": "src/bot/qq-owner-remark-panel.cjs",
+        "bytes": 6769,
+        "sha256": "47c01fe54e59511881b7e2b68fd3c0587b7d1c45f615193b8b195fbbeda4dfa1"
+      },
+      {
+        "path": "src/bot/qq-owner-remark-session.cjs",
+        "bytes": 9535,
+        "sha256": "83178e93c7f8f957cfe9edc6fc9b3511b31ad7a89bd57afd625ae740f2c7caeb"
+      },
+      {
+        "path": "src/bot/qq-owner-remark.cjs",
+        "bytes": 10053,
+        "sha256": "0d2b8415bb0ed29ee84ec359102cf112d605ba24eba8ede9fc563812f63f3397"
+      },
+      {
+        "path": "src/bot/qq-pending-update-lock-recovery.cjs",
+        "bytes": 24000,
+        "sha256": "75d4c03ef95367a874c1293a9653fe29f1e2d774b799be8edd5e6f7cd7c0e1aa"
+      },
+      {
+        "path": "src/bot/qq-pending-update-recovery.cjs",
+        "bytes": 19791,
+        "sha256": "3f093513b9bac95b573816dfd3f3d710c349a4fea878caf842bce4d8c52f79a3"
+      },
+      {
+        "path": "src/bot/qq-plugin-admin-session.cjs",
+        "bytes": 13138,
+        "sha256": "579870065745ee1bad88670046ec8d64cf238835b63625a3e09175dddaf62269"
+      },
+      {
+        "path": "src/bot/qq-plugin-admin.cjs",
+        "bytes": 9897,
+        "sha256": "b1f96ad9f91afc72bdf14bf62ac180b69fbdde6d9f9849509cf9d29f41be50a7"
+      },
+      {
+        "path": "src/bot/qq-plugin-artifacts.cjs",
+        "bytes": 19409,
+        "sha256": "f2e1950583032cee92ba84b69fd15c6211b7ba66a08a67d31efd9375a98f61cc"
+      },
+      {
+        "path": "src/bot/qq-plugin-catalog.cjs",
+        "bytes": 11281,
+        "sha256": "1a95edb7f0f3c20e847d50605059544b85a7c2350cbb57d77a884b6316c39e1e"
+      },
+      {
+        "path": "src/bot/qq-plugin-config-policy.cjs",
+        "bytes": 10340,
+        "sha256": "690cc49316abc4b82c650496aee21b37e611928b68b707b972bcf6dc53c418a5"
+      },
+      {
+        "path": "src/bot/qq-plugin-config-session.cjs",
+        "bytes": 11258,
+        "sha256": "a580d7391540ca0e61690a2b62ab58c6d82d6465c0ff48ac0575cc7806c476c3"
+      },
+      {
+        "path": "src/bot/qq-plugin-config.cjs",
+        "bytes": 7174,
+        "sha256": "ab65e8edb18629f1b832a0f51eeb7c7c85b7d97692069eee648cc3af962c02a0"
+      },
+      {
+        "path": "src/bot/qq-plugin-deployment.cjs",
+        "bytes": 34467,
+        "sha256": "92a0e84f96e4ddce2ef41639ca6f38893ba54a7de1c190e65826ae596f1b2dc6"
+      },
+      {
+        "path": "src/bot/qq-plugin-package-session.cjs",
+        "bytes": 26051,
+        "sha256": "2a9686b9b5e1992e707cbd09605bf25b9b9daebf5839f24eebd2592cae78b1d0"
+      },
+      {
+        "path": "src/bot/qq-plugin-scope.cjs",
+        "bytes": 2977,
+        "sha256": "0354e7c2b8a0dd65f8c11149b5b5134308209848be10d8171e92cff41231ebf9"
+      },
+      {
+        "path": "src/bot/qq-profile-backups.cjs",
+        "bytes": 14183,
+        "sha256": "73839086831dce8f7e62e67e3da7eb4af16493062d06a64060da3f111b04b4e4"
+      },
+      {
+        "path": "src/bot/qq-profile-config.cjs",
+        "bytes": 10008,
+        "sha256": "1ce4b7aa1214f400021c34940ccd1b45873da9fdad83aad054c23d3214adcaf0"
+      },
+      {
+        "path": "src/bot/qq-qce-binding.cjs",
+        "bytes": 14225,
+        "sha256": "74b968c2e8cc43ba507214fa3ace63e34c3708cc1688fca938c9d6f2d370b904"
+      },
+      {
+        "path": "src/bot/qq-qce-client.cjs",
+        "bytes": 5010,
+        "sha256": "65c9514083f8736847c6acffe0841bdd028a0c95ffdc1c8a1bf1ee80894e8b39"
+      },
+      {
+        "path": "src/bot/qq-qce-export-client.cjs",
+        "bytes": 6349,
+        "sha256": "653caf667b4feec8cb1d093813a3e13149c3befcc7b79e1775d71066b9ead296"
+      },
+      {
+        "path": "src/bot/qq-qce-export-jobs.cjs",
+        "bytes": 11885,
+        "sha256": "916d0d2eda9e0f73d757fe2496d55246ab409c21f925de514b24cfa23ac83d48"
+      },
+      {
+        "path": "src/bot/qq-qce-export-policy.cjs",
+        "bytes": 9185,
+        "sha256": "a7d619368a23ecde9532aa72980f49a2a706043640b570201bc023630c741c75"
+      },
+      {
+        "path": "src/bot/qq-qce-export-session.cjs",
+        "bytes": 15165,
+        "sha256": "21db6a50b50bf8958a08271be1471f2f9898bb93d0fda3cac2f6eb77158cb3bb"
+      },
+      {
+        "path": "src/bot/qq-qce-managed-process.cjs",
+        "bytes": 10976,
+        "sha256": "9aaec04fdb4598450927b1dd467d9c4410ac00a2381a94b351b846f85a0714fc"
+      },
+      {
+        "path": "src/bot/qq-qce-native-cron.cjs",
+        "bytes": 1869,
+        "sha256": "7b1ac1200de4d309d19fb01445e5a4ce669da6e8fe63861699e6d6b6a98df636"
+      },
+      {
+        "path": "src/bot/qq-qce-native-plans-client.cjs",
+        "bytes": 5965,
+        "sha256": "0c1fc336b80b36a0445ef331a3243889ecf237461d87489e0cb5faac005aaefc"
+      },
+      {
+        "path": "src/bot/qq-qce-native-plans-policy.cjs",
+        "bytes": 12177,
+        "sha256": "14cdd28080198a1122e3448a33c363cfca5823790f6d69f6d7d5094f5d76aeae"
+      },
+      {
+        "path": "src/bot/qq-qce-native-plans-session.cjs",
+        "bytes": 13029,
+        "sha256": "f0d8f8a271a4086254b2763fd7784f85cf50f9bdc524c49c8277adc044d36994"
+      },
+      {
+        "path": "src/bot/qq-qce-policy.cjs",
+        "bytes": 5792,
+        "sha256": "f6f756e5583afacb3eabca9bfd7c7dc81302432f6ec8333b85dafcb60c875e8e"
+      },
+      {
+        "path": "src/bot/qq-qce-release.json",
+        "bytes": 23860,
+        "sha256": "02b8e9b04b880813e45f514459d7560daa40b2d7d0dfdf1c9f58b3ac8fa28797"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-policy.cjs",
+        "bytes": 5818,
+        "sha256": "8290918d501a09ee994e5c8aa3fe8c3ad8743803e6b7ac16fdd628807de5c9be"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-runner.cjs",
+        "bytes": 7902,
+        "sha256": "c1399c0c8e82c5458e5de7c46fb94572690b57e18e2ffa3c27b61221dfcc70b7"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-session.cjs",
+        "bytes": 10839,
+        "sha256": "e0f61b5466b960e6d1c043b1ae5efb43acc03932e14c9f5266568d0158eb60b3"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-store.cjs",
+        "bytes": 14484,
+        "sha256": "453077b8a5de6df4bc439b36b427e1f139438e9b7256e8c5683fb44d3f4e1f36"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-time.cjs",
+        "bytes": 6597,
+        "sha256": "45f7ff7d72e722f55c8e7da68701d252cd1329eabbe11692b32444308a1356fd"
+      },
+      {
+        "path": "src/bot/qq-qce-security-client.cjs",
+        "bytes": 6187,
+        "sha256": "beeee4e58929fc9b16a1426e113e84fc670092df9b5777301d57d955f41ff2e4"
+      },
+      {
+        "path": "src/bot/qq-qce-security-policy.cjs",
+        "bytes": 10179,
+        "sha256": "44d9477de6c468d02f60b5bec0c2bdfe1d715ede7ac89279a3c36393e34723f2"
+      },
+      {
+        "path": "src/bot/qq-qce-security-session.cjs",
+        "bytes": 7384,
+        "sha256": "e888712bcd0d651b05a72cc7f8f44ed630d1bd4b49618aa0131549356e74a152"
+      },
+      {
+        "path": "src/bot/qq-qce-session.cjs",
+        "bytes": 9697,
+        "sha256": "da1aa779e4051a95275c3aa53b05e0da131d7d0b12036a57e6435ea8f549a09d"
+      },
+      {
+        "path": "src/bot/qq-qce-startup.cjs",
+        "bytes": 4682,
+        "sha256": "d811a9f39feaf580d58a4ec5fb853d425342b8ff633c67da858040cecc0c960c"
+      },
+      {
+        "path": "src/bot/qq-quoted-image.cjs",
+        "bytes": 5796,
+        "sha256": "528c33e1be02556bd37bea98d7cd2178f59cb96bc6f6ab97280fec6cfb63e0d9"
+      },
+      {
+        "path": "src/bot/qq-remote-client.cjs",
+        "bytes": 13850,
+        "sha256": "2889fc417e6cccde5c5e10dcc01d68cad546ac9ee987e75297265c11dc0583d8"
+      },
+      {
+        "path": "src/bot/qq-remote-file-copy-stage.cjs",
+        "bytes": 8709,
+        "sha256": "d802d7eba6391e655bb8d725668b0be1ae4dbe38be8fe4cbb87bc4ebb9455f49"
+      },
+      {
+        "path": "src/bot/qq-remote-file-stage.cjs",
+        "bytes": 16852,
+        "sha256": "b618ef58444c6623f0cebeab9a04340e4b4fbe8d76ba095c0a8e219f5e4f1eb7"
+      },
+      {
+        "path": "src/bot/qq-remote-file-transport.cjs",
+        "bytes": 17062,
+        "sha256": "57b0592e231fd0ac1aff7138e5275ed49cc862fb24143303cfac3bcdf279f28c"
+      },
+      {
+        "path": "src/bot/qq-remote-files-copy.cjs",
+        "bytes": 9535,
+        "sha256": "037867a81963ff8950af4b1ba240c80c7c681ce0adc06b32a4658128b1da0acd"
+      },
+      {
+        "path": "src/bot/qq-remote-files-extract.cjs",
+        "bytes": 2821,
+        "sha256": "9f0f083851b399c1af0d850157ca1636f31ab4dcd10f9b092c4fd9d891289a14"
+      },
+      {
+        "path": "src/bot/qq-remote-files-policy.cjs",
+        "bytes": 5975,
+        "sha256": "906f8eff941d85ef89384841ffdc8106240b18d6c8a1bbf69f96ee52ce0820e4"
+      },
+      {
+        "path": "src/bot/qq-remote-files-session.cjs",
+        "bytes": 24894,
+        "sha256": "58ec8b77a623a90fdf0937065b46a87131fe7bc96cd473b5b4de474059e45c74"
+      },
+      {
+        "path": "src/bot/qq-remote-login-policy.cjs",
+        "bytes": 7153,
+        "sha256": "c8abdd203361a26fca01be264fd2c3fffd435d487aacd04a13cd7f28df470c9d"
+      },
+      {
+        "path": "src/bot/qq-remote-login-session.cjs",
+        "bytes": 10247,
+        "sha256": "ac3fd670d6a1fa5a9138a0ccf533c124cd7ab1534cfaced679d69d314aff0a25"
+      },
+      {
+        "path": "src/bot/qq-remote-panel.cjs",
+        "bytes": 10605,
+        "sha256": "b64f33e4bc0d0fdd4e1db0a7700c07b8a98a3cc4ca9dd8b7b17379ab2e60af11"
+      },
+      {
+        "path": "src/bot/qq-remote-passkey-policy.cjs",
+        "bytes": 8254,
+        "sha256": "44edc8b9f37d6150742735c32703a7b68ac0db7952214c20341429e4f278931b"
+      },
+      {
+        "path": "src/bot/qq-remote-passkey-session.cjs",
+        "bytes": 9043,
+        "sha256": "9ad028656398bb99c201ae71af566a8224a9771d4457dbd507c21ce688e98c33"
+      },
+      {
+        "path": "src/bot/qq-remote-policy.cjs",
+        "bytes": 10913,
+        "sha256": "3668b6a0aa48c3327c7adcf504bfc7c95532fa3eed3b26f59d50584d36c06dbc"
+      },
+      {
+        "path": "src/bot/qq-remote-registry.cjs",
+        "bytes": 12583,
+        "sha256": "2c0b9319fc8b56070607bc99ca792a5c6ac11462e07d8c69584891b660efa1b2"
+      },
+      {
+        "path": "src/bot/qq-remote-session.cjs",
+        "bytes": 19960,
+        "sha256": "ab8cf9a3bbb2f467c3ea35a2a39cfa59f22744728ca83708d9cabe816add0011"
+      },
+      {
+        "path": "src/bot/qq-remote-transport.cjs",
+        "bytes": 15162,
+        "sha256": "805cbf61a34cc8d5aee98ea07c8c1db3ea2c4bf043a0ab3a68fe8fe4596dc8b9"
+      },
+      {
+        "path": "src/bot/qq-runtime-endpoint.cjs",
+        "bytes": 6198,
+        "sha256": "920db69386778c869981facea2bc9ae23477e0341443f2f77bea3eccdd199763"
+      },
+      {
+        "path": "src/bot/qq-runtime.cjs",
+        "bytes": 93740,
+        "sha256": "a59560a1e4e557545851ae32caa4fff9278a11548c8d965e96026273475070a5"
+      },
+      {
+        "path": "src/bot/qq-self-profile-panel.cjs",
+        "bytes": 14024,
+        "sha256": "2205ef6ba7c92a230e94fa754c4cb8995d8c7fc5d51923fe8fb1bc4edd5e48ff"
+      },
+      {
+        "path": "src/bot/qq-self-profile-transport.cjs",
+        "bytes": 4990,
+        "sha256": "1b90225f2ef9f79314435480373e459143b28eb59b616a8807a191669d97d48b"
+      },
+      {
+        "path": "src/bot/qq-self-profile.cjs",
+        "bytes": 11318,
+        "sha256": "c96a5c3231ee49ed291b7325120ea9cf375606f26cb6b6b96d92748c97527f62"
+      },
+      {
+        "path": "src/bot/qq-setup.cjs",
+        "bytes": 2356,
+        "sha256": "28df9a46ebd07b290e8a8e38e79ba4aa686b982562688daa522e8a06f884cf08"
+      },
+      {
+        "path": "src/bot/qq-shell-code-gate.cjs",
+        "bytes": 4492,
+        "sha256": "24e107916833b0bc9d266679ff929bc17b0f84039e82dc3766a42adc07b5a13e"
+      },
+      {
+        "path": "src/bot/qq-shell-orphan-cleanup.cjs",
+        "bytes": 15336,
+        "sha256": "deac5039391c836154d5cbe0024ebb25dec4b26b5d7c7f66ee465de9c567c2cb"
+      },
+      {
+        "path": "src/bot/qq-shell-owner-proof.cjs",
+        "bytes": 25424,
+        "sha256": "885702e0bac9ff6cd61670ddbd65305493f002cd1dbe13cf61507e0d4a00f76d"
+      },
+      {
+        "path": "src/bot/qq-ssqq-assets.json",
+        "bytes": 19070,
+        "sha256": "3b14fb6b288ee4b6ec081c68893f9fb91e800699e686518d23cf3cb53011527e"
+      },
+      {
+        "path": "src/bot/qq-ssqq-media.cjs",
+        "bytes": 5371,
+        "sha256": "0cf157c020e329132ed8db8db2c2945f20ddee4cc22cb9789c923ad532c3b562"
+      },
+      {
+        "path": "src/bot/qq-ssqq-session.cjs",
+        "bytes": 15723,
+        "sha256": "c332ac0604ddf97054a6bb18bc4a5d5fb9d6c10fe920088017636cd73f87c0a8"
+      },
+      {
+        "path": "src/bot/qq-ssqq-view.cjs",
+        "bytes": 11298,
+        "sha256": "55649afadaf0f2522904b487b1699cd3e22aedf0ccd76838f1521fd3d69b8f52"
+      },
+      {
+        "path": "src/bot/qq-stop-trace.cjs",
+        "bytes": 4400,
+        "sha256": "9fe6178be21e9ba3d3e5520bd1ecf1ca6fe1fd06bb6361142becea381e2b6caf"
+      },
+      {
+        "path": "src/bot/qq-supervisor-client.cjs",
+        "bytes": 20842,
+        "sha256": "2a2ffce55183c962d938409f8c5e0873027ab9d852ac653b66beda1f1c6e59ab"
+      },
+      {
+        "path": "src/bot/qq-supervisor-component-repair-panel.cjs",
+        "bytes": 9376,
+        "sha256": "497d2ce292d55f061acd1738621861a046b43e75c55aaf20ba82b8c2f80855f5"
+      },
+      {
+        "path": "src/bot/qq-supervisor-component-repair-policy.cjs",
+        "bytes": 390,
+        "sha256": "fa66c3d1c2a409cd6462598dafef7fa25a80a2bf817b795f5e6cc5ee36244cb8"
+      },
+      {
+        "path": "src/bot/qq-supervisor-links.cjs",
+        "bytes": 17114,
+        "sha256": "7a23a93186cfa6a2148848e23291ce81a2f84b2d7222eb54ab9acdf223a5b076"
+      },
+      {
+        "path": "src/bot/qq-supervisor-lock-panel.cjs",
+        "bytes": 6646,
+        "sha256": "6869b9fe8f84390236261c0aa8a7088a9820b717a07420babea6c5455e00df57"
+      },
+      {
+        "path": "src/bot/qq-supervisor-lock-policy.cjs",
+        "bytes": 6502,
+        "sha256": "1d80015a1d2965303a03057891ec0f2987946747f624920d4ed9b36b11fcfeb5"
+      },
+      {
+        "path": "src/bot/qq-supervisor-native-passkey-panel.cjs",
+        "bytes": 7114,
+        "sha256": "44246403b983d26598b06d836199b7a6f225b7e65363067b33d36596e09c039f"
+      },
+      {
+        "path": "src/bot/qq-supervisor-native-passkey-policy.cjs",
+        "bytes": 323,
+        "sha256": "0324992a4590b7d59bf04e72250be2c47edbc5d2aff755dc0c8f0365c72a5505"
+      },
+      {
+        "path": "src/bot/qq-supervisor-orphan-panel.cjs",
+        "bytes": 7098,
+        "sha256": "6d0c0b278f59dfd306afb3215eb2760e7689aa5b1a815f86a5dd814bf9d5b1be"
+      },
+      {
+        "path": "src/bot/qq-supervisor-orphan-policy.cjs",
+        "bytes": 1616,
+        "sha256": "37de925d17f89ea71834f276a81697d5f5b05931f5e5c91cb55c3e5cc9810681"
+      },
+      {
+        "path": "src/bot/qq-supervisor-panel.cjs",
+        "bytes": 16638,
+        "sha256": "d2efdd08dd4bf8b40ea9adcbd53e5397611da47cac7c62dc1af7c27376183721"
+      },
+      {
+        "path": "src/bot/qq-supervisor-policy.cjs",
+        "bytes": 8592,
+        "sha256": "5652887e60e618130562970bb9d297a7854f2e6730a96aaaeaf4a39a41e0c624"
+      },
+      {
+        "path": "src/bot/qq-supervisor-profile-backup-panel.cjs",
+        "bytes": 6175,
+        "sha256": "ec30a5909e1d9a8c7dc08b17ee356ec2c2c2b3fc370214246287f2c1f16ebab3"
+      },
+      {
+        "path": "src/bot/qq-supervisor-profile-backup-policy.cjs",
+        "bytes": 323,
+        "sha256": "0e00628dde7c2e3f8fcc0f1f397c2c51c05fa0ddd079c38ae9ea36c4adc617d3"
+      },
+      {
+        "path": "src/bot/qq-supervisor-recovery-panel.cjs",
+        "bytes": 6726,
+        "sha256": "be9876fa3c8eb510983adec977c9b3f1a9a8892090b99cc117c3aefb79bf192e"
+      },
+      {
+        "path": "src/bot/qq-supervisor-recovery-policy.cjs",
+        "bytes": 5745,
+        "sha256": "cb04eabaad35c96410778860c8452c59193438c89ba644b10232a3617041739e"
+      },
+      {
+        "path": "src/bot/qq-transfer-client.cjs",
+        "bytes": 20079,
+        "sha256": "75191327d958722f2990d9332751d7a0345591fb11f047605dc51970890e99a0"
+      },
+      {
+        "path": "src/bot/qq-transfer-jobs.cjs",
+        "bytes": 23204,
+        "sha256": "42ad9acb2ec07c5a18a34e54863fe3e0936a0b6d1bee35b93f56e725db86e737"
+      },
+      {
+        "path": "src/bot/qq-transfer-links.cjs",
+        "bytes": 9542,
+        "sha256": "f0f72a25397d37b5950b2f23935324ddd67a8d68b941f3e9e6f2c9ba3dd28743"
+      },
+      {
+        "path": "src/bot/qq-transfer-local.cjs",
+        "bytes": 20422,
+        "sha256": "988f3e21331415827e51acf7df39257c76c656f8f8a119ac6aed4a7ce82be0bb"
+      },
+      {
+        "path": "src/bot/qq-transfer-panel.cjs",
+        "bytes": 12492,
+        "sha256": "2bd0fe7bc89de224b3b82c386d3910a2cc51b0251e59dd3096d13a93d564f149"
+      },
+      {
+        "path": "src/bot/qq-transfer-session.cjs",
+        "bytes": 28901,
+        "sha256": "f00d01e507e86f299da35c62b69c06b21010baf6736e1ded5228bf3cc67c628b"
+      },
+      {
+        "path": "src/bot/qq-transfer-stage.cjs",
+        "bytes": 14694,
+        "sha256": "d5c752d05a88e10620ada398e99a3176eba978608b5a713e7e45df09b8cd4706"
+      },
+      {
+        "path": "src/bot/qq-voice-payload.cjs",
+        "bytes": 3664,
+        "sha256": "01185e5b46e64972264a0f1339fe8699ffdcef0aaa82b7a12f510393b5907796"
+      },
+      {
+        "path": "src/bot/qq-voice.cjs",
+        "bytes": 7656,
+        "sha256": "03a6f62b7711ac63d498b8fc40f8a5af8782df7ea7f92dd54a6f9b3a4d919024"
+      },
+      {
+        "path": "src/bot/qq.cjs",
+        "bytes": 38585,
+        "sha256": "94772f41f4b56c5f5df7c1e2ab9227be25898e2c9d5548eb2fba6fe11a51ae78"
+      },
+      {
+        "path": "src/bot/reflection/reflection-collector.cjs",
+        "bytes": 5385,
+        "sha256": "e024a3cd4a100f0044d27d329d1cecd04eba0fadd1e0c500d0f0f25b45e48b53"
+      },
+      {
+        "path": "src/bot/reflection/reflection-runner.cjs",
+        "bytes": 6393,
+        "sha256": "b747a900e1efa951cfcb07a16c2e3ef6457415b51223e7b15e2bc8e94807b9a9"
+      },
+      {
+        "path": "src/bot/reflection/reflection-store.cjs",
+        "bytes": 18458,
+        "sha256": "f05a396994c2ebcab566d280d8d3776b06ad0ac476952f6b91112b4408bd6f56"
+      },
+      {
+        "path": "src/bot/reflection/reflection-verify.cjs",
+        "bytes": 5966,
+        "sha256": "b638843113ebdb1469c1ec40f2a855fda32e71273d623b13d087554bc4496284"
+      },
+      {
+        "path": "src/bot/runner.cjs",
+        "bytes": 9524,
+        "sha256": "ecaced28622caa1693d662cfdc7bb5f917c1a87539d4ab0a8374b9dc33fa2b08"
+      },
+      {
+        "path": "src/bot/service.cjs",
+        "bytes": 117052,
+        "sha256": "2b9ae961f133d11efd49cff78c3c76e15e18a8f56657c2ab8b5dca5460759755"
+      },
+      {
+        "path": "src/bot/social-companion.cjs",
+        "bytes": 47298,
+        "sha256": "2b884a53ee3b78b3ff0c2b50e6d36d871a94e6096293b6395a8275a224934ce9"
+      },
+      {
+        "path": "src/bot/social-continuity-store.cjs",
+        "bytes": 27913,
+        "sha256": "c83f4f99a65400e9702163fecdca03278c92132c0ecc86c7cd2f675b710ee809"
+      },
+      {
+        "path": "src/bot/social-flow.cjs",
+        "bytes": 2322,
+        "sha256": "57e48147b7e3f43be762fcec6d92e383da62f520c508a795a8573cafacdb3681"
+      },
+      {
+        "path": "src/bot/social-store.cjs",
+        "bytes": 25090,
+        "sha256": "3e30c466d363775f06b98f4f7ebaf237948bc35a231f07e03759e395d821c389"
+      },
+      {
+        "path": "src/bot/st/branch-store.cjs",
+        "bytes": 7880,
+        "sha256": "bb17c34b1c63fc31825b703ed57c97dbdb9b4cc81cc701e6eb89d7e6baf04614"
+      },
+      {
+        "path": "src/bot/st/group-library.cjs",
+        "bytes": 9216,
+        "sha256": "3c1c98c34470e76538141702586bd315efc7383d08b833ce9a939035affa256f"
+      },
+      {
+        "path": "src/bot/st/local-pipeline.cjs",
+        "bytes": 18049,
+        "sha256": "d66e8fb15e9f68798f476a2a10ae02e7bd3ebd137bd7dcbbe67b58fcdef940f9"
+      },
+      {
+        "path": "src/bot/st/local-settings.cjs",
+        "bytes": 10538,
+        "sha256": "58a56f779166278fba43274920e076c4ec20275a7014f12407f6855543991c99"
+      },
+      {
+        "path": "src/bot/st/lorebooks.cjs",
+        "bytes": 8989,
+        "sha256": "405a1218c43229601d98c7e5a5726328f0552ab706751fbd2cb5693661cf176e"
+      },
+      {
+        "path": "src/bot/st/presets.cjs",
+        "bytes": 9740,
+        "sha256": "0fafc170c58ca3c767f4873a1b2b3443bab27363ccd391aedbd886982dae3953"
+      },
+      {
+        "path": "src/bot/st/prompt-builder.cjs",
+        "bytes": 21782,
+        "sha256": "fbd29c6ed011295e2b72ec92eec1b644c04ea35138d6e806b1ecdece23bc52bc"
+      },
+      {
+        "path": "src/bot/st/regex-library.cjs",
+        "bytes": 6097,
+        "sha256": "7b7a88378d23ab508eaac9638c75c99d227fb2bb93475038855b1cb2e1325e54"
+      },
+      {
+        "path": "src/bot/st/regex-pipeline.cjs",
+        "bytes": 6442,
+        "sha256": "eef2a89e92534fbb6324c22b7928b7ed3bb84e519090db4471ab673cb3a311cb"
+      },
+      {
+        "path": "src/bot/task-board.cjs",
+        "bytes": 49233,
+        "sha256": "e0aec4c9a143726b4e1217e92dfa07bf189a61567a91ce44daa53bfb9559075c"
+      },
+      {
+        "path": "src/bot/task-worktree.cjs",
+        "bytes": 13529,
+        "sha256": "df095e43c27183d8eb0334457ed5ba297d24861b5d0662169664cdc3e207e3b1"
+      },
+      {
+        "path": "src/bot/vault-migration-worker.cjs",
+        "bytes": 2661,
+        "sha256": "16b782fcb8f2c90a0260358a98022a37d83b6b437ea7bdd11d2b09eef294d5d5"
+      },
+      {
+        "path": "src/bot/vault-migration.cjs",
+        "bytes": 11502,
+        "sha256": "82291857f68deadd8a969484927dd323fd711605962e101d2d9e155d8f7967e7"
+      },
+      {
+        "path": "src/bot/weixin.cjs",
+        "bytes": 14827,
+        "sha256": "85002f659e3fefb105da3f4b1791da8f6d76b2a4bf2013ebd710ac23cd282cbb"
+      },
+      {
+        "path": "src/bot/wiki/quote-verify.cjs",
+        "bytes": 3312,
+        "sha256": "b8e2d17723386aafd8f312cc912be73a611a9dfb28224af972829072ad197c83"
+      },
+      {
+        "path": "src/bot/wiki/wiki-proposals.cjs",
+        "bytes": 12492,
+        "sha256": "8faa5558b21e78feafbc4547909ce7bf2710bd21565bd9edd17a2a6171f7228c"
+      },
+      {
+        "path": "src/bot/wiki/wiki-propose.cjs",
+        "bytes": 11894,
+        "sha256": "b14f4e7a9b5fe54994790b8360e7d28625936fe6a94c8114f60ab24fd4468746"
+      },
+      {
+        "path": "src/bot/wiki/wiki-recall.cjs",
+        "bytes": 3970,
+        "sha256": "447fed95e1445806450f1ba112c5606ec9556ea30a1acf8e02d45baf92d6cd06"
+      },
+      {
+        "path": "src/bot/wiki/wiki-search.cjs",
+        "bytes": 8347,
+        "sha256": "1f9fad88bea25473d1394d431aab721019835ca5ce9d4803ccd30e365fcf822c"
+      },
+      {
+        "path": "src/bot/wiki/wiki-store.cjs",
+        "bytes": 26442,
+        "sha256": "892517a0ca83bba5708f6b46a9ce9fd3563dea31c0bd9e2a48b181cf14bf9956"
+      },
+      {
+        "path": "src/bot/x-channel-policy.cjs",
+        "bytes": 3286,
+        "sha256": "9a34eec9c1e8830ef40cc58cef4ae527c5b94c77301366f7bc203ee53097f351"
+      },
+      {
+        "path": "src/bot/x-dm.cjs",
+        "bytes": 15055,
+        "sha256": "229c2b1008d6fba3625a46baf50c3e5227286f1f6c4451c1a403203e62effbd0"
+      },
+      {
+        "path": "src/bot/x-transport.cjs",
+        "bytes": 7221,
+        "sha256": "5b1c1da05654df0ea439cede761dd99161c40899f53d607ed1d9d8464a5e4db1"
+      },
+      {
+        "path": "src/core/app-identity.cjs",
+        "bytes": 483,
+        "sha256": "475c8c2ac62c2d15278c5685734032e4e5f7f6e7a1da8602e57bd5a1091137db"
+      },
+      {
+        "path": "src/core/app-menu.cjs",
+        "bytes": 2885,
+        "sha256": "f44ac9c093b803d052eeb390f55d06669a23d38af5afe69d6de9efe4d437f6ac"
+      },
+      {
+        "path": "src/core/appearance.cjs",
+        "bytes": 1372,
+        "sha256": "140835fa44bbd3052811aad4abcf9a0bb214f6d5c100ccfb77ae10a65ff6e9b3"
+      },
+      {
+        "path": "src/core/bus.cjs",
+        "bytes": 3300,
+        "sha256": "fdcf203cc06239550f4a5a15c5929cebfac3f07133b9a6c30f8f1beb09d6edfe"
+      },
+      {
+        "path": "src/core/demo.cjs",
+        "bytes": 992,
+        "sha256": "1ab94429007b7432947fbd055b3fa0f54ef1aabdbf554c197ac6198466fe7a8d"
+      },
+      {
+        "path": "src/core/desktop-stdio.cjs",
+        "bytes": 597,
+        "sha256": "e9d4d08adf3d66ca48fc05928440834ff230258fdadcd2266ce2153e5e06e351"
+      },
+      {
+        "path": "src/core/events.cjs",
+        "bytes": 3209,
+        "sha256": "d5363c2c32af345d921e42d84775f447bc1f9d66b1babb7b0cb1170b21f06a2f"
+      },
+      {
+        "path": "src/core/files.cjs",
+        "bytes": 2034,
+        "sha256": "492f487fdcc73630d0c60fe0c805d8d1a2b750211a6de353e364a7161d6d5e40"
+      },
+      {
+        "path": "src/core/icon.cjs",
+        "bytes": 5025,
+        "sha256": "98b8a06e1c0bc23318c13b6d6be10b471e7e5eecee5827389fae7a85553f5c06"
+      },
+      {
+        "path": "src/core/integration.cjs",
+        "bytes": 2589,
+        "sha256": "c79957f0316335b1a4cf4a714d84f1c26679b473d208b01bed5f05c1bdb476ea"
+      },
+      {
+        "path": "src/core/notify.cjs",
+        "bytes": 1279,
+        "sha256": "9b1862f54ead5ac0b01f237a5477dbf2b7cfae0ec6879a4c06f4b37e2883ee2c"
+      },
+      {
+        "path": "src/core/personas.cjs",
+        "bytes": 6285,
+        "sha256": "3a98e858c6613e08a21a676ed486a541947f42766b2b0db51cc128c250eebf94"
+      },
+      {
+        "path": "src/core/platform.cjs",
+        "bytes": 11016,
+        "sha256": "9cba41e4609f761c8075b7332a706f96b264e695f559690d0c353c72cb316e10"
+      },
+      {
+        "path": "src/core/send-shortcut.cjs",
+        "bytes": 241,
+        "sha256": "d625e2bb30505a7bcfdd338102fe40979d3d21588ff3a0b4840e538df89b4914"
+      },
+      {
+        "path": "src/core/single-instance.cjs",
+        "bytes": 10047,
+        "sha256": "0b016a9e1568630c4a45e5c9532f09159a9712058d47d51ed1309577920a9ea9"
+      },
+      {
+        "path": "src/core/store.cjs",
+        "bytes": 14697,
+        "sha256": "391a92407c01ff7fe050188cc3d8b94e794e46d2080fef43e2304bf2e69f9943"
+      },
+      {
+        "path": "src/core/theme.cjs",
+        "bytes": 1341,
+        "sha256": "de4094f011744dd603266a3654ad8b3e093cbf0d05b6ef7daa2e936d6e6b4ed9"
+      },
+      {
+        "path": "src/core/update-backup.cjs",
+        "bytes": 14352,
+        "sha256": "358ae5f79c3f7779456545ffc48ef6fddcab68eccc6a08863457b17fba5726c0"
+      },
+      {
+        "path": "src/hook.cjs",
+        "bytes": 2466,
+        "sha256": "1a3fd4299c9b1349a9cf64f609fead8754920b896d41958dad0cd11fba16ae0d"
+      },
+      {
+        "path": "src/main.cjs",
+        "bytes": 197245,
+        "sha256": "ca484797d7820f0cfdeab7b2edfd75b2b73b0b43164d98bbbd23ca44f8c560cf"
+      },
+      {
+        "path": "src/mcp/app-resource.cjs",
+        "bytes": 3296,
+        "sha256": "614fd727583ffebbf87735b014afa1c7bf6aacc301f9e20ebadd8bda30219742"
+      },
+      {
+        "path": "src/mcp/extensions.cjs",
+        "bytes": 6008,
+        "sha256": "74256dd91f9435b79c422e8ac8b4840c2a37c9e93abc4ef865c82c5d32f3104a"
+      },
+      {
+        "path": "src/mcp/result-app.js",
+        "bytes": 3255,
+        "sha256": "7716d3884a7b412a514729ddde5e11307553caea55e92e8d120cf3228a2a1302"
+      },
+      {
+        "path": "src/mcp/server.cjs",
+        "bytes": 542,
+        "sha256": "eb6857dd4c77ab8385171b654e0fed8321b33db97251fdd1309836241b4ddac3"
+      },
+      {
+        "path": "src/mcp/task-store.cjs",
+        "bytes": 3782,
+        "sha256": "32430896bcc736348d00900dd8f2e9b90d0825db19988d473f87c4cc33146b3d"
+      },
+      {
+        "path": "src/preload.cjs",
+        "bytes": 33501,
+        "sha256": "27e33f64e1663b9488b6ae21a605224749bf7ac07a592dcb5a7fafbf094afb57"
+      },
+      {
+        "path": "src/qq-supervisor/cli.cjs",
+        "bytes": 1888,
+        "sha256": "b973af52c2cf19a1f129fbfe37df1e48ac3bc0b96d06cfe69488153a430c6e8a"
+      },
+      {
+        "path": "src/qq-supervisor/component-repair-policy.cjs",
+        "bytes": 10010,
+        "sha256": "d5a573c93e415060328b5939c11554991d316d919a6dc60716f920e8136ddc18"
+      },
+      {
+        "path": "src/qq-supervisor/component-repair.cjs",
+        "bytes": 6268,
+        "sha256": "ef348fa6e34a227b16f814f24c207a00132e1920c2d5e341e8205cf8f866c4f5"
+      },
+      {
+        "path": "src/qq-supervisor/native-passkeys-policy.cjs",
+        "bytes": 7241,
+        "sha256": "84b56581a3e6dabe46561cbdc3f482a29c5f8a5840769f50cc90f65203632a2e"
+      },
+      {
+        "path": "src/qq-supervisor/native-passkeys.cjs",
+        "bytes": 4985,
+        "sha256": "a9f536ab892c61bfae69adceb4fd8b095bf7cd37971118bb01b0c8bddc01fdd9"
+      },
+      {
+        "path": "src/qq-supervisor/orphan-cleanup.cjs",
+        "bytes": 6563,
+        "sha256": "19ccdf4099b309ba894be7528b76717ad9eff6ca13bbc7da7dacebfc2a603ef2"
+      },
+      {
+        "path": "src/qq-supervisor/orphan-policy.cjs",
+        "bytes": 7949,
+        "sha256": "8ff28c62c3e68a9f00b613e54509b5cbe210f4d13f5b9bae932fad8642344b5a"
+      },
+      {
+        "path": "src/qq-supervisor/ownership.cjs",
+        "bytes": 2906,
+        "sha256": "7274ecd76eb9125f4086d3340b664034978e3a1b8d29da81ca202b0132adef0c"
+      },
+      {
+        "path": "src/qq-supervisor/pending-lock-policy.cjs",
+        "bytes": 6313,
+        "sha256": "42a9fa44ce5672f304651d02e6c4786978799a8d7416f348c03ad4afe264d816"
+      },
+      {
+        "path": "src/qq-supervisor/pending-lock.cjs",
+        "bytes": 4093,
+        "sha256": "e2b341027a49503e689a5c28caebc4629613794c1ec3268965c4fea47a255bb4"
+      },
+      {
+        "path": "src/qq-supervisor/pending-update-policy.cjs",
+        "bytes": 3560,
+        "sha256": "472c035fb5986246a9c4852a7a6cafe982e183735df0f24daba0ca224c2a587d"
+      },
+      {
+        "path": "src/qq-supervisor/pending-update.cjs",
+        "bytes": 6319,
+        "sha256": "1e69adc3836b0297a4231017ac664f432ebf78bc59a3a928c1b325eb3ef49a47"
+      },
+      {
+        "path": "src/qq-supervisor/policy.cjs",
+        "bytes": 6062,
+        "sha256": "f3fd2a0612a56c17f1067fb93054f22685ce972350d2d59261c3a06adbdc02e5"
+      },
+      {
+        "path": "src/qq-supervisor/profile-backups-policy.cjs",
+        "bytes": 7630,
+        "sha256": "797735c239d3d71f72a2dc01c162ae17909b3fca5afc89344b8acb4a2f0bd5ee"
+      },
+      {
+        "path": "src/qq-supervisor/profile-backups.cjs",
+        "bytes": 4988,
+        "sha256": "c62a828ab72a0ace9bec6a1819e597164da7d7ed1474426b82194507e310ec39"
+      },
+      {
+        "path": "src/qq-supervisor/runtime.cjs",
+        "bytes": 3643,
+        "sha256": "0f59c73318f42c2180776314af8c2fcddc7202b5a7fd54583a6824df746685f4"
+      },
+      {
+        "path": "src/qq-supervisor/server.cjs",
+        "bytes": 25048,
+        "sha256": "f180295bf704c90a9565456f75fe9c61c2541c8fde75ce99c1bdc6e79518e21b"
+      },
+      {
+        "path": "src/qq-supervisor/store.cjs",
+        "bytes": 24942,
+        "sha256": "45003d96162c0e1597442907601179bd03559e957c28cc53055265aa94a4d7b3"
+      },
+      {
+        "path": "src/sources/config.cjs",
+        "bytes": 5167,
+        "sha256": "8e42a2bd33b946ac0d646c11806122db89b81c221d8630fb756b5b1020f4957e"
+      },
+      {
+        "path": "src/sources/event.cjs",
+        "bytes": 3436,
+        "sha256": "8943b87cba15d972a6cecbce9201548010acd37f9936efe6739433ab3b6832ec"
+      },
+      {
+        "path": "src/sources/feed.cjs",
+        "bytes": 10261,
+        "sha256": "b8bc205e05af93dfc8656b387fff1e394ac9b1511011bf10fd563abd26af8f4a"
+      },
+      {
+        "path": "src/sources/folder.cjs",
+        "bytes": 4252,
+        "sha256": "b08313b73e749c1e085110a2ed499f95339cc4632f4167b5d4f79248151ef8a0"
+      },
+      {
+        "path": "src/sources/ics.cjs",
+        "bytes": 14293,
+        "sha256": "d1bc31a3a75c987857b23e53c7bf5399f21a1e073232bd1fb00deaefbd077094"
+      },
+      {
+        "path": "src/sources/registry.cjs",
+        "bytes": 9982,
+        "sha256": "92af3b9a6f897af8a6e82d7cdb6e8013cea8f8afc019050d1537f719ad0eed96"
+      },
+      {
+        "path": "src/themes/moonbase.json",
+        "bytes": 3416,
+        "sha256": "5aeda24daa13c98c197e24653815d7f98c13172cb129239b2ffa1698c687cb1d"
+      },
+      {
+        "path": "src/themes/workshop.json",
+        "bytes": 3419,
+        "sha256": "e674a8cccba379a129dd1c955d7d735d4ce22420da0cfbe17366af710f21d397"
+      },
+      {
+        "path": "src/transfer-helper/cli.cjs",
+        "bytes": 1870,
+        "sha256": "f403b5c31b09980ced699cbf93027d571c00b2b41c11ced7ae10dd049819b9a1"
+      },
+      {
+        "path": "src/transfer-helper/ownership.cjs",
+        "bytes": 3220,
+        "sha256": "3b1217b10d374c006d907d6e6b23c8fe5294d7065071464aaeffc866622b436f"
+      },
+      {
+        "path": "src/transfer-helper/policy.cjs",
+        "bytes": 7682,
+        "sha256": "68297356a542de2675abf04b07772e65cad7ecda41c4c64e3d6d99920a70b758"
+      },
+      {
+        "path": "src/transfer-helper/server.cjs",
+        "bytes": 10869,
+        "sha256": "b44a517f02cfe1095e4ac65ce075216a13c40c94917a0007f44b278461c9aca4"
+      },
+      {
+        "path": "src/transfer-helper/store.cjs",
+        "bytes": 22639,
+        "sha256": "0fce553e3b1ad91c3d91e2ef492a1fc982e6ea88f0adaa6d429f7fc404eea0f2"
+      },
+      {
+        "path": "src/ui/accounts.js",
+        "bytes": 25680,
+        "sha256": "d2fc278fb773fc6eb11a74fbbb4e8dadc40c19ee4957bee0c7ac66445518dcb4"
+      },
+      {
+        "path": "src/ui/app.js",
+        "bytes": 28335,
+        "sha256": "b765c741cb01a9306ee07a9756209763c1900bb5259f1a191c030732d030d6f0"
+      },
+      {
+        "path": "src/ui/appearance.css",
+        "bytes": 14561,
+        "sha256": "73ac473ba7632457f3ba30acac8a47570493fdf66074cfa9ab2fafb95da52eb3"
+      },
+      {
+        "path": "src/ui/appearance.js",
+        "bytes": 1649,
+        "sha256": "59700f2d071aaaf7ea64a4c1919a0f6bacce7315cdb8d3fc634dfa61db6cb7be"
+      },
+      {
+        "path": "src/ui/bot.js",
+        "bytes": 98554,
+        "sha256": "e506531f344ec5bfb54e0096f844a229261324b9776f727dfd221943f1b6d3c4"
+      },
+      {
+        "path": "src/ui/characters.js",
+        "bytes": 30412,
+        "sha256": "fea33a97e4119ff6ba0cf6ffb83080067cd3b5762194e79551af23fadc54ee43"
+      },
+      {
+        "path": "src/ui/companions.css",
+        "bytes": 22641,
+        "sha256": "0ae3b48006d6fe177d979bb42c073ccd1398b6a1af270d842d7e22b85cdf0108"
+      },
+      {
+        "path": "src/ui/connections.js",
+        "bytes": 29859,
+        "sha256": "e0aa2d51c93b7453dc771d76a9a8cd1c708def13e41b709437a39d4ca422244f"
+      },
+      {
+        "path": "src/ui/desktop-chat.css",
+        "bytes": 12089,
+        "sha256": "a64d0900b060f76f84c705b23a9e96271b5e823890e97ece91ab43424fb8ac13"
+      },
+      {
+        "path": "src/ui/desktop-chat.js",
+        "bytes": 78450,
+        "sha256": "7b264b278545b646410e8f3f546fabc92c4d51d98dd2141c1d99f1198f4276ab"
+      },
+      {
+        "path": "src/ui/first-run.css",
+        "bytes": 11369,
+        "sha256": "bb0279aa07563c1ebdface345d5460d3a95b6ded940eaed33790290dcb899fcc"
+      },
+      {
+        "path": "src/ui/first-run.js",
+        "bytes": 29206,
+        "sha256": "ac23986916a271b70907e61e828984dbddf120d2dee2fe2def3f04a8d2a413d4"
+      },
+      {
+        "path": "src/ui/groups.js",
+        "bytes": 43270,
+        "sha256": "44eddd5d768227f6cf6fd61fee69a01e8701c611f9b84c5b680c4de9c835fbeb"
+      },
+      {
+        "path": "src/ui/index.html",
+        "bytes": 36206,
+        "sha256": "016d3f5a9c3d30f89267ecf7ad689b7bdc20214aa58fea50d15c167eb7df6433"
+      },
+      {
+        "path": "src/ui/kit.js",
+        "bytes": 4759,
+        "sha256": "6948b57c2f866988603553bc3b1f0da4612dcc0ced3b85d77d39eb7c707172ed"
+      },
+      {
+        "path": "src/ui/knowledge.css",
+        "bytes": 21245,
+        "sha256": "dba0b2cbbad70a7ebfc324e63df1270a2f1f2539fe8fdf98470cb9537ee95f2d"
+      },
+      {
+        "path": "src/ui/layout-immersive.css",
+        "bytes": 22950,
+        "sha256": "59445e4a289cc87141aa9d1329710e0dc2f9e09e26cf34c7a652117c98062470"
+      },
+      {
+        "path": "src/ui/layout-immersive.js",
+        "bytes": 9726,
+        "sha256": "9bb979a3305b0a440ac64212981dc24e2baeefaf7a55b19c1a773f32e47297a5"
+      },
+      {
+        "path": "src/ui/layout-messenger.css",
+        "bytes": 32164,
+        "sha256": "c92bcb3ff450d1eea257e2008251ecc4a904802e7e0b2db80f2378d33af09363"
+      },
+      {
+        "path": "src/ui/layout-messenger.js",
+        "bytes": 33917,
+        "sha256": "883c5cb00405bfdb4fb00fe680ccb8792d88142124c545e1b31bbd27f022ae58"
+      },
+      {
+        "path": "src/ui/layout-minimal.css",
+        "bytes": 35378,
+        "sha256": "ae91fd2e2dcaf6d1d74fa4a99a164f39ef8a075821bb0a16f4bcea4fdc1b2edb"
+      },
+      {
+        "path": "src/ui/layout-minimal.js",
+        "bytes": 27504,
+        "sha256": "78ebb1c27ef0ff527b5aa84a348bbf43c03a8ac1f81ac74255e8943ed23682da"
+      },
+      {
+        "path": "src/ui/notes.js",
+        "bytes": 56298,
+        "sha256": "12e6846cc9a178dcc75f2631277441084e0bd891c604c63fca2d27feb57c7f5c"
+      },
+      {
+        "path": "src/ui/preview-themes.js",
+        "bytes": 5044,
+        "sha256": "c3b9685ce9577611e6514f01a29b74c9f7fb46618d3cae509f05e423683902e7"
+      },
+      {
+        "path": "src/ui/preview.js",
+        "bytes": 1730,
+        "sha256": "233790a3ddd39a2ca01f5be010c82b0d601eb96154f892ed69dd41b879cc51a5"
+      },
+      {
+        "path": "src/ui/qq-component-repair.css",
+        "bytes": 2708,
+        "sha256": "9852bac6b0692886f14575ea9a9e62f7101b40d35515622548f56c10d636d758"
+      },
+      {
+        "path": "src/ui/qq-components.js",
+        "bytes": 83478,
+        "sha256": "27abf6848e1d01e0ce1a58454115e464240dc1559b9bd05194e45d079cd60c9d"
+      },
+      {
+        "path": "src/ui/qq-contact-admin.css",
+        "bytes": 4274,
+        "sha256": "479e239abf9a040f1686f6a064fc32d7d4e84fccef6dc756f5d0cb23b21274b4"
+      },
+      {
+        "path": "src/ui/qq-contact-admin.js",
+        "bytes": 24218,
+        "sha256": "8cee9d07b6ebb417fc15c5fd846380e37c58ce258320bf05e52840989092ddd4"
+      },
+      {
+        "path": "src/ui/qq-dialog.css",
+        "bytes": 13766,
+        "sha256": "20fb12af221a4faf77778f234e8f5017b1447621397fe76917d2a7ddd3d39f77"
+      },
+      {
+        "path": "src/ui/qq-directory-members.css",
+        "bytes": 1080,
+        "sha256": "7380eb3f0726076e9f4fe0bac3c3b6a9da9fda381a3dc4247d8c2e5f7b08bfb2"
+      },
+      {
+        "path": "src/ui/qq-directory.js",
+        "bytes": 48444,
+        "sha256": "43367a4c193b9aee430fdeb334e569f4321fe16884c47df4337e049aeed62f2d"
+      },
+      {
+        "path": "src/ui/qq-first-setup.css",
+        "bytes": 4036,
+        "sha256": "2f50f8c507c0c0a4249b291c0f4707543bc82eb0882bdf642a71e6d59d083796"
+      },
+      {
+        "path": "src/ui/qq-first-setup.js",
+        "bytes": 27696,
+        "sha256": "0b61c3ccf5414e89cb7305a6e05d0eee8f27c2d916ef8bdfe8a52f7ee2cb792a"
+      },
+      {
+        "path": "src/ui/qq-friend-requests.css",
+        "bytes": 3490,
+        "sha256": "69c3e4802d3cbd1849f9d9f8905e4928152e9e15467ad2f17cce71260c607e44"
+      },
+      {
+        "path": "src/ui/qq-friend-requests.js",
+        "bytes": 14840,
+        "sha256": "29209b4a7d33f4bc58eb63e784965041f99ed172fb950609b7c48da0cd97ec38"
+      },
+      {
+        "path": "src/ui/qq-group-admin.css",
+        "bytes": 4694,
+        "sha256": "b73f2196f8d268c9d6794fb7d2d24632dfb217ce08fdbb3b6551e2b43f531542"
+      },
+      {
+        "path": "src/ui/qq-group-admin.js",
+        "bytes": 33180,
+        "sha256": "187709baec21e6ef0810791d2006de42584c1cae047ccac9feed937f5d03fa75"
+      },
+      {
+        "path": "src/ui/qq-group-profile.css",
+        "bytes": 3346,
+        "sha256": "272007ae017641435ac4656e4984076e839fcd70e6eb5dfea48bc2af538ab027"
+      },
+      {
+        "path": "src/ui/qq-group-profile.js",
+        "bytes": 18028,
+        "sha256": "5a17a749658752076ef1dc569b9a21026442199f8ae4c69c9c43b61654bc4426"
+      },
+      {
+        "path": "src/ui/qq-login.css",
+        "bytes": 10204,
+        "sha256": "94444624400e5f86fa12edb611d7fb69c9d6285f87438d66e313be448346993d"
+      },
+      {
+        "path": "src/ui/qq-media.css",
+        "bytes": 3113,
+        "sha256": "c3202f26a823cdb57bb62020fb23064611d3f5bdd1c14aa5bd1b456115808211"
+      },
+      {
+        "path": "src/ui/qq-media.js",
+        "bytes": 13351,
+        "sha256": "53c415840ee3722be50f48401404be28c0011fc6a6cbde2364fda76a572ca3c5"
+      },
+      {
+        "path": "src/ui/qq-node-repair.js",
+        "bytes": 36475,
+        "sha256": "7479d1ca9fb99777bb5e954b7fc39fcfec23890e45daadc739917d38d4540b64"
+      },
+      {
+        "path": "src/ui/qq-owner-history.css",
+        "bytes": 6361,
+        "sha256": "140a13827c7ac9bbd626fdaedee3fdf34f00960517f2d15d985013fe29b4a282"
+      },
+      {
+        "path": "src/ui/qq-owner-history.js",
+        "bytes": 31619,
+        "sha256": "9fa5b3548a124a25d20d569b93ba04f5046407e00a6c1417d898f14062aaed22"
+      },
+      {
+        "path": "src/ui/qq-plugin-admin.css",
+        "bytes": 3359,
+        "sha256": "ddcdf58bf70c57f54bbc0ea41742a9b8c3e3e113205a07a611789a74f88c7fbb"
+      },
+      {
+        "path": "src/ui/qq-plugin-admin.js",
+        "bytes": 31321,
+        "sha256": "a40205d6a641a944985d3a4dd36534d4d72e9715a7d24afd05ac873a17bb9cfd"
+      },
+      {
+        "path": "src/ui/qq-plugin-config.css",
+        "bytes": 2710,
+        "sha256": "dbded98edd1eb45c732693e4ade7df177c20b30e4792055028ba22d38e5a21dd"
+      },
+      {
+        "path": "src/ui/qq-plugin-config.js",
+        "bytes": 27235,
+        "sha256": "93e1780fdb334eec58e7aeb015961e05da1a4bdfe4d9182ad609eb33c83a188a"
+      },
+      {
+        "path": "src/ui/qq-plugin-package.css",
+        "bytes": 2890,
+        "sha256": "e373aec78dbe977121df82de8adea2ac4efb1a5cde50347871328f120ab7de14"
+      },
+      {
+        "path": "src/ui/qq-plugin-package.js",
+        "bytes": 51304,
+        "sha256": "fb2ac1b17b4ad8029688212c8598d6021a341633e8eb875852963dbbf2902679"
+      },
+      {
+        "path": "src/ui/qq-qce-export.css",
+        "bytes": 3072,
+        "sha256": "b74cb2fc65745ff308935c2926be6e3e4beb1566b5033f603acb9bf1c371bc79"
+      },
+      {
+        "path": "src/ui/qq-qce-export.js",
+        "bytes": 36939,
+        "sha256": "89f82f381bc4ee04e82d7bd94c633f3ad5e31ade3faa90cc29022cbeb7c76239"
+      },
+      {
+        "path": "src/ui/qq-qce-native-plans.css",
+        "bytes": 3098,
+        "sha256": "938f0326d0e1420118b87dbe63e54d63316f77b7cf1ba4b0f13d8ede29dbc25b"
+      },
+      {
+        "path": "src/ui/qq-qce-native-plans.js",
+        "bytes": 54976,
+        "sha256": "a6df01f34e9ab0acec205b6fce101204a52fce99d3610410b413df488561df55"
+      },
+      {
+        "path": "src/ui/qq-qce-schedule.css",
+        "bytes": 3181,
+        "sha256": "02db5be49b39f3b44a32c096b396ce4120e56b23fcc5864f032efb710b97122a"
+      },
+      {
+        "path": "src/ui/qq-qce-schedule.js",
+        "bytes": 47365,
+        "sha256": "19ca8a9997d2a89a48b5aa702ca0bfe20d8fb83f710724358b8cbf675b276c07"
+      },
+      {
+        "path": "src/ui/qq-qce-security.css",
+        "bytes": 2525,
+        "sha256": "5a11aac98fb28c211abe2e7eb145537a09d13fb659f8eef584fd4d0e376bb348"
+      },
+      {
+        "path": "src/ui/qq-qce-security.js",
+        "bytes": 29656,
+        "sha256": "6ed7f84ed422898f219023a764014a92b8106a4d533236f7cebf2a6a2e0c4e88"
+      },
+      {
+        "path": "src/ui/qq-qce.css",
+        "bytes": 2447,
+        "sha256": "bcd6de65490621b9718a80d2dfc740899ca086eb4d6a18a1b8536716c8fc7f7b"
+      },
+      {
+        "path": "src/ui/qq-qce.js",
+        "bytes": 27158,
+        "sha256": "631b690015245553bdd57a6ff62c0d4b76ed16e469b9dbf9e27c1b7a9eab73c4"
+      },
+      {
+        "path": "src/ui/qq-remote-files.css",
+        "bytes": 1428,
+        "sha256": "b1ba06e4b4d12e622db76f46b9d0f703bb0c86db8a6c8f7fed019f7a92fd204e"
+      },
+      {
+        "path": "src/ui/qq-remote-files.js",
+        "bytes": 52678,
+        "sha256": "8e76733d1629893d5a0b083f40c1209243b6d38029c7a6ef5f340cb7999d0fef"
+      },
+      {
+        "path": "src/ui/qq-remote.css",
+        "bytes": 5813,
+        "sha256": "82a41f25f4aa048018a87120e183bba6aa1f0d01a992143a615d7d1595e4451e"
+      },
+      {
+        "path": "src/ui/qq-remote.js",
+        "bytes": 86797,
+        "sha256": "7614b7bc9ae1f425f24a49dde747b1a5e2aff17155ba3ae740aa9638e536d9a8"
+      },
+      {
+        "path": "src/ui/qq-runtime.js",
+        "bytes": 131919,
+        "sha256": "cdd366d00fdec1b187e7e40e884a635e91332d3424892acfc9094bf6d6b42f3c"
+      },
+      {
+        "path": "src/ui/qq-self-profile.css",
+        "bytes": 5019,
+        "sha256": "63ce224748de2484390222ec0d210c338ca726f560e900b571fa00b3d4264c5c"
+      },
+      {
+        "path": "src/ui/qq-self-profile.js",
+        "bytes": 36643,
+        "sha256": "65f1d95e75a0cb646666dfc608c1a50f8834dc1085b32d4be64b9f1ca60c7175"
+      },
+      {
+        "path": "src/ui/qq-ssqq-client.css",
+        "bytes": 2627,
+        "sha256": "921986e37bb8c6f505c4509b078a1b035e3ee0ee7909409828e80a066e6032af"
+      },
+      {
+        "path": "src/ui/qq-ssqq-client.js",
+        "bytes": 15872,
+        "sha256": "3d7732a9b145c4039315346520adfb3e766d1c04b8f448b3eea1345f0d95507f"
+      },
+      {
+        "path": "src/ui/qq-start-connect.css",
+        "bytes": 873,
+        "sha256": "f458fac0f66d82c5595af0c9d430f80d9bd792ea2e0ddf5aad47975ea90ad6e0"
+      },
+      {
+        "path": "src/ui/qq-start-connect.js",
+        "bytes": 16457,
+        "sha256": "5525ea17a134c115f4473396c32058b019875e265a84f8fa052afd8b253de732"
+      },
+      {
+        "path": "src/ui/qq-supervisor-component-repair.js",
+        "bytes": 22700,
+        "sha256": "2bee3cdfa0894112a65cbe82e660db2b7837813b5d455014118d47a21548808c"
+      },
+      {
+        "path": "src/ui/qq-supervisor-native-passkeys.js",
+        "bytes": 15346,
+        "sha256": "0e256bb13460dfc9a88ea436eef8cd6f341fbc7686d1602f29a9dbc42e63f199"
+      },
+      {
+        "path": "src/ui/qq-supervisor-orphans.js",
+        "bytes": 11414,
+        "sha256": "5ab9a6786090704cf9eb330ee9a79bbe759875e2a1ee629c69161d260f30318d"
+      },
+      {
+        "path": "src/ui/qq-supervisor-profile-backups.js",
+        "bytes": 19047,
+        "sha256": "4d56c456ffe28086ac54cb4148a38fdaa72ea938fcac5fe118f1f053dd09b74c"
+      },
+      {
+        "path": "src/ui/qq-supervisor.css",
+        "bytes": 2382,
+        "sha256": "c4de219d24cf65bae9deac4bef64e23827fe3fc05f3bee80ed82eba0ac448e60"
+      },
+      {
+        "path": "src/ui/qq-supervisor.js",
+        "bytes": 114655,
+        "sha256": "392090a3eb421975728292b87350d69775386e53fc4aa137fa20bca2c864b5b0"
+      },
+      {
+        "path": "src/ui/qq-transfer-local.css",
+        "bytes": 2073,
+        "sha256": "f32637823c868dd93d0e7c583e31b7cd56f071c3029717dbfdc1f04b964d8b17"
+      },
+      {
+        "path": "src/ui/qq-transfer-local.js",
+        "bytes": 26341,
+        "sha256": "9e6c2af50fce1ed0f511b683aa374e009d8db31db9ddc8e3c988e25f6375f931"
+      },
+      {
+        "path": "src/ui/qq-transfer.css",
+        "bytes": 1947,
+        "sha256": "34ea4a565b74230a42049cf23dd5c5b06fc6b802e988f374dfef8e23d2ffa69e"
+      },
+      {
+        "path": "src/ui/qq-transfer.js",
+        "bytes": 36231,
+        "sha256": "ac3bf85448fdb93adbed0122188f1d0fe957c7ef9be463e9f34a973d96c32a72"
+      },
+      {
+        "path": "src/ui/qq-voice.css",
+        "bytes": 3938,
+        "sha256": "5fc552f54f01f0088594a14bf53e98a2bd7e3f4b7b2211a3f089ac6faa850d8c"
+      },
+      {
+        "path": "src/ui/qq-voice.js",
+        "bytes": 27498,
+        "sha256": "3bc9485a0c46ea096563be9d9e1aa878fdfc00eb90113b751b34e6f7cf3bb52e"
+      },
+      {
+        "path": "src/ui/relationship.js",
+        "bytes": 28597,
+        "sha256": "088df2d8df9f400588572cea3b46de0587ad2d1652ed4f2e109a9dc944b767be"
+      },
+      {
+        "path": "src/ui/room.css",
+        "bytes": 7060,
+        "sha256": "bc962a680e42975736f506278c9bdd71bda3951b105199bc1cbf6f2ec3868ba8"
+      },
+      {
+        "path": "src/ui/shell.css",
+        "bytes": 11211,
+        "sha256": "b839a18ea0e26f54699fc776a8ac296935028dab62156eb83896742a27a17799"
+      },
+      {
+        "path": "src/ui/shell.js",
+        "bytes": 23772,
+        "sha256": "032d2941590250c342bd36ad6e8781eb63f004f9ef22e61ada5fd9bcbd8d5541"
+      },
+      {
+        "path": "src/ui/social.js",
+        "bytes": 21500,
+        "sha256": "7dc11084b334cb5fbe8af74d470558f2b56fd6bb90ab6cc894d8715d88915268"
+      },
+      {
+        "path": "src/ui/sources.js",
+        "bytes": 9312,
+        "sha256": "bf544ee343c4f8b1465700481b5ee9c419fb84a76d6b8310749cf9bfcd48f4e0"
+      },
+      {
+        "path": "src/ui/st-settings.js",
+        "bytes": 42619,
+        "sha256": "9c30518d6866453e8d4284468ea006569d832150d51d2125d4de7fe06ee2859e"
+      },
+      {
+        "path": "src/ui/style.css",
+        "bytes": 45467,
+        "sha256": "df67b8a8e75020967e749ad74bd34a8a93d99392d76a9e8d451d314337769142"
+      },
+      {
+        "path": "src/ui/tasks.js",
+        "bytes": 45436,
+        "sha256": "8bf6554da78bef52963dfb9ad288c8f7d185a46138a91461997240147f69bba2"
+      },
+      {
+        "path": "src/ui/theme.css",
+        "bytes": 27788,
+        "sha256": "4284e9dfde73a7b51844241c768975dc55109adb8612e2de639eb08f29dc9e64"
+      },
+      {
+        "path": "src/ui/theme.js",
+        "bytes": 15355,
+        "sha256": "b92a5f4d70ab252828defb9dbb3c7f492b8d5c3f55ab41c7947205a388e636fc"
+      },
+      {
+        "path": "src/ui/unified-room.css",
+        "bytes": 14842,
+        "sha256": "b650258e7700f5646207b878d991f848a92665c00bc9180a88c1bcd29f81e9ac"
+      },
+      {
+        "path": "src/ui/voice-host.js",
+        "bytes": 10365,
+        "sha256": "0a276e1c6e74343195c11d04bddc911343b598fe98df19330a9b103561914282"
+      },
+      {
+        "path": "src/ui/voice.css",
+        "bytes": 2915,
+        "sha256": "746064a4f5ecfb55878a57b7221bd9770dd96ad54cb699dab6d3696845b936bd"
+      },
+      {
+        "path": "src/ui/voice.js",
+        "bytes": 18511,
+        "sha256": "98c5475a2ac2ca5024ba596847bcdf3f4f957c43eb2e4ed76dfe150fea730c96"
+      },
+      {
+        "path": "src/ui/work.js",
+        "bytes": 15372,
+        "sha256": "cb15128fc4cf9ab1bfa9491bddf0e612a886c741368c4c2875600f8796189f88"
+      },
+      {
+        "path": "src/vendor/sillytavern/character-card-parser.cjs",
+        "bytes": 6867,
+        "sha256": "5d1e71b561782848cdad246841f8c197891d12e6e46bd99f92a340a5af869f26"
+      },
+      {
+        "path": "src/vendor/sillytavern/character-card.cjs",
+        "bytes": 17945,
+        "sha256": "ea6d5ed30906b3d97e25ec7b1ea988a561fd1203a7987de47b2e841b432f5a34"
+      },
+      {
+        "path": "src/vendor/sillytavern/group-chat.cjs",
+        "bytes": 15495,
+        "sha256": "e2fd7b9582f46d171d502d072e5b8023a3897a8e924a52daaee43ea7b4d9b7f5"
+      },
+      {
+        "path": "src/vendor/sillytavern/macros.cjs",
+        "bytes": 8163,
+        "sha256": "9503fa3b0ce8e2abb7cd6f23c0b8025383fa74509e29810bc5698175662064be"
+      },
+      {
+        "path": "src/vendor/sillytavern/regex-scripts.cjs",
+        "bytes": 17557,
+        "sha256": "fb3b5676010f62f78b6d07e8c2df8fb46856c611734342171e8b6e717e995f0f"
+      },
+      {
+        "path": "src/vendor/sillytavern/safe-regex.cjs",
+        "bytes": 6039,
+        "sha256": "c8ba88473a43456d670698101d8c79e72dc3a9d0cb2c7475b95dca952219fa8a"
+      },
+      {
+        "path": "src/vendor/sillytavern/world-info.cjs",
+        "bytes": 28268,
+        "sha256": "6b9c06c20396b4e328da2a5218804c0e860b1199cf4a58845db19722cf8b0d09"
+      },
+      {
+        "path": "src/voice/asr-gate.cjs",
+        "bytes": 7537,
+        "sha256": "1221529e131815bab509707eeb7989ba467dd00d07d253223bc29c9ae2f7c666"
+      },
+      {
+        "path": "src/voice/conversation.cjs",
+        "bytes": 10332,
+        "sha256": "038b16229adff5b1fb4d464fc412f75b60f267522f8958d4b6350746d7470e62"
+      },
+      {
+        "path": "src/voice/file-asr-runtime.cjs",
+        "bytes": 1230,
+        "sha256": "9d12313722884bc2f3740eef4b090d91e635503e45936f2596948b32be9c3a63"
+      },
+      {
+        "path": "src/voice/gpt-sovits.cjs",
+        "bytes": 16519,
+        "sha256": "13e0f3583e3ec94ff5fae8c52ce49bf2342a6c7e3e1e9a1d0aff57d1359d307d"
+      },
+      {
+        "path": "src/voice/python-process-proof.cjs",
+        "bytes": 13348,
+        "sha256": "9e35219aac8ece7a1281ddb6a38a58898b610761d810adbc574013af0fd5a4a9"
+      },
+      {
+        "path": "src/voice/qq-render.cjs",
+        "bytes": 8839,
+        "sha256": "d483b9898adcd2caab60204632e76287f92248c690d29cc3952ef68480bd3bec"
+      },
+      {
+        "path": "src/voice/qwen-asr.cjs",
+        "bytes": 15479,
+        "sha256": "1994a343982f582edf90ca107961eaf4a8ad90a65f62cd9c75852a4897b1c712"
+      },
+      {
+        "path": "src/voice/qwen-file-asr.cjs",
+        "bytes": 5725,
+        "sha256": "5f432feec65e0b83da816ddd6de464603c4ad42b20ae4d4102ebc3b4e5500ad9"
+      },
+      {
+        "path": "src/voice/qwen-warm-file-asr.cjs",
+        "bytes": 10397,
+        "sha256": "353f9c156e667b08579912b27a47c441304e65a4fd8aedfe5cf6d25a2ef7ec3c"
+      },
+      {
+        "path": "src/voice/runtime.cjs",
+        "bytes": 6492,
+        "sha256": "67c742d2a91817c73e88f4bcaabed64b3eabdb6701ed50a980f9ff73c244ee81"
+      },
+      {
+        "path": "src/voice/warm-file-asr-runtime.cjs",
+        "bytes": 2829,
+        "sha256": "d3048e0ac43df11b99c729156c143a762061a4194cd8156a383334ad237d3e53"
+      },
+      {
+        "path": "src/voice/windows-speech.cjs",
+        "bytes": 12481,
+        "sha256": "76f1f1639baf932e1f737bb64dc6b44dea566c1b48362bfea7756aa7587934cf"
+      },
+      {
+        "path": "src/workbench.cjs",
+        "bytes": 6504,
+        "sha256": "ea6f668088319a59ec530dff59626a323323935e177ab2ba8c9086ba75f78b03"
+      }
+    ],
+    "frozenReference": {
+      "head": "3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4",
+      "branch": "codex/mac-update-retention",
+      "dirtyCount": 75,
+      "capturedAt": "2026-11-15T18:29:19.737369+11:00",
+      "inventorySha256": "e480c69fe6e605cde9940e1bfd0882ac61cc9d05b5a42a94e0d39ccc083f508d",
+      "committed": false
+    }
+  },
+  "candidate": {
+    "sha256": "3ad4bce6b2c3fd7d32336d08b892ea0a36e47d740be82f792a354fff4d51a66e",
+    "bytes": 33793827,
+    "package": {
+      "name": "agent-arcade",
+      "version": "0.4.0-preview.1",
+      "main": "src/bootstrap.cjs"
+    },
+    "codeTreeSha256": "35cabe89d278abbafbd77157319e9356f662b3b3c9864daf4828dc1109f6e41e",
+    "codeFiles": [
+      {
+        "path": "src/assets/voice/serena-reference.json",
+        "bytes": 2324,
+        "sha256": "6e1ddfb06d7e5e47f47b04055da7e6aa7533d0a97c0ba1e1430b12db8bca8b37"
+      },
+      {
+        "path": "src/auth/windows-webauthn.cjs",
+        "bytes": 15185,
+        "sha256": "797fa45dad03bea936c34a9467decb1cd76db8737d848d989a70cf67b49574b2"
+      },
+      {
+        "path": "src/bootstrap.cjs",
+        "bytes": 2128,
+        "sha256": "edbd6949a0ad3766b59e847dc3e27effcdec82914d34f164df1d84a198fdbb95"
+      },
+      {
+        "path": "src/bot/account-manager.cjs",
+        "bytes": 17569,
+        "sha256": "ef014508bb6ff286e7a487ded06c88b2726a2a62a3d7af245d8dc2ec71af774f"
+      },
+      {
+        "path": "src/bot/api-file-runner.cjs",
+        "bytes": 10854,
+        "sha256": "abe1f55e9a7d53e62b111f1c4f5ec10629c30e68ba347fe221fd4082afdd958a"
+      },
+      {
+        "path": "src/bot/approval-codes.cjs",
+        "bytes": 2611,
+        "sha256": "71d90ac28fe94c3e6e4b33ea578dcf56cd2350843014f6fd7702c6c8388262e5"
+      },
+      {
+        "path": "src/bot/background-sessions.cjs",
+        "bytes": 14039,
+        "sha256": "e33350275875be7b9387297f911082ad7c06e7ee9e7f761f13efd0368f3b75ae"
+      },
+      {
+        "path": "src/bot/character-cards.cjs",
+        "bytes": 10290,
+        "sha256": "38bcf8779580d6e366778b596379483a6ba233d9d80559d76d14164956663b77"
+      },
+      {
+        "path": "src/bot/character-library.cjs",
+        "bytes": 7712,
+        "sha256": "62dac278363bd72ad66d5c2d09ce1149e2db67ee2d572183f78df16b1495d987"
+      },
+      {
+        "path": "src/bot/claude-direct-runner.cjs",
+        "bytes": 5145,
+        "sha256": "161b53a351c818b213cde1f46b6dc1f103d06f9b01ae44d4a2c28c58458a665f"
+      },
+      {
+        "path": "src/bot/claude-program-runner.cjs",
+        "bytes": 19577,
+        "sha256": "f092e5aaf29d6777beb3d86d2f6c88e0aece45f236ad9a95e978978a5e859e67"
+      },
+      {
+        "path": "src/bot/claude-sessions.cjs",
+        "bytes": 7702,
+        "sha256": "105336a526c90657a97dedb48202acac7fecbf46dee3b58d16b31917923be99f"
+      },
+      {
+        "path": "src/bot/codex-runner.cjs",
+        "bytes": 19317,
+        "sha256": "f04922e670d88145373fd659deea988dae63e4b13083140b97cea3157d4130d4"
+      },
+      {
+        "path": "src/bot/commands.cjs",
+        "bytes": 895,
+        "sha256": "f054730cc33e2d528154a80825115783b8518bea4ef0c9447f8ac66fbaddccfe"
+      },
+      {
+        "path": "src/bot/companion-image.cjs",
+        "bytes": 2809,
+        "sha256": "df527828f7e5f51c779156aa84afbe1e671be72786940c0996b22613be321eef"
+      },
+      {
+        "path": "src/bot/companion-knowledge.cjs",
+        "bytes": 14282,
+        "sha256": "aff20556209486404c85e1fdd69c3dec35ea84297553ad0c987db58bb7ec1eb8"
+      },
+      {
+        "path": "src/bot/companion-notifier.cjs",
+        "bytes": 14155,
+        "sha256": "91d2117192751fea92b94fb9f7fdc86d327f11ef173a24889649162a41f3549c"
+      },
+      {
+        "path": "src/bot/deepseek-runner.cjs",
+        "bytes": 13377,
+        "sha256": "4d2bee1b38e74aae54d70a90edb0146d4d30ce402423fe1b9a1268ad40bc5f41"
+      },
+      {
+        "path": "src/bot/desktop-chat.cjs",
+        "bytes": 15288,
+        "sha256": "b045a7e46aa3b820f6cfaf423bd3485e8c7d026a22f160e0db0c07fe193ca47d"
+      },
+      {
+        "path": "src/bot/desktop-conversations.cjs",
+        "bytes": 5541,
+        "sha256": "3cb4d82ad42b92d357c67fa505473d017c51e36647cb104e6b75eeaf56a12aa5"
+      },
+      {
+        "path": "src/bot/dispatcher-scorer.cjs",
+        "bytes": 9077,
+        "sha256": "9a441d46953c6da297b3fdfdcff286fe8f77007865fba775bb86c64bdda862ae"
+      },
+      {
+        "path": "src/bot/dispatcher.cjs",
+        "bytes": 19102,
+        "sha256": "9da703e7cb51b864f7be6eef77fd6e391fca31a5bd9001471945d4837b8344c0"
+      },
+      {
+        "path": "src/bot/doubao-runner.cjs",
+        "bytes": 3362,
+        "sha256": "0586e58d9838c2cf4a5c4a296c92777f6174d6293281a50d0dee80ef4e389c72"
+      },
+      {
+        "path": "src/bot/feishu-sdk.cjs",
+        "bytes": 5440,
+        "sha256": "c8ef1e4c9b8e204e245d78830d4b4b993f9c7ac21516fdeb7dcb2185b8eba6fe"
+      },
+      {
+        "path": "src/bot/feishu.cjs",
+        "bytes": 12363,
+        "sha256": "9d052119545c0c61dc1a61e8c52c9fbab2ab411f7d18f6b008d1711d3fd1be17"
+      },
+      {
+        "path": "src/bot/file-tools.cjs",
+        "bytes": 8292,
+        "sha256": "968abc5072eaaa26034165969f4487ad8e8c5019be5ea364adc7456a2ea4d01c"
+      },
+      {
+        "path": "src/bot/gemini-runner.cjs",
+        "bytes": 6315,
+        "sha256": "ea7295f328df9bcacfcb550da06fa8dd436d1025155455ccb39b260c6b30e12a"
+      },
+      {
+        "path": "src/bot/generation.cjs",
+        "bytes": 6743,
+        "sha256": "b46354591d6d9f4dffc5cdfbfe5a3487f8d422a480e4498bdc8c8dd16fc0525d"
+      },
+      {
+        "path": "src/bot/gpt-runner.cjs",
+        "bytes": 15735,
+        "sha256": "067d006b272bfc7d6fd7d0c0f59be7daa2cb90701ff9878a74f4c5f73cf3c63c"
+      },
+      {
+        "path": "src/bot/group-dispatcher.cjs",
+        "bytes": 16680,
+        "sha256": "781f8d62f161a7a754319f1e364925dc1aec7ffc582624b044ccbeec9881aca5"
+      },
+      {
+        "path": "src/bot/journal.cjs",
+        "bytes": 14156,
+        "sha256": "299764549b37ac572956cce4c3326cf74574c5fe3e90620ec578700fc7b4c4f6"
+      },
+      {
+        "path": "src/bot/local-companion.cjs",
+        "bytes": 83710,
+        "sha256": "c9d81132a03d807d62705d02f94060c31fc61e808c26c188537913e031d8ea3c"
+      },
+      {
+        "path": "src/bot/manual-qq-receipts.cjs",
+        "bytes": 5102,
+        "sha256": "79fb7ad663d9bdff8134ab33dff3b1a2d49a6cf2c799c0a9f745cdf9a80420ec"
+      },
+      {
+        "path": "src/bot/messenger-channel-policy.cjs",
+        "bytes": 3644,
+        "sha256": "819d8e2089cb42997d46fdd2fcb96c7e9d41c98c010293a343512e215cd3f5ad"
+      },
+      {
+        "path": "src/bot/messenger-relay.cjs",
+        "bytes": 8392,
+        "sha256": "abac24280f70265a0348e2848e551d3fe46d176e09cd9a209bbcdbae9967614b"
+      },
+      {
+        "path": "src/bot/messenger-transport.cjs",
+        "bytes": 7052,
+        "sha256": "3d798172901ecbdcfdefe52067d57f405ea84c5bd483be134f6a3c09e1b25920"
+      },
+      {
+        "path": "src/bot/messenger.cjs",
+        "bytes": 8534,
+        "sha256": "ebb50c87157b286fa488d843c87ab825827c2a1deb4c49aadd738593be861cff"
+      },
+      {
+        "path": "src/bot/napcat-webui.cjs",
+        "bytes": 11378,
+        "sha256": "fb40ec00a6e29d555386acb7f4feebcda450ac070a5a4cdb247d1b4778147358"
+      },
+      {
+        "path": "src/bot/native-broker.cjs",
+        "bytes": 17780,
+        "sha256": "8916cb2c3d7ba514ffb0beff075c8a7cdac67f992266cfd1bee3a162dc7ffef2"
+      },
+      {
+        "path": "src/bot/native-channel.cjs",
+        "bytes": 15093,
+        "sha256": "f9b9721123aaaca0b66f7c57fb332f0edf5465c4e044d1a734737fc4186d6562"
+      },
+      {
+        "path": "src/bot/native-launch.cjs",
+        "bytes": 5088,
+        "sha256": "a744aa91c5cf165f3692a76e6e4f5cbac158d27ec50bcc5984ce74427e6dd0f4"
+      },
+      {
+        "path": "src/bot/native-process.cjs",
+        "bytes": 8922,
+        "sha256": "ee3c0492946c59ae4a66da19ec88f719475d4dca8e45fbb01fb1067eb93d6ce2"
+      },
+      {
+        "path": "src/bot/provider-login.cjs",
+        "bytes": 9882,
+        "sha256": "84681071906e6d8974f940d85b55c92387942df0368dd31232ae312070395f5f"
+      },
+      {
+        "path": "src/bot/qq-avatar-session.cjs",
+        "bytes": 11047,
+        "sha256": "fd09d07df299cc6baa4440a08ff7f89aa91c63e450e27e616e15afec405115e3"
+      },
+      {
+        "path": "src/bot/qq-avatar-store.cjs",
+        "bytes": 8508,
+        "sha256": "57723cb2d82395d1bb9c615ea750668ee4a2145347aede1976fdd5ed1aba156a"
+      },
+      {
+        "path": "src/bot/qq-avatar.cjs",
+        "bytes": 3576,
+        "sha256": "a3b964c886d5c0a0b2857a9fd578059d380193f6270779abcbb2c0f2c568424d"
+      },
+      {
+        "path": "src/bot/qq-builtin-offline-replies.cjs",
+        "bytes": 11259,
+        "sha256": "457ac32f7778ccb76a92697b49902ae68efc5abd1d3ceeebbb047e1c6dce79b0"
+      },
+      {
+        "path": "src/bot/qq-companion-launch-context.cjs",
+        "bytes": 6856,
+        "sha256": "d7e86b9ac9db38b4bea692b7a7fd989ce76d17e040c06c94a40b49422433a0f1"
+      },
+      {
+        "path": "src/bot/qq-companion-launch.cjs",
+        "bytes": 11245,
+        "sha256": "8743f4bd198d7dec4e4d82ba95919d6eb261c0f7e5c55eb65e63d11310d88da6"
+      },
+      {
+        "path": "src/bot/qq-component-lock-recovery.cjs",
+        "bytes": 19149,
+        "sha256": "522387d837e3c3dcca63b2b6a14356ce683bd9dcba5c4388218eab1d1c02fe67"
+      },
+      {
+        "path": "src/bot/qq-component-package.cjs",
+        "bytes": 18442,
+        "sha256": "03c1133bfa2c8fe590c060b3641ab6bfdd3dd96a00ebb3ade92f98f360aecc19"
+      },
+      {
+        "path": "src/bot/qq-component-preparation-recovery.cjs",
+        "bytes": 24497,
+        "sha256": "f5d6c8ca5bc12ac72c229f4317cffed784b71a461d9890398bdf42e07fef5e41"
+      },
+      {
+        "path": "src/bot/qq-component-prepared.cjs",
+        "bytes": 25431,
+        "sha256": "a417ce01b3d3f0eac5e563a9e7dfa676477581283842008cef71b3d774e84524"
+      },
+      {
+        "path": "src/bot/qq-component-repair.cjs",
+        "bytes": 16566,
+        "sha256": "9f8b9bf927fcee8973c08dd646b4aa7ce7b0a2e8bdcbe034704fb159bed910ac"
+      },
+      {
+        "path": "src/bot/qq-component-selection.cjs",
+        "bytes": 28112,
+        "sha256": "bf16d14115472a80547586fbb5cd3528c30af586e6512fc3fcd3eb09b8515341"
+      },
+      {
+        "path": "src/bot/qq-components.cjs",
+        "bytes": 49240,
+        "sha256": "ba395895a25006bcba466b6182f6bf1ab1ba152aebcf2ea36872371fcda0b60b"
+      },
+      {
+        "path": "src/bot/qq-console.cjs",
+        "bytes": 46205,
+        "sha256": "4b8aee86c5046a41ebeaa8ca31eee376ca24291b5dbb37f1c0df38c56f7adb6c"
+      },
+      {
+        "path": "src/bot/qq-contact-admin-session.cjs",
+        "bytes": 13642,
+        "sha256": "8ac4aa62e058068935e980ef1612d153ca2f7c7991322fc254a8ff55d99a7f4e"
+      },
+      {
+        "path": "src/bot/qq-contact-admin-transport.cjs",
+        "bytes": 4903,
+        "sha256": "3651c9f2906dee03033f936dec9105a3245815fe4db3ed4a5096e17c149611b2"
+      },
+      {
+        "path": "src/bot/qq-contact-admin.cjs",
+        "bytes": 10754,
+        "sha256": "d80e8af83ea786d97e0d44ed7ccc7bd94d6f41c97e117053e9d78e3a63517598"
+      },
+      {
+        "path": "src/bot/qq-diagnostic-report.cjs",
+        "bytes": 11203,
+        "sha256": "c1f2ff72ed4d0d9209e31c347a4e57ca0a20c5dde00bebea676431acc0909e98"
+      },
+      {
+        "path": "src/bot/qq-directory.cjs",
+        "bytes": 9138,
+        "sha256": "9e61e1ac6b44a8854b428602eaaef5ca6ffadde13bff5faaa5332d80dd54ab7c"
+      },
+      {
+        "path": "src/bot/qq-first-setup-panel.cjs",
+        "bytes": 2809,
+        "sha256": "13344283eadac7a6520424e16bb73d25cdbfeb31b0144070c36efccbffb3134c"
+      },
+      {
+        "path": "src/bot/qq-first-setup.cjs",
+        "bytes": 22049,
+        "sha256": "4ac9c7517c2588b9a6fe14c294883db9e48831cc4c45290a8d1b25669465b0bf"
+      },
+      {
+        "path": "src/bot/qq-friend-requests-panel.cjs",
+        "bytes": 6291,
+        "sha256": "06ee19486664909790b1809796c7aa255febcd25bc02544737639bd6b44bd617"
+      },
+      {
+        "path": "src/bot/qq-friend-requests.cjs",
+        "bytes": 8623,
+        "sha256": "327684e25d85a4f99447a0e302db321e9034274bada686bf0ca187ff2ac823d3"
+      },
+      {
+        "path": "src/bot/qq-group-admin-session.cjs",
+        "bytes": 13019,
+        "sha256": "44c9397ad37a8fba8809b9ab32af061418f25fac39a32b34fe40babc4817acff"
+      },
+      {
+        "path": "src/bot/qq-group-admin-transport.cjs",
+        "bytes": 7953,
+        "sha256": "788a00f5b64aeff15335ab59a4532507c843780edaeca44e933dc9f9f2e83a21"
+      },
+      {
+        "path": "src/bot/qq-group-admin.cjs",
+        "bytes": 13504,
+        "sha256": "94c66c9ed46d4df87731701864a71a530bf904a3e5bfbfc7943d85522fc27cc7"
+      },
+      {
+        "path": "src/bot/qq-group-members.cjs",
+        "bytes": 9641,
+        "sha256": "20db5364bb00df30e75d2a7e39e1882a8b2c04eeab6aed3cd496151b88b86733"
+      },
+      {
+        "path": "src/bot/qq-group-profile-session.cjs",
+        "bytes": 13068,
+        "sha256": "b0a699db7f0860f758e3eaff46fe917c565380c21a5628b1f5ff01e1df4afc63"
+      },
+      {
+        "path": "src/bot/qq-group-profile-transport.cjs",
+        "bytes": 5458,
+        "sha256": "fe6c19f32cc5a017bb1ba2d0786707095f3975db1058237338b467d94eb721a2"
+      },
+      {
+        "path": "src/bot/qq-group-profile.cjs",
+        "bytes": 8915,
+        "sha256": "13bd96deb658d9dacb2faaf4daddbc15ffc5e2ba684b755a5ee362c434545f84"
+      },
+      {
+        "path": "src/bot/qq-healthy-orphan-receipt.cjs",
+        "bytes": 3219,
+        "sha256": "e3d94f2f92e0b6c26a78d4643e5785598a26598c52b356660125727a1a75f7f5"
+      },
+      {
+        "path": "src/bot/qq-held-zip-reader.cjs",
+        "bytes": 759,
+        "sha256": "995df2d00715cb2c80ce385890f713e30668c2474a56cd94de72a3eff5f9735e"
+      },
+      {
+        "path": "src/bot/qq-history-image.cjs",
+        "bytes": 11664,
+        "sha256": "b471711acadba3b18e19956ef16558f9cc2bf90a0dc5c14537103dbe3d482d32"
+      },
+      {
+        "path": "src/bot/qq-image-download.cjs",
+        "bytes": 9759,
+        "sha256": "7261d48a631aab74433e680096ebe253b83e60fb7e87884fdcdfce3f35da3131"
+      },
+      {
+        "path": "src/bot/qq-image-source.cjs",
+        "bytes": 1618,
+        "sha256": "794cad8f285419132d2e1566ea1dd6948a68c00ca0a0815c970c039134f8e655"
+      },
+      {
+        "path": "src/bot/qq-inbound-image.cjs",
+        "bytes": 12119,
+        "sha256": "9fd927f9b7d7b1a68e74d9aab71671805da40cf20657a0d63e313746485e7efa"
+      },
+      {
+        "path": "src/bot/qq-inbound-voice.cjs",
+        "bytes": 18249,
+        "sha256": "3112c845745a217b235b6b8a54b90c1e14d740143f8633556a2b254a2df04a4c"
+      },
+      {
+        "path": "src/bot/qq-installation-settings.cjs",
+        "bytes": 5479,
+        "sha256": "7a9563b2036e5d9d27a52dafaaeaf6d1b3be873e545eac6e74e68063581376da"
+      },
+      {
+        "path": "src/bot/qq-managed-layout.cjs",
+        "bytes": 3252,
+        "sha256": "97f18e77f666ce7b841a78211e863351abfe02e1335aeab077875895c910942f"
+      },
+      {
+        "path": "src/bot/qq-managed-node-code-repair.cjs",
+        "bytes": 38580,
+        "sha256": "fecb1ec0616b9c493ddc1576a2cb4157de181b6f44ce717694005cda03a11248"
+      },
+      {
+        "path": "src/bot/qq-managed-node-layout.cjs",
+        "bytes": 4617,
+        "sha256": "d3137ac92ea19d4a3633c6e457df4c026a27e712928912480672feb75d8c7898"
+      },
+      {
+        "path": "src/bot/qq-managed-node-repair-metadata.cjs",
+        "bytes": 8200,
+        "sha256": "1e1bee3760eaab7eb88a2b39f48026962f4f4ef9a0ca840e2a6df6094914816c"
+      },
+      {
+        "path": "src/bot/qq-managed-node-setup.cjs",
+        "bytes": 19784,
+        "sha256": "4759acd1ac81be1485ec82cab00df59b7818420aee065a5bc98cf40d80378467"
+      },
+      {
+        "path": "src/bot/qq-managed-setup.cjs",
+        "bytes": 23440,
+        "sha256": "16a05a6a1c522cf314767d41e4a3dd0b9a9364ea552b6d63bfd6de8f8a87b5f9"
+      },
+      {
+        "path": "src/bot/qq-managed-shell-code-repair.cjs",
+        "bytes": 37253,
+        "sha256": "3cc53fea1bf7628345ecd38d7d6a7de7e38e7e687fa0b51b8a700d2bee378bb9"
+      },
+      {
+        "path": "src/bot/qq-managed-shell-repair-metadata.cjs",
+        "bytes": 7688,
+        "sha256": "6fb3c2005593fdb56a075b168d061b97f7c2ceaa8136e6eb36d475baf745bed3"
+      },
+      {
+        "path": "src/bot/qq-management-client.cjs",
+        "bytes": 1303,
+        "sha256": "c0169f850c3f687d6b29aaad8780dc4f89d42451d23372b84c6c45030be48d30"
+      },
+      {
+        "path": "src/bot/qq-media-file.cjs",
+        "bytes": 2775,
+        "sha256": "1e2ffde2cb1848e56345600a647408bd21e70b1e58b03914c270d4034fe01f2d"
+      },
+      {
+        "path": "src/bot/qq-media.cjs",
+        "bytes": 12106,
+        "sha256": "fab57e137715102c13a073cc44c6178a8d6aea6722c62fd99b95bea852ef4595"
+      },
+      {
+        "path": "src/bot/qq-native-passkey-maintenance.cjs",
+        "bytes": 17338,
+        "sha256": "8c22e3e11f9af54d3aaef3bb7b80c15dfdb663f8adb33b67ff8e0fee866fc3c9"
+      },
+      {
+        "path": "src/bot/qq-node-code-gate.cjs",
+        "bytes": 4463,
+        "sha256": "5af0b14ee56d59f0b9902bac78849e4b3d0f608ab9ad57ca331a8845447309cc"
+      },
+      {
+        "path": "src/bot/qq-node-host.cjs",
+        "bytes": 5808,
+        "sha256": "cba4c93a7aece375d349b5540d00c462faa3fd3d97b0fba57d44ae7e93a29f75"
+      },
+      {
+        "path": "src/bot/qq-node-repair-fs.cjs",
+        "bytes": 9693,
+        "sha256": "c14a628d6a05330d1fcec3b84c092725c3f4215b2782c276094b9b691d2cc251"
+      },
+      {
+        "path": "src/bot/qq-node-repair-history.cjs",
+        "bytes": 16781,
+        "sha256": "dc4ded1b5f43f52b1d7e0f01a14959aabddb98146e4f7541d16baaa569d3d60b"
+      },
+      {
+        "path": "src/bot/qq-node-repair-panel.cjs",
+        "bytes": 15998,
+        "sha256": "4d122c98a8ad5fca2d7223a47b6c8029c31d764d5e53f2383921d8f7f97e3f74"
+      },
+      {
+        "path": "src/bot/qq-node-repair-stage.cjs",
+        "bytes": 8907,
+        "sha256": "e3c442888bee4b1ae38ca34695dc2b418068a172197dbd640bbd8921fe6871e5"
+      },
+      {
+        "path": "src/bot/qq-node-runtime.cjs",
+        "bytes": 28728,
+        "sha256": "3146d4c948e7b8de392b6c79c501948fdd05bfe684593c1958135114bcc5e36c"
+      },
+      {
+        "path": "src/bot/qq-node-selection.cjs",
+        "bytes": 11681,
+        "sha256": "ffb328ae7356a51ed5d2bc76d4d499bf48c3f48437d055601b224081606659d4"
+      },
+      {
+        "path": "src/bot/qq-node-webui.cjs",
+        "bytes": 3472,
+        "sha256": "9dccbe0365f84f048983550a2a7a17ad67dc68b9f85136ebb83d6ae77a371f03"
+      },
+      {
+        "path": "src/bot/qq-owner-composer.cjs",
+        "bytes": 6904,
+        "sha256": "b1e47cb06e344b70d3f7a031b236a4972f7f598e0db98959b13dcd9b1717f953"
+      },
+      {
+        "path": "src/bot/qq-owner-friend-setup.cjs",
+        "bytes": 10471,
+        "sha256": "05d110c3e81a3e4dc019f9e8c0571ba6eeedfda1de1fa6fedb4104935902cf29"
+      },
+      {
+        "path": "src/bot/qq-owner-history-session.cjs",
+        "bytes": 12552,
+        "sha256": "e3549d08c798ca7b77c2b1456677a6b2c8c4ed826dacbf328f4f832f81bba060"
+      },
+      {
+        "path": "src/bot/qq-owner-history.cjs",
+        "bytes": 8446,
+        "sha256": "932c029b0ef06a941cd7213f0a8417dd5dce5af936eb050923e56c46fbd8918c"
+      },
+      {
+        "path": "src/bot/qq-owner-remark-panel.cjs",
+        "bytes": 6769,
+        "sha256": "47c01fe54e59511881b7e2b68fd3c0587b7d1c45f615193b8b195fbbeda4dfa1"
+      },
+      {
+        "path": "src/bot/qq-owner-remark-session.cjs",
+        "bytes": 9535,
+        "sha256": "83178e93c7f8f957cfe9edc6fc9b3511b31ad7a89bd57afd625ae740f2c7caeb"
+      },
+      {
+        "path": "src/bot/qq-owner-remark.cjs",
+        "bytes": 10053,
+        "sha256": "0d2b8415bb0ed29ee84ec359102cf112d605ba24eba8ede9fc563812f63f3397"
+      },
+      {
+        "path": "src/bot/qq-pending-update-lock-recovery.cjs",
+        "bytes": 24000,
+        "sha256": "75d4c03ef95367a874c1293a9653fe29f1e2d774b799be8edd5e6f7cd7c0e1aa"
+      },
+      {
+        "path": "src/bot/qq-pending-update-recovery.cjs",
+        "bytes": 19791,
+        "sha256": "3f093513b9bac95b573816dfd3f3d710c349a4fea878caf842bce4d8c52f79a3"
+      },
+      {
+        "path": "src/bot/qq-plugin-admin-session.cjs",
+        "bytes": 13138,
+        "sha256": "579870065745ee1bad88670046ec8d64cf238835b63625a3e09175dddaf62269"
+      },
+      {
+        "path": "src/bot/qq-plugin-admin.cjs",
+        "bytes": 9897,
+        "sha256": "b1f96ad9f91afc72bdf14bf62ac180b69fbdde6d9f9849509cf9d29f41be50a7"
+      },
+      {
+        "path": "src/bot/qq-plugin-artifacts.cjs",
+        "bytes": 19409,
+        "sha256": "f2e1950583032cee92ba84b69fd15c6211b7ba66a08a67d31efd9375a98f61cc"
+      },
+      {
+        "path": "src/bot/qq-plugin-catalog.cjs",
+        "bytes": 11281,
+        "sha256": "1a95edb7f0f3c20e847d50605059544b85a7c2350cbb57d77a884b6316c39e1e"
+      },
+      {
+        "path": "src/bot/qq-plugin-config-policy.cjs",
+        "bytes": 10340,
+        "sha256": "690cc49316abc4b82c650496aee21b37e611928b68b707b972bcf6dc53c418a5"
+      },
+      {
+        "path": "src/bot/qq-plugin-config-session.cjs",
+        "bytes": 11258,
+        "sha256": "a580d7391540ca0e61690a2b62ab58c6d82d6465c0ff48ac0575cc7806c476c3"
+      },
+      {
+        "path": "src/bot/qq-plugin-config.cjs",
+        "bytes": 7174,
+        "sha256": "ab65e8edb18629f1b832a0f51eeb7c7c85b7d97692069eee648cc3af962c02a0"
+      },
+      {
+        "path": "src/bot/qq-plugin-deployment.cjs",
+        "bytes": 34467,
+        "sha256": "92a0e84f96e4ddce2ef41639ca6f38893ba54a7de1c190e65826ae596f1b2dc6"
+      },
+      {
+        "path": "src/bot/qq-plugin-package-session.cjs",
+        "bytes": 26051,
+        "sha256": "2a9686b9b5e1992e707cbd09605bf25b9b9daebf5839f24eebd2592cae78b1d0"
+      },
+      {
+        "path": "src/bot/qq-plugin-scope.cjs",
+        "bytes": 2977,
+        "sha256": "0354e7c2b8a0dd65f8c11149b5b5134308209848be10d8171e92cff41231ebf9"
+      },
+      {
+        "path": "src/bot/qq-profile-backups.cjs",
+        "bytes": 14183,
+        "sha256": "73839086831dce8f7e62e67e3da7eb4af16493062d06a64060da3f111b04b4e4"
+      },
+      {
+        "path": "src/bot/qq-profile-config.cjs",
+        "bytes": 10008,
+        "sha256": "1ce4b7aa1214f400021c34940ccd1b45873da9fdad83aad054c23d3214adcaf0"
+      },
+      {
+        "path": "src/bot/qq-qce-binding.cjs",
+        "bytes": 14225,
+        "sha256": "74b968c2e8cc43ba507214fa3ace63e34c3708cc1688fca938c9d6f2d370b904"
+      },
+      {
+        "path": "src/bot/qq-qce-client.cjs",
+        "bytes": 5010,
+        "sha256": "65c9514083f8736847c6acffe0841bdd028a0c95ffdc1c8a1bf1ee80894e8b39"
+      },
+      {
+        "path": "src/bot/qq-qce-export-client.cjs",
+        "bytes": 6349,
+        "sha256": "653caf667b4feec8cb1d093813a3e13149c3befcc7b79e1775d71066b9ead296"
+      },
+      {
+        "path": "src/bot/qq-qce-export-jobs.cjs",
+        "bytes": 11885,
+        "sha256": "916d0d2eda9e0f73d757fe2496d55246ab409c21f925de514b24cfa23ac83d48"
+      },
+      {
+        "path": "src/bot/qq-qce-export-policy.cjs",
+        "bytes": 9185,
+        "sha256": "a7d619368a23ecde9532aa72980f49a2a706043640b570201bc023630c741c75"
+      },
+      {
+        "path": "src/bot/qq-qce-export-session.cjs",
+        "bytes": 15165,
+        "sha256": "21db6a50b50bf8958a08271be1471f2f9898bb93d0fda3cac2f6eb77158cb3bb"
+      },
+      {
+        "path": "src/bot/qq-qce-managed-process.cjs",
+        "bytes": 10976,
+        "sha256": "9aaec04fdb4598450927b1dd467d9c4410ac00a2381a94b351b846f85a0714fc"
+      },
+      {
+        "path": "src/bot/qq-qce-native-cron.cjs",
+        "bytes": 1869,
+        "sha256": "7b1ac1200de4d309d19fb01445e5a4ce669da6e8fe63861699e6d6b6a98df636"
+      },
+      {
+        "path": "src/bot/qq-qce-native-plans-client.cjs",
+        "bytes": 5965,
+        "sha256": "0c1fc336b80b36a0445ef331a3243889ecf237461d87489e0cb5faac005aaefc"
+      },
+      {
+        "path": "src/bot/qq-qce-native-plans-policy.cjs",
+        "bytes": 12177,
+        "sha256": "14cdd28080198a1122e3448a33c363cfca5823790f6d69f6d7d5094f5d76aeae"
+      },
+      {
+        "path": "src/bot/qq-qce-native-plans-session.cjs",
+        "bytes": 13029,
+        "sha256": "f0d8f8a271a4086254b2763fd7784f85cf50f9bdc524c49c8277adc044d36994"
+      },
+      {
+        "path": "src/bot/qq-qce-policy.cjs",
+        "bytes": 5792,
+        "sha256": "f6f756e5583afacb3eabca9bfd7c7dc81302432f6ec8333b85dafcb60c875e8e"
+      },
+      {
+        "path": "src/bot/qq-qce-release.json",
+        "bytes": 23860,
+        "sha256": "02b8e9b04b880813e45f514459d7560daa40b2d7d0dfdf1c9f58b3ac8fa28797"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-policy.cjs",
+        "bytes": 5818,
+        "sha256": "8290918d501a09ee994e5c8aa3fe8c3ad8743803e6b7ac16fdd628807de5c9be"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-runner.cjs",
+        "bytes": 7902,
+        "sha256": "c1399c0c8e82c5458e5de7c46fb94572690b57e18e2ffa3c27b61221dfcc70b7"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-session.cjs",
+        "bytes": 10839,
+        "sha256": "e0f61b5466b960e6d1c043b1ae5efb43acc03932e14c9f5266568d0158eb60b3"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-store.cjs",
+        "bytes": 14484,
+        "sha256": "453077b8a5de6df4bc439b36b427e1f139438e9b7256e8c5683fb44d3f4e1f36"
+      },
+      {
+        "path": "src/bot/qq-qce-schedule-time.cjs",
+        "bytes": 6597,
+        "sha256": "45f7ff7d72e722f55c8e7da68701d252cd1329eabbe11692b32444308a1356fd"
+      },
+      {
+        "path": "src/bot/qq-qce-security-client.cjs",
+        "bytes": 6187,
+        "sha256": "beeee4e58929fc9b16a1426e113e84fc670092df9b5777301d57d955f41ff2e4"
+      },
+      {
+        "path": "src/bot/qq-qce-security-policy.cjs",
+        "bytes": 10179,
+        "sha256": "44d9477de6c468d02f60b5bec0c2bdfe1d715ede7ac89279a3c36393e34723f2"
+      },
+      {
+        "path": "src/bot/qq-qce-security-session.cjs",
+        "bytes": 7384,
+        "sha256": "e888712bcd0d651b05a72cc7f8f44ed630d1bd4b49618aa0131549356e74a152"
+      },
+      {
+        "path": "src/bot/qq-qce-session.cjs",
+        "bytes": 9697,
+        "sha256": "da1aa779e4051a95275c3aa53b05e0da131d7d0b12036a57e6435ea8f549a09d"
+      },
+      {
+        "path": "src/bot/qq-qce-startup.cjs",
+        "bytes": 4682,
+        "sha256": "d811a9f39feaf580d58a4ec5fb853d425342b8ff633c67da858040cecc0c960c"
+      },
+      {
+        "path": "src/bot/qq-quoted-image.cjs",
+        "bytes": 5796,
+        "sha256": "528c33e1be02556bd37bea98d7cd2178f59cb96bc6f6ab97280fec6cfb63e0d9"
+      },
+      {
+        "path": "src/bot/qq-remote-client.cjs",
+        "bytes": 13850,
+        "sha256": "2889fc417e6cccde5c5e10dcc01d68cad546ac9ee987e75297265c11dc0583d8"
+      },
+      {
+        "path": "src/bot/qq-remote-file-copy-stage.cjs",
+        "bytes": 8709,
+        "sha256": "d802d7eba6391e655bb8d725668b0be1ae4dbe38be8fe4cbb87bc4ebb9455f49"
+      },
+      {
+        "path": "src/bot/qq-remote-file-stage.cjs",
+        "bytes": 16852,
+        "sha256": "b618ef58444c6623f0cebeab9a04340e4b4fbe8d76ba095c0a8e219f5e4f1eb7"
+      },
+      {
+        "path": "src/bot/qq-remote-file-transport.cjs",
+        "bytes": 17062,
+        "sha256": "57b0592e231fd0ac1aff7138e5275ed49cc862fb24143303cfac3bcdf279f28c"
+      },
+      {
+        "path": "src/bot/qq-remote-files-copy.cjs",
+        "bytes": 9535,
+        "sha256": "037867a81963ff8950af4b1ba240c80c7c681ce0adc06b32a4658128b1da0acd"
+      },
+      {
+        "path": "src/bot/qq-remote-files-extract.cjs",
+        "bytes": 2821,
+        "sha256": "9f0f083851b399c1af0d850157ca1636f31ab4dcd10f9b092c4fd9d891289a14"
+      },
+      {
+        "path": "src/bot/qq-remote-files-policy.cjs",
+        "bytes": 5975,
+        "sha256": "906f8eff941d85ef89384841ffdc8106240b18d6c8a1bbf69f96ee52ce0820e4"
+      },
+      {
+        "path": "src/bot/qq-remote-files-session.cjs",
+        "bytes": 24894,
+        "sha256": "58ec8b77a623a90fdf0937065b46a87131fe7bc96cd473b5b4de474059e45c74"
+      },
+      {
+        "path": "src/bot/qq-remote-login-policy.cjs",
+        "bytes": 7153,
+        "sha256": "c8abdd203361a26fca01be264fd2c3fffd435d487aacd04a13cd7f28df470c9d"
+      },
+      {
+        "path": "src/bot/qq-remote-login-session.cjs",
+        "bytes": 10247,
+        "sha256": "ac3fd670d6a1fa5a9138a0ccf533c124cd7ab1534cfaced679d69d314aff0a25"
+      },
+      {
+        "path": "src/bot/qq-remote-panel.cjs",
+        "bytes": 10605,
+        "sha256": "b64f33e4bc0d0fdd4e1db0a7700c07b8a98a3cc4ca9dd8b7b17379ab2e60af11"
+      },
+      {
+        "path": "src/bot/qq-remote-passkey-policy.cjs",
+        "bytes": 8254,
+        "sha256": "44edc8b9f37d6150742735c32703a7b68ac0db7952214c20341429e4f278931b"
+      },
+      {
+        "path": "src/bot/qq-remote-passkey-session.cjs",
+        "bytes": 9043,
+        "sha256": "9ad028656398bb99c201ae71af566a8224a9771d4457dbd507c21ce688e98c33"
+      },
+      {
+        "path": "src/bot/qq-remote-policy.cjs",
+        "bytes": 10913,
+        "sha256": "3668b6a0aa48c3327c7adcf504bfc7c95532fa3eed3b26f59d50584d36c06dbc"
+      },
+      {
+        "path": "src/bot/qq-remote-registry.cjs",
+        "bytes": 12583,
+        "sha256": "2c0b9319fc8b56070607bc99ca792a5c6ac11462e07d8c69584891b660efa1b2"
+      },
+      {
+        "path": "src/bot/qq-remote-session.cjs",
+        "bytes": 19960,
+        "sha256": "ab8cf9a3bbb2f467c3ea35a2a39cfa59f22744728ca83708d9cabe816add0011"
+      },
+      {
+        "path": "src/bot/qq-remote-transport.cjs",
+        "bytes": 15162,
+        "sha256": "805cbf61a34cc8d5aee98ea07c8c1db3ea2c4bf043a0ab3a68fe8fe4596dc8b9"
+      },
+      {
+        "path": "src/bot/qq-runtime-endpoint.cjs",
+        "bytes": 6198,
+        "sha256": "920db69386778c869981facea2bc9ae23477e0341443f2f77bea3eccdd199763"
+      },
+      {
+        "path": "src/bot/qq-runtime.cjs",
+        "bytes": 93740,
+        "sha256": "a59560a1e4e557545851ae32caa4fff9278a11548c8d965e96026273475070a5"
+      },
+      {
+        "path": "src/bot/qq-self-profile-panel.cjs",
+        "bytes": 14024,
+        "sha256": "2205ef6ba7c92a230e94fa754c4cb8995d8c7fc5d51923fe8fb1bc4edd5e48ff"
+      },
+      {
+        "path": "src/bot/qq-self-profile-transport.cjs",
+        "bytes": 4990,
+        "sha256": "1b90225f2ef9f79314435480373e459143b28eb59b616a8807a191669d97d48b"
+      },
+      {
+        "path": "src/bot/qq-self-profile.cjs",
+        "bytes": 11318,
+        "sha256": "c96a5c3231ee49ed291b7325120ea9cf375606f26cb6b6b96d92748c97527f62"
+      },
+      {
+        "path": "src/bot/qq-setup.cjs",
+        "bytes": 2356,
+        "sha256": "28df9a46ebd07b290e8a8e38e79ba4aa686b982562688daa522e8a06f884cf08"
+      },
+      {
+        "path": "src/bot/qq-shell-code-gate.cjs",
+        "bytes": 4492,
+        "sha256": "24e107916833b0bc9d266679ff929bc17b0f84039e82dc3766a42adc07b5a13e"
+      },
+      {
+        "path": "src/bot/qq-shell-orphan-cleanup.cjs",
+        "bytes": 15336,
+        "sha256": "deac5039391c836154d5cbe0024ebb25dec4b26b5d7c7f66ee465de9c567c2cb"
+      },
+      {
+        "path": "src/bot/qq-shell-owner-proof.cjs",
+        "bytes": 25424,
+        "sha256": "885702e0bac9ff6cd61670ddbd65305493f002cd1dbe13cf61507e0d4a00f76d"
+      },
+      {
+        "path": "src/bot/qq-ssqq-assets.json",
+        "bytes": 19070,
+        "sha256": "3b14fb6b288ee4b6ec081c68893f9fb91e800699e686518d23cf3cb53011527e"
+      },
+      {
+        "path": "src/bot/qq-ssqq-media.cjs",
+        "bytes": 5371,
+        "sha256": "0cf157c020e329132ed8db8db2c2945f20ddee4cc22cb9789c923ad532c3b562"
+      },
+      {
+        "path": "src/bot/qq-ssqq-session.cjs",
+        "bytes": 15723,
+        "sha256": "c332ac0604ddf97054a6bb18bc4a5d5fb9d6c10fe920088017636cd73f87c0a8"
+      },
+      {
+        "path": "src/bot/qq-ssqq-view.cjs",
+        "bytes": 11298,
+        "sha256": "55649afadaf0f2522904b487b1699cd3e22aedf0ccd76838f1521fd3d69b8f52"
+      },
+      {
+        "path": "src/bot/qq-stop-trace.cjs",
+        "bytes": 4400,
+        "sha256": "9fe6178be21e9ba3d3e5520bd1ecf1ca6fe1fd06bb6361142becea381e2b6caf"
+      },
+      {
+        "path": "src/bot/qq-supervisor-client.cjs",
+        "bytes": 20842,
+        "sha256": "2a2ffce55183c962d938409f8c5e0873027ab9d852ac653b66beda1f1c6e59ab"
+      },
+      {
+        "path": "src/bot/qq-supervisor-component-repair-panel.cjs",
+        "bytes": 9376,
+        "sha256": "497d2ce292d55f061acd1738621861a046b43e75c55aaf20ba82b8c2f80855f5"
+      },
+      {
+        "path": "src/bot/qq-supervisor-component-repair-policy.cjs",
+        "bytes": 390,
+        "sha256": "fa66c3d1c2a409cd6462598dafef7fa25a80a2bf817b795f5e6cc5ee36244cb8"
+      },
+      {
+        "path": "src/bot/qq-supervisor-links.cjs",
+        "bytes": 17114,
+        "sha256": "7a23a93186cfa6a2148848e23291ce81a2f84b2d7222eb54ab9acdf223a5b076"
+      },
+      {
+        "path": "src/bot/qq-supervisor-lock-panel.cjs",
+        "bytes": 6646,
+        "sha256": "6869b9fe8f84390236261c0aa8a7088a9820b717a07420babea6c5455e00df57"
+      },
+      {
+        "path": "src/bot/qq-supervisor-lock-policy.cjs",
+        "bytes": 6502,
+        "sha256": "1d80015a1d2965303a03057891ec0f2987946747f624920d4ed9b36b11fcfeb5"
+      },
+      {
+        "path": "src/bot/qq-supervisor-native-passkey-panel.cjs",
+        "bytes": 7114,
+        "sha256": "44246403b983d26598b06d836199b7a6f225b7e65363067b33d36596e09c039f"
+      },
+      {
+        "path": "src/bot/qq-supervisor-native-passkey-policy.cjs",
+        "bytes": 323,
+        "sha256": "0324992a4590b7d59bf04e72250be2c47edbc5d2aff755dc0c8f0365c72a5505"
+      },
+      {
+        "path": "src/bot/qq-supervisor-orphan-panel.cjs",
+        "bytes": 7098,
+        "sha256": "6d0c0b278f59dfd306afb3215eb2760e7689aa5b1a815f86a5dd814bf9d5b1be"
+      },
+      {
+        "path": "src/bot/qq-supervisor-orphan-policy.cjs",
+        "bytes": 1616,
+        "sha256": "37de925d17f89ea71834f276a81697d5f5b05931f5e5c91cb55c3e5cc9810681"
+      },
+      {
+        "path": "src/bot/qq-supervisor-panel.cjs",
+        "bytes": 16638,
+        "sha256": "d2efdd08dd4bf8b40ea9adcbd53e5397611da47cac7c62dc1af7c27376183721"
+      },
+      {
+        "path": "src/bot/qq-supervisor-policy.cjs",
+        "bytes": 8592,
+        "sha256": "5652887e60e618130562970bb9d297a7854f2e6730a96aaaeaf4a39a41e0c624"
+      },
+      {
+        "path": "src/bot/qq-supervisor-profile-backup-panel.cjs",
+        "bytes": 6175,
+        "sha256": "ec30a5909e1d9a8c7dc08b17ee356ec2c2c2b3fc370214246287f2c1f16ebab3"
+      },
+      {
+        "path": "src/bot/qq-supervisor-profile-backup-policy.cjs",
+        "bytes": 323,
+        "sha256": "0e00628dde7c2e3f8fcc0f1f397c2c51c05fa0ddd079c38ae9ea36c4adc617d3"
+      },
+      {
+        "path": "src/bot/qq-supervisor-recovery-panel.cjs",
+        "bytes": 6726,
+        "sha256": "be9876fa3c8eb510983adec977c9b3f1a9a8892090b99cc117c3aefb79bf192e"
+      },
+      {
+        "path": "src/bot/qq-supervisor-recovery-policy.cjs",
+        "bytes": 5745,
+        "sha256": "cb04eabaad35c96410778860c8452c59193438c89ba644b10232a3617041739e"
+      },
+      {
+        "path": "src/bot/qq-transfer-client.cjs",
+        "bytes": 20079,
+        "sha256": "75191327d958722f2990d9332751d7a0345591fb11f047605dc51970890e99a0"
+      },
+      {
+        "path": "src/bot/qq-transfer-jobs.cjs",
+        "bytes": 23204,
+        "sha256": "42ad9acb2ec07c5a18a34e54863fe3e0936a0b6d1bee35b93f56e725db86e737"
+      },
+      {
+        "path": "src/bot/qq-transfer-links.cjs",
+        "bytes": 9542,
+        "sha256": "f0f72a25397d37b5950b2f23935324ddd67a8d68b941f3e9e6f2c9ba3dd28743"
+      },
+      {
+        "path": "src/bot/qq-transfer-local.cjs",
+        "bytes": 20422,
+        "sha256": "988f3e21331415827e51acf7df39257c76c656f8f8a119ac6aed4a7ce82be0bb"
+      },
+      {
+        "path": "src/bot/qq-transfer-panel.cjs",
+        "bytes": 12492,
+        "sha256": "2bd0fe7bc89de224b3b82c386d3910a2cc51b0251e59dd3096d13a93d564f149"
+      },
+      {
+        "path": "src/bot/qq-transfer-session.cjs",
+        "bytes": 28901,
+        "sha256": "f00d01e507e86f299da35c62b69c06b21010baf6736e1ded5228bf3cc67c628b"
+      },
+      {
+        "path": "src/bot/qq-transfer-stage.cjs",
+        "bytes": 14694,
+        "sha256": "d5c752d05a88e10620ada398e99a3176eba978608b5a713e7e45df09b8cd4706"
+      },
+      {
+        "path": "src/bot/qq-voice-payload.cjs",
+        "bytes": 3664,
+        "sha256": "01185e5b46e64972264a0f1339fe8699ffdcef0aaa82b7a12f510393b5907796"
+      },
+      {
+        "path": "src/bot/qq-voice.cjs",
+        "bytes": 7656,
+        "sha256": "03a6f62b7711ac63d498b8fc40f8a5af8782df7ea7f92dd54a6f9b3a4d919024"
+      },
+      {
+        "path": "src/bot/qq.cjs",
+        "bytes": 38585,
+        "sha256": "94772f41f4b56c5f5df7c1e2ab9227be25898e2c9d5548eb2fba6fe11a51ae78"
+      },
+      {
+        "path": "src/bot/reflection/reflection-collector.cjs",
+        "bytes": 5385,
+        "sha256": "e024a3cd4a100f0044d27d329d1cecd04eba0fadd1e0c500d0f0f25b45e48b53"
+      },
+      {
+        "path": "src/bot/reflection/reflection-runner.cjs",
+        "bytes": 6393,
+        "sha256": "b747a900e1efa951cfcb07a16c2e3ef6457415b51223e7b15e2bc8e94807b9a9"
+      },
+      {
+        "path": "src/bot/reflection/reflection-store.cjs",
+        "bytes": 18458,
+        "sha256": "f05a396994c2ebcab566d280d8d3776b06ad0ac476952f6b91112b4408bd6f56"
+      },
+      {
+        "path": "src/bot/reflection/reflection-verify.cjs",
+        "bytes": 5966,
+        "sha256": "b638843113ebdb1469c1ec40f2a855fda32e71273d623b13d087554bc4496284"
+      },
+      {
+        "path": "src/bot/runner.cjs",
+        "bytes": 9524,
+        "sha256": "ecaced28622caa1693d662cfdc7bb5f917c1a87539d4ab0a8374b9dc33fa2b08"
+      },
+      {
+        "path": "src/bot/service.cjs",
+        "bytes": 117052,
+        "sha256": "2b9ae961f133d11efd49cff78c3c76e15e18a8f56657c2ab8b5dca5460759755"
+      },
+      {
+        "path": "src/bot/social-companion.cjs",
+        "bytes": 47298,
+        "sha256": "2b884a53ee3b78b3ff0c2b50e6d36d871a94e6096293b6395a8275a224934ce9"
+      },
+      {
+        "path": "src/bot/social-continuity-store.cjs",
+        "bytes": 27913,
+        "sha256": "c83f4f99a65400e9702163fecdca03278c92132c0ecc86c7cd2f675b710ee809"
+      },
+      {
+        "path": "src/bot/social-flow.cjs",
+        "bytes": 2322,
+        "sha256": "57e48147b7e3f43be762fcec6d92e383da62f520c508a795a8573cafacdb3681"
+      },
+      {
+        "path": "src/bot/social-store.cjs",
+        "bytes": 25090,
+        "sha256": "3e30c466d363775f06b98f4f7ebaf237948bc35a231f07e03759e395d821c389"
+      },
+      {
+        "path": "src/bot/st/branch-store.cjs",
+        "bytes": 7880,
+        "sha256": "bb17c34b1c63fc31825b703ed57c97dbdb9b4cc81cc701e6eb89d7e6baf04614"
+      },
+      {
+        "path": "src/bot/st/group-library.cjs",
+        "bytes": 9216,
+        "sha256": "3c1c98c34470e76538141702586bd315efc7383d08b833ce9a939035affa256f"
+      },
+      {
+        "path": "src/bot/st/local-pipeline.cjs",
+        "bytes": 18049,
+        "sha256": "d66e8fb15e9f68798f476a2a10ae02e7bd3ebd137bd7dcbbe67b58fcdef940f9"
+      },
+      {
+        "path": "src/bot/st/local-settings.cjs",
+        "bytes": 10538,
+        "sha256": "58a56f779166278fba43274920e076c4ec20275a7014f12407f6855543991c99"
+      },
+      {
+        "path": "src/bot/st/lorebooks.cjs",
+        "bytes": 8989,
+        "sha256": "405a1218c43229601d98c7e5a5726328f0552ab706751fbd2cb5693661cf176e"
+      },
+      {
+        "path": "src/bot/st/presets.cjs",
+        "bytes": 9740,
+        "sha256": "0fafc170c58ca3c767f4873a1b2b3443bab27363ccd391aedbd886982dae3953"
+      },
+      {
+        "path": "src/bot/st/prompt-builder.cjs",
+        "bytes": 21782,
+        "sha256": "fbd29c6ed011295e2b72ec92eec1b644c04ea35138d6e806b1ecdece23bc52bc"
+      },
+      {
+        "path": "src/bot/st/regex-library.cjs",
+        "bytes": 6097,
+        "sha256": "7b7a88378d23ab508eaac9638c75c99d227fb2bb93475038855b1cb2e1325e54"
+      },
+      {
+        "path": "src/bot/st/regex-pipeline.cjs",
+        "bytes": 6442,
+        "sha256": "eef2a89e92534fbb6324c22b7928b7ed3bb84e519090db4471ab673cb3a311cb"
+      },
+      {
+        "path": "src/bot/task-board.cjs",
+        "bytes": 49233,
+        "sha256": "e0aec4c9a143726b4e1217e92dfa07bf189a61567a91ce44daa53bfb9559075c"
+      },
+      {
+        "path": "src/bot/task-worktree.cjs",
+        "bytes": 13529,
+        "sha256": "df095e43c27183d8eb0334457ed5ba297d24861b5d0662169664cdc3e207e3b1"
+      },
+      {
+        "path": "src/bot/vault-migration-worker.cjs",
+        "bytes": 2661,
+        "sha256": "16b782fcb8f2c90a0260358a98022a37d83b6b437ea7bdd11d2b09eef294d5d5"
+      },
+      {
+        "path": "src/bot/vault-migration.cjs",
+        "bytes": 11502,
+        "sha256": "82291857f68deadd8a969484927dd323fd711605962e101d2d9e155d8f7967e7"
+      },
+      {
+        "path": "src/bot/weixin.cjs",
+        "bytes": 14827,
+        "sha256": "85002f659e3fefb105da3f4b1791da8f6d76b2a4bf2013ebd710ac23cd282cbb"
+      },
+      {
+        "path": "src/bot/wiki/quote-verify.cjs",
+        "bytes": 3312,
+        "sha256": "b8e2d17723386aafd8f312cc912be73a611a9dfb28224af972829072ad197c83"
+      },
+      {
+        "path": "src/bot/wiki/wiki-proposals.cjs",
+        "bytes": 12492,
+        "sha256": "8faa5558b21e78feafbc4547909ce7bf2710bd21565bd9edd17a2a6171f7228c"
+      },
+      {
+        "path": "src/bot/wiki/wiki-propose.cjs",
+        "bytes": 11894,
+        "sha256": "b14f4e7a9b5fe54994790b8360e7d28625936fe6a94c8114f60ab24fd4468746"
+      },
+      {
+        "path": "src/bot/wiki/wiki-recall.cjs",
+        "bytes": 3970,
+        "sha256": "447fed95e1445806450f1ba112c5606ec9556ea30a1acf8e02d45baf92d6cd06"
+      },
+      {
+        "path": "src/bot/wiki/wiki-search.cjs",
+        "bytes": 8347,
+        "sha256": "1f9fad88bea25473d1394d431aab721019835ca5ce9d4803ccd30e365fcf822c"
+      },
+      {
+        "path": "src/bot/wiki/wiki-store.cjs",
+        "bytes": 26442,
+        "sha256": "892517a0ca83bba5708f6b46a9ce9fd3563dea31c0bd9e2a48b181cf14bf9956"
+      },
+      {
+        "path": "src/bot/x-channel-policy.cjs",
+        "bytes": 3286,
+        "sha256": "9a34eec9c1e8830ef40cc58cef4ae527c5b94c77301366f7bc203ee53097f351"
+      },
+      {
+        "path": "src/bot/x-dm.cjs",
+        "bytes": 15055,
+        "sha256": "229c2b1008d6fba3625a46baf50c3e5227286f1f6c4451c1a403203e62effbd0"
+      },
+      {
+        "path": "src/bot/x-transport.cjs",
+        "bytes": 7221,
+        "sha256": "5b1c1da05654df0ea439cede761dd99161c40899f53d607ed1d9d8464a5e4db1"
+      },
+      {
+        "path": "src/core/app-identity.cjs",
+        "bytes": 483,
+        "sha256": "475c8c2ac62c2d15278c5685734032e4e5f7f6e7a1da8602e57bd5a1091137db"
+      },
+      {
+        "path": "src/core/app-menu.cjs",
+        "bytes": 2885,
+        "sha256": "f44ac9c093b803d052eeb390f55d06669a23d38af5afe69d6de9efe4d437f6ac"
+      },
+      {
+        "path": "src/core/appearance.cjs",
+        "bytes": 1372,
+        "sha256": "140835fa44bbd3052811aad4abcf9a0bb214f6d5c100ccfb77ae10a65ff6e9b3"
+      },
+      {
+        "path": "src/core/bus.cjs",
+        "bytes": 3300,
+        "sha256": "fdcf203cc06239550f4a5a15c5929cebfac3f07133b9a6c30f8f1beb09d6edfe"
+      },
+      {
+        "path": "src/core/demo.cjs",
+        "bytes": 992,
+        "sha256": "1ab94429007b7432947fbd055b3fa0f54ef1aabdbf554c197ac6198466fe7a8d"
+      },
+      {
+        "path": "src/core/desktop-stdio.cjs",
+        "bytes": 597,
+        "sha256": "e9d4d08adf3d66ca48fc05928440834ff230258fdadcd2266ce2153e5e06e351"
+      },
+      {
+        "path": "src/core/events.cjs",
+        "bytes": 3209,
+        "sha256": "d5363c2c32af345d921e42d84775f447bc1f9d66b1babb7b0cb1170b21f06a2f"
+      },
+      {
+        "path": "src/core/files.cjs",
+        "bytes": 2034,
+        "sha256": "492f487fdcc73630d0c60fe0c805d8d1a2b750211a6de353e364a7161d6d5e40"
+      },
+      {
+        "path": "src/core/icon.cjs",
+        "bytes": 5025,
+        "sha256": "98b8a06e1c0bc23318c13b6d6be10b471e7e5eecee5827389fae7a85553f5c06"
+      },
+      {
+        "path": "src/core/integration.cjs",
+        "bytes": 2589,
+        "sha256": "c79957f0316335b1a4cf4a714d84f1c26679b473d208b01bed5f05c1bdb476ea"
+      },
+      {
+        "path": "src/core/notify.cjs",
+        "bytes": 1279,
+        "sha256": "9b1862f54ead5ac0b01f237a5477dbf2b7cfae0ec6879a4c06f4b37e2883ee2c"
+      },
+      {
+        "path": "src/core/personas.cjs",
+        "bytes": 6285,
+        "sha256": "3a98e858c6613e08a21a676ed486a541947f42766b2b0db51cc128c250eebf94"
+      },
+      {
+        "path": "src/core/platform.cjs",
+        "bytes": 11016,
+        "sha256": "9cba41e4609f761c8075b7332a706f96b264e695f559690d0c353c72cb316e10"
+      },
+      {
+        "path": "src/core/send-shortcut.cjs",
+        "bytes": 241,
+        "sha256": "d625e2bb30505a7bcfdd338102fe40979d3d21588ff3a0b4840e538df89b4914"
+      },
+      {
+        "path": "src/core/single-instance.cjs",
+        "bytes": 10047,
+        "sha256": "0b016a9e1568630c4a45e5c9532f09159a9712058d47d51ed1309577920a9ea9"
+      },
+      {
+        "path": "src/core/store.cjs",
+        "bytes": 14697,
+        "sha256": "391a92407c01ff7fe050188cc3d8b94e794e46d2080fef43e2304bf2e69f9943"
+      },
+      {
+        "path": "src/core/theme.cjs",
+        "bytes": 1341,
+        "sha256": "de4094f011744dd603266a3654ad8b3e093cbf0d05b6ef7daa2e936d6e6b4ed9"
+      },
+      {
+        "path": "src/core/update-backup.cjs",
+        "bytes": 14352,
+        "sha256": "358ae5f79c3f7779456545ffc48ef6fddcab68eccc6a08863457b17fba5726c0"
+      },
+      {
+        "path": "src/hook.cjs",
+        "bytes": 2466,
+        "sha256": "1a3fd4299c9b1349a9cf64f609fead8754920b896d41958dad0cd11fba16ae0d"
+      },
+      {
+        "path": "src/main.cjs",
+        "bytes": 197245,
+        "sha256": "ca484797d7820f0cfdeab7b2edfd75b2b73b0b43164d98bbbd23ca44f8c560cf"
+      },
+      {
+        "path": "src/mcp/app-resource.cjs",
+        "bytes": 3296,
+        "sha256": "614fd727583ffebbf87735b014afa1c7bf6aacc301f9e20ebadd8bda30219742"
+      },
+      {
+        "path": "src/mcp/extensions.cjs",
+        "bytes": 6008,
+        "sha256": "74256dd91f9435b79c422e8ac8b4840c2a37c9e93abc4ef865c82c5d32f3104a"
+      },
+      {
+        "path": "src/mcp/result-app.js",
+        "bytes": 3255,
+        "sha256": "7716d3884a7b412a514729ddde5e11307553caea55e92e8d120cf3228a2a1302"
+      },
+      {
+        "path": "src/mcp/server.cjs",
+        "bytes": 542,
+        "sha256": "eb6857dd4c77ab8385171b654e0fed8321b33db97251fdd1309836241b4ddac3"
+      },
+      {
+        "path": "src/mcp/task-store.cjs",
+        "bytes": 3782,
+        "sha256": "32430896bcc736348d00900dd8f2e9b90d0825db19988d473f87c4cc33146b3d"
+      },
+      {
+        "path": "src/preload.cjs",
+        "bytes": 33501,
+        "sha256": "27e33f64e1663b9488b6ae21a605224749bf7ac07a592dcb5a7fafbf094afb57"
+      },
+      {
+        "path": "src/qq-supervisor/cli.cjs",
+        "bytes": 1888,
+        "sha256": "b973af52c2cf19a1f129fbfe37df1e48ac3bc0b96d06cfe69488153a430c6e8a"
+      },
+      {
+        "path": "src/qq-supervisor/component-repair-policy.cjs",
+        "bytes": 10010,
+        "sha256": "d5a573c93e415060328b5939c11554991d316d919a6dc60716f920e8136ddc18"
+      },
+      {
+        "path": "src/qq-supervisor/component-repair.cjs",
+        "bytes": 6268,
+        "sha256": "ef348fa6e34a227b16f814f24c207a00132e1920c2d5e341e8205cf8f866c4f5"
+      },
+      {
+        "path": "src/qq-supervisor/native-passkeys-policy.cjs",
+        "bytes": 7241,
+        "sha256": "84b56581a3e6dabe46561cbdc3f482a29c5f8a5840769f50cc90f65203632a2e"
+      },
+      {
+        "path": "src/qq-supervisor/native-passkeys.cjs",
+        "bytes": 4985,
+        "sha256": "a9f536ab892c61bfae69adceb4fd8b095bf7cd37971118bb01b0c8bddc01fdd9"
+      },
+      {
+        "path": "src/qq-supervisor/orphan-cleanup.cjs",
+        "bytes": 6563,
+        "sha256": "19ccdf4099b309ba894be7528b76717ad9eff6ca13bbc7da7dacebfc2a603ef2"
+      },
+      {
+        "path": "src/qq-supervisor/orphan-policy.cjs",
+        "bytes": 7949,
+        "sha256": "8ff28c62c3e68a9f00b613e54509b5cbe210f4d13f5b9bae932fad8642344b5a"
+      },
+      {
+        "path": "src/qq-supervisor/ownership.cjs",
+        "bytes": 2906,
+        "sha256": "7274ecd76eb9125f4086d3340b664034978e3a1b8d29da81ca202b0132adef0c"
+      },
+      {
+        "path": "src/qq-supervisor/pending-lock-policy.cjs",
+        "bytes": 6313,
+        "sha256": "42a9fa44ce5672f304651d02e6c4786978799a8d7416f348c03ad4afe264d816"
+      },
+      {
+        "path": "src/qq-supervisor/pending-lock.cjs",
+        "bytes": 4093,
+        "sha256": "e2b341027a49503e689a5c28caebc4629613794c1ec3268965c4fea47a255bb4"
+      },
+      {
+        "path": "src/qq-supervisor/pending-update-policy.cjs",
+        "bytes": 3560,
+        "sha256": "472c035fb5986246a9c4852a7a6cafe982e183735df0f24daba0ca224c2a587d"
+      },
+      {
+        "path": "src/qq-supervisor/pending-update.cjs",
+        "bytes": 6319,
+        "sha256": "1e69adc3836b0297a4231017ac664f432ebf78bc59a3a928c1b325eb3ef49a47"
+      },
+      {
+        "path": "src/qq-supervisor/policy.cjs",
+        "bytes": 6062,
+        "sha256": "f3fd2a0612a56c17f1067fb93054f22685ce972350d2d59261c3a06adbdc02e5"
+      },
+      {
+        "path": "src/qq-supervisor/profile-backups-policy.cjs",
+        "bytes": 7630,
+        "sha256": "797735c239d3d71f72a2dc01c162ae17909b3fca5afc89344b8acb4a2f0bd5ee"
+      },
+      {
+        "path": "src/qq-supervisor/profile-backups.cjs",
+        "bytes": 4988,
+        "sha256": "c62a828ab72a0ace9bec6a1819e597164da7d7ed1474426b82194507e310ec39"
+      },
+      {
+        "path": "src/qq-supervisor/runtime.cjs",
+        "bytes": 3643,
+        "sha256": "0f59c73318f42c2180776314af8c2fcddc7202b5a7fd54583a6824df746685f4"
+      },
+      {
+        "path": "src/qq-supervisor/server.cjs",
+        "bytes": 25048,
+        "sha256": "f180295bf704c90a9565456f75fe9c61c2541c8fde75ce99c1bdc6e79518e21b"
+      },
+      {
+        "path": "src/qq-supervisor/store.cjs",
+        "bytes": 24942,
+        "sha256": "45003d96162c0e1597442907601179bd03559e957c28cc53055265aa94a4d7b3"
+      },
+      {
+        "path": "src/sources/config.cjs",
+        "bytes": 5167,
+        "sha256": "8e42a2bd33b946ac0d646c11806122db89b81c221d8630fb756b5b1020f4957e"
+      },
+      {
+        "path": "src/sources/event.cjs",
+        "bytes": 3436,
+        "sha256": "8943b87cba15d972a6cecbce9201548010acd37f9936efe6739433ab3b6832ec"
+      },
+      {
+        "path": "src/sources/feed.cjs",
+        "bytes": 10261,
+        "sha256": "b8bc205e05af93dfc8656b387fff1e394ac9b1511011bf10fd563abd26af8f4a"
+      },
+      {
+        "path": "src/sources/folder.cjs",
+        "bytes": 4252,
+        "sha256": "b08313b73e749c1e085110a2ed499f95339cc4632f4167b5d4f79248151ef8a0"
+      },
+      {
+        "path": "src/sources/ics.cjs",
+        "bytes": 14293,
+        "sha256": "d1bc31a3a75c987857b23e53c7bf5399f21a1e073232bd1fb00deaefbd077094"
+      },
+      {
+        "path": "src/sources/registry.cjs",
+        "bytes": 9982,
+        "sha256": "92af3b9a6f897af8a6e82d7cdb6e8013cea8f8afc019050d1537f719ad0eed96"
+      },
+      {
+        "path": "src/themes/moonbase.json",
+        "bytes": 3416,
+        "sha256": "5aeda24daa13c98c197e24653815d7f98c13172cb129239b2ffa1698c687cb1d"
+      },
+      {
+        "path": "src/themes/workshop.json",
+        "bytes": 3419,
+        "sha256": "e674a8cccba379a129dd1c955d7d735d4ce22420da0cfbe17366af710f21d397"
+      },
+      {
+        "path": "src/transfer-helper/cli.cjs",
+        "bytes": 1870,
+        "sha256": "f403b5c31b09980ced699cbf93027d571c00b2b41c11ced7ae10dd049819b9a1"
+      },
+      {
+        "path": "src/transfer-helper/ownership.cjs",
+        "bytes": 3220,
+        "sha256": "3b1217b10d374c006d907d6e6b23c8fe5294d7065071464aaeffc866622b436f"
+      },
+      {
+        "path": "src/transfer-helper/policy.cjs",
+        "bytes": 7682,
+        "sha256": "68297356a542de2675abf04b07772e65cad7ecda41c4c64e3d6d99920a70b758"
+      },
+      {
+        "path": "src/transfer-helper/server.cjs",
+        "bytes": 10869,
+        "sha256": "b44a517f02cfe1095e4ac65ce075216a13c40c94917a0007f44b278461c9aca4"
+      },
+      {
+        "path": "src/transfer-helper/store.cjs",
+        "bytes": 22639,
+        "sha256": "0fce553e3b1ad91c3d91e2ef492a1fc982e6ea88f0adaa6d429f7fc404eea0f2"
+      },
+      {
+        "path": "src/ui/accounts.js",
+        "bytes": 25680,
+        "sha256": "d2fc278fb773fc6eb11a74fbbb4e8dadc40c19ee4957bee0c7ac66445518dcb4"
+      },
+      {
+        "path": "src/ui/app.js",
+        "bytes": 28335,
+        "sha256": "b765c741cb01a9306ee07a9756209763c1900bb5259f1a191c030732d030d6f0"
+      },
+      {
+        "path": "src/ui/appearance.css",
+        "bytes": 14561,
+        "sha256": "73ac473ba7632457f3ba30acac8a47570493fdf66074cfa9ab2fafb95da52eb3"
+      },
+      {
+        "path": "src/ui/appearance.js",
+        "bytes": 1649,
+        "sha256": "59700f2d071aaaf7ea64a4c1919a0f6bacce7315cdb8d3fc634dfa61db6cb7be"
+      },
+      {
+        "path": "src/ui/bot.js",
+        "bytes": 98554,
+        "sha256": "e506531f344ec5bfb54e0096f844a229261324b9776f727dfd221943f1b6d3c4"
+      },
+      {
+        "path": "src/ui/characters.js",
+        "bytes": 30412,
+        "sha256": "fea33a97e4119ff6ba0cf6ffb83080067cd3b5762194e79551af23fadc54ee43"
+      },
+      {
+        "path": "src/ui/companions.css",
+        "bytes": 22641,
+        "sha256": "0ae3b48006d6fe177d979bb42c073ccd1398b6a1af270d842d7e22b85cdf0108"
+      },
+      {
+        "path": "src/ui/connections.js",
+        "bytes": 29859,
+        "sha256": "e0aa2d51c93b7453dc771d76a9a8cd1c708def13e41b709437a39d4ca422244f"
+      },
+      {
+        "path": "src/ui/desktop-chat.css",
+        "bytes": 12089,
+        "sha256": "a64d0900b060f76f84c705b23a9e96271b5e823890e97ece91ab43424fb8ac13"
+      },
+      {
+        "path": "src/ui/desktop-chat.js",
+        "bytes": 78450,
+        "sha256": "7b264b278545b646410e8f3f546fabc92c4d51d98dd2141c1d99f1198f4276ab"
+      },
+      {
+        "path": "src/ui/first-run.css",
+        "bytes": 11369,
+        "sha256": "bb0279aa07563c1ebdface345d5460d3a95b6ded940eaed33790290dcb899fcc"
+      },
+      {
+        "path": "src/ui/first-run.js",
+        "bytes": 29206,
+        "sha256": "ac23986916a271b70907e61e828984dbddf120d2dee2fe2def3f04a8d2a413d4"
+      },
+      {
+        "path": "src/ui/groups.js",
+        "bytes": 43270,
+        "sha256": "44eddd5d768227f6cf6fd61fee69a01e8701c611f9b84c5b680c4de9c835fbeb"
+      },
+      {
+        "path": "src/ui/index.html",
+        "bytes": 36206,
+        "sha256": "016d3f5a9c3d30f89267ecf7ad689b7bdc20214aa58fea50d15c167eb7df6433"
+      },
+      {
+        "path": "src/ui/kit.js",
+        "bytes": 4759,
+        "sha256": "6948b57c2f866988603553bc3b1f0da4612dcc0ced3b85d77d39eb7c707172ed"
+      },
+      {
+        "path": "src/ui/knowledge.css",
+        "bytes": 21245,
+        "sha256": "dba0b2cbbad70a7ebfc324e63df1270a2f1f2539fe8fdf98470cb9537ee95f2d"
+      },
+      {
+        "path": "src/ui/layout-immersive.css",
+        "bytes": 22950,
+        "sha256": "59445e4a289cc87141aa9d1329710e0dc2f9e09e26cf34c7a652117c98062470"
+      },
+      {
+        "path": "src/ui/layout-immersive.js",
+        "bytes": 9726,
+        "sha256": "9bb979a3305b0a440ac64212981dc24e2baeefaf7a55b19c1a773f32e47297a5"
+      },
+      {
+        "path": "src/ui/layout-messenger.css",
+        "bytes": 32164,
+        "sha256": "c92bcb3ff450d1eea257e2008251ecc4a904802e7e0b2db80f2378d33af09363"
+      },
+      {
+        "path": "src/ui/layout-messenger.js",
+        "bytes": 33917,
+        "sha256": "883c5cb00405bfdb4fb00fe680ccb8792d88142124c545e1b31bbd27f022ae58"
+      },
+      {
+        "path": "src/ui/layout-minimal.css",
+        "bytes": 35378,
+        "sha256": "ae91fd2e2dcaf6d1d74fa4a99a164f39ef8a075821bb0a16f4bcea4fdc1b2edb"
+      },
+      {
+        "path": "src/ui/layout-minimal.js",
+        "bytes": 27504,
+        "sha256": "78ebb1c27ef0ff527b5aa84a348bbf43c03a8ac1f81ac74255e8943ed23682da"
+      },
+      {
+        "path": "src/ui/notes.js",
+        "bytes": 56298,
+        "sha256": "12e6846cc9a178dcc75f2631277441084e0bd891c604c63fca2d27feb57c7f5c"
+      },
+      {
+        "path": "src/ui/preview-themes.js",
+        "bytes": 5044,
+        "sha256": "c3b9685ce9577611e6514f01a29b74c9f7fb46618d3cae509f05e423683902e7"
+      },
+      {
+        "path": "src/ui/preview.js",
+        "bytes": 1730,
+        "sha256": "233790a3ddd39a2ca01f5be010c82b0d601eb96154f892ed69dd41b879cc51a5"
+      },
+      {
+        "path": "src/ui/qq-component-repair.css",
+        "bytes": 2708,
+        "sha256": "9852bac6b0692886f14575ea9a9e62f7101b40d35515622548f56c10d636d758"
+      },
+      {
+        "path": "src/ui/qq-components.js",
+        "bytes": 83478,
+        "sha256": "27abf6848e1d01e0ce1a58454115e464240dc1559b9bd05194e45d079cd60c9d"
+      },
+      {
+        "path": "src/ui/qq-contact-admin.css",
+        "bytes": 4274,
+        "sha256": "479e239abf9a040f1686f6a064fc32d7d4e84fccef6dc756f5d0cb23b21274b4"
+      },
+      {
+        "path": "src/ui/qq-contact-admin.js",
+        "bytes": 24218,
+        "sha256": "8cee9d07b6ebb417fc15c5fd846380e37c58ce258320bf05e52840989092ddd4"
+      },
+      {
+        "path": "src/ui/qq-dialog.css",
+        "bytes": 13766,
+        "sha256": "20fb12af221a4faf77778f234e8f5017b1447621397fe76917d2a7ddd3d39f77"
+      },
+      {
+        "path": "src/ui/qq-directory-members.css",
+        "bytes": 1080,
+        "sha256": "7380eb3f0726076e9f4fe0bac3c3b6a9da9fda381a3dc4247d8c2e5f7b08bfb2"
+      },
+      {
+        "path": "src/ui/qq-directory.js",
+        "bytes": 48444,
+        "sha256": "43367a4c193b9aee430fdeb334e569f4321fe16884c47df4337e049aeed62f2d"
+      },
+      {
+        "path": "src/ui/qq-first-setup.css",
+        "bytes": 4036,
+        "sha256": "2f50f8c507c0c0a4249b291c0f4707543bc82eb0882bdf642a71e6d59d083796"
+      },
+      {
+        "path": "src/ui/qq-first-setup.js",
+        "bytes": 27696,
+        "sha256": "0b61c3ccf5414e89cb7305a6e05d0eee8f27c2d916ef8bdfe8a52f7ee2cb792a"
+      },
+      {
+        "path": "src/ui/qq-friend-requests.css",
+        "bytes": 3490,
+        "sha256": "69c3e4802d3cbd1849f9d9f8905e4928152e9e15467ad2f17cce71260c607e44"
+      },
+      {
+        "path": "src/ui/qq-friend-requests.js",
+        "bytes": 14840,
+        "sha256": "29209b4a7d33f4bc58eb63e784965041f99ed172fb950609b7c48da0cd97ec38"
+      },
+      {
+        "path": "src/ui/qq-group-admin.css",
+        "bytes": 4694,
+        "sha256": "b73f2196f8d268c9d6794fb7d2d24632dfb217ce08fdbb3b6551e2b43f531542"
+      },
+      {
+        "path": "src/ui/qq-group-admin.js",
+        "bytes": 33180,
+        "sha256": "187709baec21e6ef0810791d2006de42584c1cae047ccac9feed937f5d03fa75"
+      },
+      {
+        "path": "src/ui/qq-group-profile.css",
+        "bytes": 3346,
+        "sha256": "272007ae017641435ac4656e4984076e839fcd70e6eb5dfea48bc2af538ab027"
+      },
+      {
+        "path": "src/ui/qq-group-profile.js",
+        "bytes": 18028,
+        "sha256": "5a17a749658752076ef1dc569b9a21026442199f8ae4c69c9c43b61654bc4426"
+      },
+      {
+        "path": "src/ui/qq-login.css",
+        "bytes": 10204,
+        "sha256": "94444624400e5f86fa12edb611d7fb69c9d6285f87438d66e313be448346993d"
+      },
+      {
+        "path": "src/ui/qq-media.css",
+        "bytes": 3113,
+        "sha256": "c3202f26a823cdb57bb62020fb23064611d3f5bdd1c14aa5bd1b456115808211"
+      },
+      {
+        "path": "src/ui/qq-media.js",
+        "bytes": 13351,
+        "sha256": "53c415840ee3722be50f48401404be28c0011fc6a6cbde2364fda76a572ca3c5"
+      },
+      {
+        "path": "src/ui/qq-node-repair.js",
+        "bytes": 36475,
+        "sha256": "7479d1ca9fb99777bb5e954b7fc39fcfec23890e45daadc739917d38d4540b64"
+      },
+      {
+        "path": "src/ui/qq-owner-history.css",
+        "bytes": 6361,
+        "sha256": "140a13827c7ac9bbd626fdaedee3fdf34f00960517f2d15d985013fe29b4a282"
+      },
+      {
+        "path": "src/ui/qq-owner-history.js",
+        "bytes": 31619,
+        "sha256": "9fa5b3548a124a25d20d569b93ba04f5046407e00a6c1417d898f14062aaed22"
+      },
+      {
+        "path": "src/ui/qq-plugin-admin.css",
+        "bytes": 3359,
+        "sha256": "ddcdf58bf70c57f54bbc0ea41742a9b8c3e3e113205a07a611789a74f88c7fbb"
+      },
+      {
+        "path": "src/ui/qq-plugin-admin.js",
+        "bytes": 31321,
+        "sha256": "a40205d6a641a944985d3a4dd36534d4d72e9715a7d24afd05ac873a17bb9cfd"
+      },
+      {
+        "path": "src/ui/qq-plugin-config.css",
+        "bytes": 2710,
+        "sha256": "dbded98edd1eb45c732693e4ade7df177c20b30e4792055028ba22d38e5a21dd"
+      },
+      {
+        "path": "src/ui/qq-plugin-config.js",
+        "bytes": 27235,
+        "sha256": "93e1780fdb334eec58e7aeb015961e05da1a4bdfe4d9182ad609eb33c83a188a"
+      },
+      {
+        "path": "src/ui/qq-plugin-package.css",
+        "bytes": 2890,
+        "sha256": "e373aec78dbe977121df82de8adea2ac4efb1a5cde50347871328f120ab7de14"
+      },
+      {
+        "path": "src/ui/qq-plugin-package.js",
+        "bytes": 51304,
+        "sha256": "fb2ac1b17b4ad8029688212c8598d6021a341633e8eb875852963dbbf2902679"
+      },
+      {
+        "path": "src/ui/qq-qce-export.css",
+        "bytes": 3072,
+        "sha256": "b74cb2fc65745ff308935c2926be6e3e4beb1566b5033f603acb9bf1c371bc79"
+      },
+      {
+        "path": "src/ui/qq-qce-export.js",
+        "bytes": 36939,
+        "sha256": "89f82f381bc4ee04e82d7bd94c633f3ad5e31ade3faa90cc29022cbeb7c76239"
+      },
+      {
+        "path": "src/ui/qq-qce-native-plans.css",
+        "bytes": 3098,
+        "sha256": "938f0326d0e1420118b87dbe63e54d63316f77b7cf1ba4b0f13d8ede29dbc25b"
+      },
+      {
+        "path": "src/ui/qq-qce-native-plans.js",
+        "bytes": 54976,
+        "sha256": "a6df01f34e9ab0acec205b6fce101204a52fce99d3610410b413df488561df55"
+      },
+      {
+        "path": "src/ui/qq-qce-schedule.css",
+        "bytes": 3181,
+        "sha256": "02db5be49b39f3b44a32c096b396ce4120e56b23fcc5864f032efb710b97122a"
+      },
+      {
+        "path": "src/ui/qq-qce-schedule.js",
+        "bytes": 47365,
+        "sha256": "19ca8a9997d2a89a48b5aa702ca0bfe20d8fb83f710724358b8cbf675b276c07"
+      },
+      {
+        "path": "src/ui/qq-qce-security.css",
+        "bytes": 2525,
+        "sha256": "5a11aac98fb28c211abe2e7eb145537a09d13fb659f8eef584fd4d0e376bb348"
+      },
+      {
+        "path": "src/ui/qq-qce-security.js",
+        "bytes": 29656,
+        "sha256": "6ed7f84ed422898f219023a764014a92b8106a4d533236f7cebf2a6a2e0c4e88"
+      },
+      {
+        "path": "src/ui/qq-qce.css",
+        "bytes": 2447,
+        "sha256": "bcd6de65490621b9718a80d2dfc740899ca086eb4d6a18a1b8536716c8fc7f7b"
+      },
+      {
+        "path": "src/ui/qq-qce.js",
+        "bytes": 27158,
+        "sha256": "631b690015245553bdd57a6ff62c0d4b76ed16e469b9dbf9e27c1b7a9eab73c4"
+      },
+      {
+        "path": "src/ui/qq-remote-files.css",
+        "bytes": 1428,
+        "sha256": "b1ba06e4b4d12e622db76f46b9d0f703bb0c86db8a6c8f7fed019f7a92fd204e"
+      },
+      {
+        "path": "src/ui/qq-remote-files.js",
+        "bytes": 52678,
+        "sha256": "8e76733d1629893d5a0b083f40c1209243b6d38029c7a6ef5f340cb7999d0fef"
+      },
+      {
+        "path": "src/ui/qq-remote.css",
+        "bytes": 5813,
+        "sha256": "82a41f25f4aa048018a87120e183bba6aa1f0d01a992143a615d7d1595e4451e"
+      },
+      {
+        "path": "src/ui/qq-remote.js",
+        "bytes": 86797,
+        "sha256": "7614b7bc9ae1f425f24a49dde747b1a5e2aff17155ba3ae740aa9638e536d9a8"
+      },
+      {
+        "path": "src/ui/qq-runtime.js",
+        "bytes": 131919,
+        "sha256": "cdd366d00fdec1b187e7e40e884a635e91332d3424892acfc9094bf6d6b42f3c"
+      },
+      {
+        "path": "src/ui/qq-self-profile.css",
+        "bytes": 5019,
+        "sha256": "63ce224748de2484390222ec0d210c338ca726f560e900b571fa00b3d4264c5c"
+      },
+      {
+        "path": "src/ui/qq-self-profile.js",
+        "bytes": 36643,
+        "sha256": "65f1d95e75a0cb646666dfc608c1a50f8834dc1085b32d4be64b9f1ca60c7175"
+      },
+      {
+        "path": "src/ui/qq-ssqq-client.css",
+        "bytes": 2627,
+        "sha256": "921986e37bb8c6f505c4509b078a1b035e3ee0ee7909409828e80a066e6032af"
+      },
+      {
+        "path": "src/ui/qq-ssqq-client.js",
+        "bytes": 15872,
+        "sha256": "3d7732a9b145c4039315346520adfb3e766d1c04b8f448b3eea1345f0d95507f"
+      },
+      {
+        "path": "src/ui/qq-start-connect.css",
+        "bytes": 873,
+        "sha256": "f458fac0f66d82c5595af0c9d430f80d9bd792ea2e0ddf5aad47975ea90ad6e0"
+      },
+      {
+        "path": "src/ui/qq-start-connect.js",
+        "bytes": 16457,
+        "sha256": "5525ea17a134c115f4473396c32058b019875e265a84f8fa052afd8b253de732"
+      },
+      {
+        "path": "src/ui/qq-supervisor-component-repair.js",
+        "bytes": 22700,
+        "sha256": "2bee3cdfa0894112a65cbe82e660db2b7837813b5d455014118d47a21548808c"
+      },
+      {
+        "path": "src/ui/qq-supervisor-native-passkeys.js",
+        "bytes": 15346,
+        "sha256": "0e256bb13460dfc9a88ea436eef8cd6f341fbc7686d1602f29a9dbc42e63f199"
+      },
+      {
+        "path": "src/ui/qq-supervisor-orphans.js",
+        "bytes": 11414,
+        "sha256": "5ab9a6786090704cf9eb330ee9a79bbe759875e2a1ee629c69161d260f30318d"
+      },
+      {
+        "path": "src/ui/qq-supervisor-profile-backups.js",
+        "bytes": 19047,
+        "sha256": "4d56c456ffe28086ac54cb4148a38fdaa72ea938fcac5fe118f1f053dd09b74c"
+      },
+      {
+        "path": "src/ui/qq-supervisor.css",
+        "bytes": 2382,
+        "sha256": "c4de219d24cf65bae9deac4bef64e23827fe3fc05f3bee80ed82eba0ac448e60"
+      },
+      {
+        "path": "src/ui/qq-supervisor.js",
+        "bytes": 114655,
+        "sha256": "392090a3eb421975728292b87350d69775386e53fc4aa137fa20bca2c864b5b0"
+      },
+      {
+        "path": "src/ui/qq-transfer-local.css",
+        "bytes": 2073,
+        "sha256": "f32637823c868dd93d0e7c583e31b7cd56f071c3029717dbfdc1f04b964d8b17"
+      },
+      {
+        "path": "src/ui/qq-transfer-local.js",
+        "bytes": 26341,
+        "sha256": "9e6c2af50fce1ed0f511b683aa374e009d8db31db9ddc8e3c988e25f6375f931"
+      },
+      {
+        "path": "src/ui/qq-transfer.css",
+        "bytes": 1947,
+        "sha256": "34ea4a565b74230a42049cf23dd5c5b06fc6b802e988f374dfef8e23d2ffa69e"
+      },
+      {
+        "path": "src/ui/qq-transfer.js",
+        "bytes": 36231,
+        "sha256": "ac3bf85448fdb93adbed0122188f1d0fe957c7ef9be463e9f34a973d96c32a72"
+      },
+      {
+        "path": "src/ui/qq-voice.css",
+        "bytes": 3938,
+        "sha256": "5fc552f54f01f0088594a14bf53e98a2bd7e3f4b7b2211a3f089ac6faa850d8c"
+      },
+      {
+        "path": "src/ui/qq-voice.js",
+        "bytes": 27498,
+        "sha256": "3bc9485a0c46ea096563be9d9e1aa878fdfc00eb90113b751b34e6f7cf3bb52e"
+      },
+      {
+        "path": "src/ui/relationship.js",
+        "bytes": 28597,
+        "sha256": "088df2d8df9f400588572cea3b46de0587ad2d1652ed4f2e109a9dc944b767be"
+      },
+      {
+        "path": "src/ui/room.css",
+        "bytes": 7060,
+        "sha256": "bc962a680e42975736f506278c9bdd71bda3951b105199bc1cbf6f2ec3868ba8"
+      },
+      {
+        "path": "src/ui/shell.css",
+        "bytes": 11211,
+        "sha256": "b839a18ea0e26f54699fc776a8ac296935028dab62156eb83896742a27a17799"
+      },
+      {
+        "path": "src/ui/shell.js",
+        "bytes": 23772,
+        "sha256": "032d2941590250c342bd36ad6e8781eb63f004f9ef22e61ada5fd9bcbd8d5541"
+      },
+      {
+        "path": "src/ui/social.js",
+        "bytes": 21500,
+        "sha256": "7dc11084b334cb5fbe8af74d470558f2b56fd6bb90ab6cc894d8715d88915268"
+      },
+      {
+        "path": "src/ui/sources.js",
+        "bytes": 9312,
+        "sha256": "bf544ee343c4f8b1465700481b5ee9c419fb84a76d6b8310749cf9bfcd48f4e0"
+      },
+      {
+        "path": "src/ui/st-settings.js",
+        "bytes": 42619,
+        "sha256": "9c30518d6866453e8d4284468ea006569d832150d51d2125d4de7fe06ee2859e"
+      },
+      {
+        "path": "src/ui/style.css",
+        "bytes": 45467,
+        "sha256": "df67b8a8e75020967e749ad74bd34a8a93d99392d76a9e8d451d314337769142"
+      },
+      {
+        "path": "src/ui/tasks.js",
+        "bytes": 45436,
+        "sha256": "8bf6554da78bef52963dfb9ad288c8f7d185a46138a91461997240147f69bba2"
+      },
+      {
+        "path": "src/ui/theme.css",
+        "bytes": 27788,
+        "sha256": "4284e9dfde73a7b51844241c768975dc55109adb8612e2de639eb08f29dc9e64"
+      },
+      {
+        "path": "src/ui/theme.js",
+        "bytes": 15355,
+        "sha256": "b92a5f4d70ab252828defb9dbb3c7f492b8d5c3f55ab41c7947205a388e636fc"
+      },
+      {
+        "path": "src/ui/unified-room.css",
+        "bytes": 14842,
+        "sha256": "b650258e7700f5646207b878d991f848a92665c00bc9180a88c1bcd29f81e9ac"
+      },
+      {
+        "path": "src/ui/voice-host.js",
+        "bytes": 10365,
+        "sha256": "0a276e1c6e74343195c11d04bddc911343b598fe98df19330a9b103561914282"
+      },
+      {
+        "path": "src/ui/voice.css",
+        "bytes": 2915,
+        "sha256": "746064a4f5ecfb55878a57b7221bd9770dd96ad54cb699dab6d3696845b936bd"
+      },
+      {
+        "path": "src/ui/voice.js",
+        "bytes": 18511,
+        "sha256": "98c5475a2ac2ca5024ba596847bcdf3f4f957c43eb2e4ed76dfe150fea730c96"
+      },
+      {
+        "path": "src/ui/work.js",
+        "bytes": 15372,
+        "sha256": "cb15128fc4cf9ab1bfa9491bddf0e612a886c741368c4c2875600f8796189f88"
+      },
+      {
+        "path": "src/vendor/sillytavern/character-card-parser.cjs",
+        "bytes": 6867,
+        "sha256": "5d1e71b561782848cdad246841f8c197891d12e6e46bd99f92a340a5af869f26"
+      },
+      {
+        "path": "src/vendor/sillytavern/character-card.cjs",
+        "bytes": 17945,
+        "sha256": "ea6d5ed30906b3d97e25ec7b1ea988a561fd1203a7987de47b2e841b432f5a34"
+      },
+      {
+        "path": "src/vendor/sillytavern/group-chat.cjs",
+        "bytes": 15495,
+        "sha256": "e2fd7b9582f46d171d502d072e5b8023a3897a8e924a52daaee43ea7b4d9b7f5"
+      },
+      {
+        "path": "src/vendor/sillytavern/macros.cjs",
+        "bytes": 8163,
+        "sha256": "9503fa3b0ce8e2abb7cd6f23c0b8025383fa74509e29810bc5698175662064be"
+      },
+      {
+        "path": "src/vendor/sillytavern/regex-scripts.cjs",
+        "bytes": 17557,
+        "sha256": "fb3b5676010f62f78b6d07e8c2df8fb46856c611734342171e8b6e717e995f0f"
+      },
+      {
+        "path": "src/vendor/sillytavern/safe-regex.cjs",
+        "bytes": 6039,
+        "sha256": "c8ba88473a43456d670698101d8c79e72dc3a9d0cb2c7475b95dca952219fa8a"
+      },
+      {
+        "path": "src/vendor/sillytavern/world-info.cjs",
+        "bytes": 28268,
+        "sha256": "6b9c06c20396b4e328da2a5218804c0e860b1199cf4a58845db19722cf8b0d09"
+      },
+      {
+        "path": "src/voice/asr-gate.cjs",
+        "bytes": 7537,
+        "sha256": "1221529e131815bab509707eeb7989ba467dd00d07d253223bc29c9ae2f7c666"
+      },
+      {
+        "path": "src/voice/conversation.cjs",
+        "bytes": 10332,
+        "sha256": "038b16229adff5b1fb4d464fc412f75b60f267522f8958d4b6350746d7470e62"
+      },
+      {
+        "path": "src/voice/file-asr-runtime.cjs",
+        "bytes": 1230,
+        "sha256": "9d12313722884bc2f3740eef4b090d91e635503e45936f2596948b32be9c3a63"
+      },
+      {
+        "path": "src/voice/gpt-sovits.cjs",
+        "bytes": 16519,
+        "sha256": "13e0f3583e3ec94ff5fae8c52ce49bf2342a6c7e3e1e9a1d0aff57d1359d307d"
+      },
+      {
+        "path": "src/voice/python-process-proof.cjs",
+        "bytes": 13348,
+        "sha256": "9e35219aac8ece7a1281ddb6a38a58898b610761d810adbc574013af0fd5a4a9"
+      },
+      {
+        "path": "src/voice/qq-render.cjs",
+        "bytes": 8839,
+        "sha256": "d483b9898adcd2caab60204632e76287f92248c690d29cc3952ef68480bd3bec"
+      },
+      {
+        "path": "src/voice/qwen-asr.cjs",
+        "bytes": 15479,
+        "sha256": "1994a343982f582edf90ca107961eaf4a8ad90a65f62cd9c75852a4897b1c712"
+      },
+      {
+        "path": "src/voice/qwen-file-asr.cjs",
+        "bytes": 5725,
+        "sha256": "5f432feec65e0b83da816ddd6de464603c4ad42b20ae4d4102ebc3b4e5500ad9"
+      },
+      {
+        "path": "src/voice/qwen-warm-file-asr.cjs",
+        "bytes": 10397,
+        "sha256": "353f9c156e667b08579912b27a47c441304e65a4fd8aedfe5cf6d25a2ef7ec3c"
+      },
+      {
+        "path": "src/voice/runtime.cjs",
+        "bytes": 6492,
+        "sha256": "67c742d2a91817c73e88f4bcaabed64b3eabdb6701ed50a980f9ff73c244ee81"
+      },
+      {
+        "path": "src/voice/warm-file-asr-runtime.cjs",
+        "bytes": 2829,
+        "sha256": "d3048e0ac43df11b99c729156c143a762061a4194cd8156a383334ad237d3e53"
+      },
+      {
+        "path": "src/voice/windows-speech.cjs",
+        "bytes": 12481,
+        "sha256": "76f1f1639baf932e1f737bb64dc6b44dea566c1b48362bfea7756aa7587934cf"
+      },
+      {
+        "path": "src/workbench.cjs",
+        "bytes": 6504,
+        "sha256": "ea6f668088319a59ec530dff59626a323323935e177ab2ba8c9086ba75f78b03"
+      }
+    ],
+    "matchesSource": true,
+    "rebuiltByThisCheck": false
+  },
+  "priorEvidence": [
+    {
+      "file": "receipt.json",
+      "sha256": "a560aecd51523f28c9dc318dfb4e1f6fdfaa7d1fd0585c6bb0464e216c1cb4b2",
+      "classification": "imported-maintenance-record-not-rerun",
+      "declaredSourceMatches": true
+    },
+    {
+      "file": "package-verification.json",
+      "sha256": "4d6ebad0106ef63e4f0fef9a2bae60c1bc074794f6de13073c42c5470dab8d99",
+      "classification": "imported-maintenance-record-not-rerun",
+      "declaredSourceMatches": null
+    },
+    {
+      "file": "unit-tests.txt",
+      "sha256": "a172a45b01a101014954ec9c1a9e0e13c7e39a5cb53feab17115e42040fb3c3d",
+      "classification": "imported-maintenance-record-not-rerun",
+      "declaredSourceMatches": null
+    }
+  ],
+  "acceptance": {
+    "realModels": false,
+    "humanAcceptance": false,
+    "publicRelease": false
+  }
+}
