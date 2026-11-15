@@ -128,6 +128,7 @@ function buildPrompt(task) {
     '要你做的：主人接下来必须亲自做或决定的事；没有就写“没有”。',
     '我加的：主人没有要求、你自己加的设定或改动；没有就写“无”。',
   ];
+  if (task.reworkWhy) rows.push('', '这是同一 worktree 上的新一轮返工，先检查已有改动，不要重复上一轮操作。', '主人本次返工要求：', task.reworkWhy);
   if (isBugfix(task)) rows.push('', '这是一件修问题的任务：四段之后附一张表，列出所有受影响的入口，只有一处也列一行：', '| 入口 | 是否经过修复 | 核对结果 |');
   rows.push('', '交回只表示这一轮回复结束，不表示任务完成；是否完成由主人验收。');
   return rows.join('\n');
@@ -164,6 +165,7 @@ function restore(row) {
     id: row.id, title, brief: block(row.brief, MAX_BRIEF), project: row.project,
     worktree: typeof row.worktree === 'string' && path.isAbsolute(row.worktree) && row.worktree.length <= 4096 ? row.worktree : '',
     branch: text(row.branch, 80), baseCommit: COMMIT.test(row.baseCommit || '') ? row.baseCommit : '',
+    settledLaunchId: UUID.test(row.settledLaunchId || '') ? row.settledLaunchId.toLowerCase() : '',
     launchId: UUID.test(row.launchId || '') ? row.launchId.toLowerCase() : '', sessionId: UUID.test(row.sessionId || '') ? row.sessionId.toLowerCase() : '', jobId: JOB_ID.test(row.jobId || '') ? row.jobId.toLowerCase() : '',
     state: row.state, reason: REASON.test(row.reason || '') ? row.reason || '' : '', createdAt: row.createdAt, updatedAt: time(row.updatedAt) || row.createdAt,
     progressAt: time(row.progressAt), checkDueAt: time(row.checkDueAt), watchFrom: time(row.watchFrom), renewals: Number.isSafeInteger(row.renewals) && row.renewals >= 0 ? Math.min(row.renewals, 1000) : 0,
@@ -196,7 +198,7 @@ class TaskBoard {
       const saved = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       if (!saved || saved.version !== 1 || !Array.isArray(saved.tasks)) throw Error('invalid');
       const seen = new Set(); let dropped = 0;
-      for (const row of saved.tasks.slice(0, MAX_UNFINISHED + MAX_FINISHED + 50)) {
+      for (const row of saved.tasks) {
         const task = restore(row);
         if (!task || seen.has(task.id)) { dropped++; continue; }
         seen.add(task.id);
@@ -218,7 +220,7 @@ class TaskBoard {
     const drop = new Set();
     // A finished entry that still has a worktree on disk is kept past 30 days,
     // so the owner does not lose track of unmerged work.
-    finished.forEach((task, index) => { if (index >= MAX_FINISHED || !task.worktree && now - (task.finishedAt || task.updatedAt) > KEEP_FINISHED_MS) drop.add(task); });
+    finished.forEach((task, index) => { if (!task.worktree && (index >= MAX_FINISHED || now - (task.finishedAt || task.updatedAt) > KEEP_FINISHED_MS)) drop.add(task); });
     if (drop.size) this.tasks = this.tasks.filter(task => !drop.has(task));
     this.lastPrune = now;
     return drop.size > 0;
@@ -228,15 +230,17 @@ class TaskBoard {
       this.prune();
       let value = {version: 1, tasks: this.tasks};
       while (Buffer.byteLength(JSON.stringify(value)) > MAX_FILE_BYTES) {
-        const oldest = this.tasks.filter(task => FINISHED.has(task.state)).sort((a, b) => (a.finishedAt || a.updatedAt) - (b.finishedAt || b.updatedAt))[0];
+        const oldest = this.tasks.filter(task => FINISHED.has(task.state) && !task.worktree).sort((a, b) => (a.finishedAt || a.updatedAt) - (b.finishedAt || b.updatedAt))[0];
         if (!oldest) break;
         this.tasks = this.tasks.filter(task => task !== oldest); value = {version: 1, tasks: this.tasks};
       }
+      if (Buffer.byteLength(JSON.stringify(value)) > MAX_FILE_BYTES) throw Error('Board full; retained worktrees must be explicitly cleaned up.');
       atomicJSON(this.file, value);
       if (this.problem.startsWith('Task board: saving')) this.problem = '';
-    } catch { this.problem = 'Task board: saving failed; recent changes are only in memory.'; }
+      return true;
+    } catch { this.problem = 'Task board: saving failed; recent changes are only in memory.'; return false; }
   }
-  changed(task) { if (task) task.updatedAt = this.now(); this.save(); try { this.onChange(); } catch { /* A UI refresh cannot fail an action. */ } }
+  changed(task) { if (task) task.updatedAt = this.now(); const saved = this.save(); try { this.onChange(); } catch { /* A UI refresh cannot fail an action. */ } return saved; }
   find(id) { return typeof id === 'string' && TASK_ID.test(id) ? this.tasks.find(task => task.id === id) || null : null; }
   unfinished() { return this.tasks.filter(task => !FINISHED.has(task.state)).length; }
   serial(fn) { const next = this.queue.then(fn, fn); this.queue = next.catch(() => {}); return next; }
@@ -259,13 +263,13 @@ class TaskBoard {
   }
   summary() {
     const now = this.now(), day = new Date(now); day.setHours(0, 0, 0, 0);
-    const columns = {drafts: [], doing: [], waiting: [], stalled: [], finishedToday: []}, totals = {drafts: 0, doing: 0, waiting: 0, stalled: 0, finishedToday: 0};
+    const columns = {drafts: [], doing: [], waiting: [], stalled: [], finishedToday: [], finishedHistory: []}, totals = {drafts: 0, doing: 0, waiting: 0, stalled: 0, finishedToday: 0, finishedHistory: 0};
     for (const task of [...this.tasks].sort((a, b) => b.updatedAt - a.updatedAt)) {
       const key = task.state === 'draft' ? 'drafts' : ['dispatched', 'running', 'rework'].includes(task.state) ? 'doing' : ['needs_input', 'reported'].includes(task.state) ? 'waiting'
-        : ['stalled', 'paused', 'unknown'].includes(task.state) ? 'stalled' : (task.finishedAt || task.updatedAt) >= day.getTime() ? 'finishedToday' : '';
+        : ['stalled', 'paused', 'unknown'].includes(task.state) ? 'stalled' : (task.finishedAt || task.updatedAt) >= day.getTime() ? 'finishedToday' : 'finishedHistory';
       if (!key) continue;
       totals[key]++;
-      if (columns[key].length < (key === 'finishedToday' ? 30 : MAX_UNFINISHED)) columns[key].push(this.view(task));
+      if (columns[key].length < (key === 'finishedToday' || key === 'finishedHistory' ? this.tasks.length : MAX_UNFINISHED)) columns[key].push(this.view(task));
     }
     const since = now - REWORK_DAYS * 24 * 60 * 60 * 1000, reasons = new Map(); let count = 0;
     for (const task of this.tasks) for (const item of task.reworkLog) if (item.at >= since) { count++; reasons.set(item.why, (reasons.get(item.why) || 0) + 1); }
@@ -387,9 +391,11 @@ class TaskBoard {
   async create({title, brief, project} = {}) {
     const checked = this.fields({title, brief});
     if (checked.code) return {ok: false, code: checked.code};
+    if (this.tasks.length >= MAX_FINISHED + MAX_UNFINISHED) return {ok: false, code: 'board_full'};
     if (this.unfinished() >= MAX_UNFINISHED) return {ok: false, code: 'too_many_unfinished'};
     let repo;
     try { repo = await this.worktrees.resolveRepo(project); } catch (error) { return {ok: false, code: error instanceof WorktreeError ? error.code : 'invalid_project'}; }
+    if (this.tasks.length >= MAX_FINISHED + MAX_UNFINISHED) return {ok: false, code: 'board_full'};
     if (this.unfinished() >= MAX_UNFINISHED) return {ok: false, code: 'too_many_unfinished'};
     let id = this.newId();
     if (!TASK_ID.test(id) || this.find(id)) id = crypto.randomBytes(8).toString('hex');
@@ -413,11 +419,13 @@ class TaskBoard {
       await this.serial(async () => {
         const manager = await this.sessions();
         if (!manager.capability.checked) await manager.probe();
-        claude = {available: manager.capability.available, version: manager.capability.version};
+        claude = {...manager.capability};
         preauthorization = !manager.capability.available ? {available: false, reason: 'background_sessions_unavailable'}
           : manager.supportsPermission('acceptEdits') ? {available: true, reason: 'accept_edits_mode_listed_by_cli'} : {available: false, reason: 'accept_edits_mode_not_listed_by_cli'};
       });
-    } catch { /* Reported as unavailable. */ }
+    } catch (error) {
+      claude = {available:false, version:/^\d+\.\d+\.\d+$/.test(error?.version || '') ? error.version : '', reason:error?.code === 'unsupported_version' ? 'unsupported_version' : 'unavailable'};
+    }
     return {ok: true, git, claude,
       // Read from the CLI's help text; not yet confirmed against a real session.
       preauthorization: {...preauthorization, mode: 'acceptEdits', scope: 'file_edits_in_task_worktree', confirmedWithRealSession: false},
@@ -432,8 +440,9 @@ class TaskBoard {
     finally { this.busy.delete(task.id); try { this.onChange(); } catch { /* UI only. */ } }
   }
   dispatch(id) {
-    return this.exclusive(id, async task => {
-      if (task.state !== 'draft') return {ok: false, code: 'bad_state'};
+    return this.exclusive(id, task => task.state !== 'draft' ? {ok: false, code: 'bad_state'} : this.dispatchRound(task));
+  }
+  async dispatchRound(task, {rework = false, previousLaunch = ''} = {}) {
       if (!this.sessions) return {ok: false, code: 'claude_unavailable'};
       let manager;
       try { manager = await this.sessions(); } catch { return {ok: false, code: 'claude_unavailable'}; }
@@ -441,15 +450,19 @@ class TaskBoard {
       if (!capability.git.available) return {ok: false, code: 'git_unavailable'};
       if (!capability.claude.available) return {ok: false, code: 'claude_unavailable'};
       // A previous refused launch leaves its (clean) worktree for the retry.
+      if (rework && (!task.worktree || !fs.existsSync(task.worktree))) return {ok: false, code: 'no_worktree'};
       if (!task.worktree || !fs.existsSync(task.worktree)) Object.assign(task, await this.worktrees.create({taskId: task.id, project: task.project}));
-      task.boundary = {base: await this.worktrees.snapshot(task.project), last: null};
+      await this.worktrees.validate(task); // Refuse a replaced path or a foreign branch before launch.
+      if (!task.boundary?.base) task.boundary = {base: await this.worktrees.snapshot(task.project), last: null};
       const prompt = buildPrompt(task), permission = capability.preauthorization.available ? 'acceptEdits' : 'default', now = this.now();
       Object.assign(task, {launchId: this.newLaunchId().toLowerCase(), sessionId: '', jobId: '', preauthorized: permission === 'acceptEdits', state: 'dispatched', reason: '', floorAt: now, observedAt: null, observedState: '', progressAt: null,
         report: null, reportRaw: null, reportStatus: 'none', claimFlags: [], stopRequested: false});
-      this.startWatch(task); this.changed(task); // Durable intent before the side effect.
+      this.startWatch(task);
+      if (!this.changed(task)) { Object.assign(task, {state:rework ? 'reported' : 'draft', launchId:'', checkDueAt:null, preauthorized:false}); return {ok:false,code:'board_save_failed'}; } // No launch without durable intent.
       const launchId = task.launchId;
       return this.serial(async () => {
         try {
+          if (previousLaunch) manager.release(previousLaunch);
           const snapshot = await manager.create({cwd: task.worktree, prompt, permission, launchId}), job = snapshot.jobs.find(item => item.launchId === launchId);
           if (!job?.id || !job.sessionId) throw Error('unbound');
           task.jobId = job.id; task.sessionId = job.sessionId;
@@ -469,15 +482,15 @@ class TaskBoard {
           const code = /not trusted/i.test(text) ? 'workspace_untrusted' : /nested/i.test(text) ? 'nested_session' : /previous uncertain/i.test(text) ? 'previous_launch_uncertain'
             : /at most 20/i.test(text) ? 'too_many_sessions' : /already pending/i.test(text) ? 'busy' : /unreadable/i.test(text) ? 'session_record_unreadable'
             : /required background command flags|unavailable or disabled|is required/i.test(text) ? 'background_unavailable' : 'launch_failed';
-          Object.assign(task, {state: 'draft', reason: code, launchId: '', checkDueAt: null, preauthorized: false}); this.changed(task);
+          Object.assign(task, {state: rework ? 'reported' : 'draft', reason: code, launchId: '', checkDueAt: null, preauthorized: false}); this.changed(task);
           return {ok: false, code, worktree: task.worktree};
         }
       });
-    });
   }
   accept({id, note} = {}) {
     const task = this.find(id);
     if (!task) return {ok: false, code: 'unknown_task'};
+    if (this.busy.has(task.id)) return {ok: false, code: 'busy'};
     if (task.state !== 'reported') return {ok: false, code: 'bad_state'};
     if (note !== undefined && (typeof note !== 'string' || note.length > MAX_WHY)) return {ok: false, code: 'invalid_note'};
     Object.assign(task, {state: 'verified', reason: 'accepted_by_owner', acceptNote: line(note || '', MAX_WHY), finishedAt: this.now(), checkDueAt: null});
@@ -495,11 +508,41 @@ class TaskBoard {
       if (!reason) return {ok: false, code: 'reason_required'};
       if (reason.length > MAX_WHY) return {ok: false, code: 'reason_too_long'};
       if (task.state !== 'reported') return {ok: false, code: 'bad_state'};
+      // The CLI has no verified prompt-delivery command. Production starts a
+      // fresh round in the same worktree, only after the old owned job is
+      // confirmed terminal. A failed/unknown stop never starts a second writer.
+      if (!this.deliver) {
+        if (!task.worktree || !fs.existsSync(task.worktree) || !this.sessions) return {ok: false, code: 'no_worktree'};
+        await this.worktrees.validate(task);
+        const ready = await this.serial(async () => {
+          const manager = await this.sessions();
+          const previous = (await manager.refresh(task.worktree)).jobs.find(job => job.launchId === task.launchId && job.id === task.jobId && job.sessionId === task.sessionId);
+          if (!previous) return !!task.launchId && task.settledLaunchId === task.launchId;
+          if (previous.state === 'unknown') return false;
+          if (previous.state !== 'stopped') {
+            const stopped = (await manager.stop(previous.id)).jobs.find(job => job.launchId === task.launchId && job.id === previous.id && job.sessionId === previous.sessionId);
+            if (stopped?.state !== 'stopped') return false;
+          }
+          // Persist proof before the old ledger entry can be released. A
+          // rejected new launch can be retried without assuming a missing
+          // old entry means its writer stopped.
+          task.settledLaunchId = task.launchId;
+          return this.changed(task);
+        }).catch(() => false);
+        if (!ready) return {ok: false, code: 'stop_unconfirmed'};
+      }
+      const previousRound = Object.fromEntries(['launchId','sessionId','jobId','preauthorized','report','reportRaw','reportStatus','claimFlags'].map(key => [key, task[key]]));
       const now = this.now();
       task.rework++; task.reworkWhy = reason; task.reworkLog = [...task.reworkLog, {at: now, why: reason}].slice(-MAX_REWORK_LOG);
       // Anything the session said before this moment belongs to the old round.
       Object.assign(task, {state: 'rework', reason: '', floorAt: now, observedAt: null, observedState: '', checkDueAt: null});
       this.changed(task);
+      if (!this.deliver) {
+        let result;
+        try { result = await this.dispatchRound(task, {rework: true, previousLaunch: previousRound.launchId}); } catch (error) { result = {ok: false, code: error instanceof WorktreeError ? error.code : 'internal'}; }
+        if (result.ok === false && task.state !== 'unknown') { Object.assign(task, previousRound, {state:'reported', reason:''}); this.changed(task); }
+        return {...result, delivered: result.ok === true, newRound: result.ok === true};
+      }
       let delivered = false;
       if (this.deliver && task.sessionId) { try { delivered = await this.deliver({task: this.view(task, {full: true}), why: reason}) === true; } catch { delivered = false; } }
       if (delivered) { Object.assign(task, {state: 'running', reason: 'rework_sent'}); this.startWatch(task); }

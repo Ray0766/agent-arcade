@@ -150,3 +150,15 @@ test('a missing git binary is reported as unavailable, not as a crash', async ()
   assert.deepEqual(await worktrees.available(), {available: false, version: ''});
   assert.equal((await code(worktrees.resolveRepo(os.tmpdir()))).code, 'git_unavailable');
 });
+
+test('reusing a worktree refuses a replaced path and a different branch', {skip}, async t => {
+  const {project,worktrees,base}=setup(t),id='reuse000001',made=await worktrees.create({taskId:id,project}),task={id,...made};
+  assert.equal(await worktrees.validate(task),true);
+  git(made.worktree,'switch','-c','unrelated-fixture-branch');
+  assert.equal((await code(worktrees.validate(task))).code,'worktree_mismatch');
+  git(made.worktree,'switch',made.branch);
+  // A junction also works without symlink privileges on Windows.
+  const moved=path.join(base,'moved-worktree');fs.renameSync(made.worktree,moved);
+  fs.symlinkSync(moved,made.worktree,process.platform==='win32'?'junction':'dir');
+  assert.equal((await code(worktrees.validate(task))).code,'worktree_mismatch');
+});

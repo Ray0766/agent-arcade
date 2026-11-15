@@ -21,9 +21,19 @@ function environment(source,{platform=process.platform}={}){
   // copy or inject tokens, API/provider settings or a different credential store.
   return {...env,DISABLE_TELEMETRY:'1',DISABLE_ERROR_REPORTING:'1',CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:'1',CLAUDE_CODE_DISABLE_BACKGROUND_TASKS:'1',CLAUDE_CODE_DISABLE_BG_EXIT_HANDOFF:'1'};
 }
-async function terminateChild(child){
+async function terminateChild(child,{groupId,timeoutMs=2000,killImpl=process.kill.bind(process)}={}){
   // This is the live child we spawned, never a PID restored from disk. The exit
-  // listener invalidates it. No process-name match or unrelated CLI is stopped.
+  // of its leader need not end its POSIX process group. Keep that group only for
+  // this transport's immediate disposal; never persist or rediscover it by name.
+  if(groupId!==undefined){
+    if(!Number.isSafeInteger(groupId)||groupId<=1||groupId===process.pid)return false;
+    const signal=value=>{try{killImpl(-groupId,value);return true;}catch(error){if(error.code==='ESRCH')return false;throw error;}};
+    const gone=async()=>{const until=Date.now()+timeoutMs;do{if(!signal(0))return true;await new Promise(resolve=>setTimeout(resolve,20));}while(Date.now()<until);return !signal(0);};
+    if(!signal('SIGTERM'))return true;
+    if(await gone())return true;
+    if(!signal('SIGKILL'))return true;
+    return gone();
+  }
   if(child.exitCode!==null&&child.exitCode!==undefined||child.signalCode)return;
   if(process.platform==='win32'&&Number.isSafeInteger(child.pid)&&child.pid>0){
     await promisify(execFile)('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,timeout:5000,maxBuffer:8192}).catch(()=>{});
@@ -33,7 +43,10 @@ async function terminateChild(child){
 class ClaudeProgramTransport{
   constructor({executable,args,workspace,spawnImpl=spawn,requestTimeoutMs=30000,onMessage,onFailure,terminateImpl=terminateChild}){
     Object.assign(this,{requestTimeoutMs,onMessage,onFailure,terminateImpl});this.pending=new Map();this.buffer='';this.bytes=0;this.failed=false;this.didExit=false;this.exited=deferred();
-    this.child=spawnImpl(executable,args,{cwd:workspace,env:environment(process.env),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']});
+    this.child=spawnImpl(executable,args,{cwd:workspace,env:environment(process.env),shell:false,windowsHide:true,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe']});
+    // POSIX detached creates a separate process group/session, while the pipes
+    // and child remain referenced and owned by this transport (no unref).
+    this.groupId=process.platform!=='win32'&&Number.isSafeInteger(this.child.pid)&&this.child.pid>1?this.child.pid:undefined;
     this.child.once('error',()=>{if(!this.child.pid){this.didExit=true;this.exited.resolve();}this.fail('Claude Code could not start.');});
     this.child.once('exit',(code,signal)=>{this.didExit=true;this.exitCode=code;this.exitSignal=signal;this.exited.resolve();this.fail('Claude Code exited.');});
     this.child.stdin.on('error',()=>this.fail('Claude Code input closed.'));
@@ -80,8 +93,11 @@ class ClaudeProgramTransport{
   }
   async dispose(exitTimeoutMs){
     if(!this.didExit){this.child.stdin.end();await waitFor(this.exited.promise,exitTimeoutMs);}
-    if(!this.didExit){try{await this.terminateImpl(this.child);}catch{}await waitFor(this.exited.promise,exitTimeoutMs);}
-    this.fail('Claude Code connection closed.');return this.didExit;
+    let cleanupConfirmed=true;
+    // Also clear surviving descendants after a normal EOF/leader exit. A
+    // protocol result or leader exit alone cannot confirm group cleanup.
+    if(!this.didExit||this.groupId!==undefined){try{cleanupConfirmed=(await this.terminateImpl(this.child,{groupId:this.groupId,timeoutMs:exitTimeoutMs}))!==false;}catch{cleanupConfirmed=false;}await waitFor(this.exited.promise,exitTimeoutMs);}
+    this.fail('Claude Code connection closed.');return this.didExit&&cleanupConfirmed;
   }
 }
 
@@ -181,7 +197,7 @@ function createClaudeProgramRunner({workspace,persona={enabled:true,selection:'d
     }
     // A UUID planned before startup is not evidence a resumable session exists.
     const observedSessionId=sessionObserved?sessionId:'';
-    if(localAbort.signal.aborted)return {sessionId:observedSessionId,outcome:exitConfirmed?(timedOut?'limit':'cancelled'):'error',text:'',notice:exitConfirmed?(timedOut?'已达到本轮时间上限，本机 Claude 进程已退出；已发生的修改不会撤销。':'本轮本机 Claude 进程已退出；已发生的修改不会撤销，独立后台作业未核验。'):'已请求停止，但尚未确认本机 Claude 进程退出。请在电脑端检查。'};
+    if(localAbort.signal.aborted)return {sessionId:observedSessionId,outcome:exitConfirmed?(timedOut?'limit':'cancelled'):'error',text:'',notice:exitConfirmed?(timedOut?'已达到本轮时间上限，本机 Claude 进程已退出；已发生的修改不会撤销。':'本轮本机 Claude 进程已退出；已发生的修改不会撤销，独立后台作业未核验。'):'已请求停止，但尚未确认本机 Claude 及其受管子进程退出。请在电脑端检查。'};
     if(error||!result||!exitConfirmed||transport.exitCode!==0)return {sessionId:observedSessionId,outcome:'error',text:'',notice:'本机 Claude 未能完成本轮。请检查原版 CLI 的登录、版本和网络；执行结果未确认。'};
     if(result.subtype==='success'&&!result.is_error&&typeof result.result==='string')return {sessionId:observedSessionId,outcome:'reply_ended',text:result.result.slice(0,MAX_TEXT)};
     return {sessionId:observedSessionId,outcome:/^error_max_/.test(result.subtype)?'limit':'error',text:'',notice:/^error_max_/.test(result.subtype)?'Claude 已达到本轮执行限制，请检查实际结果。':'Claude 报告本轮执行出错，请检查实际结果。'};
@@ -189,4 +205,4 @@ function createClaudeProgramRunner({workspace,persona={enabled:true,selection:'d
   execute.close=async()=>{closed=true;const run=active;if(run){run.abort();await run.done.promise;}};
   return execute;
 }
-module.exports={createClaudeProgramRunner,environment,compatible,ClaudeProgramTransport};
+module.exports={createClaudeProgramRunner,environment,compatible,ClaudeProgramTransport,terminateChild};

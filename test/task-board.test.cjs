@@ -18,6 +18,7 @@ function harness(t, options = {}) {
     available: async () => ({available: true, version: '2.53.0'}),
     resolveRepo: async project => { if (project.includes('plain')) throw new WorktreeError('not_a_git_repository'); return project; },
     create: async ({taskId, project}) => { const worktree = path.join(home, 'task-worktrees', taskId); fs.mkdirSync(worktree, {recursive: true}); calls.push(['worktree.create', taskId]); return {project, worktree, branch: `arcade/task-${taskId}`, baseCommit: HEAD}; },
+    validate: async () => true,
     snapshot: async () => ({head: HEAD, statusHash: HASH, at: clock.now}),
     boundaryCheck: async () => ({checkedAt: clock.now, sourceRepoChanged: false, sourceHeadChanged: false, sourceStatusChanged: false, attribution: 'unknown', worktreeListChecked: true, outsidePaths: []}),
     diffSummary: async () => ({exists: true, commits: 0, committed: {files: [], fileCount: 0, insertions: 0, deletions: 0, truncated: false}, uncommitted: {files: [], fileCount: 0, truncated: false}}),
@@ -33,7 +34,7 @@ function harness(t, options = {}) {
     stop: async id => { calls.push(['stop', id]); const job = manager.jobs.find(item => item.id === id); if (manager.fail === 'stop') throw Error('not confirmed'); job.state = manager.fail === 'still' ? 'working' : 'stopped'; return manager.snapshot(); },
     release: launchId => { calls.push(['release', launchId]); manager.jobs = manager.jobs.filter(job => job.launchId !== launchId); return true; }};
   const store = new Map();
-  const make = () => new TaskBoard({home, bus, now: () => clock.now, worktrees, sessions: async () => manager, observe: options.poll ? id => store.get(id) : null, deliver: options.deliver || null,
+  const make = () => new TaskBoard({home, bus, now: () => clock.now, worktrees, sessions: async () => manager, observe: options.poll ? id => store.get(id) : null, deliver: options.deliver === undefined ? async () => false : options.deliver,
     newId: () => `task${String(++serial).padStart(6, '0')}`, newLaunchId: () => `00000000-0000-4000-8000-${String(++serial).padStart(12, '0')}`});
   const board = make();
   const seen = (state, extra = {}) => ({task: {session: SESSION, agent: '', state, reason: extra.reason || '', updatedAt: extra.at ?? clock.now, result: extra.result || ''}});
@@ -213,18 +214,21 @@ test('rework requires a reason, is counted, and is delivered only when a channel
   assert.equal(delivered[0].why, 'Wrong file'); assert.equal(delivered[0].task.sessionId, SESSION);
 });
 
-test('finished entries are capped at 200 and 30 days; an entry with a worktree on disk outlives the age rule', async t => {
+test('finished metadata is capped at 200 and 30 days, but a worktree record is never pruned', async t => {
   const h = harness(t), project = path.join(h.home, 'project'), now = h.clock.now, day = 24 * 60 * MINUTE;
   const row = (index, extra) => ({id: `done${String(index).padStart(6, '0')}`, title: `t${index}`, brief: '', project, state: 'verified', createdAt: now - 40 * day, updatedAt: now - index * 1000, finishedAt: now - index * 1000, ...extra});
   fs.writeFileSync(h.board.file, JSON.stringify({version: 1, tasks: [...Array.from({length: 230}, (_, index) => row(index)), row(900, {finishedAt: now - 31 * day, updatedAt: now - 31 * day}),
     row(901, {finishedAt: now - 31 * day, updatedAt: now - 31 * day, worktree: path.join(h.home, 'task-worktrees', 'done000901')})]}));
   const board = h.make(); board.save();
   const kept = JSON.parse(fs.readFileSync(board.file, 'utf8')).tasks.map(task => task.id);
-  assert.equal(kept.length, 200); assert(kept.includes('done000000')); assert(!kept.includes('done000229')); assert(!kept.includes('done000900'));
+  assert.equal(kept.length, 201); assert(kept.includes('done000901')); assert(kept.includes('done000000')); assert(!kept.includes('done000229')); assert(!kept.includes('done000900'));
   const aged = harness(t); fs.writeFileSync(aged.board.file, JSON.stringify({version: 1, tasks: [row(900, {finishedAt: now - 31 * day}), row(901, {finishedAt: now - 31 * day, worktree: path.join(aged.home, 'task-worktrees', 'done000901')}), row(1)]}));
   const next = aged.make(); next.clock = null; next.save();
   assert.deepEqual(next.tasks.map(task => task.id).sort(), ['done000001', 'done000901']);
-  assert.equal(next.summary().columns.finishedToday.length <= 30, true);
+  assert.equal(next.summary().columns.finishedHistory.some(task => task.id === 'done000901'), true);
+  assert.equal(next.summary().counts.finishedHistory, 1);
+  assert.equal((await next.remove({id:'done000901'})).ok, true);
+  assert.equal(next.summary().counts.finishedHistory, 0);
 });
 
 test('a corrupt, oversized or partly invalid board file never throws on load', async t => {
@@ -374,13 +378,15 @@ test('remove: finished or draft only, and unsaved worktree changes need an expli
 
 test('capabilities state what was read from the CLI and that nothing here is a sandbox', async t => {
   const h = harness(t), value = await h.board.capabilities();
-  assert.deepEqual(value.git, {available: true, version: '2.53.0'}); assert.deepEqual(value.claude, {available: true, version: '2.1.318'});
+  assert.deepEqual(value.git, {available: true, version: '2.53.0'}); assert.deepEqual(value.claude, {checked: true, available: true, version: '2.1.318', error: ''});
   assert.deepEqual(value.preauthorization, {available: true, reason: 'accept_edits_mode_listed_by_cli', mode: 'acceptEdits', scope: 'file_edits_in_task_worktree', confirmedWithRealSession: false});
   assert.match(value.notSandbox.zh, /不是沙箱/); assert.match(value.notSandbox.zh, /只有你能验收/); assert.match(value.notSandbox.en, /is a sandbox/); assert.match(value.notSandbox.en, /cannot tell who changed it/);
   assert.deepEqual(value.notSandbox, NOT_SANDBOX);
   h.manager.accept = false; assert.deepEqual((await h.board.capabilities()).preauthorization.reason, 'accept_edits_mode_not_listed_by_cli');
   h.manager.capability.available = false; assert.deepEqual([(await h.board.capabilities()).preauthorization.available, (await h.board.capabilities()).preauthorization.reason], [false, 'background_sessions_unavailable']);
   const none = new TaskBoard({home: h.home, worktrees: h.worktrees, sessions: async () => { throw Error('no CLI'); }});
+  const old=new TaskBoard({home:h.home,worktrees:h.worktrees,sessions:async()=>{throw Object.assign(Error('old'),{code:'unsupported_version',version:'2.1.283'});}});
+  assert.deepEqual((await old.capabilities()).claude,{available:false,version:'2.1.283',reason:'unsupported_version'});
   assert.deepEqual([(await none.capabilities()).claude.available, (await none.capabilities()).preauthorization.reason], [false, 'claude_unavailable']);
 });
 
@@ -401,4 +407,74 @@ test('IPC handlers accept only a project the native picker returned in this run'
   assert.equal((await api.taskDiff(made.task.id)).diff.exists, true);
   assert.equal((await api.taskCapabilities()).ok, true);
   h.board.capabilities = async () => { throw Error('boom'); }; assert.deepEqual(await api.taskCapabilities(), {ok: false, code: 'internal'});
+});
+
+
+test('production rework confirms the old writer stopped and starts one new round in the same worktree', async t => {
+  const h = harness(t, {deliver: null}), id = await h.dispatched(), task = h.board.find(id), oldLaunch = task.launchId;
+  h.board.observe(h.seen('done', {at: h.clock.now + 1000, result: REPORT})); h.clock.now += 2000;
+  const oldSession = task.sessionId;
+  // Each round gets a distinct session, just as the real CLI does.
+  const create = h.manager.create;
+  h.manager.create = async args => { const result = await create(args); const job=h.manager.jobs.at(-1); job.sessionId=SESSION.replace(/^1/, '2'); return h.manager.snapshot(); };
+  const result = await h.board.rework({id, why: 'Check the keyboard path too'});
+  assert.equal(result.ok, true); assert.equal(result.delivered, true); assert.equal(result.newRound, true);
+  assert.equal(task.state, 'dispatched'); assert.notEqual(task.launchId, oldLaunch); assert.notEqual(task.sessionId, oldSession);
+  assert.equal(h.calls.filter(call => call[0] === 'worktree.create').length, 1);
+  const launches = h.calls.filter(call => call[0] === 'create');
+  assert.equal(launches.length, 2); assert.equal(launches[1][1].cwd, launches[0][1].cwd); assert.equal(launches[1][1].permission, 'acceptEdits');
+  assert.match(launches[1][1].prompt, /Check the keyboard path too/); assert.match(launches[1][1].prompt, /Fix the export button/);
+  assert(h.calls.findIndex(call => call[0] === 'stop') < h.calls.findIndex(call => call[0] === 'release'));
+  assert.equal(h.board.observe(h.seen('done', {at:h.clock.now+1000, result:REPORT})), false, 'even a late timestamp cannot bind an old session to the new round');
+  assert.equal((await h.board.rework({id, why: 'duplicate'})).code, 'bad_state');
+  const next=h.make(); assert.equal(next.find(id).state, 'unknown'); assert.equal(h.calls.filter(call=>call[0]==='create').length,2, 'restart never replays a launch');
+});
+
+test('rework refuses unknown or unconfirmed old sessions and does not launch another writer', async t => {
+  for (const failure of ['stop', 'still', 'unknown', 'missing', 'done_still']) {
+    const h = harness(t, {deliver:null}), id=await h.dispatched();
+    h.board.observe(h.seen('done', {at:h.clock.now+1000})); h.clock.now+=2000;
+    if (failure==='unknown') h.manager.jobs[0].state='unknown';
+    else if (failure==='missing') h.manager.jobs=[];
+    else if (failure==='done_still') { h.manager.jobs[0].state='done'; h.manager.fail='still'; }
+    else h.manager.fail=failure;
+    const result=await h.board.rework({id,why:'Needs another check'});
+    assert.equal(result.code,'stop_unconfirmed',failure); assert.equal(h.state(id),'reported');
+    assert.equal(h.board.find(id).rework,0); assert.equal(h.calls.filter(call=>call[0]==='create').length,1);
+  }
+});
+
+test('worktree-bearing records survive count pruning and block new drafts until explicit cleanup', async t => {
+  const h=harness(t),project=path.join(h.home,'project');
+  h.board.tasks=Array.from({length:220},(_,index)=>({ ...h.board.find('none'), id:`keep${String(index).padStart(6,'0')}`, title:'keep', brief:'', project, state:'verified', createdAt:1,updatedAt:1,finishedAt:1,worktree:path.join(h.home,'task-worktrees',`keep${String(index).padStart(6,'0')}`), reworkLog:[] }));
+  h.board.save(); const next=h.make();
+  assert.equal(next.tasks.length,220); assert.equal(next.summary().columns.finishedHistory.length,220);
+  assert.equal((await next.create({title:'too many',project})).code,'board_full');
+  assert.equal((await next.remove({id:'keep000219'})).ok,true);
+  assert.equal((await next.create({title:'space again',project})).ok,true);
+});
+
+
+test('a rejected rework launch is retryable, but an uncertain launch is never repeated', async t => {
+  const h=harness(t,{deliver:null}), id=await h.dispatched(), old=h.board.find(id).launchId;
+  h.board.observe(h.seen('done',{at:h.clock.now+1000,result:REPORT}));h.clock.now+=2000;
+  h.manager.fail='untrusted';
+  const rejected=await h.board.rework({id,why:'Fix keyboard focus'});
+  assert.equal(rejected.code,'workspace_untrusted'); assert.equal(h.state(id),'reported');
+  assert.equal(h.board.find(id).launchId,old); assert.equal(h.board.find(id).settledLaunchId,old);
+  assert.equal(h.board.find(id).reportStatus,'parsed');
+  h.board.save(); const next=h.make(); h.manager.fail='uncertain';
+  const uncertain=await next.rework({id,why:'Fix keyboard focus'});
+  assert.equal(uncertain.code,'launch_uncertain');assert.equal(next.find(id).state,'unknown');
+  const calls=h.calls.filter(call=>call[0]==='create').length;
+  assert.equal((await next.rework({id,why:'try again'})).code,'bad_state');
+  assert.equal(h.calls.filter(call=>call[0]==='create').length,calls);
+});
+
+
+test('a failed durable save never launches a background writer', async t => {
+  const h=harness(t),{task}=await h.board.create({title:'do not launch',project:path.join(h.home,'project')});
+  h.board.save=()=>false;
+  assert.equal((await h.board.dispatch(task.id)).code,'board_save_failed');
+  assert.equal(h.calls.filter(call=>call[0]==='create').length,0);assert.equal(h.state(task.id),'draft');
 });

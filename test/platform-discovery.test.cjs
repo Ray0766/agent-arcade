@@ -74,7 +74,7 @@ test('macOS Claude Code discovery uses the found node and claude, validates vers
   await assert.rejects(discoverNative({platform: 'darwin', env, runImpl, find: () => null}), /Install Node\.js 22\.13\+/);
   await assert.rejects(discoverNative({platform: 'darwin', env, runImpl, find: name => name === 'node' ? '/opt/homebrew/bin/node' : null}), /Install the native Claude Code CLI/);
   await assert.rejects(discoverNative({platform: 'darwin', env, find, runImpl: async file => file.endsWith('node') ? {stdout: JSON.stringify({path: '/usr/local/bin/node', version: '20.11.0'})} : {stdout: '2.1.320'}}), /Install Node\.js 22\.13\+/);
-  await assert.rejects(discoverNative({platform: 'darwin', env, find, runImpl: async file => file.endsWith('node') ? {stdout: JSON.stringify({path: '/usr/local/bin/node', version: '22.13.0'})} : {stdout: '2.1.316'}}), /Claude Code 2\.1\.317\+/);
+  await assert.rejects(discoverNative({platform: 'darwin', env, find, runImpl: async file => file.endsWith('node') ? {stdout: JSON.stringify({path: '/usr/local/bin/node', version: '22.13.0'})} : {stdout: '2.1.316'}}), {code:'unsupported_version',version:'2.1.316',message:'Claude Code 2.1.317+ is required for this native preview.'});
 });
 
 test('Windows Claude Code discovery is unchanged: node from PATH, then ~/.local/bin/claude.exe, then where.exe', async () => {

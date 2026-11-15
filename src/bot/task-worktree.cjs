@@ -124,6 +124,20 @@ class TaskWorktrees {
     if (!top || !same(real(top), real(worktree))) throw new WorktreeError('worktree_failed');
     return {project: repo, worktree, branch, baseCommit: head};
   }
+  // Reusing a task directory must not follow a replaced symlink or another
+  // checkout. This validates ownership, not confinement of the CLI itself.
+  async validate(task) {
+    const {worktree, branch} = this.paths(task);
+    if (!fs.existsSync(worktree)) throw new WorktreeError('no_worktree');
+    if (!same(real(worktree), path.join(real(this.root), task.id))) throw new WorktreeError('worktree_mismatch');
+    let top, current;
+    try {
+      top = (await this.git(['rev-parse', '--show-toplevel'], worktree)).trim();
+      current = (await this.git(['symbolic-ref', '--quiet', '--short', 'HEAD'], worktree)).trim();
+    } catch { throw new WorktreeError('worktree_mismatch'); }
+    if (!same(real(top), real(worktree)) || current !== branch) throw new WorktreeError('worktree_mismatch');
+    return true;
+  }
   async snapshot(repo) {
     const head = (await this.git(['rev-parse', '--verify', 'HEAD'], repo)).trim();
     const status = await this.git(['status', '--porcelain=v1', '-z'], repo);

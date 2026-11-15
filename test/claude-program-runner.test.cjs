@@ -159,6 +159,13 @@ test('unconfirmed process exit cannot be reported as cancelled',async()=>{
   await assert.rejects(f.runner({prompt:'do not start another process'}),/closed/);assert.equal(f.children.length,1);
 });
 
+test('an exited leader with unconfirmed descendant cleanup closes the runner',async()=>{
+  const f=fixture(()=>{}, {noExit:true,taskTimeoutMs:20,terminateImpl:async child=>{child.exit();return false;}});
+  const result=await f.runner({prompt:'wait'});
+  assert.equal(result.outcome,'error');assert.match(result.notice,/受管子进程/);
+  await assert.rejects(f.runner({prompt:'must not multiply surviving work'}),/closed/);
+});
+
 test('timeout terminates only the spawned child after interrupt and EOF fail to end it',async()=>{
   let terminated=0;
   const f=fixture(()=>{}, {noExit:true,taskTimeoutMs:20,terminateImpl:async child=>{terminated++;child.exit();}});

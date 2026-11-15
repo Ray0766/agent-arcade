@@ -36,6 +36,7 @@ function setup(t, {help = HELP} = {}) {
   const manager = new BackgroundSessions({root: path.join(home, 'task-board-sessions'), cli: process.execPath, run, enabled: true});
   const worktrees = {available: async () => ({available: true, version: '2.53.0'}), resolveRepo: async project => project,
     create: async ({taskId, project}) => { const worktree = path.join(home, 'task-worktrees', taskId); fs.mkdirSync(worktree, {recursive: true}); return {project, worktree, branch: `arcade/task-${taskId}`, baseCommit: 'b'.repeat(40)}; },
+    validate: async task => { assert.equal(task.worktree,path.join(home,'task-worktrees',task.id)); assert.equal(task.branch,`arcade/task-${task.id}`); return true; },
     snapshot: async () => ({head: 'b'.repeat(40), statusHash: 'a'.repeat(64), at: 1}), boundaryCheck: async () => ({}), remove: async () => ({removed: true})};
   const board = new TaskBoard({home, worktrees, sessions: async () => manager, newId: () => 'launch000001', newLaunchId: () => LAUNCH});
   const options = args => args.slice(0, args.includes('--') ? args.indexOf('--') : args.length);

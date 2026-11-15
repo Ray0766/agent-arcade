@@ -18,6 +18,8 @@
     workspace_untrusted:['Claude Code 还没有被告知信任这个任务的 worktree 文件夹，应用不会替你同意。','Claude Code has not been told to trust this task’s worktree folder, and the app will not approve that for you.'],
     launch_uncertain:['不确定会话有没有启动。请到“会话”页或 Claude Code 里核对后再决定。','It is unclear whether the session started. Check the Sessions page or Claude Code before deciding.'],
     previous_launch_uncertain:['上一次派出有没有启动还不确定，所以没有再派一次。请先核对。','It is still unclear whether the previous launch started, so it was not launched again. Check first.'],
+    board_save_failed:['任务记录没能保存，没有启动会话。请先解决磁盘或目录权限问题。','The task record could not be saved, so no session was started. Check disk space and folder permissions first.'],
+    board_full:['看板已满，请先查看历史结束任务并清理不再需要的 worktree。','The board is full. Review finished history and clean up worktrees you no longer need.'],
     too_many_sessions:['后台会话已达上限。请先停止一些。','Too many background sessions. Stop some first.'],
     nested_session:['应用本身运行在一个 Claude Code 会话里，不能从这里再启动会话。','The app itself runs inside a Claude Code session, so it cannot start another from here.'],
     background_unavailable:['这台电脑上的 Claude Code 不能启动后台会话。','Claude Code on this computer cannot start background sessions.'],
@@ -42,7 +44,7 @@
   const REASONS={reply_ended:['会话的回复结束了。这不代表任务已经做完。','The session’s reply ended. That does not mean the task is done.'],session_ended:['会话已经结束。这不代表任务已经做完。','The session ended. That does not mean the task is done.'],observer_unknown:['观察器给不出这个会话的状态。','The observer cannot tell this session’s state.'],restart_unmatched:['应用重启后没能对上原来的会话。请到 Claude Code 里核对。','After the app restarted, the original session could not be matched. Check in Claude Code.'],no_progress:['有一段时间没有看到新进展了。','No new progress has been seen for a while.'],launch_uncertain:['不确定会话有没有启动。','It is unclear whether the session started.'],launch_not_started:['上次派出没有启动会话，任务回到了草稿。','The last launch did not start a session, so the task is a draft again.'],session_waiting:['会话在等你：可能要你批准一个操作，或回答一个问题。请到那个 Claude Code 会话里处理。','The session is waiting for you: to approve something or answer a question. Handle it in that Claude Code session.'],session_failed:['会话报告了失败。','The session reported a failure.'],session_stopped:['会话已停止。','The session was stopped.'],accepted_by_owner:['你已验收。','You accepted it.'],rework_sent:['返工原因已送到会话。','The rework reason was delivered to the session.'],rework_not_delivered:['返工原因已记下，但没有送到会话。请你自己在那个会话里说明。','The rework reason is recorded but was not delivered to the session. Say it in that session yourself.'],stop_unconfirmed:['没能确认会话已经停止。','The session could not be confirmed as stopped.']};
   const FLAGS={unformatted:['交回的文字没有按约定的四段来写。','The hand-back text does not follow the agreed four parts.'],claims_fixed_without_check_table:['交回里说“修好了”，但没有附核对表。','The hand-back says “fixed” without a check table.'],bugfix_without_check_table:['这是修 bug 的任务，但交回里没有核对表。','This is a bug-fix task, but the hand-back has no check table.']};
   const PREAUTH={claude_unavailable:['没有找到 Claude Code','Claude Code was not found'],background_sessions_unavailable:['这台电脑上的 Claude Code 不能启动后台会话','Claude Code here cannot start background sessions'],accept_edits_mode_not_listed_by_cli:['这个版本的 Claude Code 没有列出“接受文件修改”模式','this Claude Code version does not list the accept-edits mode']};
-  const COLUMNS=[['doing','在做','Working'],['waiting','等你','Waiting for you'],['stalled','停滞与暂停','Stalled & paused'],['finishedToday','今天完成','Finished today']];
+  const COLUMNS=[['doing','在做','Working'],['waiting','等你','Waiting for you'],['stalled','停滞与暂停','Stalled & paused'],['finishedToday','今天结束','Finished today']];
   let zh=true,lang='',latest=null,board=null,caps=null,capsAt=0,busy=false,boardKey='',pending=false,form=null,detail=null,topMessage='',topError=false;
   const ui=new Map(); // per task: {mode, note, why, title, brief, message, error, untrusted, discard}
   const state=id=>{if(!ui.has(id))ui.set(id,{mode:'',note:'',why:'',message:'',error:false});return ui.get(id);};
@@ -53,9 +55,9 @@
   const sandboxText=()=>caps?.notSandbox?.[zh?'zh':'en']||'';
   const baseName=path=>String(path||'').split(/[\\/]/).filter(Boolean).pop()||String(path||'');
 
-  const banner=el('section','tb-banner'),tools=el('div','button-row'),create=fk(K.button('primary',''),'new'),topStatus=K.status('st-status tb-status'),formCard=el('article','settings-card st-card kn-card tb-form'),drafts=el('section','tb-drafts'),grid=el('div','tb-board'),summary=el('section','settings-card st-card kn-card tb-rework'),dialog=el('dialog','tb-detail');
+  const banner=el('section','tb-banner'),tools=el('div','button-row'),create=fk(K.button('primary',''),'new'),topStatus=K.status('st-status tb-status'),formCard=el('article','settings-card st-card kn-card tb-form'),drafts=el('section','tb-drafts'),grid=el('div','tb-board'),history=el('details','settings-card st-card kn-card tb-history'),summary=el('section','settings-card st-card kn-card tb-rework'),dialog=el('dialog','tb-detail');
   formCard.hidden=true;dialog.setAttribute('aria-labelledby','tasks-detail-title');tools.append(create,topStatus.node);
-  root.append(banner,tools,formCard,drafts,grid,summary,dialog);
+  root.append(banner,tools,formCard,drafts,grid,history,summary,dialog);
 
   function syncBusy(){for(const node of root.querySelectorAll('button,input,select,textarea'))node.disabled=busy||node.dataset.locked==='true';}
   function focusKey(key){const target=[...root.querySelectorAll('[data-fk]')].find(node=>node.dataset.fk===key&&!node.disabled&&node.offsetParent!==null);if(target)target.focus({preventScroll:true});return !!target;}
@@ -94,7 +96,7 @@
     else if(caps){
       const missing=[];
       if(!caps.git?.available)missing.push(tr('没有找到 git，不能建立 worktree，所以现在不能派出任务。','git was not found, so no worktree can be created and tasks cannot be dispatched.'));
-      if(!caps.claude?.available)missing.push(tr('没有找到 Claude Code，所以现在不能派出任务。','Claude Code was not found, so tasks cannot be dispatched.'));
+      if(!caps.claude?.available)missing.push(caps.claude?.reason==='unsupported_version'?tr(`已找到 Claude Code ${caps.claude.version}，但任务看板需要 2.1.317 或更新版本。请先更新。`,`Claude Code ${caps.claude.version} was found, but the task board needs 2.1.317 or newer. Update it first.`):tr('无法确认可用的 Claude Code，所以现在不能派出任务。请检查安装和版本。','A usable Claude Code could not be confirmed, so tasks cannot be dispatched. Check its installation and version.'));
       if(caps.claude?.available&&!caps.preauthorization?.available)missing.push(`${tr('不能预授权文件修改','File edits cannot be pre-authorized')}${colon()}${words(PREAUTH,caps.preauthorization?.reason)}${tr('。派出的任务里，文件修改也会由 Claude Code 逐次向你确认。','. In a dispatched task, Claude Code will ask you about each file edit as well.')}`);
       for(const text of missing)nodes.push(el('p','st-problem',text));
       const facts=el('p','tb-caps',[caps.git?.available?`git ${caps.git.version||''}`.trim():'',caps.claude?.available?`Claude Code ${caps.claude.version||''}`.trim():'',caps.preauthorization?.available?tr('可以预授权 worktree 内的文件修改','file edits inside the worktree can be pre-authorized'):''].filter(Boolean).join(' · '));
@@ -223,21 +225,21 @@
       step.append(el('p','',tr('验收表示你自己看过结果并认可。应用不会替你检查改动对不对。','Accepting means you looked at the result yourself and agree. The app does not check the changes for you.')),K.field(tr('验收备注（可选）','Acceptance note (optional)'),note,`tasks-accept-note-${task.id}`),row);box.append(step);
     }
     if(s.mode==='rework'&&task.state==='reported'){
-      const step=el('div','tb-step'),why=K.area(500,3,s.why),go=fk(K.button('primary',tr('记为返工','Mark for rework')),`${key}:rework-go`),cancel=fk(K.button('secondary',tr('取消','Cancel')),`${key}:rework-cancel`),row=el('div','st-save-row');
+      const step=el('div','tb-step'),why=K.area(500,3,s.why),go=fk(K.button('primary',tr('开始返工','Start rework')),`${key}:rework-go`),cancel=fk(K.button('secondary',tr('取消','Cancel')),`${key}:rework-cancel`),row=el('div','st-save-row');
       fk(why,`${key}:rework-field`);why.oninput=()=>{s.why=why.value;};
       go.onclick=()=>{
         const text=why.value.trim();if(!text){say(tr(...CODES.reason_required),true);why.focus();return;}
-        void run(async()=>{const result=await K.call(()=>api.taskRework({id:task.id,why:text}));if(result.ok===false){say(`${tr('没有记下','Not recorded')}${colon()}${explain(result)}`,true);return `${key}:rework-go`;}s.mode='';s.why='';say(result.delivered===true?tr('返工原因已记下，并已送到会话。','The rework reason is recorded and was delivered to the session.'):tr('返工原因已记下，但没有送到会话。请你自己到那个 Claude Code 会话里把原因告诉它。','The rework reason is recorded but was NOT delivered to the session. Tell that Claude Code session the reason yourself.'),result.delivered!==true);return `${key}:diff`;});
+        void run(async()=>{const result=await K.call(()=>api.taskRework({id:task.id,why:text}));if(result.ok===false){say(`${tr('没有记下','Not recorded')}${colon()}${explain(result)}`,true);return `${key}:rework-go`;}s.mode='';s.why='';say(result.delivered===true?tr('已开始新一轮返工，要求已交给会话。','A new rework round started with your requirements.'):tr('返工原因已记下，但没有送到会话。请你自己到那个 Claude Code 会话里把原因告诉它。','The rework reason is recorded but was NOT delivered to the session. Tell that Claude Code session the reason yourself.'),result.delivered!==true);return `${key}:diff`;});
       };
       cancel.onclick=()=>open('rework');row.append(go,cancel);
-      step.append(el('p','',tr('原因会记在看板上并计入返工统计。应用不会把它发给会话：需要你自己在那个 Claude Code 会话里说明。','The reason is recorded on the board and counted in the rework summary. The app does not send it to the session: say it in that Claude Code session yourself.')),K.field(tr('返工原因（必填）','Reason for rework (required)'),why,`tasks-rework-why-${task.id}`),row);box.append(step);
+      step.append(el('p','',tr('应用会确认上一轮会话已停止，然后在同一个 worktree 中启动新一轮，把原任务和你的返工要求一起交给 Claude Code；原有改动会保留。命令执行仍按 Claude Code 自己的确认。','The app confirms the previous session has stopped, then starts a new round in the same worktree with the original task and your rework requirements. Existing changes are kept. Commands still need Claude Code’s own confirmation.')),K.field(tr('返工原因（必填）','Reason for rework (required)'),why,`tasks-rework-why-${task.id}`),row);box.append(step);
     }
     if(s.discard&&(task.state==='draft'||finished)){
       const step=el('div','tb-step tb-untrusted'),go=fk(K.button('secondary tb-danger',tr('丢弃 worktree 和里面的改动','Discard the worktree and its changes')),`${key}:discard`),parts=[];
       if(s.discard.dirty)parts.push(tr('有没提交的修改','uncommitted changes'));if(s.discard.unmerged)parts.push(tr('有没合并进主分支的提交','commits not merged into your branch'));
       go.setAttribute('aria-label',`${tr('丢弃 worktree 和里面的改动','Discard the worktree and its changes')}${colon()}${task.title||''}`);
       K.twoClick(go,tr('再点一次：改动将无法找回','Click again: the changes cannot be recovered'),()=>void run(async()=>{const result=await K.call(()=>api.taskRemove({id:task.id,discard:true}));if(result.ok===false){say(`${tr('没有移除','Not removed')}${colon()}${explain(result)}`,true);return `${key}:discard`;}ui.delete(task.id);topMessage=tr(`已移除任务“${task.title}”，并丢弃了它的 worktree。`,`Removed the task “${task.title}” and discarded its worktree.`);topError=false;return 'new';}));
-      step.append(el('p','',`${tr('这个任务的 worktree 里','This task’s worktree holds')}${parts.length?parts.join(tr('，也',' and ')):tr('还有改动','changes')}${tr('。如果还想留着，请先自己合并或备份；丢弃后找不回来。','. If you want to keep them, merge or back them up yourself first; discarding cannot be undone.')}`),go);box.append(step);
+      step.append(el('p','',`${tr('这个任务的 worktree 里','This task’s worktree holds ')}${parts.length?parts.join(tr('，也',' and ')):tr('还有改动','changes')}${tr('。如果还想留着，请先自己合并或备份；丢弃后找不回来。','. If you want to keep them, merge or back them up yourself first; discarding cannot be undone.')}`),go);box.append(step);
     }
     box.append(status.node);return box;
   }
@@ -257,13 +259,16 @@
       if(total>rows.length)column.append(el('p','tb-meta',tr(`还有 ${total-rows.length} 个没有显示。`,`${total-rows.length} more are not shown.`)));
       return column;
     }));
+    const oldRows=columns.finishedHistory||[],oldTotal=counts.finishedHistory??oldRows.length;
+    history.hidden=!oldTotal;
+    history.replaceChildren(el('summary','tb-column-title',tr(`历史结束任务（${oldTotal}）`,`Finished history (${oldTotal})`)),el('p','tb-meta',tr('查看旧任务的改动，确认不再需要后移除。未提交或未合并的改动需要另行确认丢弃；不会自动删除 worktree。','Review old task changes and remove them when no longer needed. Discarding uncommitted or unmerged work needs a separate confirmation; worktrees are never deleted automatically.')), ...oldRows.map(taskCard));
     const rework=board?.rework;
     summary.hidden=!board;
     if(board){
       const nodes=[el('h2','',tr(`最近 ${rework?.days||14} 天的返工`,`Rework in the last ${rework?.days||14} days`))];
       if(!rework?.count)nodes.push(el('p','st-note',tr('这段时间没有返工记录。','No rework was recorded in this period.')));
       else{nodes.push(el('p','st-note',tr(`共 ${rework.count} 次。原因按次数排列：`,`${rework.count} in total. Reasons, most frequent first:`)));const list=el('ul','tb-reasons');for(const item of rework.reasons||[]){const li=el('li','');li.append(el('span','',String(item.why||'')),el('span','st-count',`× ${item.count}`));list.append(li);}nodes.push(list);}
-      if(board.limits)nodes.push(el('p','tb-caps',tr(`没做完的任务最多 ${board.limits.unfinished} 个（现在 ${counts.unfinished??0} 个）；已结束的任务最多保留 ${board.limits.finished} 个。更早结束的任务不在这一页显示。`,`Up to ${board.limits.unfinished} unfinished tasks (now ${counts.unfinished??0}); up to ${board.limits.finished} finished tasks are kept. Tasks finished before today are not shown on this page.`)));
+      if(board.limits)nodes.push(el('p','tb-caps',tr(`没做完的任务最多 ${board.limits.unfinished} 个（现在 ${counts.unfinished??0} 个）；看板满后须先清理结束任务。更早结束的任务在“历史结束任务”里。`,`Up to ${board.limits.unfinished} unfinished tasks (now ${counts.unfinished??0}); clean up finished tasks when the board is full. Older tasks appear under Finished history.`)));
       summary.replaceChildren(...nodes);
     }
     drawBanner();syncBusy();

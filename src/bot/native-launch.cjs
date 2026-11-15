@@ -24,7 +24,7 @@ async function discoverNative({platform=process.platform,env=process.env,runImpl
   if(!cli||!path.isAbsolute(cli))throw Error('Install the native Claude Code CLI and log in through its own terminal.');
   const version=(await runImpl(cli,['--version'],{timeout:10000,windowsHide:true})).stdout;
   const numbers=version.match(/(\d+)\.(\d+)\.(\d+)/)?.slice(1).map(Number);
-  if(!numbers||numbers[0]<2||(numbers[0]===2&&numbers[1]===1&&numbers[2]<317)||numbers[0]===2&&numbers[1]<1)throw Error('Claude Code 2.1.317+ is required for this native preview.');
+  if(!numbers||numbers[0]<2||(numbers[0]===2&&numbers[1]===1&&numbers[2]<317)||numbers[0]===2&&numbers[1]<1)throw Object.assign(Error('Claude Code 2.1.317+ is required for this native preview.'),{code:'unsupported_version',version:numbers?.join('.')||''});
   return {node,cli};
 }
 // POSIX single-quote literal: nothing inside is expanded; an embedded quote
