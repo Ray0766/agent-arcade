@@ -1,12 +1,27 @@
 <p align="center"><img src="docs/banner.svg" alt="Agent Arcade" /></p>
 
-<p align="center"><a href="README.zh-CN.md">简体中文</a> · <a href="https://github.com/Ray0766/agent-arcade/actions">Build status</a> · <a href="https://github.com/Ray0766/agent-arcade/releases">Downloads</a> · <a href="docs/THEMES.md">Make a theme</a></p>
+<p align="center"><a href="README.zh-CN.md">简体中文</a> · <a href="https://github.com/Ray0766/agent-arcade/actions">Build status</a> · <a href="https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2">Public Windows preview 0.3.0-preview.2</a> · <a href="docs/THEMES.md">Make a theme</a></p>
 
 # Agent Arcade
 
-Agent Arcade is an open-source desktop app for chatting with AI characters on your own computer. It is released under AGPL-3.0 with no paid features. The app runs locally and keeps conversations and memory on this computer; the model is called with one API key that you bring (Claude, GPT, DeepSeek, Gemini or Doubao). The current source version is 0.4.0-preview.1, a preview, Windows first.
+Agent Arcade is an open-source desktop app for chatting with AI characters on your own computer. It is released under AGPL-3.0 with no paid features. The app runs locally and keeps conversations and memory on this computer; the model is called with one API key that you bring (Claude, GPT, DeepSeek, Gemini or Doubao). This describes the **0.4.0-preview.1 development source**, not the older downloadable Windows app. Read the version table below before choosing a route.
 
-## What you can do
+## Choose the version first
+
+Availability checked on **2026-11-14**:
+
+| Version | What you can obtain | First-use route |
+| --- | --- | --- |
+| **Public 0.3.0-preview.2** | [Windows executable, checksum and lockfile](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2). This is the older WeChat task/observer preview, licensed under MIT. | Use its [version-specific instructions](docs/releases/0.3.0-preview.2.md): WeChat ClawBot pairing and a task backend. It does **not** have the App-first key card described below. |
+| **Development 0.4.0-preview.1** | Source on `codex/companion-nine`, with reproducible baseline `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4` (AGPL-3.0-only). **Not a published release.** | Follow [Run from source](#run-from-source), then [First run](#first-run). |
+| **Local fixes after that baseline** | Additional uncommitted App/macOS repairs and an ad-hoc signed, unnotarized arm64 build exist only in the maintainer's working tree. | They are absent from a fresh clone and the public executable; see the [validation summary](docs/VALIDATION.md#public-first-use-evidence--2026-11-14). |
+
+**There is no publicly downloadable Mac candidate package.** A local build or
+an Actions artifact is not a published Mac release. Mac users currently need
+source; platform limits and build instructions are in [macOS notes](docs/MACOS.md).
+A plain clone without the branch below selects the older default `main`.
+
+## What the development source provides
 
 - **Chat with a character.** After saving one API key, chat with the built-in character on the Chat page. Each character keeps its own history and a memory list you can read, correct and delete.
 - **Character library.** Import SillyTavern character cards (PNG or JSON; V1/V2/V3) with first and alternate greetings, lorebooks, author's note, presets, regex scripts, and message edit, regenerate and branches. Card text is used as material only; scripts and extensions inside a card never run. The item-by-item comparison is in [SillyTavern feature parity](docs/SILLYTAVERN_PARITY.md).
@@ -19,20 +34,27 @@ Agent Arcade is an open-source desktop app for chatting with AI characters on yo
 
 ## Status
 
-This is a preview. Please read these groups separately:
+The App-first path remains a development candidate:
 
-- **Covered by automated tests and synthetic-data screenshots only, not yet verified by real use:** the character library and the SillyTavern-derived features (lorebooks, presets, sampling, edit/regenerate/branches, regex, streaming, group chats), note proposals and reflection, notice sources and character notices, the task board's dispatch path, the three layouts, and the "paste one key and start chatting" first-run flow. None of these has been run end to end with a real model, a real calendar, folder or feed, or a real Claude Code session.
-- **Have bounded records of real use:** companion chat with the built-in characters through the QQ channel (Claude API, GPT API, DeepSeek; 2026-11-05), the task flow of local Claude program mode, and the Claude Code observer. What passed and what did not is in the [acceptance table](docs/COMPANION_ACCEPTANCE.md) and [validation](docs/VALIDATION.md).
-- **Not yet accepted with real credentials:** the Gemini API and Doubao API routes.
-- The installer published on GitHub is 0.3.0-preview.2 and does **not** contain the newer features above; for now they require [running from source](#run-from-source). 0.4.0-preview.1 has not been published.
-- What was done at each step, and where the evidence is, is recorded in [WORK_LOG.md](WORK_LOG.md).
+- **Automated/component and isolated-window evidence:** character cards, lorebooks, presets, sampling, message operations, streaming, groups, notes/reflection, source notices, layouts and task-board dispatch. Real files, SQLite and an Electron window can be used while model replies are still stand-ins; that is not real-model or human acceptance.
+- **Bounded real-use evidence from earlier versions:** QQ companion replies with Claude/GPT/DeepSeek, selected local Claude task flows and observer events. These do not accept the new App-first route. See the [nine-feature ledger](docs/COMPANION_ACCEPTANCE.md) and [tracked validation summary](docs/VALIDATION.md#public-first-use-evidence--2026-11-14).
+- **macOS:** real-Mac startup, encrypted fake-key storage, stand-in-provider chat and ad-hoc packaging have bounded evidence. Later local ICS/folder checks used temporary files and a fake wording model, not the owner's data. Real models, Keychain/notification dialogs, real Chinese IME and human use remain unaccepted; see [macOS notes](docs/MACOS.md).
+- **Real-provider gaps:** Gemini and Doubao credentials/calls, App-first memory/reminder quality and the complete first-run real-key conversation remain unaccepted.
+
+Public evidence is indexed in [docs/VALIDATION.md](docs/VALIDATION.md).
+`WORK_LOG.md`, raw `outputs/` receipts and local build paths are private/local
+records, not files a fresh clone needs. Local uncommitted repairs are reported
+separately there and are not included in the pinned source below.
 
 ## First run
 
-1. Open the app. It lands on the Chat page.
+**For the development source below, with a fresh profile.** For the public
+Windows 0.3.0-preview.2 app, use its version-specific instructions in the table.
+
+1. Run `npm start`. It opens **Companion → Chat / 陪伴 → 对话** with an AI-key card.
 2. Pick an AI: Claude, GPT, DeepSeek, Gemini or Doubao.
-3. Paste that service's API key and save it. The key is stored on this computer with OS encryption; usage is billed by that service.
-4. Start chatting. Messages in the App conversation go to the AI service you chose; the app has no server of its own.
+3. Paste that service's API key and choose **Save and start chatting / 保存并开始聊天**. The key is stored on this computer with OS encryption; usage is billed by that service.
+4. Start chatting. Messages in the App conversation go to the AI service you chose; this default App-chat path does not require an Agent Arcade server. Optional Messenger and remote-management routes use separately deployed services; see their guides.
 
 Already have a character card? Open Characters, choose "Import a character card…", open the imported character, then choose "Chat as this character".
 
@@ -46,14 +68,25 @@ WeChat, QQ and other channels, and the Work side, can be set up later or never.
 
 ## Run from source
 
-Requires [Node.js 22.13 or newer](https://nodejs.org/).
+Requires Git and [Node.js 22.13 or newer](https://nodejs.org/); Node 24.x is
+used for the recorded development checks. Use a **new directory** for these
+commands; do not switch or reset an existing checkout with local changes.
+The detached checkout pins the documented remote baseline rather than any
+later branch changes or the maintainer's uncommitted repairs.
 
 ```sh
-git clone https://github.com/Ray0766/agent-arcade.git
-cd agent-arcade
+git clone --branch codex/companion-nine --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
+cd agent-arcade-companion
+git checkout --detach 3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4
+git rev-parse HEAD
 npm ci
 npm start
 ```
+
+`git rev-parse HEAD` should print `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`;
+[the exact source tree](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4)
+contains package version `0.4.0-preview.1` and the App-first card. Neither that
+version string nor a successful build means a release was published.
 
 - `npm start` runs `electron .`: the app itself, using the data folder above.
 - `npm run demo` runs `electron . --demo`: the same app, except that Work › Sessions shows built-in sample sessions (kept apart from live observations); while in demo state it sends no desktop notifications, loads no notice sources and runs no scheduled reflection. It still uses the same data folder; it is not an isolated trial environment.

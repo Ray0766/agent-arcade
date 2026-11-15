@@ -1,5 +1,39 @@
 # Decisions and evidence
 
+## 2026-11-15 — update retention and macOS Keychain recovery
+
+Keep existing App data paths and the historic `agent-arcade` name. Electron
+45.2.1 derives its macOS Keychain service/account from that name
+([pinned implementation](https://github.com/electron/electron/blob/v45.2.1/shell/browser/electron_browser_main_parts.cc),
+read 2026-11-15). A fixed name preserves key lookup, while consistent executable
+signing remains a separate access condition. Local ad-hoc builds cannot promise
+prompt-free updates. The Mac build wrapper accepts an explicitly installed
+signing identity without silently falling back when that choice fails.
+
+Before opening stores, snapshot existing App data on a changed code fingerprint,
+including same-version rebuilds. Verify hashes and copied SQLite state; failure
+stops startup before migrations. This adds local disk/time cost and bounded
+startup work, with no network or model cost. Completed snapshots require owner
+maintenance; none are automatically deleted. Do not snapshot original CLI login
+directories or export the system Keychain.
+
+Keep failed decryption locked rather than overwrite a vault. Explicit retry
+rechecks its profile and file; explicit confirmed reset first retains verified
+original ciphertext and preserves separate chat/memory databases. Explain that
+the [pinned synchronous OSCrypt backend](https://github.com/electron/electron/blob/v45.2.1/patches/chromium/revert_oscrypt_remove_sync_backend.patch)
+can cache a failed lookup until restart. Neither a copied Electron profile nor
+the reset workflow can reconstruct a deleted system key.
+
+Alternatives rejected: plaintext/local fallback keys and broad Keychain ACLs
+weaken protection; automatic credential reset loses recoverable state. A full
+async-safeStorage migration is deferred because format/provider compatibility
+needs its own verification before a future Electron upgrade
+([API lifecycle](https://www.electronjs.org/docs/latest/api/safe-storage)).
+Implementation, repeatable checks and remaining human/system acceptance are
+recorded in [CREDENTIAL_RETENTION](CREDENTIAL_RETENTION.md) and
+[UPDATE_BACKUPS](UPDATE_BACKUPS.md). These are local uncommitted repairs, not a
+released Mac update.
+
 ## 2026-11-13 — AGPL-3.0, App-first companion, listen/notify, SillyTavern port
 
 Owner decisions: the project is fully open source under AGPL-3.0 with no paid features; the goal is one download that works with one AI API key; the in-App companion is the default experience and ordinary QQ becomes an optional existing capability that is not extended.

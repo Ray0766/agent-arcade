@@ -1,43 +1,95 @@
-# Agent Arcade 0.4.0-preview.1 — single-window companion preview
+# Agent Arcade 0.4.0-preview.1 — App-first development candidate
 
-This is the next local release candidate. It is not a claim that a new GitHub release has been published. The previous public preview.2 notes are preserved in `docs/releases/0.3.0-preview.2.md`.
+**Unpublished release-note draft, checked 2026-11-14.** The available public
+release is still [0.3.0-preview.2 for Windows](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2),
+with its older WeChat task/observer workflow. Its archived instructions are in
+[the version-specific notes](https://github.com/Ray0766/agent-arcade/blob/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4/docs/releases/0.3.0-preview.2.md).
+That executable does not contain the App-first key card described here.
+No 0.4.0-preview.1 release has been published, and **no public Mac candidate
+package is available**. Local packages and CI artifacts are not release assets.
 
-One main window now holds companion conversations, account connections and local QQ management. Claude, GPT and DeepSeek can use separate provider API keys; original Claude program mode and Codex login remain separate local routes. The original observer, Sprout scenes and hooks are retained. A reply ending still does not establish task success.
+## Get the documented source
 
-## Start
+The development branch is `codex/companion-nine`; this draft's reproducible
+baseline is [`3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4).
+A plain clone selects the older default `main`. In a **new directory**, with
+Git and Node.js 22.13+ installed (recorded checks use Node 24.x):
 
-- For an account-free first use, run `npm start` and choose **Connect a companion → Try a local sample first**. The app checks a real bundled text file and opens its content, size and SHA-256 in the result viewer. The separate `npm run demo` route shows labeled observer examples. Close any running copy before starting another route; neither demonstration is live QQ or AI chat.
-- Open **Connect a companion** to choose the AI and character. Enter API keys directly in the app, or use the original local CLI's own login. Existing encrypted keys are reused; a blank field saying the key is saved does not require re-entry. The application does not supply model credits or a cloud runtime. Keep this computer and the app running.
-- For QQ, open **QQ accounts**. You can use an existing compatible installation after closing its former manager, or explicitly prepare a separate environment. The source includes an [installed-QQ Shell route](QQ_FIRST_SETUP.md) and an [official Node-component route without a QQ.exe picker](QQ_NODE_SETUP.md). The repaired isolated Node start/QR-display/stop/return flow passed; Node login/chat and clean-machine first use remain unaccepted. Preparation does not log in or connect AI. Start the intended instance, complete its own sign-in if necessary, bind the exact account to a companion and use **Connect AI**. These routes do not replace the QQ protocol core.
-- For WeChat, use **ClawBot** and its phone-side pairing. This is not a normal personal WeChat account and does not publish Moments.
-- Choose companionship or coding intentionally. Companionship disables execution tools; coding uses the selected backend's explicit permission workflow. Local Codex remains coding-only because fully disabling its built-in tools has not been verified.
+```sh
+git clone --branch codex/companion-nine --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
+cd agent-arcade-companion
+git checkout --detach 3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4
+git rev-parse HEAD
+npm ci
+npm start
+```
 
-## Included capabilities
+The printed commit must match the full hash above; `package.json` at that
+commit says `0.4.0-preview.1`. Do not reset an existing working copy to follow
+these instructions. Later local, uncommitted repairs are not in this checkout;
+the version number alone cannot distinguish those working-tree builds.
 
-- Several independently configured companions in one window, with original anime portraits and per-account state, credentials and memories.
-- Viewable, editable and forgettable companion memory; agreed follow-ups, bounded proactive private messages, short bubbles, message batching, character cards and public-journal drafts.
-- Existing local QQ account discovery, exact identity/online checks, QR controls, owned start/stop, connection binding, configuration backups and explicit crash-leftover recovery.
-- Fixed official NapCat package preparation and same-version selection/rollback with a stable data directory. QQ client upgrades and general cross-version migration are not included.
-- A searchable friend/group directory, a manual remark editor for the configured owner, and separate explicit group-name/member administration. One real 23-member group read passed; group writes remain unaccepted. Management does not enable AI conversations with groups or other friends. Outgoing friend applications are still unimplemented.
-- Own QQ nickname, signature and avatar editors, with preview and explicit confirmation. One account's nickname/avatar changes and restorations were also observed in ordinary QQ; exact private native fields and general remote synchronization are not established.
-- Local plugin files: bounded ZIP/catalog preparation, stopped-instance deployment, retained removal/restoration and interrupted-change handling. The fixed builtin plugin has a five-field configuration editor; later source adds the active cleaner 1.2.0's eleven default options and [QCE 5.5.77's two default folders](QQ_QCE.md). QCE uses separate credentials and shared OS-user settings. Neither settings editor starts its cleanup/export/schedule action. A separate [manual export flow](QQ_QCE_EXPORTS.md) explicitly creates an owned task and downloads its result. Original [account-bound export plans](QQ_QCE_SCHEDULES.md) add explicit recurrence while the app is running, without adopting native QCE plans. The separate [access-rule editor](QQ_QCE_ACCESS_RULES.md) adds explicit rule/filter/display-host changes; it is not a firewall or a durable-storage guarantee. Isolated component/main/UI checks are not real installed-plugin deployment/execution/configuration acceptance. [Plugin guide](QQ_PLUGINS.md).
-- A distinct [native QCE shared-plan manager](QQ_QCE_NATIVE_PLANS.md) adds list/detail, creation/editing, enable/disable/removal, one-plan execution, history and native run-all in source. It preserves native timing, resource options and per-plan output folders. These shared plans are not account-bound; pausing or deleting them cannot cancel captured work. Real installed-plugin acceptance remains pending.
-- Separately configured HTTPS remote management, with seven management operations, QQ QR controls, Windows native Passkey registration/authentication, and bounded file browse/edit/create/move/delete/upload/download/copy/ZIP extraction. These have source/component/UI checks; actual remote ceremonies, account delivery and file changes remain unaccepted. An optional independently deployed [resumable helper](QQ_RESUMABLE_TRANSFERS.md) now has source, isolated service/crash and renderer checks; it needs separate TLS/credentials. The packaged empty registry was inspected separately; real helper registration and transfers remain unaccepted. Remote process/component/data transactions and Passkey listing/revocation remain unfinished. [Remote setup](QQ_REMOTE.md), [files](QQ_REMOTE_FILES.md).
-- Explicit owner-directed image and WAV previews/sends, optional local text-to-voice generation, cancellation and separate receipt details. Generated speech is not sent automatically.
-- Windows speech and optional separately installed Qwen ASR/GPT-SoVITS. Speech models and Python environments are not bundled or downloaded automatically.
-- Optional [incoming QQ voice recognition](QQ_INBOUND_VOICE.md), off by default: one supported private voice message from the configured owner is transcribed locally and receives a text reply. Transcripts cannot trigger commands. Source/protocol and isolated local-model checks do not establish real QQ codec or end-to-end acceptance.
-- Existing work/result surfaces, official Claude session observation, an experimental owned-background prototype, SQLite recovery metadata and bounded MCP Apps/Tasks artifact tools. These do not imply background Channels acceptance or verified task success.
+## First use of the development candidate
 
-## Verification and limits
+1. Start with a fresh profile and open **Companion → Chat / 陪伴 → 对话**.
+2. Choose Claude, GPT, DeepSeek, Gemini or Doubao.
+3. Paste that service's API key in the App and choose **Save and start chatting / 保存并开始聊天**. Keys are saved locally with OS encryption. API usage is billed by the provider, separately from consumer subscriptions.
+4. Type a message and send it. Conversation mode supplies no execution tools; **Stop** cancels this foreground reply. Model output is not verified task success.
 
-The source has automated transport, lifecycle, isolation and UI checks. Separate bounded real evidence covers three providers' QQ companionship, local Claude tasks, memory/follow-up flows, multiple-account management, selected recovery paths, same-version component switching, and explicit image/voice send receipts. A bridge receipt or cached observation does not establish recipient display, playback or remote synchronization. The corrected owner-remark package passed one explicit change and original-value restoration with accepted UI receipts and independent matching cache reads. Its earlier false-unknown result remains recorded as a failure; remote-client synchronization is unverified.
+QQ, WeChat, a project directory, hooks and a local CLI are not prerequisites
+for this API-chat path. Optional coding and channel connections remain on the
+Work side. The application supplies neither model credits nor a cloud runtime;
+keep the computer and App running. Default App chat calls the chosen provider
+directly; optional relay/remote services require separate deployment.
 
-Remaining real acceptance includes excluded-friend Qzone visibility, cancellation of a known remaining bubble queue, hands-free spoken interruption, current integrated QR login, surviving-launcher adoption and live media draft isolation. Those checks have been deferred to the owner's test stage. Manual recording/recognition/warm-voice playback has one human-confirmed pass, not a measured accuracy or stability guarantee. One cold local synthesis took about 30.6 seconds; it is not a low-latency promise.
+Without a key, `npm run demo` shows labelled observer examples under
+**Work → Sessions**; it does not simulate a successful AI conversation. The
+bundled local file check is under **Work → Work & results → Try local sample**.
+Both use the same default data folder as normal startup: demo is not an
+isolated profile. Close an existing copy before starting another.
 
-QQ remains an experimental ordinary-account bridge with separately installed third-party components. Session invalidation can still require another sign-in. An independent QQ codec/helper experiment is work-only: it is not a production login or messaging core and is not bundled. Ordinary personal WeChat/Moments, AI group chat, general incoming image/mixed-media understanding and a replacement ordinary-account QQ core remain unimplemented. The narrow opt-in QQ voice route above retains its separate real-flow acceptance.
+## Source capabilities and platform boundaries
 
-Gemini and Doubao/Ark API adapters, a fixed-owner Feishu enterprise bot, X standard DMs and a Messenger Page relay/client are implemented in source. Real credentials, provider calls, platform permissions, deployment and delivery remain unaccepted. Feishu bot and Messenger Page identities are not ordinary personal accounts; X standard DMs do not implement encrypted Chat. These routes do not establish an always-on cloud service. [Channels and AI](CHANNELS_AND_AI.md), [full remaining scope](ACTIVE_GOAL.md).
+The App-first source includes built-in/library characters, SillyTavern
+PNG/JSON cards, world info, conversation settings, message editing and
+library-character regeneration/branches/streaming, groups, explicit App memory,
+owner-approved notes/reflection and opt-in calendar/folder/feed notices.
+Three layouts share Companion and Work workspaces. These are source features,
+not a claim that the public preview contains them or that every flow is accepted.
 
-This Windows preview is unsigned and has no automatic updater. Credentials are stored locally using OS encryption; user messages reach the selected chat/model providers. Private chats, keys, runtime profiles and raw acceptance captures must not enter release assets. The package includes self-contained original-asset provenance and third-party notices; external components and model runtimes retain their own terms.
+The pinned baseline still has known gaps: built-in knowledge/rework,
+task-board history/rework delivery and macOS child cleanup were repaired only
+in the later uncommitted working tree. Those repairs and its local ad-hoc signed
+arm64 package are not obtainable from the pinned baseline or public release.
 
-For setup and evidence, read the source README and `docs/QQ_INTEGRATION.md`, `docs/COMPANION_ACCEPTANCE.md`, `docs/COMPANION_TEST_STAGE.md`, `docs/VOICE_LOCAL_SETUP.md` and `docs/VALIDATION.md`. Full completion and universal account compatibility are not claimed.
+On macOS, source startup and local ad-hoc packaging have bounded real-machine
+evidence. The package is unnotarized; Intel and second-Mac use remain unaccepted.
+Voice, local QQ management, managed terminal startup and provider sign-in
+windows are not supported there; manual existing OneBot settings are separate.
+See the [macOS platform notes](https://github.com/Ray0766/agent-arcade/blob/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4/docs/MACOS.md).
+Windows speech models and optional Python runtimes are not downloaded automatically.
+
+QQ remains optional, user-supplied and frozen for expansion. NapCat's upstream
+stopped publishing; component-download/setup code is not a working fresh-install
+promise. WeChat is ClawBot, not ordinary personal WeChat or Moments. App library
+groups are distinct from autonomous QQ groups. Local Codex is coding-only until
+its tools can be verifiably disabled. Existing channel/backend permissions and
+per-account memory boundaries remain in force.
+
+## Evidence and unfinished acceptance
+
+The [tracked validation page](https://github.com/Ray0766/agent-arcade/blob/codex/companion-nine/docs/VALIDATION.md)
+separates public-release evidence, the pinned development baseline and later
+uncommitted local checks. Raw work logs, private screenshots and local build
+paths are not public evidence or downloads.
+
+- Real Mac windows, SQLite, fake-key OS encryption, provider stand-ins and component tests do not accept a real-key first conversation or real-model memory/reminder quality. Keychain/notification/file-picker dialogs, real IME, human daily use and sleep/wake remain unaccepted.
+- Earlier bounded QQ/Claude task and observer evidence retains its own version and route. It does not accept the new App-first path. The [sanitized nine-feature receipt](https://github.com/Ray0766/agent-arcade/blob/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4/docs/evidence/companion-nine-20261105.json) explicitly leaves the milestone unfinished.
+- Real Claude Code background dispatch/rework, trust prompts and `acceptEdits` scope require separate acceptance with a supported CLI (2.1.317+). Hand-back is not owner acceptance. Gemini/Doubao credentials and broader channel deployment remain unaccepted.
+- Excluded-friend Qzone visibility, a known remaining bubble queue and hands-free spoken interruption remain unfinished; the voice exercise is deferred, not passed.
+
+The development source is AGPL-3.0-only; earlier MIT releases retain their
+license. The proprietary Claude Agent SDK is excluded from packages. No
+signed/notarized installer, automatic updater, general account compatibility,
+comparative quality or performance improvement is claimed. Do not publish
+keys, chats, runtime profiles or private acceptance captures as release assets.

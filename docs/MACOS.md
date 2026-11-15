@@ -221,10 +221,14 @@ the script path), so no shell parses either path.
 - **Menu-bar icon** is the coloured brand mark at 18 pt, not a monochrome
   template image, so it does not adapt to a dark menu bar.
 - **Saved API keys and the packaged app.** Source and package use the same
-  Keychain item name ("agent-arcade Safe Storage") but are different programs
-  to the Keychain, so expect a Keychain access prompt, or an unreadable key that
-  has to be entered again, when switching between them or after a rebuild of
-  the ad-hoc signed app. Not tried.
+  historic Keychain item name ("agent-arcade Safe Storage"), now explicitly set
+  before ready. Keychain access can still differ with executable signing
+  identity; an ad-hoc rebuild may require renewed permission. Failed decryption
+  keeps the original vault locked, with retry/restart guidance and an explicitly
+  confirmed, encrypted-backup-first reset that retains chats and memory. Changed
+  code is also backed up before stores/migrations open. See
+  [update and credential retention](CREDENTIAL_RETENTION.md). Real-user Keychain
+  prompts and consistent-certificate distribution remain unaccepted.
 - **Starting the app twice** goes through a socket file, `/tmp/agent-arcade-<hash>.sock`.
   After a crash or a forced kill the file stays; the next start asks it four
   times, sees every connection refused, and only then replaces it (about a
@@ -233,10 +237,16 @@ the script path), so no shell parses either path.
   resolved path of the `node` it found, for example
   `~/.local/share/mise/installs/node/24.21.0/bin/node`. With a version manager
   that path disappears when that version is removed; install the hooks again.
-- **Stopping a local Claude program task** sends `SIGTERM` to the `claude`
-  process the app started. Windows ends its whole process tree
-  (`taskkill /T`); on macOS a command that `claude` itself started is left to
-  `claude` to clean up.
+- **Stopping a local Claude program task** first requests the protocol
+  interruption and closes input. On macOS/Linux its CLI is launched as the
+  leader of a separate POSIX process group, with its pipes and process still
+  owned by the app. Disposal sends that group `SIGTERM`, then `SIGKILL` after
+  a bounded wait if needed, including when the CLI leader exited before its
+  children. A group that cannot be confirmed gone makes the turn an error and
+  blocks another turn in that runner. Windows retains `taskkill /T /F`.
+  This is process cleanup, not containment: a command that creates another
+  session/process group escapes that group and remains unverified. A forced
+  kill of the app itself also cannot run its shutdown cleanup.
 - **Path comparisons are case-sensitive** in the task board and scope hashes,
   although the default macOS volume is not. A path spelled with different
   capitalisation is treated as a different path and refused, never accepted.
@@ -333,9 +343,11 @@ Work side
 - [ ] Started from Finder (not a terminal), the app finds `node`, `claude` and
       `git`; try with Homebrew and with nvm/fnm/volta installs. *Started from a
       terminal only: `git` 2.54.0 and a mise-installed `node` were found.
-      `claude` 2.1.283 was found and correctly refused as older than 2.1.317;
-      the task page then says Claude Code "was not found", which is the wrong
-      word for "too old".*
+      `claude` 2.1.283 was found and correctly refused as older than 2.1.317.
+      The task page's former "was not found" diagnosis is fixed: discovery
+      preserves only the parsed version and an unsupported-version code,
+      and the page asks for 2.1.317+. Component tests cover that diagnosis;
+      it does not make the installed older CLI compatible.*
 - [ ] **Install hooks** writes exec-form hooks to `~/.claude/settings.json`,
       Claude Code accepts them, and session events appear. **Remove hooks**
       restores the file. *Against a throwaway settings file
@@ -354,6 +366,14 @@ Work side
       workspace path containing spaces and an apostrophe.
 - [ ] Stop a local Claude program task while it is running a long shell
       command; check with `ps` that nothing it started is left behind.
+      *Without a model or CLI login: the production runner was driven by a
+      Node protocol stand-in that launched a child and grandchild which both
+      ignore `SIGTERM`. Normal reply/EOF, explicit abort and runner close all
+      removed the three processes; a separate unrelated process stayed alive.
+      `ps` confirmed all three initially belonged to the owned group; PID
+      existence probes confirmed they disappeared. A real Claude tool call,
+      self-detaching commands, and application-force-kill recovery remain
+      unverified.*
 - [ ] The Claude Code and Codex status checks report the right state.
 - [ ] Claude API task mode from a source checkout loads
       `@anthropic-ai/claude-agent-sdk-darwin-arm64` (or `-x64`).
@@ -397,3 +417,55 @@ Not expected to work, confirm they fail politely
       message, not a stack trace.
 - [ ] Moving credentials from an older Electron profile was never tried on
       macOS; a fresh profile does not need it.
+
+## Process-cleanup verification — 2026-11-14
+
+Implementation: `src/bot/claude-program-runner.cjs`. The POSIX group uses
+Node's documented [`spawn` detached option](https://nodejs.org/api/child_process.html#optionsdetached)
+and [process signalling](https://nodejs.org/docs/latest-v24.x/api/process.html#processkillpid-signal),
+consulted 2026-11-14. The group is captured from this invocation's child,
+used only during immediate disposal and never restored from a saved PID.
+No shell, process-name scan, external dependency or model request is added.
+
+- `npm test -- test/claude-program-runner.test.cjs test/platform-discovery.test.cjs test/claude-companion-verbatim.test.cjs`:
+  33 passed. Covers existing permission/cancellation contracts, refusal to
+  reuse a runner after unconfirmed cleanup, and the parsed-version diagnostic.
+- `ARCADE_PROCESS_PROOF=1 npm test -- test/claude-program-process-group.test.cjs`:
+  4 passed on this real Apple Silicon Mac, including independent `ps` group
+  checks. The default test also runs the real-process checks but omits `ps`
+  because the development sandbox denies it. Windows skips the three POSIX
+  process cases; its existing implementation is unchanged.
+
+These are real operating-system process tests with synthetic local protocol
+inputs. They are not real-model, real-Claude-tool or human acceptance.
+
+## App and package regression — later on 2026-11-14
+
+`node scripts/app-macos-smoke.cjs` completed 10 checks with 9 inspected
+screenshots in `outputs/app-macos-smoke/`. It uses real Electron, SQLite and
+OS credential encryption with an isolated profile, a fake key and a provider
+replacement installed **before bootstrap loads** (restored runners capture
+fetch during startup). Built-in streaming, regenerate/continue/edit, Stop,
+401/402/429/network copy, Command+Enter, Command+A/C/X/V and key/history/context
+retention after restart passed. The snapshot/edit-form race was fixed and
+verified by waiting for the editor to close after Save.
+
+Three layouts rendered in dark mode, and compact mode rendered after restart.
+Follow-system propagation used **injected nativeTheme update events**, not a
+change of the real macOS appearance. These checks do not accept real IME,
+Keychain dialogs, the title bar, menu-bar icon, notifications, App Nap or sleep.
+
+The new package was built with:
+
+```sh
+npm run pack:mac -- -c.directories.output=/private/tmp/agent-arcade-macos-delivery-20261114
+```
+
+`codesign --verify --deep --strict` passed on the arm64 App. A fresh keyless
+profile then opened its first-run card and Edit menu through the production
+bootstrap; platform `darwin`, absent voice/QQ management APIs, and normal
+shutdown were checked. `scripts/mac-package-smoke.cjs` compared all 17 changed
+packaged source files byte-for-byte and confirmed the proprietary SDK is absent.
+Receipt and inspected screenshot: `outputs/mac-package-smoke/`. The package is
+ad-hoc signed, unnotarized, and was neither installed nor published. No Intel or
+second-Mac compatibility is implied. See [the complete delivery ledger](APP_MACOS_PROGRESS.md).

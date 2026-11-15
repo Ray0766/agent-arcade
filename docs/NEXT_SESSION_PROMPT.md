@@ -2,6 +2,8 @@
 
 复制下方正文到 Mac 上的新会话。仓库：<https://github.com/Ray0766/agent-arcade>；交接分支：`codex/companion-nine`。先同步分支并保留当地未提交改动。事实入口为 [接手说明](HANDOFF.md) 与 [macOS 说明](MACOS.md)。本提示词包含未来工作指令，不表示其中的缺口已经修复。
 
+> 后续 Mac 实现与验证已记录在 [APP_MACOS_PROGRESS](APP_MACOS_PROGRESS.md) 和 [HANDOFF](HANDOFF.md) 顶部。下方缺口清单描述交接时状态；先核对最新代码和证据，不重复实现已完成项。
+
 ---
 
 继续开发 Agent Arcade。本会话负责补齐已确定的 App 内陪伴功能缺口和 macOS 适配；3D 角色列入后续计划，QQ 暂不扩展。

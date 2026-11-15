@@ -1,6 +1,70 @@
 # Validation
 
-## Reading the current evidence — 2026-11-06
+## Public first-use evidence — 2026-11-14
+
+This is the tracked public summary for the [README](../README.md) and
+[unpublished candidate notes](RELEASE.md). It distinguishes what a stranger
+can obtain from what exists only in the maintainer's working tree. This
+**documentation-only correction did not rerun product tests**, start an App,
+open a system prompt, sign in, or call a real/paid model. Results below are
+previously recorded observations, not new acceptance from this edit.
+
+### Obtainable versions
+
+| Delivery | Exact identity and availability | What its evidence does not establish |
+| --- | --- | --- |
+| Public Windows preview | [v0.3.0-preview.2](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2), tag commit `fd81d161ac1f8417a237aeddf166d7717fb449df`. The public assets are the Windows `.exe`, `SHA256SUMS.txt` and `package-lock.json`. | It is the older WeChat task/observer product, not the App-first API-key card, character library or Mac candidate. Follow [its archived notes](releases/0.3.0-preview.2.md). |
+| Public development source | Branch `codex/companion-nine`, pinned baseline [`3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4), package `0.4.0-preview.1`. The README pins that commit after explicitly cloning the branch. | A version string, branch or successful build is not a published release. An ordinary default-branch clone obtains older `main`. |
+| Later local development candidate | Uncommitted repairs after `3edf1ce`; local arm64 App with ad-hoc signature, unnotarized. The same package version is still `0.4.0-preview.1`. | Not included in the pinned source, a released binary or a public Mac download. No immutable public revision identifies these repairs yet. |
+
+GitHub release assets and the branch ref were read-only checked on 2026-11-14:
+[release metadata](https://api.github.com/repos/Ray0766/agent-arcade/releases?per_page=10),
+[branch ref](https://api.github.com/repos/Ray0766/agent-arcade/git/ref/heads/codex/companion-nine).
+No public `0.4.0-preview.1` release or downloadable Mac candidate was present.
+The CI `mac-package` job uploads an optional test artifact; the current
+`prerelease` job publishes Windows assets on a qualifying `main` push.
+An artifact or local `/private/tmp` path is not a public installer.
+
+### App-first and Mac evidence
+
+The intended **development-source** first use is fresh profile → Companion →
+Chat → choose AI → paste API key → Save and start chatting → send a message.
+QQ pairing, hooks and a project folder are not prerequisites. The pinned
+source includes that card, but the complete real-key first-use path is still
+unaccepted. These boundaries apply separately:
+
+| Area | Recorded evidence | Still unaccepted |
+| --- | --- | --- |
+| Pinned source and first Mac run | [Tracked macOS notes at the baseline](https://github.com/Ray0766/agent-arcade/blob/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4/docs/MACOS.md): real Electron window, isolated data folder, fake key with OS encryption, stand-in provider, SQLite restart and ad-hoc package checks. Automated protocol/component tests cover the App/library paths. | Real model/provider success for the new App-first flow, key/notification/file-picker system dialogs, real Chinese IME, human daily use and sleep/wake. |
+| Later local App repairs | Recorded local regression: 4,970 tests, 4,253 passed, 0 failed, 717 platform skips; 10 App UI checks/9 screenshots, 6 task-board UI checks, real temporary ICS/folder readers with a fake wording model, and real Node process-group cleanup tests. | These results belong to an uncommitted working tree, not the pinned baseline or public app. They do not accept real-model memory/notice quality, the owner's sources, actual Claude long-shell cleanup or human interaction. Raw logs/screenshots remain private/local. |
+| Later local Mac package | Previously recorded ad-hoc signature verification, fresh keyless startup/shutdown, Edit menu and platform restrictions; 17 changed source files matched package bytes and the proprietary SDK was absent. | Not a downloadable candidate, notarization, Gatekeeper/Keychain dialogs, Intel or second-Mac acceptance. This documentation task did not rebuild or launch it. |
+| Work/background tasks | Source/fixture checks; task hand-back and owner acceptance are distinct. | Supported Claude Code 2.1.317+ real dispatch/rework, trust/permission prompts and actual edit-authorization scope remain unaccepted. |
+
+Local repairs cover built-in approved Wiki/rules, stateless per-turn retrieval,
+streaming/regenerate/continue, draft-only starters, the edit-form race,
+task-board history/safe rework, POSIX child-group cleanup and notice cursor/
+switch checks. They are preserved work, not newly implemented by this task and
+not capabilities a stranger receives by downloading preview.2 or cloning the
+pinned baseline. Reading/proposal switches and individual approvals retain
+their existing boundaries; tests do not prove naturalness or semantic recall.
+
+### Public evidence index
+
+These summaries are tracked in Git; their dates and routes remain binding:
+
+- [macOS checklist](MACOS.md): real-machine observations versus fake-provider/system-dialog/human gaps.
+- [SillyTavern parity](SILLYTAVERN_PARITY.md): source features, deliberate exclusions and fixture-only evidence.
+- [Nine-feature ledger](COMPANION_ACCEPTANCE.md) and [sanitized aggregate](evidence/companion-nine-20261105.json): bounded historical QQ companionship, with `allNineFeaturesAccepted: false`.
+- [Native WeChat basic receipt](evidence/native-live-basic.json), [local Claude task/QQ receipt](evidence/claude-program-qq-20261104.json) and [observer response boundary](evidence/live-response-ended.json): each supports its historical route only, not App-first/Mac completion.
+
+`WORK_LOG.md`, `outputs/`, runtime profiles and local package paths mentioned in
+historical sections below are private/local provenance, not clone-time files
+or public download/evidence links. No newcomer needs them to follow the
+README. This summary makes the acceptance boundary readable without publishing
+raw chats, credentials or screenshots. A test skip, a response ending or an
+accepted send is never owner verification of task success.
+
+## Historical evidence guide — 2026-11-06
 
 The sections below are dated checkpoints, not a claim that their named executable is still running or that an older pending result overrides later evidence. Current single-window QQ management, the card's **Connect AI** entrance and separately receipted owner media flows are recorded in [QQ integration](QQ_INTEGRATION.md), [images](QQ_MEDIA.md) and [voice clips](QQ_VOICE.md). Optional local neural voice remains a separate [developer installation](VOICE_LOCAL_SETUP.md); models are not bundled. These local builds do not establish a new GitHub release. The published preview.2 remains the older Channels milestone described in the README.
 

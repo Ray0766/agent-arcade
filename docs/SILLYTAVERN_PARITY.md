@@ -7,7 +7,14 @@ adapts upstream logic file by file; provenance is in
 The interface is written in Agent Arcade's own style, not copied.
 
 Everything below applies to the in-App conversation with a character from the
-character library. The built-in companions, QQ and WeChat keep their own flow.
+character library. Card-specific assembly remains separate for built-in companions, QQ and WeChat.
+As of the 2026-11-14 source changes, built-in **App** conversations also offer
+streaming, edit/delete, regenerate/continue and reply alternatives, plus opt-in
+Wiki recall and owner-approved rules. Their existing private scopes and
+2000-character answer cap remain; card/lorebook assembly and branches remain
+library features. Wiki retrieval is repeated for every stateless request,
+including a later question about a page already used. See
+[Desktop conversation](DESKTOP_CHAT.md#current-source-changes--2026-11-14).
 
 "Verified" here means unit tests with injected fake model runners and isolated
 demo-window screenshots with synthetic data. No row has been exercised with a

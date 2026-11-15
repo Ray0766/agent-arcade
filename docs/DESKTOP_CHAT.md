@@ -1,6 +1,6 @@
 # Desktop conversation
 
-The current package and desktop entry are tracked in [the active scope](ACTIVE_GOAL.md).
+The Windows package observations in this opening paragraph are historical. Current App/macOS source delivery is tracked in [APP_MACOS_PROGRESS](APP_MACOS_PROGRESS.md); the recorded package and desktop entry are retained in [the active scope](ACTIVE_GOAL.md).
 They use the original profile and include independent App conversation, earlier
 messages, App memory, send-key preferences and current-turn image input.
 App reply notifications are a limited preview: **Windows notification display
@@ -14,6 +14,69 @@ In **Chats**, select a companion and a conversation source, then type into the b
 
 The short note **Replies stay here / 仅在这里回复** is literal: typing in this desktop box does not send the prompt or answer to QQ, record audio, synthesize speech, or open coding tools. Both routes still call the selected AI service; this is not an offline model.
 
+## Current source changes — 2026-11-14
+
+Built-in App companions now use the same streaming preference and message
+controls as library conversations: the last model reply offers **Regenerate**,
+**Continue** and alternatives. A new built-in answer is stored as one complete
+message (up to 2000 characters); existing history is retained. A memory-command
+confirmation or source notice cannot be regenerated. Stop cancels the current
+request, and partial streamed text is display-only: it is not saved as an answer.
+The existing no-tools and per-character private-memory boundaries still apply.
+
+An empty, ready built-in App conversation shows the character's name and three
+starting suggestions. A suggestion fills the message draft; it never sends a
+request or creates a fictional greeting in history.
+
+**Companion → Notes / 陪伴 → 笔记** keeps separate **Can read** and **Can propose**
+Wiki switches for each built-in or library character, both off by default.
+A model only proposes edits; the owner approves each change before it enters
+the notebook. On each App model request, an enabled character receives relevant
+notebook lines as labelled, untrusted JSON, within the context budget. A page
+used on a previous turn is searched again: the model requests are stateless and
+cannot rely on a previous prompt retaining that page. Regeneration and
+continuation perform the same bounded retrieval; turning reading off removes
+notebook lines on the next request. Ordinary chat words and headings are
+filtered, and weak lexical matches are dropped; this is not semantic retrieval
+or a guarantee that every relevant note will be found.
+
+Rules from reflection enter built-in App prompts only after individual owner
+approval and while enabled. Unapproved candidates do not become guidance.
+Built-in knowledge uses at most 1600 characters inside its existing
+6000-character prompt cap and shrinks to preserve room for private context.
+These paths have service/SQLite tests with injected model replies. Real-model
+and human acceptance remain unfinished; historical evidence below applies to
+its recorded version and scope.
+
+## Switching App companions — 2026-11-15 source
+
+The companion selector distinguishes **saved companion profiles** from
+**built-in App roles**. A new installation may have only one saved profile;
+it can still choose Ju, Dragon Girl, Whale Girl or the other built-in roles.
+
+- **Immersive:** click the top-left portrait labelled **Switch companion / role**.
+- **Messenger:** use **Built-in role · current AI** below the conversation list;
+  on a narrow window, open the list first.
+- **Minimal:** the same role selector sits above the conversation.
+
+Choosing a built-in role changes only the App conversation's persona, name and
+description. It **keeps the current AI provider and key**. For example, choosing
+Whale Girl while Claude API is configured still calls Claude API; this choice
+is not a claim that a DeepSeek account is connected. **Use profile role** returns
+to the profile's existing persona and custom text. The selection is saved per
+profile as `builtinPersonaId` in `local-companion/st-settings.json`; old profiles
+without that field keep their original behaviour.
+
+Each built-in role resumes its own App history and private memory in the
+existing per-character scope. Choosing a different role does not copy or clear
+those records, alter a connected social account, reset its activity switches,
+or create another profile. Role changes wait until the current App reply ends
+(or is explicitly stopped). **Add / manage companions** creates or manages
+independent profiles when separate AI configuration is wanted.
+
+Automated service/SQLite and production-renderer tests use synthetic model and
+IPC responses; no owner profile, real key or real model was used for this check.
+
 ## Send key
 
 Open **Settings → Chat / 设置 → 聊天** to choose **Enter to send / Enter 发送**
@@ -21,7 +84,7 @@ Open **Settings → Chat / 设置 → 聊天** to choose **Enter to send / Enter
 is also shown below the composer.
 
 - With **Enter**, only plain Enter sends. Ctrl, Meta or Alt combinations do not send.
-- With **Ctrl+Enter**, plain Enter inserts a line break; Ctrl+Enter sends. Meta or Alt combinations do not send.
+- With **Ctrl+Enter**, plain Enter inserts a line break; Ctrl+Enter sends. On macOS the setting is labelled **⌘+Enter** and Command+Enter also sends. Alt combinations do not send.
 - **Shift+Enter** always inserts a line break, including when Ctrl is also held. Input-method composition/confirmation events and repeated keydown events do not submit a message. The Send button is unchanged.
 
 This preference applies to the desktop composer in both App and connected-channel
@@ -52,7 +115,7 @@ Private evidence: `outputs/qq-desktop-keys-live-20261108/receipt.json` and
 
 The saved connection page also offers **Chat in App / 在 App 里聊**. Missing keys lead to the existing same-window AI setup. Changing the foreground source does not rewrite the channel, owner, credentials or QQ memory. App and channel can remain available together with separate runners; stopping the App conversation does not disconnect QQ. Independent App voice is available from **App 对话 → 语音聊天 / App conversation → Voice chat** after starting the App conversation. It uses the existing speech installation without starting or logging in to QQ. Channel voice and QQ media sharing keep their separate route.
 
-The independent route accepts the typed commands **记住：内容**, **查看记忆**, **更正 短码：内容** and **忘记 短码**. These commands affect only that character's local App memory. It cannot proactively contact someone, publish a post, schedule a follow-up, autonomously access files or run tools. Explicitly selected pictures use the bounded route below. It does not copy QQ memory. Local SQLite history has the existing retention bounds and is not newly encrypted or cloud-synchronized.
+The independent route accepts the typed commands **记住：内容**, **查看记忆**, **更正 短码：内容** and **忘记 短码**. These commands affect only that character's local App memory. It cannot contact someone outside this App, publish a post, schedule a follow-up, autonomously access files or run tools. Enabled notice sources can supply a bounded reminder in the running App conversation; the deterministic controller owns its timing and limits. Explicitly selected pictures use the bounded route below. It does not copy QQ memory. Local SQLite history has the existing retention bounds and is not newly encrypted or cloud-synchronized.
 
 ## Send a picture in App chat
 

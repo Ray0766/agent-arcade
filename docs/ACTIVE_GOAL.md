@@ -1,6 +1,54 @@
 # Active delivery scope — single-window companion application
 
-## Session closed — 2026-11-14
+## Local update retention and companion switching — 2026-11-15
+
+The owner requested data backup before update/Keychain repairs, then reported
+that the companion area could not switch partners. Existing uncommitted work is
+preserved on `codex/mac-update-retention`; nothing was committed or published.
+
+Implemented pre-store snapshots for changed builds, stable historic Mac Keychain
+identity, locked-vault retry and explicitly confirmed backup-first credential
+reset, with App conversations/private memory retained. See
+[CREDENTIAL_RETENTION](CREDENTIAL_RETENTION.md) and [UPDATE_BACKUPS](UPDATE_BACKUPS.md).
+Companion switching now has an explicit entrance and an App-only built-in persona
+choice: it keeps the selected AI/provider/key and social activity settings;
+each persona retains its own existing App history/memory scope. A separate
+companion profile still keeps separate credentials. See [DESKTOP_CHAT](DESKTOP_CHAT.md).
+
+An isolated offline-dependency copy passed 5000 tests: 4283 passed, 717 platform
+skips, zero failures. The switcher passed 48 targeted tests and five renderer
+checks/eight inspected screenshots. Real-user Keychain permission, real models
+and human acceptance remain open; no released Mac candidate is implied.
+
+The owner later explicitly authorized real-profile activation: a fresh backup
+preceded opening the candidate; its existing DeepSeek key and two chat rows were
+retained, the real UI switched all three main personas and restored the original
+selection/provider/key. The candidate is now the sole normally running App,
+without temporary debugging flags. No key plaintext or model call was needed.
+This accepts the bounded real-profile retention/switching check, not real-model
+or human Keychain-dialog behavior. Details: [CREDENTIAL_RETENTION](CREDENTIAL_RETENTION.md).
+
+## Current Mac continuation — 2026-11-14
+
+Synced `codex/companion-nine` to remote `3edf1ce` before edits; the tracked
+worktree was clean and local ignored records were preserved. Current scope:
+App companionship and macOS adaptation, QQ expansion paused, 3D later.
+The complete implementation/acceptance checklist is [APP_MACOS_PROGRESS](APP_MACOS_PROGRESS.md).
+
+Built-in approved knowledge, stateless per-turn Wiki retrieval, streaming and
+message rework, draft-only starters, task history/explicit cleanup and same-worktree
+rework are now implemented. Rework requires a confirmed stopped prior job,
+validated directory/branch and durable launch intent. POSIX Claude cleanup now
+covers the owned process group. Source notices withhold delivery on cursor
+persistence failure and recheck source switches before committing output.
+Real Mac Node child-process tests, actual temporary ICS/folder tests and
+isolated real Electron/provider-stand-in flows have evidence. Real models,
+human/system prompts and the required newer background CLI remain unaccepted.
+A local arm64 ad-hoc signed package was built, verified and opened with a new
+keyless profile; no installation, commit, push, notarization or release occurred.
+See [HANDOFF](HANDOFF.md), [MACOS](MACOS.md) and local WORK_LOG for receipts.
+
+## Historical Windows session closeout — 2026-11-14
 
 The owner ended development in this conversation and will continue in a new one.
 The forward scope is App-first companionship and macOS adaptation; QQ expansion
