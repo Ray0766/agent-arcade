@@ -1,0 +1,1718 @@
+{
+  "version": 1,
+  "kind": "offline-production-companion-cases",
+  "source": {
+    "gitHead": "f46f20e6bc3b238038d30408fa21f1a10027cb33",
+    "loadedFiles": [
+      {
+        "file": "src/bot/api-file-runner.cjs",
+        "sha256": "abe1f55e9a7d53e62b111f1c4f5ec10629c30e68ba347fe221fd4082afdd958a"
+      },
+      {
+        "file": "src/bot/approval-codes.cjs",
+        "sha256": "71d90ac28fe94c3e6e4b33ea578dcf56cd2350843014f6fd7702c6c8388262e5"
+      },
+      {
+        "file": "src/bot/character-library.cjs",
+        "sha256": "62dac278363bd72ad66d5c2d09ce1149e2db67ee2d572183f78df16b1495d987"
+      },
+      {
+        "file": "src/bot/claude-direct-runner.cjs",
+        "sha256": "161b53a351c818b213cde1f46b6dc1f103d06f9b01ae44d4a2c28c58458a665f"
+      },
+      {
+        "file": "src/bot/claude-program-runner.cjs",
+        "sha256": "4bacc82e2941faa8029f89bd1953bd1293078ccaaffd0dd7be6b0da2583b92d7"
+      },
+      {
+        "file": "src/bot/codex-runner.cjs",
+        "sha256": "f04922e670d88145373fd659deea988dae63e4b13083140b97cea3157d4130d4"
+      },
+      {
+        "file": "src/bot/commands.cjs",
+        "sha256": "f054730cc33e2d528154a80825115783b8518bea4ef0c9447f8ac66fbaddccfe"
+      },
+      {
+        "file": "src/bot/companion-image.cjs",
+        "sha256": "df527828f7e5f51c779156aa84afbe1e671be72786940c0996b22613be321eef"
+      },
+      {
+        "file": "src/bot/companion-knowledge.cjs",
+        "sha256": "c8314b5797c6723698d1883eb8e749140413f724d3c12affd9ce0676aec9d283"
+      },
+      {
+        "file": "src/bot/companion-notifier.cjs",
+        "sha256": "6b5cc4945f0c8231651e8ccd67c0c7ba4869f448c2680712b9e332fb9f001ca0"
+      },
+      {
+        "file": "src/bot/deepseek-runner.cjs",
+        "sha256": "4d2bee1b38e74aae54d70a90edb0146d4d30ce402423fe1b9a1268ad40bc5f41"
+      },
+      {
+        "file": "src/bot/desktop-chat.cjs",
+        "sha256": "b045a7e46aa3b820f6cfaf423bd3485e8c7d026a22f160e0db0c07fe193ca47d"
+      },
+      {
+        "file": "src/bot/dispatcher-scorer.cjs",
+        "sha256": "9a441d46953c6da297b3fdfdcff286fe8f77007865fba775bb86c64bdda862ae"
+      },
+      {
+        "file": "src/bot/dispatcher.cjs",
+        "sha256": "9da703e7cb51b864f7be6eef77fd6e391fca31a5bd9001471945d4837b8344c0"
+      },
+      {
+        "file": "src/bot/doubao-runner.cjs",
+        "sha256": "0586e58d9838c2cf4a5c4a296c92777f6174d6293281a50d0dee80ef4e389c72"
+      },
+      {
+        "file": "src/bot/feishu-sdk.cjs",
+        "sha256": "c8ef1e4c9b8e204e245d78830d4b4b993f9c7ac21516fdeb7dcb2185b8eba6fe"
+      },
+      {
+        "file": "src/bot/feishu.cjs",
+        "sha256": "9d052119545c0c61dc1a61e8c52c9fbab2ab411f7d18f6b008d1711d3fd1be17"
+      },
+      {
+        "file": "src/bot/file-tools.cjs",
+        "sha256": "968abc5072eaaa26034165969f4487ad8e8c5019be5ea364adc7456a2ea4d01c"
+      },
+      {
+        "file": "src/bot/gemini-runner.cjs",
+        "sha256": "ea7295f328df9bcacfcb550da06fa8dd436d1025155455ccb39b260c6b30e12a"
+      },
+      {
+        "file": "src/bot/generation.cjs",
+        "sha256": "b46354591d6d9f4dffc5cdfbfe5a3487f8d422a480e4498bdc8c8dd16fc0525d"
+      },
+      {
+        "file": "src/bot/gpt-runner.cjs",
+        "sha256": "067d006b272bfc7d6fd7d0c0f59be7daa2cb90701ff9878a74f4c5f73cf3c63c"
+      },
+      {
+        "file": "src/bot/group-dispatcher.cjs",
+        "sha256": "781f8d62f161a7a754319f1e364925dc1aec7ffc582624b044ccbeec9881aca5"
+      },
+      {
+        "file": "src/bot/journal.cjs",
+        "sha256": "299764549b37ac572956cce4c3326cf74574c5fe3e90620ec578700fc7b4c4f6"
+      },
+      {
+        "file": "src/bot/local-companion.cjs",
+        "sha256": "1f6110f970361e5ec1449b18b6e31246144ecd7070c2f7575af193487c914aa1"
+      },
+      {
+        "file": "src/bot/manual-qq-receipts.cjs",
+        "sha256": "79fb7ad663d9bdff8134ab33dff3b1a2d49a6cf2c799c0a9f745cdf9a80420ec"
+      },
+      {
+        "file": "src/bot/messenger-channel-policy.cjs",
+        "sha256": "819d8e2089cb42997d46fdd2fcb96c7e9d41c98c010293a343512e215cd3f5ad"
+      },
+      {
+        "file": "src/bot/messenger-transport.cjs",
+        "sha256": "3d798172901ecbdcfdefe52067d57f405ea84c5bd483be134f6a3c09e1b25920"
+      },
+      {
+        "file": "src/bot/messenger.cjs",
+        "sha256": "ebb50c87157b286fa488d843c87ab825827c2a1deb4c49aadd738593be861cff"
+      },
+      {
+        "file": "src/bot/native-broker.cjs",
+        "sha256": "8916cb2c3d7ba514ffb0beff075c8a7cdac67f992266cfd1bee3a162dc7ffef2"
+      },
+      {
+        "file": "src/bot/native-launch.cjs",
+        "sha256": "4bad4732512a8b53ca8ddb58e35288d64578490f774d48cd5ca48805ea3c2cab"
+      },
+      {
+        "file": "src/bot/qq-friend-requests.cjs",
+        "sha256": "327684e25d85a4f99447a0e302db321e9034274bada686bf0ca187ff2ac823d3"
+      },
+      {
+        "file": "src/bot/qq-history-image.cjs",
+        "sha256": "b471711acadba3b18e19956ef16558f9cc2bf90a0dc5c14537103dbe3d482d32"
+      },
+      {
+        "file": "src/bot/qq-image-download.cjs",
+        "sha256": "7261d48a631aab74433e680096ebe253b83e60fb7e87884fdcdfce3f35da3131"
+      },
+      {
+        "file": "src/bot/qq-image-source.cjs",
+        "sha256": "794cad8f285419132d2e1566ea1dd6948a68c00ca0a0815c970c039134f8e655"
+      },
+      {
+        "file": "src/bot/qq-inbound-image.cjs",
+        "sha256": "9fd927f9b7d7b1a68e74d9aab71671805da40cf20657a0d63e313746485e7efa"
+      },
+      {
+        "file": "src/bot/qq-inbound-voice.cjs",
+        "sha256": "3112c845745a217b235b6b8a54b90c1e14d740143f8633556a2b254a2df04a4c"
+      },
+      {
+        "file": "src/bot/qq-media-file.cjs",
+        "sha256": "1e2ffde2cb1848e56345600a647408bd21e70b1e58b03914c270d4034fe01f2d"
+      },
+      {
+        "file": "src/bot/qq-media.cjs",
+        "sha256": "fab57e137715102c13a073cc44c6178a8d6aea6722c62fd99b95bea852ef4595"
+      },
+      {
+        "file": "src/bot/qq-owner-remark.cjs",
+        "sha256": "0d2b8415bb0ed29ee84ec359102cf112d605ba24eba8ede9fc563812f63f3397"
+      },
+      {
+        "file": "src/bot/qq-quoted-image.cjs",
+        "sha256": "528c33e1be02556bd37bea98d7cd2178f59cb96bc6f6ab97280fec6cfb63e0d9"
+      },
+      {
+        "file": "src/bot/qq-setup.cjs",
+        "sha256": "28df9a46ebd07b290e8a8e38e79ba4aa686b982562688daa522e8a06f884cf08"
+      },
+      {
+        "file": "src/bot/qq-voice-payload.cjs",
+        "sha256": "01185e5b46e64972264a0f1339fe8699ffdcef0aaa82b7a12f510393b5907796"
+      },
+      {
+        "file": "src/bot/qq.cjs",
+        "sha256": "94772f41f4b56c5f5df7c1e2ab9227be25898e2c9d5548eb2fba6fe11a51ae78"
+      },
+      {
+        "file": "src/bot/reflection/reflection-collector.cjs",
+        "sha256": "e024a3cd4a100f0044d27d329d1cecd04eba0fadd1e0c500d0f0f25b45e48b53"
+      },
+      {
+        "file": "src/bot/reflection/reflection-runner.cjs",
+        "sha256": "b747a900e1efa951cfcb07a16c2e3ef6457415b51223e7b15e2bc8e94807b9a9"
+      },
+      {
+        "file": "src/bot/reflection/reflection-store.cjs",
+        "sha256": "f05a396994c2ebcab566d280d8d3776b06ad0ac476952f6b91112b4408bd6f56"
+      },
+      {
+        "file": "src/bot/reflection/reflection-verify.cjs",
+        "sha256": "b638843113ebdb1469c1ec40f2a855fda32e71273d623b13d087554bc4496284"
+      },
+      {
+        "file": "src/bot/runner.cjs",
+        "sha256": "ecaced28622caa1693d662cfdc7bb5f917c1a87539d4ab0a8374b9dc33fa2b08"
+      },
+      {
+        "file": "src/bot/service.cjs",
+        "sha256": "04c93f80604d740e9459661b9c642c17a8d3a05cfe5e52c4e8e3de8deffeb19a"
+      },
+      {
+        "file": "src/bot/social-companion.cjs",
+        "sha256": "2b884a53ee3b78b3ff0c2b50e6d36d871a94e6096293b6395a8275a224934ce9"
+      },
+      {
+        "file": "src/bot/social-continuity-store.cjs",
+        "sha256": "c83f4f99a65400e9702163fecdca03278c92132c0ecc86c7cd2f675b710ee809"
+      },
+      {
+        "file": "src/bot/social-flow.cjs",
+        "sha256": "57e48147b7e3f43be762fcec6d92e383da62f520c508a795a8573cafacdb3681"
+      },
+      {
+        "file": "src/bot/social-store.cjs",
+        "sha256": "3e30c466d363775f06b98f4f7ebaf237948bc35a231f07e03759e395d821c389"
+      },
+      {
+        "file": "src/bot/st/branch-store.cjs",
+        "sha256": "bb17c34b1c63fc31825b703ed57c97dbdb9b4cc81cc701e6eb89d7e6baf04614"
+      },
+      {
+        "file": "src/bot/st/local-pipeline.cjs",
+        "sha256": "623978eb5aa3037d43e1df676f32874e6281797b042135229c194c0190a11993"
+      },
+      {
+        "file": "src/bot/st/local-settings.cjs",
+        "sha256": "bb4f97abfa3c3312c00b2084efde0cbde841a3142275f07b4fc94db21d8a736b"
+      },
+      {
+        "file": "src/bot/st/presets.cjs",
+        "sha256": "0fafc170c58ca3c767f4873a1b2b3443bab27363ccd391aedbd886982dae3953"
+      },
+      {
+        "file": "src/bot/st/prompt-builder.cjs",
+        "sha256": "fbd29c6ed011295e2b72ec92eec1b644c04ea35138d6e806b1ecdece23bc52bc"
+      },
+      {
+        "file": "src/bot/st/regex-pipeline.cjs",
+        "sha256": "eef2a89e92534fbb6324c22b7928b7ed3bb84e519090db4471ab673cb3a311cb"
+      },
+      {
+        "file": "src/bot/weixin.cjs",
+        "sha256": "85002f659e3fefb105da3f4b1791da8f6d76b2a4bf2013ebd710ac23cd282cbb"
+      },
+      {
+        "file": "src/bot/wiki/quote-verify.cjs",
+        "sha256": "b8e2d17723386aafd8f312cc912be73a611a9dfb28224af972829072ad197c83"
+      },
+      {
+        "file": "src/bot/wiki/wiki-proposals.cjs",
+        "sha256": "8faa5558b21e78feafbc4547909ce7bf2710bd21565bd9edd17a2a6171f7228c"
+      },
+      {
+        "file": "src/bot/wiki/wiki-propose.cjs",
+        "sha256": "b14f4e7a9b5fe54994790b8360e7d28625936fe6a94c8114f60ab24fd4468746"
+      },
+      {
+        "file": "src/bot/wiki/wiki-recall.cjs",
+        "sha256": "8fccda1e53a3ca36a143c0d27636a9048512cb0d7a9c91691da468795ca4e005"
+      },
+      {
+        "file": "src/bot/wiki/wiki-search.cjs",
+        "sha256": "25a6aa780dde1ae0491a3ed79616ec9440eb7daefe16fc34666307fd5b3cdb6d"
+      },
+      {
+        "file": "src/bot/wiki/wiki-store.cjs",
+        "sha256": "892517a0ca83bba5708f6b46a9ce9fd3563dea31c0bd9e2a48b181cf14bf9956"
+      },
+      {
+        "file": "src/bot/x-channel-policy.cjs",
+        "sha256": "9a34eec9c1e8830ef40cc58cef4ae527c5b94c77301366f7bc203ee53097f351"
+      },
+      {
+        "file": "src/bot/x-dm.cjs",
+        "sha256": "229c2b1008d6fba3625a46baf50c3e5227286f1f6c4451c1a403203e62effbd0"
+      },
+      {
+        "file": "src/bot/x-transport.cjs",
+        "sha256": "5b1c1da05654df0ea439cede761dd99161c40899f53d607ed1d9d8464a5e4db1"
+      },
+      {
+        "file": "src/core/files.cjs",
+        "sha256": "492f487fdcc73630d0c60fe0c805d8d1a2b750211a6de353e364a7161d6d5e40"
+      },
+      {
+        "file": "src/core/personas.cjs",
+        "sha256": "3a98e858c6613e08a21a676ed486a541947f42766b2b0db51cc128c250eebf94"
+      },
+      {
+        "file": "src/core/platform.cjs",
+        "sha256": "9cba41e4609f761c8075b7332a706f96b264e695f559690d0c353c72cb316e10"
+      },
+      {
+        "file": "src/sources/config.cjs",
+        "sha256": "8e42a2bd33b946ac0d646c11806122db89b81c221d8630fb756b5b1020f4957e"
+      },
+      {
+        "file": "src/sources/event.cjs",
+        "sha256": "8943b87cba15d972a6cecbce9201548010acd37f9936efe6739433ab3b6832ec"
+      },
+      {
+        "file": "src/sources/feed.cjs",
+        "sha256": "b8bc205e05af93dfc8656b387fff1e394ac9b1511011bf10fd563abd26af8f4a"
+      },
+      {
+        "file": "src/sources/folder.cjs",
+        "sha256": "b08313b73e749c1e085110a2ed499f95339cc4632f4167b5d4f79248151ef8a0"
+      },
+      {
+        "file": "src/sources/ics.cjs",
+        "sha256": "d1bc31a3a75c987857b23e53c7bf5399f21a1e073232bd1fb00deaefbd077094"
+      },
+      {
+        "file": "src/sources/registry.cjs",
+        "sha256": "76b0c98fd1d579f4169215a26a1d1f049bfc98661d18d8f4a3c48b271e2df5b9"
+      },
+      {
+        "file": "src/vendor/sillytavern/character-card-parser.cjs",
+        "sha256": "5d1e71b561782848cdad246841f8c197891d12e6e46bd99f92a340a5af869f26"
+      },
+      {
+        "file": "src/vendor/sillytavern/character-card.cjs",
+        "sha256": "ea6d5ed30906b3d97e25ec7b1ea988a561fd1203a7987de47b2e841b432f5a34"
+      },
+      {
+        "file": "src/vendor/sillytavern/group-chat.cjs",
+        "sha256": "e2fd7b9582f46d171d502d072e5b8023a3897a8e924a52daaee43ea7b4d9b7f5"
+      },
+      {
+        "file": "src/vendor/sillytavern/macros.cjs",
+        "sha256": "9503fa3b0ce8e2abb7cd6f23c0b8025383fa74509e29810bc5698175662064be"
+      },
+      {
+        "file": "src/vendor/sillytavern/regex-scripts.cjs",
+        "sha256": "fb3b5676010f62f78b6d07e8c2df8fb46856c611734342171e8b6e717e995f0f"
+      },
+      {
+        "file": "src/vendor/sillytavern/safe-regex.cjs",
+        "sha256": "c8ba88473a43456d670698101d8c79e72dc3a9d0cb2c7475b95dca952219fa8a"
+      },
+      {
+        "file": "src/vendor/sillytavern/world-info.cjs",
+        "sha256": "6b9c06c20396b4e328da2a5218804c0e860b1199cf4a58845db19722cf8b0d09"
+      }
+    ],
+    "loadedSourceSha256": "4df885e6cc89f1c89064dfdf2c7661de19b76e30ecc53c38b51e56e718f5b98d",
+    "label": "committed-product-baseline",
+    "productSourceBaseline": "3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4",
+    "productSourceUnchangedFromBaseline": true
+  },
+  "harnessSha256": "05b7deb5637dadfd21dff80e0b5f1f7dadfb4cb5e0aa50411d937e3d0515c240",
+  "fixtureSha256": "0affcaaa78ba152c6493c3162060f5c091cef9eb0a0f02cbada532ea77770a58",
+  "budgetChars": 6000,
+  "runtime": {
+    "node": "v24.21.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "timeZone": "Australia/Sydney"
+  },
+  "reference": {
+    "persona": {
+      "name": "合成陪伴者",
+      "description": "你是用于离线案例的虚构陪伴角色，语气平和、简洁。只根据提供的上下文聊天，不编造实际行动；明确记忆由用户控制。"
+    },
+    "personaSha256": "c6695e22dfb96a328c3d2e761a952de9411fe71b760b642483057686417606c8",
+    "description": "History-only reference: the same fixed persona plus same-role last 20 raw messages within a total 6000-character JSON budget, without facts, notebook retrieval or active notices. The separate oracle context has the same persona plus only explicit current facts from the fixture; it is never sent to a model or inserted into a production prompt. Neither reference is a competitor result."
+  },
+  "boundaries": {
+    "realProfiles": false,
+    "keychain": false,
+    "realModels": false,
+    "appLaunched": false,
+    "network": "denied except explicit in-memory provider stand-ins",
+    "unexpectedFetchAttempts": 0,
+    "temporaryDataRemoved": true
+  },
+  "summary": {
+    "cases": 20,
+    "requiredCases": 19,
+    "requiredPass": 16,
+    "requiredFailures": 3,
+    "exploratoryCases": 1,
+    "exploratoryPass": 0,
+    "exploratoryGaps": 1,
+    "errors": 0
+  },
+  "cases": [
+    {
+      "id": "M01",
+      "title": "An explicitly remembered fact outlives the recent context",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Explicit fact was persisted",
+          "passed": true
+        },
+        {
+          "name": "Final question contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Final question fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Final question",
+          "chars": 5918,
+          "sha256": "07093a239f0ee7d6600ae2a081dfb9263e186c0bf5ed71acb1021bbdf55b61e7",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 2903,
+          "sha256": "a8710d03f876d24917a5c4d040bae1e070bae7aba1c19aefd7deef98e1e3aded",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-fact-reference",
+          "factCount": 1,
+          "chars": 143,
+          "sha256": "9f7fc6827cf6665b32e9145d7d3bcbd54f3eff37d3bad2e42a238ab29b819503",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "M02",
+      "title": "Ordinary conversation creates no structured fact",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "No structured fact was written",
+          "passed": true,
+          "actual": 0
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 257,
+          "sha256": "78f4bbf9e678c9b50a5d552bd1966ec92f84945d756bb3dbd34413b6fe1bee20",
+          "required": [
+            {
+              "marker": "CASE_EPHEMERAL_PEAR_26",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-fact-reference",
+          "factCount": 0,
+          "chars": 110,
+          "sha256": "88701fda021d9c22125cf15f07dc3398c73c531827bf6c8f3815a045bccad934",
+          "required": [],
+          "forbidden": [
+            {
+              "marker": "CASE_EPHEMERAL_PEAR_26",
+              "found": false
+            }
+          ]
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "M03",
+      "title": "Do not remember creates no structured fact; current chat may retain the words",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "No structured fact was written",
+          "passed": true,
+          "actual": 0
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 253,
+          "sha256": "bce3dab649c0aa29be132cc654744c2d60852756ef9c78a84d90896bc419e9d5",
+          "required": [
+            {
+              "marker": "CASE_DO_NOT_STORE_58",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-fact-reference",
+          "factCount": 0,
+          "chars": 110,
+          "sha256": "88701fda021d9c22125cf15f07dc3398c73c531827bf6c8f3815a045bccad934",
+          "required": [],
+          "forbidden": [
+            {
+              "marker": "CASE_DO_NOT_STORE_58",
+              "found": false
+            }
+          ]
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "M04",
+      "title": "Correction removes the obsolete value from the next context",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Explicit fact was persisted",
+          "passed": true
+        },
+        {
+          "name": "The stored fact is the approved correction",
+          "passed": true
+        },
+        {
+          "name": "Final question contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Final question fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Final question",
+          "chars": 1290,
+          "sha256": "e2c30e18bb09620759496be637146121fd83c5c4cde89a1479541820c4deb6ef",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_TIDE_73",
+              "found": true
+            }
+          ],
+          "forbidden": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ]
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 520,
+          "sha256": "6422c8ab772fb092362d44b01ec9a9a2c20c19ad6fe7fd400b99718d4cc87218",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_TIDE_73",
+              "found": true
+            }
+          ],
+          "forbidden": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ]
+        },
+        "oracle": {
+          "kind": "explicit-fact-reference",
+          "factCount": 1,
+          "chars": 142,
+          "sha256": "ab6432be0421820c85cfc2c02d52d958f70bb04e612074c6d2a7903679c60fec",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_TIDE_73",
+              "found": true
+            }
+          ],
+          "forbidden": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ]
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "M05",
+      "title": "Forgetting removes the value from facts and derived context",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Explicit fact was persisted",
+          "passed": true
+        },
+        {
+          "name": "The structured fact was removed",
+          "passed": true
+        },
+        {
+          "name": "Final question contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Final question fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Final question",
+          "chars": 1163,
+          "sha256": "2943fbab01fa647fdb4fcf7f2522ff6d8aa68e9a835ea7a9ba073ae7312ec7d7",
+          "required": [],
+          "forbidden": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ]
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 500,
+          "sha256": "0a763c61ca909e25a4b7096c5e18a9523286b1c8dfc286278e47254e0be04c1c",
+          "required": [],
+          "forbidden": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ]
+        },
+        "oracle": {
+          "kind": "explicit-fact-reference",
+          "factCount": 0,
+          "chars": 110,
+          "sha256": "88701fda021d9c22125cf15f07dc3398c73c531827bf6c8f3815a045bccad934",
+          "required": [],
+          "forbidden": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ]
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "M06",
+      "title": "A private fact stays with its character and returns on switching back",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Explicit fact was persisted",
+          "passed": true
+        },
+        {
+          "name": "Other character contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Other character fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Other character has no copied fact",
+          "passed": true
+        },
+        {
+          "name": "Final question contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Final question fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Other character",
+          "chars": 1083,
+          "sha256": "380748cb23db6a5d336b49bcaedeeddcb069f610128931af503aebdbe8f8e139",
+          "required": [],
+          "forbidden": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ]
+        },
+        {
+          "name": "Final question",
+          "chars": 5918,
+          "sha256": "07093a239f0ee7d6600ae2a081dfb9263e186c0bf5ed71acb1021bbdf55b61e7",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 2903,
+          "sha256": "a8710d03f876d24917a5c4d040bae1e070bae7aba1c19aefd7deef98e1e3aded",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-fact-reference",
+          "factCount": 1,
+          "chars": 143,
+          "sha256": "9f7fc6827cf6665b32e9145d7d3bcbd54f3eff37d3bad2e42a238ab29b819503",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "M07",
+      "title": "A fact survives a new service instance without its old recent messages",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Explicit fact was persisted",
+          "passed": true
+        },
+        {
+          "name": "Final question contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Final question fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Final question",
+          "chars": 5918,
+          "sha256": "07093a239f0ee7d6600ae2a081dfb9263e186c0bf5ed71acb1021bbdf55b61e7",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 2903,
+          "sha256": "a8710d03f876d24917a5c4d040bae1e070bae7aba1c19aefd7deef98e1e3aded",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-fact-reference",
+          "factCount": 1,
+          "chars": 143,
+          "sha256": "9f7fc6827cf6665b32e9145d7d3bcbd54f3eff37d3bad2e42a238ab29b819503",
+          "required": [
+            {
+              "marker": "CASE_PLAYLIST_CEDAR_41",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "M08",
+      "title": "An opted-in built-in role receives owner-approved lexical notebook context",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "First notebook query contains required/omits forbidden markers",
+          "passed": false
+        },
+        {
+          "name": "First notebook query fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "First notebook query",
+          "chars": 5862,
+          "sha256": "6f1a50997c1e32b6f8eb821213a0b48af95bf818979c188a11ae43a5d109443f",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "notebook": [
+        {
+          "query": "地铁卡编号是什么？",
+          "storedInNotebook": true,
+          "approvedProposals": 1,
+          "readEnabled": true,
+          "lexicalSelected": true,
+          "selectedForPrompt": false,
+          "markerInPrompt": false,
+          "stage": "selected-by-lexical-search-but-not-in-prompt"
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 2900,
+          "sha256": "8d63a9462e804f28cea6423200b44087ec0037f24a796eb213092c8715de539a",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-owner-approved-notebook-reference",
+          "factCount": 1,
+          "chars": 141,
+          "sha256": "874851ef81e2cb8081a51d604e7af2222b95c3083679c83641b9dcd3e92fc336",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      },
+      "status": "fail"
+    },
+    {
+      "id": "M09",
+      "title": "A synonymous query without lexical overlap",
+      "required": false,
+      "exploratory": true,
+      "checks": [
+        {
+          "name": "First notebook query contains required/omits forbidden markers",
+          "passed": false
+        },
+        {
+          "name": "First notebook query fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "First notebook query",
+          "chars": 5598,
+          "sha256": "97503d5df4c08cd1dae1f0081c7f0ee021e2d17ccc23a689b40a82183eba06f7",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "notebook": [
+        {
+          "query": "地下铁路乘车凭证的代号？",
+          "storedInNotebook": true,
+          "approvedProposals": 1,
+          "readEnabled": true,
+          "lexicalSelected": false,
+          "selectedForPrompt": false,
+          "markerInPrompt": false,
+          "stage": "not-selected-by-lexical-retrieval"
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 2903,
+          "sha256": "e03c155268085dca1f9240be92c821cc66bd9d7863be50415a14b5b5ec1f5578",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-owner-approved-notebook-reference",
+          "factCount": 1,
+          "chars": 141,
+          "sha256": "874851ef81e2cb8081a51d604e7af2222b95c3083679c83641b9dcd3e92fc336",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      },
+      "status": "exploratory-gap"
+    },
+    {
+      "id": "M10",
+      "title": "Different questions about the same notebook page each receive its contents",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "First notebook query contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "First notebook query fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Second query about the same page contains required/omits forbidden markers",
+          "passed": false
+        },
+        {
+          "name": "Second query about the same page fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "First notebook query",
+          "chars": 5579,
+          "sha256": "d23372eba5bb6f5d27f73f123e9c1a291ad49e62f670590f909e28afb6929650",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        },
+        {
+          "name": "Second query about the same page",
+          "chars": 5676,
+          "sha256": "529ffa3bd1059eeeb8ddd64eae1fb37ce5a5e59d9f5e161ac9e873b89b7c4321",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "notebook": [
+        {
+          "query": "地铁卡编号是什么？",
+          "storedInNotebook": true,
+          "approvedProposals": 1,
+          "readEnabled": true,
+          "lexicalSelected": true,
+          "selectedForPrompt": true,
+          "markerInPrompt": true,
+          "stage": "injected"
+        },
+        {
+          "query": "再告诉我地铁卡的编号。",
+          "storedInNotebook": true,
+          "approvedProposals": 1,
+          "readEnabled": true,
+          "lexicalSelected": true,
+          "selectedForPrompt": false,
+          "markerInPrompt": false,
+          "stage": "selected-by-lexical-search-but-not-in-prompt"
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "kind": "persona-and-recent-history",
+          "chars": 2730,
+          "sha256": "436436554cecaa17602d2bf430f6ef5309fccf00d100ca54ca3785d14c8d47bd",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": false
+            }
+          ],
+          "forbidden": []
+        },
+        "oracle": {
+          "kind": "explicit-owner-approved-notebook-reference",
+          "factCount": 1,
+          "chars": 141,
+          "sha256": "874851ef81e2cb8081a51d604e7af2222b95c3083679c83641b9dcd3e92fc336",
+          "required": [
+            {
+              "marker": "CASE_METRO_R7",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      },
+      "status": "fail"
+    },
+    {
+      "id": "N01",
+      "title": "One real folder event repeated produces one stored notice",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Actual folder reader generated one event",
+          "passed": true
+        },
+        {
+          "name": "Duplicate is rejected",
+          "passed": true,
+          "actual": "duplicate"
+        },
+        {
+          "name": "One stored App notice, exactly one model wording request",
+          "passed": true,
+          "actual": {
+            "requests": 1,
+            "states": [
+              "sent"
+            ]
+          }
+        },
+        {
+          "name": "Notice wording input contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Notice wording input fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Notice wording input",
+          "chars": 1917,
+          "sha256": "0cbf1a11cee0c41e120cde563bef8b7e869e2a166a3fa24967e9e7e86a19881f",
+          "required": [
+            {
+              "marker": "CASE_FOLDER_NOTICE.txt",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "support": "No active-notice capability in the history-only reference; not scored."
+        },
+        "oracle": {
+          "requiredDeliveries": 1
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "N02",
+      "title": "Pausing App chat withholds an event until an explicit resume",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Actual folder reader generated one event",
+          "passed": true
+        },
+        {
+          "name": "Paused App creates no model request",
+          "passed": true,
+          "actual": {
+            "reason": "no_conversation",
+            "action": "wait"
+          }
+        },
+        {
+          "name": "One stored App notice, exactly one model wording request",
+          "passed": true,
+          "actual": {
+            "requests": 1,
+            "states": [
+              "sent"
+            ]
+          }
+        },
+        {
+          "name": "Notice wording input contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Notice wording input fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Notice wording input",
+          "chars": 1917,
+          "sha256": "efe4f7d71560ce8ab7f8629741d30e000423c6de8f16ba847b0a0e27484efcbe",
+          "required": [
+            {
+              "marker": "CASE_FOLDER_NOTICE.txt",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "support": "No active-notice capability in the history-only reference; not scored."
+        },
+        "oracle": {
+          "requiredDeliveries": 1
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "N03",
+      "title": "The global notice switch withholds an already-pending event",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Actual folder reader generated one event",
+          "passed": true
+        },
+        {
+          "name": "Disabled pending notice creates no model request",
+          "passed": true,
+          "actual": {
+            "reason": "disabled",
+            "action": "wait"
+          }
+        },
+        {
+          "name": "Pending notice stays withheld",
+          "passed": true,
+          "actual": "pending"
+        },
+        {
+          "name": "One stored App notice, exactly one model wording request",
+          "passed": true,
+          "actual": {
+            "requests": 1,
+            "states": [
+              "sent"
+            ]
+          }
+        },
+        {
+          "name": "Notice wording input contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Notice wording input fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Notice wording input",
+          "chars": 1917,
+          "sha256": "efe4f7d71560ce8ab7f8629741d30e000423c6de8f16ba847b0a0e27484efcbe",
+          "required": [
+            {
+              "marker": "CASE_FOLDER_NOTICE.txt",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "support": "No active-notice capability in the history-only reference; not scored."
+        },
+        "oracle": {
+          "requiredDeliveries": 1
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "N04",
+      "title": "Disabling its source withholds an already-pending event",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Actual folder reader generated one event",
+          "passed": true
+        },
+        {
+          "name": "Disabled pending notice creates no model request",
+          "passed": false,
+          "actual": {
+            "reason": "",
+            "result": {
+              "app": "delivered",
+              "qq": null
+            }
+          }
+        },
+        {
+          "name": "Pending notice stays withheld",
+          "passed": false,
+          "actual": "sent"
+        },
+        {
+          "name": "One stored App notice, exactly one model wording request",
+          "passed": true,
+          "actual": {
+            "requests": 1,
+            "states": [
+              "sent"
+            ]
+          }
+        },
+        {
+          "name": "Notice wording input contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Notice wording input fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Notice wording input",
+          "chars": 1917,
+          "sha256": "0cbf1a11cee0c41e120cde563bef8b7e869e2a166a3fa24967e9e7e86a19881f",
+          "required": [
+            {
+              "marker": "CASE_FOLDER_NOTICE.txt",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "support": "No active-notice capability in the history-only reference; not scored."
+        },
+        "oracle": {
+          "requiredDeliveries": 1
+        }
+      },
+      "status": "fail"
+    },
+    {
+      "id": "N05",
+      "title": "A sent folder notice is not replayed after registry and service restart",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Actual folder reader generated one event",
+          "passed": true
+        },
+        {
+          "name": "Registry cursor prevents a new event on restart",
+          "passed": true,
+          "actual": 1
+        },
+        {
+          "name": "One stored App notice, exactly one model wording request",
+          "passed": true,
+          "actual": {
+            "requests": 1,
+            "states": [
+              "sent"
+            ]
+          }
+        },
+        {
+          "name": "Notice wording input contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Notice wording input fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Notice wording input",
+          "chars": 1917,
+          "sha256": "0cbf1a11cee0c41e120cde563bef8b7e869e2a166a3fa24967e9e7e86a19881f",
+          "required": [
+            {
+              "marker": "CASE_FOLDER_NOTICE.txt",
+              "found": true
+            }
+          ],
+          "forbidden": []
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "support": "No active-notice capability in the history-only reference; not scored."
+        },
+        "oracle": {
+          "requiredDeliveries": 1
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "N06",
+      "title": "A claimed but unconfirmed notice recovers as unknown and is not replayed",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "Actual folder reader generated one event",
+          "passed": true
+        },
+        {
+          "name": "A real durable claim is created",
+          "passed": true
+        },
+        {
+          "name": "Unconfirmed claim is unknown after restart",
+          "passed": true,
+          "actual": "unknown"
+        },
+        {
+          "name": "An unknown claim is not replayed",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [],
+      "reference": {
+        "historyOnly": {
+          "support": "No active-notice capability in the history-only reference; not scored."
+        },
+        "oracle": {
+          "requiredNoticeState": "unknown"
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "E01",
+      "title": "HTTP 401 is reported as authentication failure; recovery is explicit",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "The real runner failure is classified without its raw body",
+          "passed": true,
+          "actual": {
+            "ok": false,
+            "code": "reply_failed",
+            "failure": "auth"
+          }
+        },
+        {
+          "name": "Failure creates no assistant success row",
+          "passed": true
+        },
+        {
+          "name": "No automatic immediate retry",
+          "passed": true,
+          "actual": 1
+        },
+        {
+          "name": "An explicit retry succeeds with the same runner",
+          "passed": true,
+          "actual": {
+            "result": {
+              "ok": true,
+              "outcome": "reply_ended",
+              "started": true
+            },
+            "requests": 2
+          }
+        },
+        {
+          "name": "Provider requests had no tools",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [],
+      "reference": {
+        "historyOnly": {
+          "support": "HTTP classification is production behaviour, not a context-reference score."
+        },
+        "oracle": {
+          "failure": "auth"
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "E02",
+      "title": "HTTP 429 is reported as quota/rate failure; recovery is explicit",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "The real runner failure is classified without its raw body",
+          "passed": true,
+          "actual": {
+            "ok": false,
+            "code": "reply_failed",
+            "failure": "quota"
+          }
+        },
+        {
+          "name": "Failure creates no assistant success row",
+          "passed": true
+        },
+        {
+          "name": "No automatic immediate retry",
+          "passed": true,
+          "actual": 1
+        },
+        {
+          "name": "An explicit retry succeeds with the same runner",
+          "passed": true,
+          "actual": {
+            "result": {
+              "ok": true,
+              "outcome": "reply_ended",
+              "started": true
+            },
+            "requests": 2
+          }
+        },
+        {
+          "name": "Provider requests had no tools",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [],
+      "reference": {
+        "historyOnly": {
+          "support": "HTTP classification is production behaviour, not a context-reference score."
+        },
+        "oracle": {
+          "failure": "quota"
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "E03",
+      "title": "A fetch failure is reported as network failure; recovery is explicit",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "The real runner failure is classified without its raw body",
+          "passed": true,
+          "actual": {
+            "ok": false,
+            "code": "reply_failed",
+            "failure": "network"
+          }
+        },
+        {
+          "name": "Failure creates no assistant success row",
+          "passed": true
+        },
+        {
+          "name": "No automatic immediate retry",
+          "passed": true,
+          "actual": 1
+        },
+        {
+          "name": "An explicit retry succeeds with the same runner",
+          "passed": true,
+          "actual": {
+            "result": {
+              "ok": true,
+              "outcome": "reply_ended",
+              "started": true
+            },
+            "requests": 2
+          }
+        },
+        {
+          "name": "Provider requests had no tools",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [],
+      "reference": {
+        "historyOnly": {
+          "support": "HTTP classification is production behaviour, not a context-reference score."
+        },
+        "oracle": {
+          "failure": "network"
+        }
+      },
+      "status": "pass"
+    },
+    {
+      "id": "E04",
+      "title": "An actual temporary SQLite path failure cannot manufacture success; restart recovers saved data",
+      "required": true,
+      "exploratory": false,
+      "checks": [
+        {
+          "name": "An actual SQLite path failure rejects the save",
+          "passed": true
+        },
+        {
+          "name": "Storage failure did not manufacture a success reply",
+          "passed": true
+        },
+        {
+          "name": "No model request was made for the failed save",
+          "passed": true,
+          "actual": 0
+        },
+        {
+          "name": "Explicit storage recovery contains required/omits forbidden markers",
+          "passed": true
+        },
+        {
+          "name": "Explicit storage recovery fits the declared 6000-character budget",
+          "passed": true
+        },
+        {
+          "name": "Previously saved data remains, failed fact is absent",
+          "passed": true
+        },
+        {
+          "name": "Conversation requests use the fixed persona description",
+          "passed": true
+        }
+      ],
+      "contexts": [
+        {
+          "name": "Explicit storage recovery",
+          "chars": 1328,
+          "sha256": "eaafdae28c0ab83b25137f96de09c07b6aef1959ad7e3cfb42ab551ae1ff6da8",
+          "required": [
+            {
+              "marker": "CASE_STORAGE_KEEP_92",
+              "found": true
+            }
+          ],
+          "forbidden": [
+            {
+              "marker": "CASE_STORAGE_MUST_NOT_SAVE_84",
+              "found": false
+            }
+          ]
+        }
+      ],
+      "reference": {
+        "historyOnly": {
+          "support": "Storage is exercised by the production service, not the context reference."
+        },
+        "oracle": {
+          "retained": "CASE_STORAGE_KEEP_92"
+        }
+      },
+      "status": "pass"
+    }
+  ],
+  "recordedDate": "2026-11-15",
+  "cliExitCode": 1
+}

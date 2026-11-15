@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "budgetChars": 6000,
+  "historyMessages": 20,
+  "clock": "2026-11-15T01:00:00.000Z",
+  "syntheticReply": "Synthetic provider fixture; no model answer was evaluated.",
+  "memory": {
+    "original": "CASE_PLAYLIST_CEDAR_41",
+    "corrected": "CASE_PLAYLIST_TIDE_73",
+    "ordinary": "CASE_EPHEMERAL_PEAR_26",
+    "declined": "CASE_DO_NOT_STORE_58"
+  },
+  "notebook": {
+    "page": "travel/transit.md",
+    "text": "地铁卡编号：CASE_METRO_R7。",
+    "ownerSaid": "我使用的地铁卡编号是 CASE_METRO_R7。",
+    "marker": "CASE_METRO_R7",
+    "lexicalQuery": "地铁卡编号是什么？",
+    "secondQuery": "再告诉我地铁卡的编号。",
+    "synonymQuery": "地下铁路乘车凭证的代号？"
+  },
+  "cases": [
+    {
+      "id": "M01",
+      "scenario": "remember",
+      "title": "An explicitly remembered fact outlives the recent context"
+    },
+    {
+      "id": "M02",
+      "scenario": "ordinary",
+      "title": "Ordinary conversation creates no structured fact"
+    },
+    {
+      "id": "M03",
+      "scenario": "decline",
+      "title": "Do not remember creates no structured fact; current chat may retain the words"
+    },
+    {
+      "id": "M04",
+      "scenario": "correct",
+      "title": "Correction removes the obsolete value from the next context"
+    },
+    {
+      "id": "M05",
+      "scenario": "forget",
+      "title": "Forgetting removes the value from facts and derived context"
+    },
+    {
+      "id": "M06",
+      "scenario": "isolation",
+      "title": "A private fact stays with its character and returns on switching back"
+    },
+    {
+      "id": "M07",
+      "scenario": "restart",
+      "title": "A fact survives a new service instance without its old recent messages"
+    },
+    {
+      "id": "M08",
+      "scenario": "lexical",
+      "title": "An opted-in built-in role receives owner-approved lexical notebook context"
+    },
+    {
+      "id": "M09",
+      "scenario": "synonym",
+      "title": "A synonymous query without lexical overlap",
+      "exploratory": true
+    },
+    {
+      "id": "M10",
+      "scenario": "repeated-page",
+      "title": "Different questions about the same notebook page each receive its contents"
+    },
+    {
+      "id": "N01",
+      "scenario": "duplicate",
+      "title": "One real folder event repeated produces one stored notice"
+    },
+    {
+      "id": "N02",
+      "scenario": "pause",
+      "title": "Pausing App chat withholds an event until an explicit resume"
+    },
+    {
+      "id": "N03",
+      "scenario": "global-off",
+      "title": "The global notice switch withholds an already-pending event"
+    },
+    {
+      "id": "N04",
+      "scenario": "source-off",
+      "title": "Disabling its source withholds an already-pending event"
+    },
+    {
+      "id": "N05",
+      "scenario": "sent-restart",
+      "title": "A sent folder notice is not replayed after registry and service restart"
+    },
+    {
+      "id": "N06",
+      "scenario": "claimed-restart",
+      "title": "A claimed but unconfirmed notice recovers as unknown and is not replayed"
+    },
+    {
+      "id": "E01",
+      "scenario": "401",
+      "title": "HTTP 401 is reported as authentication failure; recovery is explicit"
+    },
+    {
+      "id": "E02",
+      "scenario": "429",
+      "title": "HTTP 429 is reported as quota/rate failure; recovery is explicit"
+    },
+    {
+      "id": "E03",
+      "scenario": "offline",
+      "title": "A fetch failure is reported as network failure; recovery is explicit"
+    },
+    {
+      "id": "E04",
+      "scenario": "storage",
+      "title": "An actual temporary SQLite path failure cannot manufacture success; restart recovers saved data"
+    }
+  ],
+  "distractor": "今天的合成日常记录：这是一段与票卡和歌单无关的虚构日常填充文字，用来检验上下文预算是否会淘汰更早的话题。这是一段与票卡和歌单无关的虚构日常填充文字，用来检验上下文预算是否会淘汰更早的话题。这是一段与票卡和歌单无关的虚构日常填充文字，用来检验上下文预算是否会淘汰更早的话题。这是一段与票卡和歌单无关的虚构日常填充文字，用来检验上下文预算是否会淘汰更早的话题。",
+  "persona": {
+    "name": "合成陪伴者",
+    "description": "你是用于离线案例的虚构陪伴角色，语气平和、简洁。只根据提供的上下文聊天，不编造实际行动；明确记忆由用户控制。"
+  }
+}
