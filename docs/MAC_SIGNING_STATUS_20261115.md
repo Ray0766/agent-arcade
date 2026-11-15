@@ -1,5 +1,7 @@
 # Mac stable-signing inspection — 2026-11-15
 
+**Later owner-authorized result:** a personal-use identity is now installed and preview.3 rebuilt. See [LOCAL_MAC_SIGNING_20261115](LOCAL_MAC_SIGNING_20261115.md). The empty-identity findings below describe the preceding inspection.
+
 The owner requested checking installed signing identities, pinning a usable one
 and rebuilding without another automated Keychain dialog. This follow-up starts
 from clean `codex/integrated-macos-20261115` at

@@ -6,7 +6,7 @@
 
 Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 角色聊天。它以 AGPL-3.0 发布，不设收费功能；应用在本机运行，聊天记录和记忆保存在本机，模型由你自带的一个 API key 调用（Claude、GPT、DeepSeek、Gemini 或豆包任选其一）。这里描述的是 **0.4.0-preview.1 开发源码**，与可下载的旧 Windows 版不同。请先按下表选择版本。
 
-**当前本地整合候选：**`0.4.0-preview.2` 已整合 75 路径修复快照及八个准备提交，尚未发布。新包身份与本轮检查见[整合报告](docs/MACOS_INTEGRATION_20261115.md)。下表继续区分较早的公开版本与固定远端源码。
+**当前本地候选：**`0.4.0-preview.3` 保留已整合修复和准备提交，已在本机固定仅供自用的长期签名身份。尚未发布；源码、包校验和、冷签名与验证见[本机签名报告](docs/LOCAL_MAC_SIGNING_20261115.md)。这是本机自签、未公证版本；下表继续区分公开可得源码／版本。
 
 ## 先选对版本
 
@@ -16,7 +16,7 @@ Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 
 | --- | --- | --- |
 | **公开版 0.3.0-preview.2** | [Windows 可执行文件、校验和、依赖锁文件](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，属于旧版微信派活／观察器，沿用 MIT 许可。 | 按[该版本说明](docs/releases/0.3.0-preview.2.md)配对微信 ClawBot 和任务后端；它**没有**下文的 App 首用密钥卡片。 |
 | **开发源码 0.4.0-preview.1** | 远端 `codex/companion-nine`，固定基线 `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`，AGPL-3.0-only，**尚未发布**。 | 按[从源码运行](#从源码运行)取精确提交，再按[第一次使用](#第一次使用)操作。 |
-| **本地整合版 0.4.0-preview.2** | 已提交到 `codex/integrated-macos-20261115`，包含 75 路径修复快照及八个准备提交；新构建 arm64 DMG／ZIP，ad-hoc 签名、未公证。 | 仅本地可得，不在远端固定源码或公开版中。精确构建提交、包校验和与合成验证见[整合报告](docs/MACOS_INTEGRATION_20261115.md)。真实模型、安装与真人门槛仍未通过。 |
+| **本机签名版 0.4.0-preview.3** | 已提交到 `codex/integrated-macos-20261115`；新构建 arm64 DMG／ZIP，复用固定个人证书，未公证。 | 仅本地可得，不在远端固定源码或公开版中。精确源码、校验和与边界见[本机签名报告](docs/LOCAL_MAC_SIGNING_20261115.md)。真实模型和真人安装门槛仍未通过。 |
 
 **目前没有公开可下载的 Mac 候选包。** 本地包和 Actions artifact 不等于公开发布。Mac 用户目前需要从源码运行；构建与平台边界见 [macOS 说明](docs/MACOS.md)。不带分支的普通 clone 会取得较旧的默认 `main`。
 

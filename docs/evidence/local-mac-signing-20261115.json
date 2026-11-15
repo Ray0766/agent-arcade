@@ -1,0 +1,383 @@
+{
+  "schema": 1,
+  "kind": "local-personal-mac-signing-evidence",
+  "recordedAt": "2026-11-15T23:47:04.943561+11:00",
+  "branch": "codex/integrated-macos-20261115",
+  "buildSourceCommit": "a50ab993dddeb6faa11e2ab0313cbbcf86265c00",
+  "buildSourceClean": true,
+  "evidenceCommit": "The commit containing this file; full hash recorded at delivery.",
+  "version": "0.4.0-preview.3",
+  "artifacts": [
+    {
+      "path": "/private/tmp/agent-arcade-local-signed-build-20261115/artifacts-cold/Agent Arcade-0.4.0-preview.3-arm64-mac.zip",
+      "bytes": 154554271,
+      "sha256": "f688a40617ab5b77e70279beae9546a17a13fd4c18f875a96576d69ffdb520f1"
+    },
+    {
+      "path": "/private/tmp/agent-arcade-local-signed-build-20261115/artifacts-cold/Agent Arcade-0.4.0-preview.3-arm64.dmg",
+      "bytes": 155650969,
+      "sha256": "3a5c7197af200250f5d54b921018c3a2c20bd030308731ba6f164f44164d36ac"
+    }
+  ],
+  "certificate": {
+    "name": "Agent Arcade Local Signing",
+    "sha1": "61B339CA14A652471B585499FE49F8C3615CDEBD",
+    "validTo": "2036-11-12T11:47:48Z",
+    "selfSigned": true,
+    "ca": false,
+    "eku": [
+      "1.3.6.1.5.5.7.3.3"
+    ],
+    "appleDeveloperId": false,
+    "privateBackupsOutsideGit": true,
+    "profileDirectoryMode": "0700",
+    "profileCredentialsBackupModes": "0600",
+    "keychainPrivateKeyNonextractable": true
+  },
+  "trustScope": {
+    "addedOnlyCertificate": [
+      "61B339CA14A652471B585499FE49F8C3615CDEBD"
+    ],
+    "removed": [],
+    "existingEntriesUnchanged": true,
+    "newPolicyNames": [
+      "CodeSigning"
+    ]
+  },
+  "defaultKeychainSearchListChanged": false,
+  "existingSafeStorageAclChanged": false,
+  "coldBuild": {
+    "exit": 0,
+    "before": {
+      "signingKeychainUnlocked": false,
+      "statusFlags": 2
+    },
+    "after": {
+      "signingKeychainUnlocked": true,
+      "statusFlags": 7
+    },
+    "automaticDedicatedKeychainUnlock": true,
+    "ownerPasswordPrompted": false,
+    "timestampServer": false,
+    "notarization": false,
+    "publish": "never"
+  },
+  "signatureProof": {
+    "sameCertificateAcrossDifferentAppVersions": true,
+    "certificateSha1": "61B339CA14A652471B585499FE49F8C3615CDEBD",
+    "rows": [
+      {
+        "label": "preview2-validation-copy",
+        "cdHash": "9840118aa33649c9c7c4e6c7b83501f7aaaaf4f5",
+        "designatedRequirement": "designated => identifier \"io.github.agentarcade.desktop\" and certificate root = H\"61b339ca14a652471b585499fe49f8c3615cdebd\"",
+        "pinnedStrictVerification": true,
+        "asarSha256": "11bd09f42ab1ebad1b59558b91549a35a69b7278b6a3f9b97219bc667226f58a"
+      },
+      {
+        "label": "preview3-delivery",
+        "cdHash": "ca41fd27dd7c087340b9a9cab2bf42ac883dd6c0",
+        "designatedRequirement": "designated => identifier \"io.github.agentarcade.desktop\" and certificate root = H\"61b339ca14a652471b585499fe49f8c3615cdebd\"",
+        "pinnedStrictVerification": true,
+        "asarSha256": "adafb921376ab37a852733859d41052d2783fd8e1e28d24d363bc6a70b1fc6ce"
+      },
+      {
+        "label": "preview3-final-cold",
+        "cdHash": "286e0654f04afd72a6f80364c636ef96ee7cc260",
+        "designatedRequirement": "designated => identifier \"io.github.agentarcade.desktop\" and certificate root = H\"61b339ca14a652471b585499fe49f8c3615cdebd\"",
+        "pinnedStrictVerification": true,
+        "asarSha256": "1894e6654151fae00c5769767443017fc240bfbc9a60dc525d09361a49b61df5"
+      }
+    ],
+    "appsLaunchedForThisCheck": false,
+    "safeStorageAccessed": false
+  },
+  "sourceArchive": {
+    "sourceCommit": "a50ab993dddeb6faa11e2ab0313cbbcf86265c00",
+    "version": "0.4.0-preview.3",
+    "main": "src/bootstrap.cjs",
+    "certificateSha1": "61B339CA14A652471B585499FE49F8C3615CDEBD",
+    "srcFiles": 455,
+    "allSrcMatch": true,
+    "caseFiles": 85,
+    "caseModulesMatch": true,
+    "privateSigningMaterialAbsent": true,
+    "excludedSdkAbsent": true,
+    "asarSha256": "1894e6654151fae00c5769767443017fc240bfbc9a60dc525d09361a49b61df5"
+  },
+  "codeTreeSha256": "35cabe89d278abbafbd77157319e9356f662b3b3c9864daf4828dc1109f6e41e",
+  "lockSha256": "6d8d5d1421435933ee9a3daa881104d1a6f71a6d6a3eda8cdbe448ebca0066fb",
+  "validation": {
+    "full": {
+      "commit": "a50ab993dddeb6faa11e2ab0313cbbcf86265c00",
+      "command": "ARCADE_PROCESS_PROOF=1 npm test -- --test-concurrency=2",
+      "total": 5038,
+      "pass": 4321,
+      "skip": 717,
+      "fail": 0,
+      "durationMs": 72928.84975
+    },
+    "identityBackupTests": 32,
+    "receiptLatchTests": 9,
+    "realPosixProcessTests": 4,
+    "syntaxFiles": 961,
+    "firstRun": {
+      "localLinks": 286,
+      "anchors": 32,
+      "pinnedCommandSets": 4
+    },
+    "release": {
+      "readOnlyWorkflows": 1,
+      "publishes": false
+    },
+    "fixedCases": {
+      "cases": 20,
+      "requiredCases": 19,
+      "requiredPass": 19,
+      "requiredFailures": 0,
+      "exploratoryCases": 1,
+      "exploratoryPass": 0,
+      "exploratoryGaps": 1,
+      "errors": 0
+    },
+    "unexpectedCaseFetch": 0,
+    "caseModulesMatchFinalArchive": 85,
+    "syntheticPackage": {
+      "passed": true,
+      "checks": [
+        "Actual final archives unpack; test copy preserves production ASAR/main and acquires an independent real bootstrap guard before main.",
+        "Mac first-run saves only the literal fake key through a synthetic no-OS vault shim, without a model call or channel login.",
+        "Production API runner streams from the loopback stand-in with the fake key and no execution tools.",
+        "Real message IPC preserves regenerated alternatives, continuation and explicit owner editing.",
+        "Stop cancels the held local stream without a late assistant commit.",
+        "401/429/network errors retain drafts; a new explicit Send recovers after the stand-in is restored.",
+        "All three built-in personas keep separate synthetic histories while retaining the same DeepSeek configuration/key.",
+        "Three production layouts render Chat, Characters, Notes, Notices and Settings without horizontal overflow.",
+        "Same-build cold restart retains the synthetic credential envelope and SQLite history without creating another update snapshot.",
+        "An isolated older production package seeds synthetic key/chat/memory; the new archive-extracted App preserves them and creates the exact changed-build cold snapshot.",
+        "Synthetic profile restored as documented: newer data retained by rename, complete backup root copied to its mapped path with WAL/SHM/modes, and the new App reopens the fake key/chat/memory."
+      ],
+      "screenshots": [
+        "first-run.png",
+        "streaming.png",
+        "classified-error.png",
+        "immersive-chat.png",
+        "messenger-chat.png",
+        "minimal-chat.png",
+        "persona-before-restart.png",
+        "restarted.png",
+        "seed-old-synthetic.png",
+        "upgrade-new-retained.png",
+        "restored-synthetic-profile.png"
+      ],
+      "provider": {
+        "requests": 15,
+        "allFakeKey": true,
+        "allToolFree": true,
+        "abortedStreams": 1
+      },
+      "vaultMode": "synthetic-no-os",
+      "osKeychainAccessed": false,
+      "osEncryptionAccepted": false,
+      "runtime": {
+        "platform": "darwin",
+        "arch": "arm64",
+        "versions": {
+          "node": "24.22.1",
+          "acorn": "8.18.0",
+          "ada": "4.0.0",
+          "amaro": "1.1.11",
+          "ares": "1.34.9",
+          "brotli": "1.2.0",
+          "cldr": "48.0",
+          "icu": "78.2",
+          "llhttp": "9.4.3",
+          "merve": "1.2.2",
+          "modules": "150",
+          "napi": "10",
+          "nbytes": "0.1.4",
+          "ncrypto": "0.0.1",
+          "nghttp2": "1.70.0",
+          "nghttp3": "",
+          "ngtcp2": "",
+          "openssl": "0.0.0",
+          "simdjson": "4.6.11",
+          "simdutf": "7.7.0",
+          "sqlite": "3.53.4",
+          "tz": "2026e",
+          "undici": "7.30.1",
+          "unicode": "17.0",
+          "uv": "1.52.1",
+          "uvwasi": "0.0.23",
+          "v8": "15.6.75.25-electron.0",
+          "zlib": "1.3.2.1-motley",
+          "zstd": "1.6.0",
+          "electron": "45.2.1",
+          "chrome": "156.0.8078.75"
+        }
+      },
+      "upgrade": {
+        "tested": true,
+        "oldPackageVersion": "0.4.0-preview.2",
+        "newPackageVersion": "0.4.0-preview.3",
+        "oldAsarSha256": "11bd09f42ab1ebad1b59558b91549a35a69b7278b6a3f9b97219bc667226f58a",
+        "newAsarSha256": "1894e6654151fae00c5769767443017fc240bfbc9a60dc525d09361a49b61df5",
+        "previousBuildId": "c2e3e0a0b786fc17afe331d28fa83f2e25f5411955d2801247b5725b1a9c67cc",
+        "newBuildId": "a6752c83b2f76bfb6f43a5bae895277c6ad8be58293f96566cb19d40cb47b4f4",
+        "databases": 3,
+        "historyRetained": true,
+        "memoryRetained": true,
+        "vaultBytesRetained": true,
+        "originalSeedBundleUnchanged": true
+      },
+      "restore": {
+        "tested": true,
+        "synthetic": true,
+        "automaticRestore": false,
+        "sameMappedRoot": true,
+        "historyRetained": true,
+        "memoryRetained": true,
+        "vaultBytesRetained": true,
+        "repeatedColdBackup": true,
+        "files": 10,
+        "walFiles": 0,
+        "shmFiles": 0,
+        "permissionSource": "manifest.sourceMode"
+      },
+      "rendererErrors": [],
+      "allOwnedAppsExited": true
+    }
+  },
+  "assessment": {
+    "strictCertificatePinnedCodesign": true,
+    "adhoc": false,
+    "notarized": false,
+    "staplerExit": 65,
+    "gatekeeperExit": 3,
+    "gatekeeper": "rejected",
+    "gatekeeperBypassed": false
+  },
+  "initialSigningPasswordPrompt": {
+    "observed": true,
+    "onlyNewSigningKeychain": true,
+    "cause": "Missing apple: partition for the new signing private key",
+    "corrected": true,
+    "subsequentSigningNoninteractive": true
+  },
+  "priorFailuresRetained": {
+    "processFixture500msOverride": "Aligned test-only budget with production 2000ms; no runtime change.",
+    "lateReceiptFixtureRace": "Explicit receipt-ready latch; no QQ production change.",
+    "rawLogsRemainLocal": true
+  },
+  "preservation": {
+    "ownerAppReplacedOrClosed": false,
+    "ownerProfileOpened": false,
+    "realApiKeyReadOrReset": false,
+    "chatOrVaultModified": false,
+    "privateSigningMaterialCommittedOrPackaged": false,
+    "realSafeStorageTestPerformed": false
+  },
+  "limits": [
+    "A first transition from old ad-hoc to certificate signing can require one owner authorization for the existing Safe Storage item. This was not triggered or accepted.",
+    "Local self-signing is not Apple Developer ID/notarization/Gatekeeper approval or public distribution readiness.",
+    "Only this Apple Silicon Mac was checked.",
+    "No real model, original account or external-user trial accepted.",
+    "Initial warm preview.3 package is retained separately and is not the final cold artifact."
+  ],
+  "localReceipts": [
+    {
+      "file": "delivery-source-full-tests.txt",
+      "sha256": "b6858c537710809252def493ed86db3b237c5e8f12b0e50c893bf1093834fe05"
+    },
+    {
+      "file": "cold-path-targeted.txt",
+      "sha256": "19fbb5b15bb3e365b8113c19a40d827f34ab0d727eaf4058031a8c34c947643c"
+    },
+    {
+      "file": "receipt-latch-test.txt",
+      "sha256": "6fbc8bfcb87654abc7a357a5ca7bf9be87d567342c19da4a365bea7d29c42e58"
+    },
+    {
+      "file": "process-group-production-budget.txt",
+      "sha256": "bc043403a17f73ad620b98545ab3d64d8adc43668cb3eb97044301acc2f0dd06"
+    },
+    {
+      "file": "delivery-syntax.txt",
+      "sha256": "3ef78c0bf84bc4a10ec2d2cb1ad3b0ab3fea12e94561bae8ba1a1104e0c0b86f"
+    },
+    {
+      "file": "delivery-first-run.txt",
+      "sha256": "6ceea3b4f8aa3ed1f236e224a192d0917f6f963134ee343c56055b152ddb70ba"
+    },
+    {
+      "file": "delivery-release.txt",
+      "sha256": "e93cb71a24a7e5022a7d5d500ab305f8cef14b25f5b1024268d04845d851bba1"
+    },
+    {
+      "file": "delivery-source-archive-identity.json",
+      "sha256": "1e1560abe0cf628290ee099ba1a2f47be2c806c250ce49db511a9d5e23f41b6b"
+    },
+    {
+      "file": "delivery-all-source-match.json",
+      "sha256": "e6127f0e3851a59000d32f1fa28ebf358b6ac96370a7213d86fac49f10eb607f"
+    },
+    {
+      "file": "delivery-artifact-hashes.json",
+      "sha256": "25cd23aee4114da1785b8ff3d3b1146bee2b26a831ce5bda13a8060d45421ec1"
+    },
+    {
+      "file": "delivery-signature.txt",
+      "sha256": "21db8f69ddb69a03868a9eff5b46e03eef0236a08c95ea1dd09e2c9db7745659"
+    },
+    {
+      "file": "delivery-requirement.txt",
+      "sha256": "56ed52575c92d4e9fb0f0bb3b6843545fc43d670c871c7835a2a3b94c5021227"
+    },
+    {
+      "file": "all-app-requirement-proof.json",
+      "sha256": "b2d030283e37c0d1df805339b0fe3c6306dc0d8f015e01039ddcc6cacefd4b0a"
+    },
+    {
+      "file": "cold-before-build.json",
+      "sha256": "f72af62b4b499b2be94d4af2933f8016bac5065fa75cc422f2db9d1297e0500d"
+    },
+    {
+      "file": "cold-after-build.json",
+      "sha256": "7878bd4526e97a0465b22449956c3fdf4283fc085090f5a833b24cb4190075bc"
+    },
+    {
+      "file": "trust-scope-summary.json",
+      "sha256": "c7aec9743bcc231395761422d0c5092af63e38b8332e37d6aba87db83fc48a31"
+    },
+    {
+      "file": "delivery-fixed-cases.json",
+      "sha256": "1b9235860be410dc0b5e1bde29d2698deb480075dd3776f8ec97b3c627785b10"
+    },
+    {
+      "file": "delivery-dmg-verify.txt",
+      "sha256": "edd921659f6b23833f0456cce0ac55fd8215aab0fb0409008b214114460e606a"
+    },
+    {
+      "file": "delivery-zip-verify.txt",
+      "sha256": "3eaeb3eb4ab1f333084f84aa330fd6b4f9b24cb8bd169484928ea2b28425354d"
+    },
+    {
+      "file": "delivery-stapler.txt",
+      "sha256": "df34bf08173b32b0773bfd3a7ce05b849b78349fd3e58722171a6249b265955d"
+    },
+    {
+      "file": "delivery-gatekeeper.txt",
+      "sha256": "eea23a801f88f1f142f502c979a83273d1353da2ed0e00daeefaff47b323a4a6"
+    },
+    {
+      "file": "package-smoke-cold-final/receipt.json",
+      "sha256": "228ed269110f37f1c0ff0cb11f18d75405755c5328688f87bd3f07b2f9616dbe"
+    }
+  ],
+  "buildLogSha256": "72d51cd796cd74b44d754368729b955dfc0d98b97a52cf15d9f69dc7946158f8",
+  "publication": {
+    "pushed": false,
+    "published": false,
+    "releaseCreated": false,
+    "installerUploaded": false
+  }
+}

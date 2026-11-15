@@ -6,7 +6,7 @@
 
 Agent Arcade is an open-source desktop app for chatting with AI characters on your own computer. It is released under AGPL-3.0 with no paid features. The app runs locally and keeps conversations and memory on this computer; the model is called with one API key that you bring (Claude, GPT, DeepSeek, Gemini or Doubao). This describes the **0.4.0-preview.1 development source**, not the older downloadable Windows app. Read the version table below before choosing a route.
 
-**Current local integration:** `0.4.0-preview.2` includes the 75-path repair snapshot and eight readiness commits. It is unpublished; the exact new build identity and checks are recorded in [the integration report](docs/MACOS_INTEGRATION_20261115.md). The version table below distinguishes earlier publicly obtainable source/releases.
+**Current local candidate:** `0.4.0-preview.3` retains the integrated repairs and readiness commits, with a persistent personal-use Mac signing identity on this machine. It is unpublished; source, artifact hashes, cold-signing and validation are in [the local signing report](docs/LOCAL_MAC_SIGNING_20261115.md). It is self-signed and unnotarized; the table below distinguishes the publicly obtainable source/releases.
 
 ## Choose the version first
 
@@ -16,7 +16,7 @@ Availability read-only checked on **2026-11-15**:
 | --- | --- | --- |
 | **Public 0.3.0-preview.2** | [Windows executable, checksum and lockfile](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2). This is the older WeChat task/observer preview, licensed under MIT. | Use its [version-specific instructions](docs/releases/0.3.0-preview.2.md): WeChat ClawBot pairing and a task backend. It does **not** have the App-first key card described below. |
 | **Development 0.4.0-preview.1** | Source on `codex/companion-nine`, with reproducible baseline `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4` (AGPL-3.0-only). **Not a published release.** | Follow [Run from source](#run-from-source), then [First run](#first-run). |
-| **Local integrated 0.4.0-preview.2** | Committed on `codex/integrated-macos-20261115`, combining the 75-path repair snapshot and eight preparation commits; newly built arm64 DMG/ZIP, ad-hoc signed and unnotarized. | Local only; absent from the pinned remote source and public executable. Exact build source, archive checksums and synthetic checks are in [the integration report](docs/MACOS_INTEGRATION_20261115.md). Real-model, installation and human gates remain open. |
+| **Local signed 0.4.0-preview.3** | Committed on `codex/integrated-macos-20261115`; newly rebuilt arm64 DMG/ZIP using a pinned personal-use certificate. Unnotarized. | Local only; absent from the pinned remote source and public executable. See [exact source, checksums and limits](docs/LOCAL_MAC_SIGNING_20261115.md). Real-model/human installation gates remain open. |
 
 **There is no publicly downloadable Mac candidate package.** A local build or
 an Actions artifact is not a published Mac release. Mac users currently need

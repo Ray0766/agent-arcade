@@ -2,7 +2,7 @@
 
 ## Stable Mac signing follow-up — 2026-11-15
 
-Read-only user/System keychain inspection found zero usable code-signing identities. Strict certificate preflight is implemented and tested; stable repackaging is blocked on an installed signing identity and has not run. No App, real profile or saved API key/chat was opened. See [MAC_SIGNING_STATUS_20261115](MAC_SIGNING_STATUS_20261115.md) for commands, results and the owner prerequisite. Earlier candidate/build evidence below retains its original identity.
+After the initial zero-identity inspection, the owner authorized provisioning a persistent personal-use signer. Version `0.4.0-preview.3` is now rebuilt with that exact certificate, including a verified locked-Keychain → automatic-unlock cold build. No owner App/profile/API key/chat was opened or replaced. See [LOCAL_MAC_SIGNING_20261115](LOCAL_MAC_SIGNING_20261115.md) for the final source, artifact identity and first-transition limits; [the earlier inspection](MAC_SIGNING_STATUS_20261115.md) remains historical. No public release is created.
 
 ## Integrated macOS candidate — 2026-11-15
 

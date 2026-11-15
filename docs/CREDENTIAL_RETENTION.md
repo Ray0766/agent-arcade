@@ -7,9 +7,22 @@ separately in that companion's `local-companion/social-memory.sqlite`.
 The normal data root is `~/.agent-arcade`; replacing the `.app` bundle does not
 replace it. Keep the same data root and registered companion directories.
 
-## Stable-signing follow-up — 2026-11-15
+## Persistent personal-use signing — 2026-11-15
 
-The owner requested a prompt-free update path without more automated Keychain dialogs. Read-only inspection found **zero currently usable code-signing identities** in the user search list and System keychain. Stable rebuilding is blocked on an installed certificate/private-key pair; no replacement package or App launch was attempted. The packaging wrapper now checks an explicitly selected identity by exact name/SHA-1, resolves it to one certificate fingerprint and forces signing. Missing/ambiguous identities fail before electron-builder; see [the signing inspection and next step](MAC_SIGNING_STATUS_20261115.md). This changes build tooling only, not saved-key/chat formats or their identities.
+The owner authorized a dedicated long-term local certificate and necessary
+signing trust after the [initial empty-identity inspection](MAC_SIGNING_STATUS_20261115.md).
+This Mac now automatically reuses that certificate through a protected profile
+outside the App/repository. A real cold build started with the dedicated signing
+Keychain locked and completed automatically, without asking for its random
+password. New preview.3 artifact/source identities and limits are in
+[LOCAL_MAC_SIGNING_20261115](LOCAL_MAC_SIGNING_20261115.md).
+
+This fixes the per-build ad-hoc identity mechanism; it does not edit an existing
+Safe Storage item's access list or prove real-key access. The first transition
+from an old ad-hoc App to the certificate-signed App can still require one
+owner-controlled OS authorization. No repeated Safe Storage test is used to
+manufacture a pass. Real API keys/chats and the running installation were not
+opened or replaced in this follow-up.
 
 ## Before an updated build opens data
 
@@ -38,22 +51,24 @@ identity. Local builds remain ad-hoc signed by default. A rebuild, or switching
 between source and package, can require renewed permission. Do not delete the
 Keychain item or broaden its access to every application as a workaround.
 
-For repeat distribution with an installed signing certificate, explicitly choose
-the same identity on every build:
+For repeat personal-use builds on this Mac, the local profile automatically
+selects the same identity:
 
 ```sh
-export AGENT_ARCADE_MAC_SIGN_IDENTITY='REPLACE_WITH_40_HEX_CERTIFICATE_SHA1'
 node scripts/build-mac.cjs --check-signing
 npm run pack:mac -- --require-stable-signing -c.directories.output=/private/tmp/agent-arcade-candidate
 ```
 
-The fingerprint above is a placeholder, not a bundled certificate. A full exact
-installed certificate name is also accepted and resolved to its SHA-1 fingerprint;
-substring/ambiguous selection is refused. The wrapper passes the pinned hash and
-`forceCodeSigning=true`, and a missing/unusable identity stops packaging. The
-`--require-stable-signing` flag also refuses an unset selection. Legacy local
-packaging without that flag/selection remains ad-hoc and does not meet the
-update-stability requirement. Certificate provisioning, hardened runtime,
+On this Mac the protected local profile pins the exact certificate, so no manual
+identity environment variable is needed. The private signing Keychain is unlocked
+before identity inventory for actual builds; metadata-only checks never read its
+password. A missing/changed/expired pin fails rather than becoming ad-hoc. Local
+profiles prohibit publication, notarization and external timestamping.
+
+On machines without a local profile, an explicitly installed identity can still
+be selected through `AGENT_ARCADE_MAC_SIGN_IDENTITY`; exact names resolve to one
+certificate hash and required signing. This does not install this Mac's key on
+another computer. Distribution-certificate provisioning, hardened runtime,
 notarization and real Gatekeeper/Keychain acceptance are separate release work.
 An ad-hoc candidate is not a guarantee of prompt-free updates.
 
