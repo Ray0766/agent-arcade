@@ -13,7 +13,19 @@ test('single-use consumed before runtime verify await, role/expiry changed while
 test('synchronous partial dismiss invalidates ticket while keeping the observation usable',async t=>{const f=await sessionFixture(t),r=await f.session.read(f.input);let p=f.session.preview({...f.input,observationId:r.profile.observationId,operation:'card',value:'One'});f.session.dismiss(f.input);await assert.rejects(f.session.confirm({...f.input,ticketId:p.preview.ticketId}),{code:'stale_ticket'});p=f.session.preview({...f.input,observationId:r.profile.observationId,operation:'card',value:'Two'});assert.equal((await f.session.confirm({...f.input,ticketId:p.preview.ticketId})).change.outcome,'accepted');});
 test('scope changes close management socket and block old ticket, without changing AI socket',async t=>{const f=await sessionFixture(t),r=await f.session.read(f.input),p=f.session.preview({...f.input,observationId:r.profile.observationId,operation:'kick',value:true});f.context.installation={};f.session.observe();await f.session.retiring;await assert.rejects(f.session.confirm({...f.input,ticketId:p.preview.ticketId}),{code:'changed'});assert.equal(f.created[0].closed,true);assert.equal(f.client.closed,false);assert.equal(f.writes().length,0);});
 test('late accepted and unknown retain captured identity after close, not not_submitted',async t=>{
- for(const kind of ['accepted','unknown']){const f=await sessionFixture(t),r=await f.session.read(f.input),p=f.session.preview({...f.input,observationId:r.profile.observationId,operation:'card',value:'New'}),hold=deferred(),original=f.session.session.controller.confirm.bind(f.session.session.controller);f.session.session.controller.confirm=async value=>{const receipt=await original(value);await hold.promise;return {...receipt,outcome:kind,...(kind==='unknown'?{code:'change_unknown',observation:{state:'unavailable',source:'bridge-observed'}}:{})};};const pending=f.session.confirm({...f.input,ticketId:p.preview.ticketId});while(f.writes().length===0)await flush();await flush();const closing=f.session.closeCurrent();hold.resolve();const result=await pending;await closing;assert.equal(result.change.outcome,kind);assert.equal(result.accountId,f.input.accountId);assert.equal(result.qqAccountId,ACCOUNT);assert.equal(f.writes().length,1);}
+ for(const kind of ['accepted','unknown']){
+  const f=await sessionFixture(t),r=await f.session.read(f.input),p=f.session.preview({...f.input,observationId:r.profile.observationId,operation:'card',value:'New'}),hold=deferred(),receiptReady=deferred(),original=f.session.session.controller.confirm.bind(f.session.session.controller);
+  f.session.session.controller.confirm=async value=>{
+   let receipt;try{receipt=await original(value);}catch(error){receiptReady.reject(error);throw error;}
+   receiptReady.resolve();await hold.promise;
+   return {...receipt,outcome:kind,...(kind==='unknown'?{code:'change_unknown',observation:{state:'unavailable',source:'bridge-observed'}}:{})};
+  };
+  const pending=f.session.confirm({...f.input,ticketId:p.preview.ticketId});
+  // A submitted write plus one event-loop turn does not prove its receipt has
+  // arrived. Close only after the controller has captured that receipt.
+  await receiptReady.promise;const closing=f.session.closeCurrent();hold.resolve();
+  const result=await pending;await closing;assert.equal(result.change.outcome,kind);assert.equal(result.accountId,f.input.accountId);assert.equal(result.qqAccountId,ACCOUNT);assert.equal(f.writes().length,1);
+ }
 });
 test('wrapper errors have fixed codes and no arbitrary raw response details',async()=>{const input={accountId:'synthetic',panelId:randomUUID(),groupId:GROUP,memberId:TARGET};const result=await groupAdminResult(input,()=>{throw Object.assign(Error('PRIVATE_TOKEN'),{code:'raw_private_code'});});assert.deepEqual(result,{ok:false,...input,code:'unavailable'});assert.equal(JSON.stringify(result).includes('PRIVATE'),false);});
 module.exports={sessionFixture};
