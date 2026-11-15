@@ -11,15 +11,15 @@ function fixture(t){
  const profile={schema:1,protocol:1,helperPath:helper,helperSha256:crypto.createHash('sha256').update(fs.readFileSync(helper)).digest('hex'),helperCdHash:HASH,identitySha1:PIN,sourceSha256:'b'.repeat(64),service:'agent-arcade Safe Storage',account:'agent-arcade'};
  return {dir,helper,profile,options:{trustedIdentity:PIN,pathRoot:dir}};
 }
-function fakeNative(f,{readyPid=4321,result={version:1,status:'ok',available:true},neverReady=false,beforeReady=null,signatureFails=false,cdHash=HASH,liveCdHash=cdHash,flags='10200',extraFrame=false,code=0}={}){
+function fakeNative(f,{readyPid=4321,result={version:1,status:'ok',available:true},neverReady=false,beforeReady=null,firstFrame=null,signatureFails=false,signatureFailureOutput='',cdHash=HASH,liveCdHash=cdHash,flags='10200',liveFlags=flags,extraFrame=false,code=0}={}){
  const calls=[],writes=[];let child,killed=false;
- const execFile=(file,args,options,done)=>{calls.push(args);queueMicrotask(()=>signatureFails&&args.at(-1).startsWith('+')?done(Error(SECRET)):done(null,'',args.includes('-d')?`CodeDirectory v=20500 size=1 flags=0x${flags}(runtime,kill) hashes=1\nCDHash=${args.at(-1).startsWith('+')?liveCdHash:cdHash}\n`:''));};
+ const execFile=(file,args,options,done)=>{calls.push(args);queueMicrotask(()=>signatureFails&&args.at(-1).startsWith('+')?done(Error(SECRET),'',signatureFailureOutput):done(null,'',args.includes('-d')?`CodeDirectory v=20500 size=1 flags=0x${args.at(-1).startsWith('+')?liveFlags:flags}(runtime,kill) hashes=1\nCDHash=${args.at(-1).startsWith('+')?liveCdHash:cdHash}\n`:''));};
  const spawn=(file,args,options)=>{
   child=new EventEmitter();child.pid=4321;child.stdout=new PassThrough();
   child.stdin=new Writable({write(chunk,encoding,callback){writes.push(Buffer.from(chunk).toString());callback();}});
   child.stdin.on('finish',()=>queueMicrotask(()=>{child.stdout.write(JSON.stringify(result)+'\n'+(extraFrame?'{}\n':''));child.stdout.end();child.emit('close',code);}));
   child.kill=()=>{killed=true;queueMicrotask(()=>child.emit('close',null));return true;};
-  queueMicrotask(()=>{beforeReady?.();if(!neverReady)child.stdout.write(JSON.stringify({version:1,status:'ready',pid:readyPid})+'\n');});return child;
+  queueMicrotask(()=>{beforeReady?.();if(!neverReady)child.stdout.write(JSON.stringify(firstFrame||{version:1,status:'ready',pid:readyPid})+'\n');});return child;
  };
  return {options:{...f.options,execFile,spawn},calls,writes,killed:()=>killed};
 }
@@ -42,13 +42,15 @@ test('plaintext is sent only after actual child PID signature and live CDHash pa
  const result=await runHelperRequest(f.profile,{version:1,operation:'encrypt',text:SECRET},n.options);
  assert.equal(result.status,'ok');assert.equal(n.writes.length,1);assert.equal(JSON.parse(n.writes[0]).text,SECRET);
  assert.equal(n.calls.length,4);assert.equal(n.calls[2].at(-1),'+4321');assert.equal(n.calls[3].at(-1),'+4321');
- assert.ok(n.calls[2].includes(`=identifier "io.github.agentarcade.credentials.v1" and certificate root=H"${PIN}"`));
+ assert.deepEqual(n.calls[2],['--verify','+4321']);
+ assert.ok(n.calls[0].includes('--strict'));assert.ok(n.calls[0].includes('-R'));
+ assert.ok(n.calls[0].includes(`=identifier "io.github.agentarcade.credentials.v1" and certificate root=H"${PIN}"`));
 });
 test('spoofed ready PID and failed live signature kill without sending plaintext',async t=>{
- for(const variant of [{readyPid:9},{signatureFails:true},{liveCdHash:'0'.repeat(40)}]){const f=fixture(t),n=fakeNative(f,variant);await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'encrypt',text:SECRET},n.options),{code:'IDENTITY_MISMATCH'});assert.deepEqual(n.writes,[]);assert.equal(n.killed(),true);}
+ for(const variant of [{readyPid:9},{signatureFails:true},{liveCdHash:'0'.repeat(40)},{liveFlags:'10202'},{liveFlags:'10204'},{liveFlags:'10000'}]){const f=fixture(t),n=fakeNative(f,variant);await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'encrypt',text:SECRET},n.options),{code:'IDENTITY_MISMATCH'});assert.deepEqual(n.writes,[]);assert.equal(n.killed(),true);}
 });
 test('wrong CDHash or missing hardened runtime and kill flags prevents spawning',async t=>{
- for(const variant of [{cdHash:'0'.repeat(40)},{flags:'10000'},{flags:'10204'}]){const f=fixture(t),n=fakeNative(f,variant);await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'status'},n.options),{code:'IDENTITY_MISMATCH'});assert.equal(n.killed(),false);assert.deepEqual(n.writes,[]);}
+ for(const variant of [{cdHash:'0'.repeat(40)},{flags:'10000'},{flags:'10204'},{flags:'10202'}]){const f=fixture(t),n=fakeNative(f,variant);await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'status'},n.options),{code:'IDENTITY_MISMATCH'});assert.equal(n.killed(),false);assert.deepEqual(n.writes,[]);}
 });
 test('bounded timeout kills and reaps helper without retry or plaintext',async t=>{
  const f=fixture(t),n=fakeNative(f,{neverReady:true});await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'encrypt',text:SECRET},{...n.options,timeoutMs:30}),{code:'HELPER_TIMEOUT'});assert.equal(n.killed(),true);assert.equal(n.writes.length,0);assert.equal(n.calls.length,2);
@@ -98,4 +100,18 @@ test('replacement after static verification is detected before spawn',async t=>{
  const f=fixture(t),n=fakeNative(f);let checks=0;
  const original=n.options.execFile;n.options.execFile=(file,args,options,done)=>original(file,args,options,(...result)=>{if(++checks===2){fs.renameSync(f.helper,f.helper+'.old');fs.writeFileSync(f.helper,'replacement bytes',{mode:0o500});}done(...result);});
  await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'encrypt',text:SECRET},n.options),{code:'HELPER_CHANGED'});assert.deepEqual(n.writes,[]);
+});
+test('native rejection before ready reports CALLER_REJECTED without live checks or plaintext',async t=>{
+ const f=fixture(t),n=fakeNative(f,{firstFrame:{version:1,status:'error',code:'unauthorized'}});
+ await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'encrypt',text:SECRET},n.options),{code:'CALLER_REJECTED'});
+ assert.equal(n.calls.length,2);assert.deepEqual(n.writes,[]);assert.equal(n.killed(),true);
+});
+test('nonzero PID verification fails even when codesign prints dynamically valid',async t=>{
+ const f=fixture(t),n=fakeNative(f,{signatureFails:true,signatureFailureOutput:'+4321: dynamically valid\n+4321: UNIX[Invalid argument]\n'});
+ await assert.rejects(runHelperRequest(f.profile,{version:1,operation:'encrypt',text:SECRET},n.options),{code:'IDENTITY_MISMATCH'});
+ assert.deepEqual(n.calls[2],['--verify','+4321']);assert.equal(n.calls.length,3);assert.deepEqual(n.writes,[]);assert.equal(n.killed(),true);
+});
+test('runtime plus hard and kill flags from real macOS metadata are accepted',async t=>{
+ const f=fixture(t),n=fakeNative(f,{flags:'10300'});
+ assert.deepEqual(await runHelperRequest(f.profile,{version:1,operation:'status'},n.options),{version:1,status:'ok',available:true});
 });

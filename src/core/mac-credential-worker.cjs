@@ -5,9 +5,9 @@ const {MacCredentialError,validateProfile,inspectHelper,validateRequest,validate
 const NATIVE_ERRORS=Object.freeze({unauthorized:'IDENTITY_MISMATCH',invalid_request:'INVALID_REQUEST',keychain_unavailable:'UNAVAILABLE',key_not_found:'KEYCHAIN_MISSING',crypto_failed:'CRYPTO_FAILED',timeout:'HELPER_TIMEOUT',internal_error:'HELPER_FAILED',configuration_invalid:'INVALID_PROFILE',request_too_large:'INVALID_REQUEST',peer_rejected:'IDENTITY_MISMATCH',keychain_locked:'KEYCHAIN_LOCKED',item_missing:'KEYCHAIN_MISSING',item_ambiguous:'KEYCHAIN_FAILED',invalid_ciphertext:'INVALID_CIPHERTEXT',io_failed:'HELPER_FAILED'});
 function error(code){return new MacCredentialError(code);}
 function displayIdentity(text,profile){
- const hash=/^CDHash=([a-fA-F0-9]{40})\s*$/m.exec(text),flags=/^CodeDirectory .*?flags=0x([a-fA-F0-9]+)/m.exec(text);
- if(!hash||hash[1].toLowerCase()!==profile.helperCdHash||!flags)throw error('IDENTITY_MISMATCH');
- const bits=Number.parseInt(flags[1],16);if((bits&0x10200)!==0x10200||(bits&0x4)!==0)throw error('IDENTITY_MISMATCH');
+ const hashes=[...text.matchAll(/^CDHash=([a-fA-F0-9]{40})\s*$/gm)],flags=[...text.matchAll(/^CodeDirectory .*?flags=0x([a-fA-F0-9]+)/gm)];
+ if(hashes.length!==1||hashes[0][1].toLowerCase()!==profile.helperCdHash||flags.length!==1)throw error('IDENTITY_MISMATCH');
+ const bits=Number.parseInt(flags[0][1],16);if((bits&0x10200)!==0x10200||(bits&0x6)!==0)throw error('IDENTITY_MISMATCH');
 }
 // execFile receives no plaintext; stderr is used only for fixed codesign
 // metadata and is never included in errors, diagnostics or the shared result.
@@ -37,8 +37,12 @@ async function runHelperRequest(rawProfile,rawRequest,options={}){
    if(!frame||Object.keys(frame).sort().join(',')!=='pid,status,version'||frame.version!==1||frame.status!=='ready'||!Number.isSafeInteger(frame.pid)||frame.pid!==child.pid||frame.pid<2){stop('IDENTITY_MISMATCH');return;}
    checking=true;
    try{
-    // +PID verifies the running code object, not a replaceable pathname.
-    await codesign(['--verify','--verbose=4','--strict','-R',requirement(options.trustedIdentity),`+${child.pid}`],signOptions());
+    // PID verification checks dynamic validity. Verbosity and -R additionally
+    // invoke static disk-representation checks unsupported by PID diskreps
+    // on current macOS. The full static pin check above remains mandatory;
+    // matching the live CodeDirectory binds this process back to that code.
+    // A nonzero exit always fails, regardless of any 'dynamically valid' text.
+    await codesign(['--verify',`+${child.pid}`],signOptions());
     displayIdentity(await codesign(['-d','--verbose=4',`+${child.pid}`],signOptions()),profile);
     if(failure||closed||Date.now()>=deadline||options.cancelled?.()){stop('HELPER_TIMEOUT');return;}
     verified=true;
