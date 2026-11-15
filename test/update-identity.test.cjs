@@ -109,6 +109,22 @@ test('actual fixture build unlocks only its dedicated Keychain, strips import cr
   }});
   assert.equal(result.status,0);assert.deepEqual(calls,['unlock','build']);assert(!JSON.stringify(result).includes(f.password));
 });
+test('a cold profile build validates policy, unlocks, inventories the pinned identity, then builds',t=>{
+  const f=fixture(t),calls=[];let unlocked=false;
+  const inspect={...f.inspect,exec(file,args,options){calls.push('inventory');assert.equal(unlocked,true,'Inventory must follow the dedicated unlock');return f.inspect.exec(file,args,options);}};
+  const result=runMacBuild(['--dir'],{}, {inspection:inspect,exec(file,args){assert.deepEqual(args,['unlock-keychain','-p',f.password,f.keychainFile]);calls.push('unlock');unlocked=true;},builder:()=>'/fixture/builder.cjs',spawn(){calls.push('build');return {status:0};}});
+  assert.equal(result.status,0);assert.deepEqual(calls,['unlock','inventory','build']);
+  for(const args of [['--publish','always'],['-c.mac.identity=-']])assert.throws(()=>runMacBuild(args,{}, {inspection:f.inspect,exec(){assert.fail('Invalid policy must not unlock');},builder(){assert.fail('Invalid policy must not load builder');},spawn(){assert.fail();}}));
+  assert.throws(()=>runMacBuild([], {AGENT_ARCADE_MAC_SIGN_IDENTITY:SHA_B}, {inspection:f.inspect,exec(){assert.fail('A mismatched pin must not unlock');},spawn(){assert.fail();}}),/differs from the pinned/);
+});
+test('plain preparation and check-only never invoke the cold-build unlock hook',t=>{
+  const f=fixture(t),hook={beforeIdentityInspection(){assert.fail('Metadata-only preparation must not unlock');}};
+  const plain=prepareMacBuild([],{},f.inspect);assert.equal(plain.ready,true);
+  const checked=prepareMacBuild(['--check-signing'],{},f.inspect,hook);assert.equal(checked.ready,true);
+  let inventory=0;
+  assert.throws(()=>prepareMacBuild([],{}, {...f.inspect,exec(){inventory++;return '0 valid identities found';}}),/not valid and installed/);
+  assert.equal(inventory,1);
+});
 test('unlock and metadata errors cannot expose passwords, stderr, argv or an implicit ad-hoc fallback',t=>{
   const f=fixture(t),unsafe='failed argv '+f.password+' stderr fixture';
   assert.throws(()=>runMacBuild([],{}, {inspection:f.inspect,builder:()=>'/fixture/builder.cjs',exec(){throw Object.assign(Error(unsafe),{stderr:unsafe,cmd:unsafe});},spawn(){assert.fail('Failed unlock must stop build');}}),error=>error.message==='Could not unlock the dedicated local signing Keychain. Packaging stopped.'&&!JSON.stringify(error).includes(f.password)&&!error.cause);

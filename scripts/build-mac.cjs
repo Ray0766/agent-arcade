@@ -82,7 +82,7 @@ function installedIdentities({platform=process.platform,exec=execFileSync,keycha
   }
   return [...identities.values()];
 }
-function prepareMacBuild(argv,env=process.env,inspection){
+function prepareMacBuild(argv,env=process.env,inspection,{beforeIdentityInspection}={}){
   const checkOnly=argv.includes('--check-signing'),required=argv.includes('--require-stable-signing');
   const args=argv.filter(arg=>arg!=='--check-signing'&&arg!=='--require-stable-signing');
   if(checkOnly&&args.length)throw Error('--check-signing does not accept build arguments.');
@@ -105,6 +105,10 @@ function prepareMacBuild(argv,env=process.env,inspection){
     }
     args.splice(0,args.length,...filtered);
   }
+  // Actual builds may need a cold dedicated Keychain unlocked before inventory.
+  // This hook runs only after profile/pin/argv validation. Metadata-only callers
+  // and --check-signing never unlock or read password contents.
+  if(profile&&!checkOnly&&beforeIdentityInspection)beforeIdentityInspection(profile);
   const identities=installedIdentities({...inspection,keychainFile:profile?.keychainFile,localProfile:profile});
   if(!requested){
     if(checkOnly)return {checkOnly:true,ready:false,identities,reason:identities.length?'Select an exact certificate SHA-1 with AGENT_ARCADE_MAC_SIGN_IDENTITY.':'No valid installed code-signing identities found.'};
@@ -134,10 +138,9 @@ function unlockLocalSigning(profile,{exec=execFileSync}={}){
   }catch{throw signingError('Could not unlock the dedicated local signing Keychain. Packaging stopped.');}
 }
 function runMacBuild(argv,env=process.env,{inspection,exec=execFileSync,spawn=spawnSync,builder=()=>require.resolve('electron-builder/cli.js')}={}){
-  const plan=prepareMacBuild(argv,env,inspection);
+  const plan=prepareMacBuild(argv,env,inspection,{beforeIdentityInspection:profile=>unlockLocalSigning(profile,{exec})});
   if(plan.checkOnly)return {plan,status:plan.ready?0:1};
   const builderFile=builder();
-  if(plan.profile)unlockLocalSigning(plan.profile,{exec});
   const result=spawn(process.execPath,[builderFile,...plan.args],{stdio:'inherit',env:buildEnvironment(env,plan),shell:false});
   return {plan,status:result.error?1:result.status??1};
 }
