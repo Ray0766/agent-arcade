@@ -101,14 +101,15 @@ test('every operation is refused while a reply or regeneration is in flight; a n
   assert.deepEqual(await stopping,{outcome:'cancelled'});await stop;assert(!JSON.stringify(f.history()).includes('AFTER_STOP'));
 });
 
-test('built-in persona: edit, remove and its 2000-character cap work; regenerate and continue are not offered',async t=>{
+test('built-in persona: edit, remove, alternatives and continuation operate on a complete reply with the existing cap',async t=>{
   const f=fixture(t,{execute:async()=>({outcome:'reply_ended',text:'第一段。\n\n第二段。'})});await f.service.localStart();await f.service.localReply('你好');
-  const [user,first,second]=f.history();
-  await assert.rejects(f.service.localMessage({action:'regenerate'}),{code:'unsupported'});await assert.rejects(f.service.localMessage({action:'continue'}),{code:'unsupported'});
-  assert.equal((await f.service.localMessage({action:'edit',id:second.id,text:'改过的第二段。'})).message.edited,true);
-  await assert.rejects(f.service.localMessage({action:'edit',id:second.id,text:'长'.repeat(2001)}),{code:'invalid_text'});
-  await f.service.localMessage({action:'remove',id:first.id});assert.deepEqual(f.history().map(row=>row.text),['你好','改过的第二段。']);assert.equal(f.history()[0].id,user.id);
-  await f.service.localReply('继续');assert.match(f.calls.at(-1).prompt,/"text":"改过的第二段。"/);assert.doesNotMatch(f.calls.at(-1).prompt,/第一段。/);
+  const [user,reply]=f.history();
+  assert.equal((await f.service.localMessage({action:'regenerate'})).outcome,'reply_ended');assert.equal(f.history().at(-1).swipeCount,2);
+  assert.equal((await f.service.localMessage({action:'continue'})).outcome,'reply_ended');assert.equal(f.history().at(-1).text,'第一段。\n\n第二段。第一段。\n\n第二段。');
+  assert.equal((await f.service.localMessage({action:'edit',id:reply.id,text:'改过的回复。'})).message.edited,true);
+  await assert.rejects(f.service.localMessage({action:'edit',id:reply.id,text:'长'.repeat(2001)}),{code:'invalid_text'});
+  await f.service.localMessage({action:'remove',id:user.id});assert.deepEqual(f.history().map(row=>row.text),['改过的回复。']);
+  await f.service.localReply('继续');assert.match(f.calls.at(-1).prompt,/"text":"改过的回复。"/);assert.doesNotMatch(f.calls.at(-1).prompt,/第一段。/);
 });
 
 test('storage: old databases migrate in place and old behaviour is unchanged',t=>{

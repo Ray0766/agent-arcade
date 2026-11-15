@@ -226,4 +226,4 @@ function composeLocalPrompt({card, settings, history, facts = [], incoming = nul
   };
 }
 
-module.exports = {MESSAGE_CHARS, POLICY, FACTS_LABEL, RULES_LABEL, VOICE_CONTEXT, composeLocalPrompt, greetingText, noticeIdentity, macroEnv};
+module.exports = {MESSAGE_CHARS, POLICY, FACTS_LABEL, RULES_LABEL, VOICE_CONTEXT, composeLocalPrompt, rulesBlock, greetingText, noticeIdentity, macroEnv};

@@ -125,12 +125,12 @@ class CompanionKnowledge {
 
   /**
    * Wiki lines for one turn of one character, or [] (switch off, nothing found, any failure).
-   * `conversationKey` scopes the once-only rule of wiki-recall.cjs.
+   * Each stateless request receives its own relevant lines; no earlier turn suppresses them.
    */
-  recallFor(conversationKey, characterId, text) {
+  recallFor(characterId, text) {
     try {
       if (typeof characterId !== 'string' || !this.#switches(characterId).read || !fs.existsSync(this.wikiRoot)) return [];
-      return this.#wiki().recall.recall(text, {conversationKey}).pages;
+      return this.#wiki().recall.recall(text).pages;
     } catch { return []; }
   }
 

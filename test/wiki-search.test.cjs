@@ -24,7 +24,7 @@ test('BM25 ranks lines: rarer terms and shorter lines win, short lines and front
   ];
   const index=new Index(pages,NOW);
   // Lines shorter than six characters and the front matter are left out; a heading is a line like any other.
-  assert.equal(index.lines.some(row=>row.text==='- ok'||row.text==='- 不吃'||row.text.startsWith('description:')||row.text==='---'),false);assert.equal(index.lines.some(row=>row.text==='# server'),true);
+  assert.equal(index.lines.some(row=>row.text==='- ok'||row.text==='- 不吃'||row.text.startsWith('description:')||row.text==='---'),false);assert.equal(index.lines.some(row=>row.text==='# server'),false);
   assert.deepEqual(index.desc.get('infra/network.md'),'Router and port forwarding');
   const hits=index.search('which port does ssh use?');
   // "ssh" occurs on one line only; "port" on two: the SSH line first, then the long router line.
@@ -90,4 +90,13 @@ test('the cached index is rebuilt when a page changed on disk or after 300 secon
   // At most ten lines are folded.
   const many=new WikiSearch({store:{pages:()=>[{rel:'m/many.md',mtimeMs:1,size:1}],pageText:()=>Array.from({length:30},(_,i)=>`- keyword line number ${i} here`).join('\n')},now:()=>now});
   assert.equal(many.search('keyword')[0].lines.length,10);
+});
+
+
+test('small talk, generic overlap and headings do not recall a notebook page; explicit subjects still do',()=>{
+  const index=new Index([{rel:'a/notes.md',text:'# 今天 home server\n- The garden gate code is 4417\n- 今天我们去公园散步\n- This is a '+ 'long '.repeat(200)+'sentence about irrelevant notes'}],NOW);
+  for(const query of ['hi please tell me about this','今天你好吗？谢谢','is the','今天','topic']) assert.deepEqual(index.search(query),[],query);
+  assert.equal(index.search('garden gate')[0].rel,'a/notes.md');
+  assert.equal(index.search('4417')[0].line,2);
+  assert.equal(index.search('公园')[0].line,3);
 });

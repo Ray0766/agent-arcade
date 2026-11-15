@@ -49,7 +49,7 @@
     requestAnimationFrame(()=>{
       if(!current||current.dead||document.body.dataset.view!=='bot'||document.querySelector('dialog[open]'))return;
       const active=document.activeElement,idle=!active||active===document.body||active===current.editor;
-      if(!idle&&(!arrived||active.matches('input,textarea,select,[contenteditable=true]')||active.closest('#bot-setup-panel,#bot-messages,#desktop-branch-bar,#desktop-group-speak,.shell-pop-panel')))return;
+      if(!idle&&(!arrived||active.matches('input,textarea,select,[contenteditable=true]')||active.closest('#bot-setup-panel,#bot-messages,#desktop-branch-bar,#desktop-group-speak,.shell-pop-panel,.companion-switcher,.imm-companion')))return;
       current.editor.focus({preventScroll:true});
     });
   }
@@ -304,7 +304,7 @@
   function openEdit(row,m,cap){
     const t=toolCopy[language()],body=row.querySelector(':scope>.message-body');if(!body)return;
     if(editing&&editing.id!==m.id)closeEdit(false);
-    const fresh=!editing,area=editing?.area||node('textarea','desktop-message-edit-area'),wrap=node('div','desktop-message-edit'),foot=node('div','desktop-message-edit-foot'),count=node('span','desktop-chat-count'),hint=node('span','desktop-message-edit-hint',t.editHint),save=node('button','primary',t.save),cancel=node('button','secondary',t.cancel);
+    const fresh=!editing,area=editing?.area||node('textarea','desktop-message-edit-area'),wrap=node('div','desktop-message-edit'),foot=node('div','desktop-message-edit-foot'),count=node('span','desktop-chat-count'),hint=node('span','desktop-message-edit-hint',macHost?t.editHint.replace('Ctrl+','⌘+'):t.editHint),save=node('button','primary',t.save),cancel=node('button','secondary',t.cancel);
     if(fresh){area.value=m.text||'';area.rows=Math.min(12,Math.max(3,Math.ceil((m.text||'').length/60)));area.setAttribute('aria-label',t.editLabel);}
     area.maxLength=cap;save.type=cancel.type='button';
     const state0=editing={id:m.id,area,wrap,body,save,cap,focused:fresh||editing?.focused===true};
@@ -316,7 +316,9 @@
       const text=area.value;if(!text.trim()||text.length>cap||toolsBlocked())return;
       if(text===m.text){closeEdit(true);decorate();return;}
       const result=await runMessage({action:'edit',id:m.id,text},t.saving);
-      if(result&&editing===state0){closeEdit(true);decorate();}
+      // A live snapshot can rebuild the wrapper before IPC resolves. Match the
+      // retained editor, while preserving a newer draft or a reopened editor.
+      if(result&&editing?.id===m.id&&editing.area===area&&area.value===text){closeEdit(true);decorate();}
     };
     foot.append(hint,count,cancel,save);wrap.append(area,foot);body.hidden=true;body.after(wrap);refresh();if(fresh)wrap.scrollIntoView({block:'nearest'});
     if(state0.focused&&[document.body,null].includes(document.activeElement)||fresh)area.focus({preventScroll:true});
@@ -344,7 +346,7 @@
     }
     actions.append(tools);
   }
-  // Library characters only: the reply being generated (shown as it arrives),
+  // App conversations: the reply being generated (shown as it arrives),
   // display-only text, and conversation branches. A branch is a copy of the
   // conversation up to one message; switching restarts the App conversation
   // the same way choosing another character does.
@@ -430,7 +432,7 @@
     return true;
   }
   function renderStream(list,rows,local,history,byId,identityInfo,group){
-    const s=(local?.libraryCharacterId||group)&&local.streaming&&typeof local.streaming.text==='string'&&['reply','regenerate','continue'].includes(local.streaming.mode)?local.streaming:null,t=bt(),last=history.at(-1);
+    const s=local?.streaming&&typeof local.streaming.text==='string'&&['reply','regenerate','continue'].includes(local.streaming.mode)?local.streaming:null,t=bt(),last=history.at(-1);
     if(!s){
       if(!stream)return false;
       const done=stream.mode==='reply'?(last?.role==='assistant'&&last.id!==stream.baseLast?last:null):byId.get(stream.targetId)||null,text=done?(typeof done.display==='string'?done.display:done.text)||'':'',by=group?speakerOf(done?.speakerId,done?.speakerName,identityInfo):identityInfo;
@@ -603,7 +605,7 @@
       const meta=row.querySelector(':scope>.message-meta'),mark=meta?.querySelector('.message-edited');
       if(m.edited&&meta&&!mark){meta.append(node('span','message-edited',t.edited));touched=true;}else if(!m.edited&&mark){mark.remove();touched=true;}
       if(showDisplay(row,m,meta,t))touched=true;
-      const rework=fromLibrary&&assistant&&m.id===lastId,running=local.available===true,cap=fromLibrary&&m.role==='assistant'?8000:2000;
+      const rework=assistant&&m.id===lastId&&!/^local-out:(?:notice|command):/.test(m.id),running=local.available===true,cap=fromLibrary&&m.role==='assistant'?8000:2000;
       const stamp=JSON.stringify([lang,m.text,m.display,m.swipeIndex,m.swipeCount,rework,running,cap,canBranch]);
       if(old?.dataset.stamp!==stamp){old?.remove();row.querySelector('.desktop-message-swipes')?.remove();buildTools(row,m,{stamp,rework,running,cap,branch:canBranch});touched=true;}
       if(branching?.id===m.id&&!branching.wrap.isConnected){if(canBranch)openBranching(row,m,false);else closeBranching(false);touched=true;}

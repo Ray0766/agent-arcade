@@ -32,6 +32,25 @@ function controller(t,options={}){
   return {root,clock,store,notifier,state,appCalls,qqCalls,announced,step,rows};
 }
 
+test('disabling a source withholds queued and in-flight notices without blocking other sources',async t=>{
+  const f=controller(t),enabled=new Set(['keep','remove']),sourceEnabled=id=>enabled.has(id);
+  f.notifier.accept(event({source:'remove',title:'Disabled item'}));
+  enabled.delete('remove');
+  assert.equal(f.notifier.tick({sourceEnabled}).reason,'source_disabled');
+  assert.equal(f.appCalls.length,0);
+  f.notifier.accept(event({source:'keep',title:'Enabled item'}));
+  const first=f.notifier.tick({sourceEnabled});await first.promise;
+  assert.equal(f.appCalls.length,1);assert.equal(f.appCalls[0].items[0].title,'Enabled item');
+  const hold=deferred();f.state.app.hold=hold.promise;
+  f.clock.time+=LIMITS.MIN_GAP+LIMITS.WORK_INTERVAL;
+  f.notifier.accept(event({source:'keep',title:'Changed while generating'}));
+  const active=f.notifier.tick({sourceEnabled});assert.equal(active.action,'deliver');
+  enabled.delete('keep');hold.resolve();
+  assert.deepEqual(await active.promise,{app:'cancelled',qq:null});
+  assert.equal(f.rows().filter(row=>row.state==='sent').length,1);
+  assert.equal(f.notifier.status().pending,2);
+});
+
 test('accept takes only well-formed companion events, once, and keeps nothing when notices are off',async t=>{
   const f=controller(t),good=event({title:'Quarterly review',detail:'https://example.test/a',data:{link:'https://example.test/a'}});
   for(const bad of [null,[],'x',{...good,notify:'desktop'},{...good,notify:'none'},{...good,notify:undefined},{...good,id:''},{...good,id:'has space'},{...good,kind:'session.done'},{...good,source:'bad source'},

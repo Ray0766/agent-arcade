@@ -74,17 +74,17 @@ test('regenerate and continue stream against the message they change',async t=>{
   assert.deepEqual(await pending,{outcome:'failed'});assert.equal(o.streaming(),null);assert.equal(o.history().at(-1).text,'SECOND and more');
 });
 
-test('streaming is a setting of the imported-character pipeline; other conversations never ask for deltas',async t=>{
+test('streaming setting applies to library and built-in App conversations; notices never ask for deltas',async t=>{
   const seen=[];const execute=async args=>{seen.push(Object.hasOwn(args,'onDelta'));args.onDelta?.('shown');return {outcome:'reply_ended',text:'REPLY'};};
   const o=await opened(t,{execute,settings:{streaming:false}});
   assert.equal(o.service.stSnapshot().settings.streaming,false);assert.equal((await o.service.localReply('one')).text,'REPLY');assert.deepEqual(seen,[false]);assert.equal(o.streaming(),null);
   // Applies to the next turn without a restart.
   o.service.stConfigure({streaming:true});await o.service.localReply('two');assert.deepEqual(seen,[false,true]);assert.equal(o.streaming(),null);
   assert.throws(()=>o.service.stConfigure({streaming:'yes'}),{code:'invalid_request'});
-  // Source notices and built-in personas are not streamed.
+  // Source notices are not streamed. Built-in App turns use the same switch.
   await o.service.localConversationContext().dispatcher.notify({id:'batch-1',sourceName:'Calendar',total:1,items:[{kind:'calendar.soon',title:'Team meeting',importance:'normal',time:'2026-11-14 09:00',data:{}}]});
   assert.deepEqual(seen,[false,true,false]);
-  o.service.stConfigure({characterId:null});await o.service.localStop();await o.service.localStart();await o.service.localReply('你好');assert.deepEqual(seen,[false,true,false,false]);
+  o.service.stConfigure({characterId:null});await o.service.localStop();await o.service.localStart();await o.service.localReply('你好');assert.deepEqual(seen,[false,true,false,true]);
   assert.equal(o.service.localSnapshot().streaming,null);
   assert.equal(settings.defaults().streaming,true);assert.equal(settings.validate({streaming:false}).streaming,false);assert.throws(()=>settings.validate({streaming:1}),{code:'st_settings_invalid'});
 });

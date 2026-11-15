@@ -58,7 +58,7 @@
   }
   function build(){
     groups.length=0;ui={};
-    const title=el('h2','',tr('对话设定','Conversation settings')),intro=el('p','st-note',tr('只影响用角色库里的角色进行的 App 对话（包括群聊）；内置角色、QQ 和微信对话不受影响。每一组改完后点各自的“保存”。','These settings only affect App conversations with a library character, group chats included. The built-in companion, QQ and WeChat conversations are not affected. Save each group with its own button.')),problem=el('p','st-problem');
+    const title=el('h2','',tr('对话设定','Conversation settings')),intro=el('p','st-note',tr('用于角色库角色的 App 对话（包括群聊）；流式显示开关也适用于内置角色，其余设定仅用于角色库。QQ 和微信对话不受影响。每一组改完后点各自的“保存”。','For App conversations with library characters, including groups. The streaming switch also applies to built-in companions; other settings apply only to library characters. QQ and WeChat conversations are unaffected. Save each group with its own button.')),problem=el('p','st-problem');
     problem.setAttribute('role','status');ui.problem=problem;
 
     // Persona

@@ -158,3 +158,36 @@ test('a damaged source list loads as empty with a problem; tick stays quiet', t 
   assert.deepEqual([registry.snapshot(), ctx.polls], [[], []]);
   registry.close();
 });
+
+test('failed cursor persistence withholds delivery, retries the old cursor and survives restart without replay', async t => {
+  const ctx = setup(t, async (config, cursor) => cursor?.n === 1
+    ? {cursor:{n:1}, events:[]}
+    : {cursor:{n:1}, events:[event(config.id, 1)]});
+  const state = path.join(ctx.dir, 'sources-state.json');
+  fs.mkdirSync(state); // deterministic write failure, including when running as root
+  const registry = ctx.make(); registry.load(); registry.tick(); await flush();
+  assert.deepEqual(ctx.published, []);
+  assert.equal(registry.snapshot()[0].lastError.code, 'state_unavailable');
+  fs.rmdirSync(state);
+  ctx.clock.now += 120000; registry.tick(); await flush();
+  assert.equal(ctx.polls[1].cursor, null);
+  assert.deepEqual(ctx.published, [['t1', 'a', 'both']]);
+  assert.equal(registry.snapshot()[0].lastError, null);
+  registry.close();
+  const restarted = ctx.make(); restarted.load(); restarted.tick(); await flush();
+  assert.deepEqual(ctx.polls[2].cursor, {n:1});
+  assert.equal(ctx.published.length, 1);
+  restarted.close();
+});
+
+test('an oversized cursor cannot publish events or erase the saved progress', async t => {
+  let oversized = false;
+  const ctx = setup(t, async () => ({cursor:oversized ? {text:'x'.repeat(1024*1024)} : {n:1}, events:oversized ? [event('a', 2)] : []}));
+  const registry = ctx.make(); registry.load(); registry.tick(); await flush();
+  const state = path.join(ctx.dir, 'sources-state.json'), saved = fs.readFileSync(state, 'utf8');
+  oversized = true; ctx.clock.now += 60000; registry.tick(); await flush();
+  assert.equal(registry.snapshot()[0].lastError.code, 'invalid_result');
+  assert.deepEqual(ctx.published, []);
+  assert.equal(fs.readFileSync(state, 'utf8'), saved);
+  registry.close();
+});

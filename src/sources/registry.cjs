@@ -89,11 +89,15 @@ class SourceRegistry {
     let cursorJson = null;
     try { cursorJson = result.cursor === undefined || result.cursor === null ? null : JSON.stringify(result.cursor); } catch { /* unserializable */ }
     if (cursorJson !== null && Buffer.byteLength(cursorJson) > MAX_CURSOR_BYTES) cursorJson = null;
-    const changed = cursorJson !== entry.cursorJson;
+    if (result.cursor != null && cursorJson === null) return this.#record(entry, {code:'invalid_result', message:'The source returned an invalid or oversized cursor.'}, now);
+    const changed = cursorJson !== entry.cursorJson, previousCursor = entry.cursor, previousJson = entry.cursorJson;
     entry.cursor = cursorJson === null ? null : JSON.parse(cursorJson); entry.cursorJson = cursorJson;
     // Persist the cursor before delivery: a crash may lose a notification but
     // never repeats one.
-    if (changed) this.#saveState();
+    if (changed && !this.#saveState()) {
+      entry.cursor = previousCursor; entry.cursorJson = previousJson;
+      return this.#record(entry, {code:'state_unavailable', message:'Reminder progress could not be saved. Check the data folder and retry.'}, now);
+    }
     for (const event of result.events.slice(0, MAX_EVENTS_PER_POLL)) {
       if (!event || typeof event !== 'object' || typeof event.id !== 'string') continue;
       entry.lastEventAt = now;
@@ -159,9 +163,10 @@ class SourceRegistry {
     const cursors = {};
     for (const [id, entry] of this.#entries) if (entry.cursorJson !== null) cursors[id] = {sig:entry.sig, cursor:entry.cursor};
     const json = JSON.stringify(cursors);
-    if (json === this.#savedState) return;
-    // A failed state write only costs a re-baseline after restart.
-    try { atomicJSON(this.#stateFile, {version:STATE_VERSION, cursors}); this.#savedState = json; } catch { /* keep running from memory */ }
+    if (json === this.#savedState) return true;
+    // Delivery must stop if durable progress cannot be recorded, otherwise a
+    // restart can repeat an already delivered desktop notification.
+    try { atomicJSON(this.#stateFile, {version:STATE_VERSION, cursors}); this.#savedState = json; return true; } catch { return false; }
   }
 }
 
