@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "date": "2026-11-15",
+  "validatedPreparationCommit": "78ce14112e76c60c3f52cef898f80c15c6229227",
+  "productBase": "3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4",
+  "preparation": {
+    "codeTreeSha256": "dd3ac18e5e25c481490e03bc20497d7b2e3507584461f4e11aa326735f090996",
+    "packageSha256": "2e4415bb99049309958f7387b03e367149b96ecf8280d86a8a0a056dabc2a755",
+    "lockSha256": "df5a84bf97d4413f030fde9a27ea1443c82c43cde220bd928e3f49cdeb15f6a6",
+    "fullTests": {
+      "command": "npm test",
+      "tests": 4963,
+      "passed": 4246,
+      "failed": 0,
+      "skipped": 717,
+      "outputSha256": "5d7e5731e224063c4c8c38e17f80b932115d4d9e658d613b09f6064b2531f404"
+    },
+    "syntax": {
+      "command": "node scripts/check.cjs",
+      "output": "Syntax valid: 943 JavaScript files"
+    },
+    "releaseGuard": {
+      "passed": 3,
+      "failed": 0
+    },
+    "firstRunDocs": {
+      "links": 271,
+      "anchors": 34,
+      "commandSets": 4
+    },
+    "publicSourceClone": {
+      "head": "3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4",
+      "startedApp": false
+    }
+  },
+  "frozenMaintenance": {
+    "codeTreeSha256": "35cabe89d278abbafbd77157319e9356f662b3b3c9864daf4828dc1109f6e41e",
+    "focusedTests": {
+      "command": "npm test -- test/update-backup.test.cjs test/update-identity.test.cjs test/credential-recovery.test.cjs test/credential-scope-ipc.test.cjs test/app-persona-selection.test.cjs test/credential-entrypoints.test.cjs",
+      "passed": 51,
+      "failed": 0,
+      "outputSha256": "5c9ad4fae35c1b53e4976cdcc814c3b316b747f76e4efcd7b07e4579367a3c12",
+      "testInputs": [
+        {
+          "path": "test/update-backup.test.cjs",
+          "sha256": "d8dacae7be6b3a87f9c61ddbd4276c754916388b4d933d0a284adf3bed6e9628"
+        },
+        {
+          "path": "test/update-identity.test.cjs",
+          "sha256": "afad6d28bae4aed17368ada534ea55e6d57fc728ff654244352c57158dd75463"
+        },
+        {
+          "path": "test/credential-recovery.test.cjs",
+          "sha256": "17051fd6f9190c8e335048743bff7c9cb850e043e3aa3a68406036b14575a8d4"
+        },
+        {
+          "path": "test/credential-scope-ipc.test.cjs",
+          "sha256": "8ce07bfc08c776cf5b326420592298c8dfa565a94e6a218fe9ac6bc767b92799"
+        },
+        {
+          "path": "test/app-persona-selection.test.cjs",
+          "sha256": "4e482b3d5ad33f642ae61bb023eaeb889e1d125e116a31311fa20dd77f88aa2b"
+        },
+        {
+          "path": "test/credential-entrypoints.test.cjs",
+          "sha256": "347327cad8510d4becd0c054213f365c6979d0cdc241df0e22c5b4a5624945ec"
+        }
+      ]
+    },
+    "cases": {
+      "cases": 20,
+      "requiredCases": 19,
+      "requiredPass": 19,
+      "requiredFailures": 0,
+      "exploratoryCases": 1,
+      "exploratoryPass": 0,
+      "exploratoryGaps": 1,
+      "errors": 0
+    }
+  },
+  "fixtureSha256": "0affcaaa78ba152c6493c3162060f5c091cef9eb0a0f02cbada532ea77770a58",
+  "boundaries": {
+    "realProfiles": false,
+    "realCredentials": false,
+    "realModels": false,
+    "packageRebuilt": false,
+    "pushed": false,
+    "published": false,
+    "originalCheckoutEdited": false
+  },
+  "preservation": {
+    "originalBranchPreserved": true,
+    "originalHeadPreserved": true,
+    "dirtyPaths": 75,
+    "allOriginalPathHashesUnchanged": true,
+    "originalIndexHasNoStagedChanges": true,
+    "productPathsEditedInOriginal": []
+  },
+  "closingDocumentationChecks": {
+    "command": "npm run check:first-run",
+    "links": 281,
+    "anchors": 34,
+    "commandSets": 4,
+    "productSourceChangedSinceValidatedCommit": false
+  }
+}

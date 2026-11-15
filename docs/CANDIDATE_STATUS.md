@@ -58,6 +58,16 @@ Private receipts, profile paths and transcripts are deliberately not public
 links. [VALIDATION](VALIDATION.md) supplies the broader evidence boundaries.
 No live profile, credentials, account or running App was opened by this execution.
 
+## New focused checks after the static capture
+
+The same frozen source passed **51/51** focused update-backup, identity,
+credential-recovery/scope and App-persona checks in this execution. Its fixed
+companion cases pass **19/19 required**, retaining one exploratory synonym gap;
+see [COMPANION_CASES](COMPANION_CASES.md) and the
+[new verification receipt](evidence/adoption-verification-20261115.json).
+The preparation branch's separate full compatibility run does not integrate
+that source or turn its private candidate into a public release.
+
 ## Before a new candidate or trial
 
 1. Review and integrate the original repairs into a committed source identity.

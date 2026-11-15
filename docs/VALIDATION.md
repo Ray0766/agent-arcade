@@ -1,5 +1,37 @@
 # Validation
 
+## Adoption-readiness execution — 2026-11-15
+
+This execution used an independent worktree and did not open the owner's App,
+profile or credentials. [The ordered execution report](ADOPTION_EXECUTION_20261115.md)
+and [sanitized verification receipt](evidence/adoption-verification-20261115.json)
+separate these **new** checks from the imported maintenance observations below.
+
+- At preparation commit `78ce14112e76c60c3f52cef898f80c15c6229227`, `npm test`
+  ran 4963 tests: **4246 passed, 717 platform skips, zero failures**. Syntax
+  covered 943 JavaScript files. The product `src/` tree is unchanged from
+  `3edf1ce`; this is compatibility evidence, not integration of the 75 repairs.
+- [Twenty fixed companion cases](COMPANION_CASES.md) measure storage, context
+  inclusion, notice controls and recovery. Committed product source passes
+  **16/19 required** cases, failing M08/M10/N04; frozen maintenance source passes
+  **19/19 required**. Both miss the separately declared M09 Chinese synonym
+  probe. Canned provider output is not model quality or adoption evidence.
+- The frozen repair snapshot passed 51 focused credential, update-backup,
+  identity, scope and role-selection checks; this does not rerun or upgrade the
+  earlier 5000-test record. Its source/package association is in
+  [CANDIDATE_STATUS](CANDIDATE_STATUS.md).
+- [Build-chain checks](BUILD_CHAIN_STATUS.md) show the affected minimatch
+  consumers at the patched version, three real matcher-consumer tests passed,
+  and full/production npm audit reported zero advisories after a clean install.
+  No native App was rebuilt; Windows/Intel/native packaging is not newly accepted.
+- The exact public branch/commit clone was repeated in a private temporary
+  directory and read back `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`.
+  `npm start` was deliberately not run against default user data.
+
+The [human acceptance and first-user kit](ADOPTION_TRIAL_KIT.md) remains a draft:
+no real key/model call, installation trial, invitation, telemetry, seven-day
+return or external publication occurred. Those outcomes need owner arrangement.
+
 ## Public first-use evidence — 2026-11-14
 
 This is the tracked public summary for the [README](../README.md) and

@@ -98,7 +98,7 @@ awarded zero-duplicate or successful-recovery scores.
 Reports include the fixture and harness hashes, hashes of loaded production source files,
 source Git HEAD when available, per-case checks, required/forbidden marker
 presence, prompt lengths and hashes, and separately labelled reference results.
-They omit raw production prompts and credential values. Differences can identify
+They omit raw production prompts and credential values. Prompt hashes identify the recorded observation; generated temporary scope, fact and library IDs may differ on another run. Reproduction compares the fixed assertions, context markers and source/fixture identities rather than requiring byte-identical random IDs. Differences can identify
 an old cache or disabled-source defect, but a score increase alone is not a
 claim of better model answers, semantic memory or user retention.
 

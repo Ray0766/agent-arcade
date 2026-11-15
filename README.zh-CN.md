@@ -212,3 +212,5 @@ Agent Arcade 以 **GNU AGPL-3.0** 完全开源（[LICENSE](LICENSE)），不设�
 后续开发请结合 [AGENTS.md](AGENTS.md)、[项目质量 brief](docs/QUALITY_BRIEF.md) 与 [贡献规范](CONTRIBUTING.md)：核实技术选择与参考作品，验证差异化价值，在现有架构和原创美术基础上完成实现与验收。
 
 本次工作台改版的获奖作品、官网与 HCI 论文参考见[设计记录](docs/UI_REFERENCES.md)；新技术的收益、兼容性及采用边界见[技术调研](docs/TECH_RADAR.md)。调研候选不表示已经实现。
+
+维护者准备材料：[带标签演示、集中真人验收与首批试用回访（未发布草稿）](docs/ADOPTION_TRIAL_KIT.md)。材料准备不代表试用或发布已经开始。

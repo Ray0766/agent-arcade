@@ -238,3 +238,5 @@ Agent Arcade is fully open source under the **GNU AGPL-3.0** ([LICENSE](LICENSE)
 ## Agent guidance
 
 Before contributing, read [AGENTS.md](AGENTS.md) and the [project quality brief](docs/QUALITY_BRIEF.md) alongside CONTRIBUTING.md. They define research, differentiation, design references, and evidence required for future changes while preserving the current architecture and original artwork.
+
+Maintainer preparation: [labelled demo, human acceptance and first-user follow-up (unpublished draft)](docs/ADOPTION_TRIAL_KIT.md). No trial or release is implied.
