@@ -1,6 +1,6 @@
 {
   "name": "agent-arcade",
-  "version": "0.4.0-preview.4",
+  "version": "0.4.0-preview.5",
   "description": "One desktop home for AI companions, social accounts and agent tasks.",
   "main": "src/bootstrap.cjs",
   "private": true,
@@ -98,8 +98,14 @@
       "category": "public.app-category.developer-tools",
       "icon": "src/assets/app-mac.png",
       "identity": "-",
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "additionalArguments": [
+        "--options",
+        "runtime,hard,kill"
+      ]
     },
     "linux": {
       "target": [

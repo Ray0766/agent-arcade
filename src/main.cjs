@@ -1,5 +1,6 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage, clipboard, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage:nativeSafeStorage, clipboard, shell, nativeTheme } = require('electron');
+const safeStorage=require('./core/application-credential-vault.cjs').applicationCredentialVault({app,nativeVault:nativeSafeStorage});
 require('./core/app-identity.cjs').configureAppIdentity(app);
 const appVersion = require('../package.json').version;
 const {qqGuide}=require('./bot/qq-setup.cjs');

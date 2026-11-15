@@ -12,13 +12,17 @@ function input(stream){return new Promise((resolve,reject)=>{
 // Windows GUI Electron can expose an EOF-only process.stdin even with an
 // inherited pipe. Read its actual fd 0; do not substitute a socket or a file.
 async function run({electron=require('electron'),stdin=process.platform==='win32'?fs.createReadStream(null,{fd:0,autoClose:false}):process.stdin,stdout=process.stdout}={}){
-  const {app,safeStorage}=electron;let code=0,response;
+  const {app}=electron,safeStorage=require('../core/application-credential-vault.cjs').applicationCredentialVault({app,nativeVault:electron.safeStorage});let code=0,response;
   try{
     const incoming=input(stdin);
     // Install listeners before acknowledging readiness. The parent must keep
     // stdin open until this frame arrives, especially on packaged Windows apps.
     stdout.write(JSON.stringify({version:1,status:'ready'})+'\n');
     const request=await incoming;
+    // The fixed Mac broker reads legacy vaults in place. Do not expose a
+    // caller-supplied ciphertext/public-key oracle through this older CLI.
+    // Windows migration and source fixtures keep their existing protocol.
+    if(process.platform==='darwin'&&app.isPackaged===true)throw new VaultMigrationError('INVALID_MIGRATION');
     if(!samePath(directory(app.getPath('userData')),request.sourceProfile)||!samePath(directory(app.getPath('sessionData')),request.sourceProfile))throw new VaultMigrationError('PROFILE_MISMATCH');
     if(!app.requestSingleInstanceLock())throw new VaultMigrationError('PROFILE_IN_USE');
     await app.whenReady();

@@ -4,8 +4,14 @@
 if(process.argv.includes('--arcade-vault-migration-worker')){
   module.exports=require('./bot/vault-migration-worker.cjs').run();
 }else{
-  require('./core/desktop-stdio.cjs').guardDesktopOutput();
+  const credentialCommand=process.argv.includes('--arcade-credential-authorize-worker')||process.argv.includes('--arcade-credential-self-test');
+  if(!credentialCommand)require('./core/desktop-stdio.cjs').guardDesktopOutput();
   const {app,BrowserWindow,dialog}=require('electron');
+  if(app.isPackaged&&process.platform==='darwin'&&!require('./core/credential-startup-policy.cjs').credentialStartupAllowed(process.argv)){
+    app.exit(1);
+  }else if(credentialCommand){
+    module.exports=require('./core/mac-credential-command.cjs').runCredentialCommand({mode:process.argv.includes('--arcade-credential-authorize-worker')?'authorize':'self-test'});
+  }else{
   require('./core/app-identity.cjs').configureAppIdentity(app);
   const {acquireSingleInstance}=require('./core/single-instance.cjs');
   let guard,pendingRaise=false,quitting=false;
@@ -36,4 +42,5 @@ if(process.argv.includes('--arcade-vault-migration-worker')){
       :'无法启动 Agent Arcade 的唯一窗口。请正常关闭旧版后重试。');
     app.exit(1);
   });
+}
 }

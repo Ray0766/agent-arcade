@@ -137,16 +137,21 @@ function unlockLocalSigning(profile,{exec=execFileSync}={}){
     exec('/usr/bin/security',['unlock-keychain','-p',credentials.keychainPassword,profile.keychainFile],{encoding:'utf8',timeout:15000,maxBuffer:16384,stdio:['ignore','pipe','pipe']});
   }catch{throw signingError('Could not unlock the dedicated local signing Keychain. Packaging stopped.');}
 }
-function runMacBuild(argv,env=process.env,{inspection,exec=execFileSync,spawn=spawnSync,builder=()=>require.resolve('electron-builder/cli.js')}={}){
+function runMacBuild(argv,env=process.env,{inspection,exec=execFileSync,spawn=spawnSync,builder=()=>require.resolve('electron-builder/cli.js'),credentialArgs}={}){
   const plan=prepareMacBuild(argv,env,inspection,{beforeIdentityInspection:profile=>unlockLocalSigning(profile,{exec})});
   if(plan.checkOnly)return {plan,status:plan.ready?0:1};
+  const extra=credentialArgs?credentialArgs(plan.profile):[];
   const builderFile=builder();
-  const result=spawn(process.execPath,[builderFile,...plan.args],{stdio:'inherit',env:buildEnvironment(env,plan),shell:false});
+  const result=spawn(process.execPath,[builderFile,...plan.args,...extra],{stdio:'inherit',env:buildEnvironment(env,plan),shell:false});
   return {plan,status:result.error?1:result.status??1};
 }
 if(require.main===module){
   try{
-    const {plan,status}=runMacBuild(process.argv.slice(2));
+    const {plan,status}=runMacBuild(process.argv.slice(2),process.env,{credentialArgs:profile=>{
+      if(!profile)throw Error('Mac credential packaging requires a pinned local signing profile and its fixed credential component.');
+      if(process.argv.slice(2).some(value=>/(?:electronFuses|mac\.hardenedRuntime|mac\.additionalArguments|extraMetadata\.macCredentialBroker)/.test(value)))throw Error('The local credential runtime policy cannot be overridden.');
+      return require('./mac-credential-build.cjs').brokerBuildArguments({identitySha1:profile.identitySha1});
+    }});
     if(plan.checkOnly)console.log(JSON.stringify(plan));
     process.exitCode=status;
   }catch(error){console.error(error.message);process.exitCode=1;}
