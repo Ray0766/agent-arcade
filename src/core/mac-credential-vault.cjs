@@ -3,7 +3,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),cryp
 const {Worker}=require('node:worker_threads');
 const MAX_BYTES=512*1024,HEADER_BYTES=16,MAX_WAIT_MS=10000;
 const SERVICE='agent-arcade Safe Storage',ACCOUNT='agent-arcade',IDENTIFIER='io.github.agentarcade.credentials.v1';
-const CODES=new Set(['INVALID_PROFILE','UNSAFE_HELPER','HELPER_CHANGED','IDENTITY_MISMATCH','INVALID_REQUEST','INVALID_RESPONSE','HELPER_FAILED','HELPER_TIMEOUT','UNAVAILABLE','KEYCHAIN_DENIED','KEYCHAIN_LOCKED','KEYCHAIN_MISSING','KEYCHAIN_FAILED','CRYPTO_FAILED','INVALID_CIPHERTEXT','INTERACTION_REQUIRED']);
+const CODES=new Set(['INVALID_PROFILE','UNSAFE_HELPER','HELPER_CHANGED','IDENTITY_MISMATCH','CALLER_REJECTED','INVALID_REQUEST','INVALID_RESPONSE','HELPER_FAILED','HELPER_TIMEOUT','UNAVAILABLE','KEYCHAIN_DENIED','KEYCHAIN_LOCKED','KEYCHAIN_MISSING','KEYCHAIN_FAILED','CRYPTO_FAILED','INVALID_CIPHERTEXT','INTERACTION_REQUIRED']);
 class MacCredentialError extends Error{constructor(code){const safe=CODES.has(code)?code:'HELPER_FAILED';super(`Mac credential helper failed (${safe}).`);this.name='MacCredentialError';this.code=safe;}}
 function fail(code){throw new MacCredentialError(code);}
 function identity(value){if(typeof value!=='string'||!/^[a-fA-F0-9]{40}$/.test(value))fail('INVALID_PROFILE');return value.toUpperCase();}

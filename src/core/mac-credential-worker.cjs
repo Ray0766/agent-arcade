@@ -61,7 +61,10 @@ async function runHelperRequest(rawProfile,rawRequest,options={}){
     while((newline=buffer.indexOf(10))!==-1){
      let frame;try{frame=JSON.parse(buffer.subarray(0,newline).toString('utf8'));}catch{stop('INVALID_RESPONSE');return;}
      const tail=Buffer.from(buffer.subarray(newline+1));buffer.fill(0);buffer=tail;frames++;
-     if(frames===1){void verifyReady(frame);}
+     if(frames===1){
+      if(frame?.version===1&&frame.status==='error'&&frame.code==='unauthorized'&&Object.keys(frame).sort().join(',')==='code,status,version'){stop('CALLER_REJECTED');return;}
+      void verifyReady(frame);
+     }
      else if(frames===2&&verified){
       try{if(frame?.status==='error'&&Object.keys(frame).sort().join(',')==='code,status,version'&&Object.hasOwn(NATIVE_ERRORS,frame.code))frame={version:frame.version,status:'error',code:NATIVE_ERRORS[frame.code]};response=validateResult(frame,request.operation);}catch{stop('INVALID_RESPONSE');return;}
      }else{stop('INVALID_RESPONSE');return;}
