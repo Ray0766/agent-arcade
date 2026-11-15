@@ -36,7 +36,7 @@ const {isControlText}=require('./commands.cjs');
 function pause(ms,signal){return new Promise(resolve=>{if(signal.aborted)return resolve();const done=()=>{clearTimeout(timer);signal.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,ms);signal.addEventListener('abort',done,{once:true});});}
 const API_KEY_SLOT={api:'key',native:'key',deepseek:'deepseekKey',gpt:'openaiKey',gemini:'geminiKey',doubao:'doubaoKey'};
 const API_MODELS={gpt:{default:DEFAULT_GPT_MODEL,models:GPT_MODELS},gemini:{default:DEFAULT_GEMINI_MODEL,models:GEMINI_MODELS},doubao:{default:DEFAULT_DOUBAO_MODEL,models:DOUBAO_MODELS}};
-const LOCKED_CREDENTIALS='Saved credentials are locked in this app profile. The existing vault was preserved. Restore access or explicitly forget these credentials before replacing them.';
+const LOCKED_CREDENTIALS='Saved credentials are locked in this app profile. The existing vault was preserved. Restore OS access and retry. If recovery is impossible, explicitly back up and reset this profile’s credentials; conversations remain separate.';
 function qqConnectionProblem(code,{retrying=false,exhausted=false}={}){
   if(code==='account_mismatch')return '桥接当前登录的 QQ 与这位搭档绑定的账号不一致，已停止连接。请核对 QQ 账号和桥接地址，再点击“连接”。';
   if(code==='login_required')return 'QQ 报告当前登录已失效。请本人在 NapCat 完成重新登录，再点击“连接”；应用不会重启或退出 QQ。';
@@ -248,12 +248,88 @@ class BotService {
   // Cheap and non-throwing; call from the 1-second poll for the selected
   // service only. options.onAppMessage({service,at,count}) runs after a notice
   // was stored in the App conversation.
-  companionNoticeTick({onAppMessage}={}){
-    try{return this.companionNotifier().tick({onAppMessage:typeof onAppMessage==='function'?info=>onAppMessage({...info,service:this}):undefined});}
+  companionNoticeTick({onAppMessage,sourceEnabled}={}){
+    try{return this.companionNotifier().tick({sourceEnabled,onAppMessage:typeof onAppMessage==='function'?info=>onAppMessage({...info,service:this}):undefined});}
     catch{return {action:'wait',reason:'unavailable'};}
   }
   companionNoticeStatus(){try{return this.companionNotifier().status();}catch{return {pending:0,lastDeliveredAt:null,lastProblem:'unavailable'};}}
   lockCredentials(){this.retireLocal();this.secret={};this.credentialState='locked';this.credentialProblem=LOCKED_CREDENTIALS;}
+  // Explicit recovery only. A failed OS decrypt never replaces the encrypted
+  // file or clears the separately stored conversations. macOS may cache a
+  // denied Keychain lookup until restart, so a retry is not a bypass.
+  async retryCredentials({isCurrent=()=>true}={}){
+    const fail=code=>({recovered:false,code});
+    if(typeof isCurrent!=='function')return fail('invalid_request');
+    if(this.forgetting||this.credentialRetry)return fail('credentials_busy');
+    if(this.status!=='disconnected')return fail('credentials_in_use');
+    if(this.credentialState!=='locked')return fail('credentials_not_locked');
+    const generation=this.generation,configuration=JSON.stringify(this.config),fingerprint=this.vaultFingerprint;
+    const current=()=>isCurrent()&&this.generation===generation&&JSON.stringify(this.config)===configuration&&this.status==='disconnected'&&!this.forgetting&&this.credentialState==='locked';
+    this.credentialRetry=true;
+    try{
+      try{await this.localStop();}catch{return fail('stop_unconfirmed');}
+      if(!current())return fail('credential_scope_changed');
+      let bytes,stored;
+      try{
+        const stat=fs.lstatSync(this.file);
+        if(!stat.isFile()||stat.isSymbolicLink())return fail('vault_invalid');
+        bytes=vaultBytes(this.file);
+        if(!fingerprint||vaultFingerprint(bytes)!==fingerprint)return fail('vault_changed');
+        stored=JSON.parse(bytes.toString('utf8'));
+        if(!stored||typeof stored.data!=='string'||!stored.data||!/^[A-Za-z0-9+/]+={0,2}$/.test(stored.data))return fail('vault_invalid');
+      }catch{return fail('vault_invalid');}
+      let text,secret;
+      try{
+        if(!this.vault?.isEncryptionAvailable())throw Error('unavailable');
+        text=this.vault.decryptString(Buffer.from(stored.data,'base64'));
+      }catch{return fail(process.platform==='darwin'?'keychain_restart_required':'credential_open_failed');}
+      try{secret=JSON.parse(text);if(!secret||typeof secret!=='object'||Array.isArray(secret))return fail('vault_invalid');}catch{return fail('vault_invalid');}finally{text=null;}
+      if(!current())return fail('credential_scope_changed');
+      try{if(vaultFingerprint(vaultBytes(this.file))!==fingerprint)return fail('vault_changed');}catch{return fail('vault_changed');}
+      this.secret=secret;this.credentialState='ready';this.credentialProblem='';this.changed();
+      return {recovered:true};
+    }finally{this.credentialRetry=false;}
+  }
+  prepareCredentialReset(){
+    if(this.forgetting||this.credentialRetry||this.status!=='disconnected'||this.credentialState!=='locked')return {prepared:false,code:'credentials_in_use'};
+    let bytes;try{const stat=fs.lstatSync(this.file);if(!stat.isFile()||stat.isSymbolicLink())throw Error();bytes=vaultBytes(this.file);}catch{return {prepared:false,code:'vault_invalid'};}
+    if(!this.vaultFingerprint||vaultFingerprint(bytes)!==this.vaultFingerprint)return {prepared:false,code:'vault_changed'};
+    const ticket=randomUUID();
+    this.credentialReset={ticket,fingerprint:this.vaultFingerprint,generation:this.generation,configuration:JSON.stringify(this.config),expires:Date.now()+60000};
+    return {prepared:true,ticket,allProfileCredentials:true,conversationsRetained:true};
+  }
+  async resetCredentials({ticket,isCurrent=()=>true}={}){
+    const intent=this.credentialReset;this.credentialReset=null;
+    const fail=code=>({reset:false,code});
+    if(typeof isCurrent!=='function')return fail('invalid_request');
+    if(!intent||typeof ticket!=='string'||intent.ticket!==ticket||Date.now()>intent.expires)return fail('credential_reset_expired');
+    if(this.forgetting||this.credentialRetry)return fail('credentials_busy');
+    const current=()=>isCurrent()&&this.status==='disconnected'&&this.credentialState==='locked'&&!this.forgetting&&this.generation===intent.generation&&JSON.stringify(this.config)===intent.configuration;
+    if(!current())return fail('credential_scope_changed');
+    this.credentialRetry=true;
+    try{
+      try{await this.localStop();}catch{return fail('stop_unconfirmed');}
+      if(!current())return fail('credential_scope_changed');
+      let original;try{const stat=fs.lstatSync(this.file);if(!stat.isFile()||stat.isSymbolicLink())throw Error();original=vaultBytes(this.file);if(vaultFingerprint(original)!==intent.fingerprint)return fail('vault_changed');}catch{return fail('vault_invalid');}
+      const folder=path.join(path.dirname(this.file),'credential-recovery');
+      let backup;
+      try{
+        if(fs.existsSync(folder)){const stat=fs.lstatSync(folder);if(!stat.isDirectory()||stat.isSymbolicLink())throw Error();}
+        else fs.mkdirSync(folder,{mode:0o700});
+        fs.chmodSync(folder,0o700);
+        backup=path.join(folder,`bot-vault-${randomUUID()}.json`);
+        const fd=fs.openSync(backup,'wx',0o600);try{fs.writeFileSync(fd,original);fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
+        if(!fs.readFileSync(backup).equals(original))throw Error();
+        if(process.platform!=='win32'){const dir=fs.openSync(folder,'r');try{fs.fsyncSync(dir);}finally{fs.closeSync(dir);}}
+      }catch{return fail('credential_backup_failed');}
+      // The original cannot be removed until a verified durable copy exists.
+      // Keep that copy even if a later scope/file check refuses the reset.
+      if(!current())return fail('credential_scope_changed');
+      try{if(vaultFingerprint(vaultBytes(this.file))!==intent.fingerprint)return fail('vault_changed');fs.unlinkSync(this.file);}catch{return fail('credential_reset_failed');}
+      this.secret={};this.vaultFingerprint=null;this.credentialState='empty';this.credentialProblem='';this.changed();
+      return {reset:true,allProfileCredentials:true,conversationsRetained:true,encryptedBackupKept:true};
+    }finally{this.credentialRetry=false;}
+  }
   assertNotForgetting(){if(this.forgetting)throw Object.assign(Error('Credentials are being cleared. Wait for that operation to finish. (credentials_busy)'),{code:'credentials_busy'});}
   assertCredentialsAvailable(){this.assertNotForgetting();if(this.credentialState==='locked')throw Object.assign(Error(LOCKED_CREDENTIALS),{code:'credentials_locked'});}
   persist(next=this.secret,onPrepared){

@@ -64,7 +64,7 @@
     const bar=switcher();if(!bar)return;
     companion.hidden=bar.hidden;
     const selected=bar.querySelector('.companion-tab[aria-pressed=true]'),image=selected?.querySelector('img')?.getAttribute('src')||'';
-    const title=selected?.querySelector('strong')?.textContent||context.tr('搭档','Companion'),state=selected?.querySelector('small')?.textContent||'';
+    const title=context.target?.name||selected?.querySelector('strong')?.textContent||context.tr('搭档','Companion'),state=context.tr('切换搭档 / 内置角色','Switch companion / role');
     if(chipName.textContent!==title)chipName.textContent=title;if(chipState.textContent!==state)chipState.textContent=state;
     if(image){if(chipImage.getAttribute('src')!==image)chipImage.src=image;}else chipImage.removeAttribute('src');
     const text=context.tr(`当前搭档：${title}。切换或管理搭档`,`Current companion: ${title}. Switch or manage companions`);if(chip.getAttribute('aria-label')!==text){chip.setAttribute('aria-label',text);chip.title=context.tr('切换或管理搭档','Switch or manage companions');}

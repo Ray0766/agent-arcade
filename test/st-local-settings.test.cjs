@@ -7,8 +7,8 @@ const ID='0123456789abcdef',OTHER='fedcba9876543210';
 
 test('defaults are valid, complete and stable under validation',()=>{
   const base=settings.defaults();
-  assert.deepEqual(Object.keys(base),['version','characterId','greeting','user','lorebookIds','useCharacterBook','authorsNote','preset','sampling','contextChars','worldInfo','regex','streaming','branchId','groupId','wikiAccess']);
-  assert.deepEqual({...base,preset:null},{version:1,characterId:null,greeting:0,user:{name:'你',description:''},lorebookIds:[],useCharacterBook:true,authorsNote:{text:'',depth:4,role:'system'},preset:null,
+  assert.deepEqual(Object.keys(base),['version','characterId','builtinPersonaId','greeting','user','lorebookIds','useCharacterBook','authorsNote','preset','sampling','contextChars','worldInfo','regex','streaming','branchId','groupId','wikiAccess']);
+  assert.deepEqual({...base,preset:null},{version:1,characterId:null,builtinPersonaId:null,greeting:0,user:{name:'你',description:''},lorebookIds:[],useCharacterBook:true,authorsNote:{text:'',depth:4,role:'system'},preset:null,
     sampling:{temperature:null,topP:null,maxTokens:null},contextChars:24000,worldInfo:{budgetChars:6000,scanDepth:2,recursive:true},regex:{enabled:true},streaming:true,branchId:null,groupId:null,wikiAccess:{}});
   assert.equal(base.preset.mainPrompt,DEFAULT_PRESET.mainPrompt);assert.deepEqual(base.preset.order,[...DEFAULT_PRESET.order]);assert.equal(base.preset.sections.enhanceDefinitions.enabled,false);
   assert.deepEqual(settings.validate(base),base);assert.deepEqual(settings.validate({}),base);

@@ -8,7 +8,7 @@ html:root[data-layout="minimal"]{
   --fs-xs:12px;--fs-sm:13px;--fs-md:14px;--fs-lg:16px;--fs-xl:20px;--fs-2xl:24px;
   --r-sm:6px;--r-md:6px;--r-lg:8px;
   --elev-1:none;--elev-2:0 12px 32px rgb(24 16 20/.14);
-  --bar-h:48px;--min-rail:0px;--min-col:760px;--min-pad:var(--sp-5);--min-switcher:36px;
+  --bar-h:48px;--min-rail:0px;--min-col:760px;--min-pad:var(--sp-5);--min-switcher:54px;
   --min-mono:ui-monospace,"SF Mono",Consolas,"Liberation Mono",monospace;
   font-size:14px;
 }

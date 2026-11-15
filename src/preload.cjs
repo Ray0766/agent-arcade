@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('arcade', platformBridge({
   accountConnect: id => ipcRenderer.invoke('arcade:accountConnect',id),
   accountDisconnect: id => ipcRenderer.invoke('arcade:accountDisconnect',id),
   accountMigrateCredentials: id => ipcRenderer.invoke('arcade:accountMigrateCredentials',id),
+  accountRetryCredentials: value => ipcRenderer.invoke('arcade:accountRetryCredentials',value),
+  accountResetCredentials: value => ipcRenderer.invoke('arcade:accountResetCredentials',value),
   qqRuntimeRefresh: () => ipcRenderer.invoke('arcade:qqRuntimeRefresh'),
   qqComponents: value => ipcRenderer.invoke('arcade:qqComponents',value),
   qqFirstSetup: value => ipcRenderer.invoke('arcade:qqFirstSetup',value),

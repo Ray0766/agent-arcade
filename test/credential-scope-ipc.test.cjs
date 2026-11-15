@@ -17,7 +17,7 @@ function fixture(t){
   const context={__dirname:path.dirname(main),module:{exports:{}},process:{argv:[],env:{}},URL,AbortController,setInterval,clearInterval,
     require:id=>id==='electron'?{app:{requestSingleInstanceLock:()=>false,quit(){},on(){}},ipcMain:{handle:(name,fn)=>handlers.set(name,fn)}}:id==='./core/files.cjs'?{readJSON:(_file,fallback)=>fallback,atomicJSON(){},drainInbox:()=>[]}:fromMain(id)};
   const line=name=>{const value=source.split('\n').find(v=>v.trimStart().startsWith(`register('${name}',`));assert(value,name);return value;};
-  vm.runInNewContext(source+`\nmodule.exports={setup:(m,c)=>{accounts=m;bot=m.current();win={webContents:c};publish=()=>{};fullSnapshot=()=>({selectedId:accounts.selectedId});},select:id=>{bot=accounts.select(id);},setBot:s=>{bot=s;},holdClose:p=>{closeVoice=()=>p;},bind:()=>{${['botConfigure','botForget','accountSelect'].map(line).join('\n')}}};`,context,{filename:main});
+  vm.runInNewContext(source+`\nmodule.exports={setup:(m,c)=>{accounts=m;bot=m.current();win={webContents:c};publish=()=>{};fullSnapshot=()=>({selectedId:accounts.selectedId});},select:id=>{bot=accounts.select(id);},setBot:s=>{bot=s;},holdClose:p=>{closeVoice=()=>p;},bind:()=>{${['botConfigure','botForget','accountSelect','accountRetryCredentials','accountResetCredentials'].map(line).join('\n')}}};`,context,{filename:main});
   const api=context.module.exports;api.setup(manager,contents);api.bind();const event={sender:contents,senderFrame:contents.mainFrame};
   t.after(async()=>{await manager.close();assert(root.startsWith(fs.realpathSync(os.tmpdir())+path.sep));fs.rmSync(root,{recursive:true,force:true});});
   return {root,manager,first,second,otherId,api,event,encryptions:()=>encryptions,scope:()=>({profileId:manager.selectedId,expectedMode:manager.current().config.mode||'api',expectedChannel:manager.current().config.channel||'wechat'}),invoke:(name,value,e=event)=>handlers.get(`arcade:${name}`)(e,value)};
@@ -87,4 +87,25 @@ test('trusted sender guard precedes credential scope validation and fixed failur
 test('preload forwards the explicit forgetting scope without inventing one',async()=>{
   let api;const calls=[];vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../src/preload.cjs'),'utf8'),{require:()=>({contextBridge:{exposeInMainWorld:(_name,value)=>{api=value;}},ipcRenderer:{invoke:(...args)=>{calls.push(args);}}})});
   const scope={profileId:'primary'};api.botForget(scope);assert.deepEqual(calls,[['arcade:botForget',scope]]);
+});
+
+
+test('credential recovery IPC requires exact profile/backend/channel before any recovery action',async t=>{
+ const f=fixture(t);let attempts=0;
+ f.first.retryCredentials=async()=>{attempts++;return {recovered:false};};
+ f.first.prepareCredentialReset=()=>{attempts++;return {prepared:false};};
+ for(const value of [undefined,null,{},[],{profileId:'primary'},{...f.scope(),profileId:f.otherId},{...f.scope(),expectedMode:'gpt'},{...f.scope(),expectedChannel:'qq'},{...f.scope(),key:'not-allowed'}]){
+  await assert.rejects(f.invoke('accountRetryCredentials',value),changed);
+  const reset=value&&typeof value==='object'&&!Array.isArray(value)?{...value,action:'prepare'}:value;
+  await assert.rejects(f.invoke('accountResetCredentials',reset),changed);
+ }
+ assert.equal(attempts,0);
+ await f.invoke('accountRetryCredentials',f.scope());await f.invoke('accountResetCredentials',{...f.scope(),action:'prepare'});assert.equal(attempts,2);
+});
+test('a pending recovery observes selection changes and cannot unlock the replacement profile',async t=>{
+ const f=fixture(t),gate=deferred();let allowed;
+ f.first.retryCredentials=async({isCurrent})=>{await gate.promise;allowed=isCurrent();return {recovered:allowed};};
+ const pending=f.invoke('accountRetryCredentials',f.scope());f.api.select(f.otherId);gate.resolve();
+ assert.equal((await pending).recovered,false);assert.equal(allowed,false);
+ assert.deepEqual(f.second.secret,{});
 });

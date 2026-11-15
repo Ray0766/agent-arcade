@@ -119,3 +119,8 @@ html[data-layout="immersive"] #first-run-card{background:color-mix(in oklab,var(
 /* Minimal: one quiet column, no raised card. */
 html[data-layout="minimal"] #bot-messages>#first-run-card{border-radius:var(--r-md);box-shadow:none}
 html[data-layout="minimal"] #first-run-card .first-run-choice{border-radius:var(--r-sm)}
+
+/* Recovery retains the existing key and conversation files until explicitly confirmed. */
+#first-run-card .first-run-recovery{display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-3)}
+#first-run-card .first-run-recovery button{max-width:100%;min-height:40px;white-space:normal;text-align:left}
+#first-run-card .first-run-recovery .plain{padding-inline:0}

@@ -180,6 +180,7 @@ function bootstrap({primary=true,worker=false,error,earlyRaise=false}={}){
     require:name=>{
       if(name==='./bot/vault-migration-worker.cjs'){calls.worker++;return {run:async()=> 'worker-only'};}
       if(worker)throw Error('migration loaded ordinary application modules');
+      if(name==='./core/app-identity.cjs')return require('../src/core/app-identity.cjs');
       if(name==='./core/desktop-stdio.cjs')return {guardDesktopOutput:()=>{calls.outputGuard++;}};      if(name==='electron')return {app,BrowserWindow:{getAllWindows:()=>windows},dialog:{showErrorBox:(title,message)=>calls.dialogs.push({title,message})}};
       if(name==='./core/single-instance.cjs')return {acquireSingleInstance:async options=>{onRaise=options.onRaise;onLost=options.onLost;if(earlyRaise)onRaise();if(error)throw error;return {primary,close:async()=>{calls.close++;}};}};
       if(name==='./main.cjs'){assert.equal(calls.outputGuard,1);calls.main++;return {};}
@@ -207,6 +208,12 @@ test('bootstrap quits normally when pipe ownership is unexpectedly lost',async()
 test('unknown-listener bootstrap exits without exposing an arbitrary error message',async()=>{
   const h=bootstrap({error:Object.assign(Error('private arbitrary text'),{code:'INSTANCE_UNKNOWN'})});await h.completion;
   assert.equal(h.calls.main,0);assert.deepEqual(h.calls.exits,[1]);assert.equal(h.calls.dialogs.length,1);assert.equal(h.calls.dialogs[0].message.includes('private'),false);
+});
+
+test('failed update snapshot stops startup with a fixed data-preservation message',async()=>{
+  const h=bootstrap({error:Object.assign(Error('private file path and contents'),{code:'UPDATE_BACKUP_FAILED'})});await h.completion;
+  assert.equal(h.calls.main,0);assert.deepEqual(h.calls.exits,[1]);assert.equal(h.calls.dialogs.length,1);
+  assert.match(h.calls.dialogs[0].message,/备份未能完成.*保护原数据/);assert.equal(h.calls.dialogs[0].message.includes('private'),false);
 });
 
 test('migration bootstrap bypasses desktop guard, Electron window imports and main',async()=>{

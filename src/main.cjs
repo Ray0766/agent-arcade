@@ -1,5 +1,6 @@
 'use strict';
 const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage, clipboard, shell, nativeTheme } = require('electron');
+require('./core/app-identity.cjs').configureAppIdentity(app);
 const appVersion = require('../package.json').version;
 const {qqGuide}=require('./bot/qq-setup.cjs');
 const fs = require('node:fs');
@@ -102,7 +103,16 @@ const {Workbench}=require('./workbench.cjs');
 const {createTaskBoard,taskBoardHandlers}=require('./bot/task-board.cjs');
 const {publicCatalog,personaForBackend}=require('./core/personas.cjs');
 const {createProviderLogin}=require('./bot/provider-login.cjs');
-const root = process.env.AGENT_ARCADE_HOME || path.join(os.homedir(), '.agent-arcade');
+const root = path.resolve(process.env.AGENT_ARCADE_HOME || path.join(os.homedir(), '.agent-arcade'));
+// Bootstrap already owns the desktop guard. Snapshot data before any store can
+// migrate it; the build identity also detects same-version repackaging.
+let updateSafety=null;
+if(['darwin','win32','linux'].includes(process.platform)){
+  try{
+    const {buildIdentity,ensureUpdateBackup}=require('./core/update-backup.cjs');
+    updateSafety=ensureUpdateBackup({root,buildId:buildIdentity({appPath:path.join(__dirname,'..')})});
+  }catch{throw Object.assign(Error('Update backup failed; original data was kept.'),{code:'UPDATE_BACKUP_FAILED'});}
+}
 const qqComponentStoreRoot=path.resolve(path.join(process.env.LOCALAPPDATA||os.homedir(),'AgentArcade','qq-components'));
 const settingsFile = process.env.AGENT_ARCADE_CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
 let config = { sendShortcut:'enter', appearance:'system', language: 'en', notifications: false, quiet: false, captureResults: false, alwaysOnTop: false, compact: false, theme: 'workshop', portrait: 'anime', character:'default', personaVoice:true, layout:'immersive', accent:'auto', workspace:'companion', ...readJSON(path.join(root, 'config.json')) };
@@ -222,7 +232,15 @@ function registerTaskBoardHandlers(){
 function registerSTHandlers(){
   const {localOperationResult,codedResult}=require('./bot/local-companion.cjs');
   const done=value=>{publish();return value;};
-  register('stConfigure',partial=>done(bot.stConfigure(partial)));
+  register('stConfigure',partial=>{
+    // A role choice is bound to the profile rendered in the selector, so an
+    // unpublished account change cannot redirect it to another companion.
+    if(partial&&typeof partial==='object'&&Object.hasOwn(partial,'profileId')){
+      if(typeof partial.profileId!=='string'||partial.profileId!==accounts?.selectedId||accounts.get(partial.profileId)!==bot)throw Object.assign(Error('The selected companion changed. Open its role selector again.'),{code:'changed'});
+      const {profileId,...patch}=partial;partial=patch;
+    }
+    return done(bot.stConfigure(partial));
+  });
   register('stConversations',()=>bot.stConversations());
   // Read-only: the built-in preset, so the renderer can offer "restore default".
   register('stDefaultPreset',()=>require('./bot/st/presets.cjs').validatePreset(require('./bot/st/prompt-builder.cjs').DEFAULT_PRESET));
@@ -1595,7 +1613,7 @@ function applyWindow() {
 }
 // A new manual intent retires the foreground sequence before it can start or
 // connect against an obsolete selection. Read-only status never cancels it.
-const qqLaunchConflicts=new Set(['accountSelect','accountCreate','accountImport','accountRemove','accountConnect','accountDisconnect','accountMigrateCredentials','botConnect','botDisconnect','botConfigure','botForget','socialConfigure','characterApply','qqRuntimeStart','qqRuntimeStop','qqRuntimeRecover','qqRuntimeQR','qqRuntimeQuickLogin','qqRuntimeChoose','qqRuntimeConfigure','qqRuntimeLink','qqRuntimeBackupRestore','qqRuntimeOrphanCleanup','qqFirstSetup']);
+const qqLaunchConflicts=new Set(['accountSelect','accountCreate','accountImport','accountRemove','accountConnect','accountDisconnect','accountMigrateCredentials','accountRetryCredentials','accountResetCredentials','botConnect','botDisconnect','botConfigure','botForget','socialConfigure','characterApply','qqRuntimeStart','qqRuntimeStop','qqRuntimeRecover','qqRuntimeQR','qqRuntimeQuickLogin','qqRuntimeChoose','qqRuntimeConfigure','qqRuntimeLink','qqRuntimeBackupRestore','qqRuntimeOrphanCleanup','qqFirstSetup']);
 // Host platform capabilities, set once at startup from the real platform (see
 // whenReady). While it is null nothing is gated: that is the state before
 // startup and in unit-test harnesses that load only parts of this file.
@@ -1607,7 +1625,7 @@ function register(channel, fn) {
   ipcMain.handle(`arcade:${channel}`, async (event, value) => {
     if (event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || event.senderFrame.url !== indexURL) throw Error('Untrusted sender');
     if(unsupportedChannel(channel))return {ok:false,code:'unsupported_platform'};
-    if(['accountSelect','accountCreate','accountImport','accountRemove','accountConnect','accountDisconnect','accountMigrateCredentials','botConnect','botDisconnect','botConfigure','botForget','socialConfigure','characterApply','voiceStart'].includes(channel))desktopConversations.invalidate();
+    if(['accountSelect','accountCreate','accountImport','accountRemove','accountConnect','accountDisconnect','accountMigrateCredentials','accountRetryCredentials','accountResetCredentials','botConnect','botDisconnect','botConfigure','botForget','socialConfigure','characterApply','voiceStart'].includes(channel))desktopConversations.invalidate();
     if(['accountSelect','accountCreate','accountImport','accountRemove'].includes(channel))qqConsole?.retireOrphanPreviews?.();
     if(qqCompanionLaunch?.snapshot()&&(qqLaunchConflicts.has(channel)||channel==='qqComponents'&&!['status','inspect','preparation-list','pending-list','node-repair-status'].includes(value?.action))&&(channel!=='qqRuntimeOrphanCleanup'||qqConsole?.orphanCleanupChangesRuntime?.(value)===true))await qqCompanionLaunch.closeCurrent();
     return fn(value);
@@ -1637,6 +1655,22 @@ function credentialRequest(value,{forget=false}={}) {
 }
 function configureBot(value){const {service,patch}=credentialRequest(value);service.configure(patch);return service.snapshot();}
 async function forgetBotCredentials(value){const {service}=credentialRequest(value,{forget:true});await service.forget();return service.snapshot();}
+function recoveryRequest(value,allowed){
+  if(!value||Object.prototype.toString.call(value)!=='[object Object]'||!['profileId','expectedMode','expectedChannel'].every(key=>Object.hasOwn(value,key)&&typeof value[key]==='string')||Object.keys(value).some(key=>!allowed.includes(key)))throw Object.assign(Error('The selected companion changed. Reopen its connection settings. (credential_scope_changed)'),{code:'credential_scope_changed'});
+  return credentialRequest(value);
+}
+async function retryBotCredentials(value){
+  const {service}=recoveryRequest(value,['profileId','expectedMode','expectedChannel']),id=value.profileId,mode=service.config.mode,channel=service.config.channel;
+  const result=await service.retryCredentials({isCurrent:()=>!quitting&&bot===service&&accounts.selectedId===id&&service.config.mode===mode&&service.config.channel===channel});
+  publish();return result;
+}
+async function resetBotCredentials(value){
+  const {service}=recoveryRequest(value,['profileId','expectedMode','expectedChannel','action','ticket']),id=value.profileId,mode=service.config.mode,channel=service.config.channel;
+  if(!['prepare','confirm'].includes(value.action)||value.action==='prepare'&&Object.hasOwn(value,'ticket'))throw Error('Invalid credential recovery request.');
+  const isCurrent=()=>!quitting&&bot===service&&accounts.selectedId===id&&service.config.mode===mode&&service.config.channel===channel;
+  const result=value.action==='prepare'?service.prepareCredentialReset():await service.resetCredentials({ticket:value.ticket,isCurrent});
+  publish();return result;
+}
 async function accountMigrateCredentials(id){
   const ticket=accounts.captureCredentialMigration(id);
   const picked=await dialog.showOpenDialog(win,{title:config.language==='zh'?'关闭旧应用后，选择原 Electron 配置目录（包含 Local State）':'Close the old app, then choose its Electron profile folder (contains Local State)',properties:['openDirectory']});
@@ -1740,6 +1774,8 @@ else {
     register('accountConnect', async id => {if(typeof id!=='string')return connectQQIntent(id);await Promise.all([closeOwnerFriendSetup(),ownerRemarkPanel.closeCurrent(),ownerHistorySession.closeCurrent(),selfProfilePanel.closeCurrent(),avatarPanel.closeCurrent(),groupProfileSession.closeCurrent(),groupAdminSession.closeCurrent(),contactAdminSession.closeCurrent(),closePluginPanels()]);return connectCompanion(id);});
     register('accountDisconnect', async id => {if(selfProfilePanel.session?.accountId===id)await selfProfilePanel.closeCurrent();if(avatarPanel.session?.accountId===id)await avatarPanel.closeCurrent();if(groupProfileSession.session?.accountId===id)await groupProfileSession.closeCurrent();if(groupAdminSession.session?.accountId===id)await groupAdminSession.closeCurrent();if(contactAdminSession.session?.accountId===id)await contactAdminSession.closeCurrent();await closePluginPanels({accountId:id});if(voiceAccount===id)await closeVoice('connection-ended');if(voiceMediaPanel?.accountId===id)await closeQQVoices();if(ownerRemarkPanel.session?.accountId===id)await ownerRemarkPanel.closeCurrent();if(ownerHistorySession.session?.accountId===id)await ownerHistorySession.closeCurrent();if(friendRequestsPanel.panel?.accountId===id)await friendRequestsPanel.close();return accounts.disconnect(id);});
     register('accountMigrateCredentials', accountMigrateCredentials);
+    register('accountRetryCredentials', retryBotCredentials);
+    register('accountResetCredentials', resetBotCredentials);
     const qqResult=async operation=>{try{return {ok:true,...await operation()};}catch(error){return {ok:false,code:typeof error.code==='string'&&/^[a-z_]{1,48}$/.test(error.code)?error.code:'operation_failed'};}};
     const qqArguments=value=>{if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!['accountId','refresh'].includes(key))||typeof value.accountId!=='string'||!/^\d{5,15}$/.test(value.accountId)||(value.refresh!==undefined&&typeof value.refresh!=='boolean'))throw Object.assign(Error('Invalid QQ action'),{code:'invalid_config'});return value;};
     register('qqImagePick',value=>qqResult(()=>pickQQImage(value)));
@@ -2008,7 +2044,7 @@ else {
       workbench.tick();
       taskBoard?.tick();
       if (!demo) bot?.reflectionTick?.(Date.now());
-      if (!demo) { sources.tick(); bot?.companionNoticeTick?.({onAppMessage:info=>{desktopChat.localNotice(info.service);publish();}}); }
+      if (!demo) { sources.tick(); bot?.companionNoticeTick?.({sourceEnabled:id=>sources.snapshot().some(source=>source.id===id&&source.enabled&&['companion','both'].includes(source.notify)),onAppMessage:info=>{desktopChat.localNotice(info.service);publish();}}); }
       try {
         const changes = drainInbox(root,live,{captureResults:config.captureResults}); problem = quitProblem;
         for (const change of coalesceChanges(changes)) bus.publish({source:'claude-code',kind:'session.'+change.task.state,change});

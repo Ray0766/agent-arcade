@@ -49,6 +49,7 @@ function bootstrapHarness({worker=false}={}){
     loaded.push(id);
     if(id==='./bot/vault-migration-worker.cjs')return {run:async()=>{calls.worker++;return 'worker-only';}};
     if(id==='./core/desktop-stdio.cjs')return {guardDesktopOutput:()=>{calls.stdio++;}};
+    if(id==='./core/app-identity.cjs')return require('../src/core/app-identity.cjs');
     if(id==='electron')return {app,BrowserWindow:{getAllWindows:()=>[]},dialog:{showErrorBox:()=>assert.fail('Unexpected bootstrap error')}};
     if(id==='./core/single-instance.cjs')return {acquireSingleInstance:options=>{calls.guard++;assert.equal(typeof options.onRaise,'function');assert.equal(typeof options.onLost,'function');return deferred;}};
     if(id==='./main.cjs'){calls.main++;return {};}
@@ -64,14 +65,14 @@ test('bootstrap dispatches the credential worker without loading Electron, the d
 });
 
 test('normal bootstrap waits for primary ownership before loading application main',async()=>{
-  const h=bootstrapHarness();await tick();assert.deepEqual(h.loaded,['./core/desktop-stdio.cjs','electron','./core/single-instance.cjs']);assert.equal(h.calls.stdio,1);assert.equal(h.calls.guard,1);assert.equal(h.calls.main,0);assert.equal(h.calls.worker,0);assert.equal(h.app.listenerCount('will-quit'),1);
-  h.resolveGuard(true);await h.completion;assert.equal(h.calls.main,1);assert.deepEqual(h.loaded,['./core/desktop-stdio.cjs','electron','./core/single-instance.cjs','./main.cjs']);assert.deepEqual(h.exits,[]);
+  const h=bootstrapHarness();await tick();assert.deepEqual(h.loaded,['./core/desktop-stdio.cjs','electron','./core/app-identity.cjs','./core/single-instance.cjs']);assert.equal(h.calls.stdio,1);assert.equal(h.calls.guard,1);assert.equal(h.calls.main,0);assert.equal(h.calls.worker,0);assert.equal(h.app.listenerCount('will-quit'),1);
+  h.resolveGuard(true);await h.completion;assert.equal(h.calls.main,1);assert.deepEqual(h.loaded,['./core/desktop-stdio.cjs','electron','./core/app-identity.cjs','./core/single-instance.cjs','./main.cjs']);assert.deepEqual(h.exits,[]);
   h.app.emit('will-quit');await tick();assert.equal(h.calls.close,1);
 });
 
 test('secondary bootstrap exits without loading normal main or starting migration',async()=>{
   const h=bootstrapHarness();await tick();assert.equal(h.calls.main,0);h.resolveGuard(false);await h.completion;
-  assert.deepEqual(h.exits,[0]);assert.equal(h.calls.main,0);assert.equal(h.calls.worker,0);assert.equal(h.calls.close,0);assert.deepEqual(h.loaded,['./core/desktop-stdio.cjs','electron','./core/single-instance.cjs']);
+  assert.deepEqual(h.exits,[0]);assert.equal(h.calls.main,0);assert.equal(h.calls.worker,0);assert.equal(h.calls.close,0);assert.deepEqual(h.loaded,['./core/desktop-stdio.cjs','electron','./core/app-identity.cjs','./core/single-instance.cjs']);
 });
 
 test('preload exposes only a migration command with the selected account id',async()=>{

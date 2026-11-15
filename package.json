@@ -28,9 +28,9 @@
     "predist": "node scripts/build-icon.cjs",
     "dist": "electron-builder --publish never",
     "prepack:mac": "node scripts/build-icon.cjs",
-    "pack:mac": "electron-builder --dir --mac",
+    "pack:mac": "node scripts/build-mac.cjs --dir",
     "predist:mac": "node scripts/build-icon.cjs",
-    "dist:mac": "electron-builder --mac --publish never",
+    "dist:mac": "node scripts/build-mac.cjs --publish never",
     "test:persona-ui": "node scripts/persona-smoke.cjs",
     "test:providers-ui": "node scripts/providers-ui-smoke.cjs",
     "test:onboarding-ui": "node scripts/onboarding-ui-smoke.cjs"

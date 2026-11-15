@@ -245,7 +245,18 @@
       if(firstRunCard){if(firstRunCard.parentNode!==$('bot-messages')||$('bot-messages').childElementCount!==1){$('bot-messages').replaceChildren(firstRunCard);threadNeedsBottom=false;pane.scrollTop=0;}$('bot-latest').hidden=true;return;}
       const empty=el('div','chat-empty');
       const saved=window.selectedSavedConnection?.(data);
-      empty.append(el('h2','',word('emptyTitle')),el('p','',desktopAvailable?(language==='zh'?'在下方输入，开始聊天。':'Type below to start chatting.'):localConversation?(language==='zh'?'准备好后，点击上方开始聊天。':'Choose Start chatting above when you are ready.'):!active&&saved?(language==='zh'?'已有连接配置。连接后，你和搭档的消息会显示在这里。':'Your connection is already configured. Messages will appear here after connecting.'):word(active?'emptyReady':'emptySetup')));
+      // An empty conversation stays empty: this welcome is interface copy, never
+      // inserted as a model message or retained as invented conversation history.
+      const builtinWelcome=localConversation&&desktopAvailable&&!state?.local?.libraryCharacterId&&!state?.local?.libraryGroupId;
+      const welcomeName=persona.name?.[language]||persona.name?.en||'';
+      empty.append(el('h2','',builtinWelcome?(language==='zh'?`和${welcomeName}聊聊，想从哪里开始？`:`What would you like to talk about with ${welcomeName}?`):word('emptyTitle')),el('p','',desktopAvailable?(language==='zh'?'在下方输入，开始聊天。':'Type below to start chatting.'):localConversation?(language==='zh'?'准备好后，点击上方开始聊天。':'Choose Start chatting above when you are ready.'):!active&&saved?(language==='zh'?'已有连接配置。连接后，你和搭档的消息会显示在这里。':'Your connection is already configured. Messages will appear here after connecting.'):word(active?'emptyReady':'emptySetup')));
+      if(builtinWelcome){
+        const starters=el('div','button-row');starters.setAttribute('aria-label',language==='zh'?'聊天起步建议':'Conversation starters');
+        for(const text of language==='zh'?['我想聊聊今天发生的事。','我现在有点累，想找你聊聊。','我希望你这样称呼我：']:['I would like to talk about my day.','I am a little tired and would like to chat.','I would like you to call me ']){
+          const button=el('button','secondary',text);button.type='button';button.onclick=()=>{const input=$('desktop-chat-input');if(input&&!input.disabled){input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();}};starters.append(button);
+        }
+        empty.append(starters);
+      }
       if(!active&&!saved){const connect=el('button','primary',word('openSetup'));connect.id='bot-empty-connect';connect.onclick=()=>window.openConnectionOnboarding?window.openConnectionOnboarding():setSetupOpen(true,true);empty.append(connect);}
       $('bot-messages').replaceChildren(empty);$('bot-latest').hidden=true;return;
     }
@@ -291,7 +302,7 @@
     words[language].nativeStart=zh?`连接${channelName}`:`Connect ${channelName}`;
     words[language].nativeStop=zh?`断开${channelName}`:`Disconnect ${channelName}`;
     persona=(next.desktopChat?.kind==='local'?(next.personas||[]).find(p=>p.id===state?.local?.characterId):null)||next.persona||{id:'sprout',name:{en:'Sprout',zh:'小芽'},portrait:'portraits/sprout-anime.png'};
-    if(next.desktopChat?.kind==='local'&&typeof state?.social?.config?.name==='string'&&state.social.config.name.trim())persona={...persona,name:{...persona.name,[language]:state.social.config.name.trim()}};
+    if(next.desktopChat?.kind==='local'&&!state?.st?.settings?.builtinPersonaId&&typeof state?.social?.config?.name==='string'&&state.social.config.name.trim())persona={...persona,name:{...persona.name,[language]:state.social.config.name.trim()}};
     words[language].title=persona.name[language];words[language].agent=persona.name[language];
     document.querySelectorAll('[data-bot]').forEach(n=>n.textContent=word(n.dataset.bot));
     $('bot-settings-toggle').setAttribute('aria-label',word('settingsToggle'));$('bot-settings-toggle').title=word('settingsToggle');

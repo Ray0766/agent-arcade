@@ -48,7 +48,7 @@
   }
   function needed(d){
     const b=d?.bot;if(!b||d.demo)return false;
-    if(!API_MODES.has(b.mode||'api')||b.hasKey===true||b.credentialState==='locked')return false;
+    if(!API_MODES.has(b.mode||'api')||b.hasKey===true)return false;
     return ['disconnected',undefined].includes(b.status);
   }
   function hasChannel(d){
@@ -58,7 +58,23 @@
   }
   const providerOf=d=>{const mode=d?.bot?.mode||'api';return (partners().find(p=>p.api===mode||p.local===mode)||partners()[0]).id;};
 
-  let latest=null,picked=null,busy=false,localBusy=false,message='',failed=false,localMessage='',localFailed=false,revealed=false,choiceKey='',moves=0;
+  function recoveryExplanation(code,zh,mac=false){
+    const messages={
+      keychain_restart_required:['钥匙串仍无法读取。若 macOS 弹窗出现，请允许 Agent Arcade 访问，然后完全退出并重新打开 App；本进程可能缓存先前的拒绝。原凭据和聊天记录均保留。','Keychain access is still unavailable. If macOS prompts, allow Agent Arcade, then fully quit and reopen the App: this process may cache an earlier denial. Original credentials and chats are retained.'],
+      vault_changed:['凭据文件已变化，未采用或覆盖。请完全退出并重新打开 App 后重试。','The credential file changed and was not adopted or overwritten. Fully quit and reopen the App before retrying.'],
+      vault_invalid:['保存的凭据格式无法验证，原加密文件未作修改。聊天记录不受影响。','The saved credential format could not be verified. The original encrypted file was retained; chats are unaffected.'],
+      credential_scope_changed:['搭档或 AI 服务已改变，本次恢复没有继续。请重新打开当前搭档的设置。','The companion or AI service changed. Recovery stopped; reopen the current companion’s settings.'],
+      credentials_busy:['上一项凭据操作尚未结束，请稍候。','The previous credential operation is still running. Please wait.'],
+      credentials_in_use:['请先断开这位搭档，再重试读取凭据。','Disconnect this companion before retrying its saved credentials.'],
+      credentials_not_locked:['凭据状态已经变化，请检查当前搭档。','The credential state changed. Check the current companion.'],
+      credential_reset_expired:['重新设置的确认已失效，请重新点击第一步。','The reset confirmation expired. Start the first step again.'],
+      credential_backup_failed:['原加密凭据的备份未能验证，没有重设。请检查数据目录权限和磁盘空间。','The original encrypted credential backup could not be verified; nothing was reset. Check data-folder permissions and disk space.'],
+      credential_reset_failed:['重设未完成，原加密凭据的备份保留。请完全退出 App 后检查。','Reset did not finish; the original encrypted credential backup was retained. Fully quit the App before checking.'],
+      stop_unconfirmed:['尚未确认旧 App 对话已停止，没有恢复或重设凭据。请完全退出 App 后重试。','The old App conversation has not been confirmed stopped. Credentials were not recovered or reset. Fully quit the App and retry.'],
+    };
+    return (messages[code]||messages[mac?'keychain_restart_required':'vault_invalid'])[zh?0:1];
+  }
+  let latest=null,picked=null,busy=false,localBusy=false,message='',failed=false,localMessage='',localFailed=false,revealed=false,choiceKey='',moves=0,resetIntent=null;
   const zh=()=>latest?.config?.language==='zh';
   const tr=(a,b)=>zh()?a:b;
   const chosen=()=>partners().find(p=>p.id===picked)||partners().find(p=>p.id===providerOf(latest))||partners()[0];
@@ -75,7 +91,34 @@
   const other=el('details','first-run-other'),otherSummary=el('summary',''),otherBody=el('div','first-run-other-body'),otherText=el('p','first-run-fine'),localButton=el('button','secondary'),localStatus=el('p','first-run-status'),wizard=el('button','plain');
   other.id='first-run-other';localButton.type=wizard.type='button';localButton.id='first-run-local-claude';wizard.id='first-run-open-wizard';localStatus.id='first-run-local-status';localStatus.setAttribute('role','status');localStatus.hidden=true;
   otherBody.append(otherText,localButton,localStatus,wizard);other.append(otherSummary,otherBody);
-  card.append(title,lead,choices,form,importLine,other);
+  const recovery=el('section','first-run-recovery'),recoveryNote=el('p','first-run-fine'),recoveryStatus=el('p','first-run-status'),retry=el('button','primary'),reset=el('button','plain'),resetCancel=el('button','plain');
+  recovery.id='first-run-recovery';recoveryStatus.id='first-run-recovery-status';recoveryStatus.setAttribute('role','status');retry.id='first-run-retry-credentials';reset.id='first-run-reset-credentials';resetCancel.id='first-run-reset-cancel';
+  retry.type=reset.type=resetCancel.type='button';recovery.append(recoveryNote,recoveryStatus,retry,reset,resetCancel);recovery.hidden=true;
+  card.append(title,lead,choices,form,recovery,importLine,other);
+  const recoveryScope=()=>({profileId:latest.accounts?.selectedId||'',expectedMode:latest.bot?.mode||'api',expectedChannel:latest.bot?.channel||'wechat'});
+  const sameRecovery=(a,b)=>a.profileId===b.profileId&&a.expectedMode===b.expectedMode&&a.expectedChannel===b.expectedChannel;
+  async function recoveryAction(kind){
+    if(busy||localBusy||latest?.bot?.credentialState!=='locked')return;
+    const scope=recoveryScope(),mac=window.arcade?.platform?.os==='darwin';busy=true;message='';failed=false;draw();
+    try{
+      let result;
+      if(kind==='retry'){resetIntent=null;result=await window.arcade.accountRetryCredentials(scope);}
+      else if(!resetIntent||!sameRecovery(scope,resetIntent.scope)){
+        result=await window.arcade.accountResetCredentials({...scope,action:'prepare'});
+        if(!sameRecovery(scope,recoveryScope()))return;
+        if(result?.prepared===true&&typeof result.ticket==='string'){resetIntent={scope,ticket:result.ticket};message=tr('这会停用本搭档全部 API key 和渠道登录凭据，需逐项重新填写；原加密文件先备份，聊天和记忆保留。再次点击下方确认才执行。','This retires all API keys and channel credentials for this companion; each must be entered again. The original encrypted file is backed up first, and chats/memory are retained. Click the confirmation below to proceed.');return;}
+      }else{const ticket=resetIntent.ticket;resetIntent=null;result=await window.arcade.accountResetCredentials({...scope,action:'confirm',ticket});}
+      if(!sameRecovery(scope,recoveryScope()))return;
+      if(result?.recovered===true||result?.reset===true){
+        const next=await window.arcade.snapshot();if(!sameRecovery(scope,recoveryScope())||!sameRecovery(scope,{profileId:next.accounts?.selectedId||'',expectedMode:next.bot?.mode||'api',expectedChannel:next.bot?.channel||'wechat'}))return;
+        latest=next;if(typeof data!=='undefined')data=next;message='';failed=false;
+        if(typeof render==='function')render();
+        toast(result.reset===true?tr('原加密凭据已备份，聊天和记忆保留。请完全退出并重新打开 App，再填写本搭档的密钥。','Original encrypted credentials were backed up; chats and memory remain. Fully quit and reopen the App, then enter this companion’s keys.'):tr('已重新读取保存的密钥；尚未连接账号或请求模型。','Saved keys were reopened; no account was connected or model requested.'));
+      }else{message=recoveryExplanation(result?.code,zh(),mac);failed=true;}
+    }catch{if(sameRecovery(scope,recoveryScope())){message=recoveryExplanation('credential_open_failed',zh(),mac);failed=true;}}
+    finally{busy=false;draw();}
+  }
+  retry.onclick=()=>void recoveryAction('retry');reset.onclick=()=>void recoveryAction('reset');resetCancel.onclick=()=>{resetIntent=null;message='';failed=false;draw();};
 
   // ---- dialog form ----
   const dialog=el('dialog','first-run-dialog'),close=el('button','icon-button first-run-close');dialog.id='first-run-dialog';dialog.setAttribute('aria-labelledby','first-run-title');
@@ -147,10 +190,16 @@
 
   function draw(){
     if(!latest)return;
-    const z=zh(),partner=chosen(),words=COPY[partner.id]||COPY.claude,current=latest.bot?.mode||'api',saved=latest.bot?.hasKey===true&&partner.api===current,asDialog=inDialog(),name=z&&partner.zh?partner.zh:partner.name;
+    const z=zh(),partner=chosen(),words=COPY[partner.id]||COPY.claude,current=latest.bot?.mode||'api',saved=latest.bot?.hasKey===true&&partner.api===current,asDialog=inDialog(),name=z&&partner.zh?partner.zh:partner.name,locked=latest.bot?.credentialState==='locked',mac=window.arcade?.platform?.os==='darwin';
     const set=(node,text)=>{if(node.textContent!==text)node.textContent=text;};
     set(title,asDialog?tr('AI 与密钥','AI and key'):tr('在这里和一位 AI 角色聊天','Chat with an AI character here'));
     set(lead,asDialog?tr('选一个 AI，粘贴它的 API key。已保存的密钥不会显示；粘贴新的会替换它。','Choose an AI and paste its API key. A saved key is never shown; pasting a new one replaces it.'):tr('先选一个你有 API key 的 AI，粘贴密钥就能开始。','Choose an AI you have an API key for, paste the key, and start.'));
+    if(locked){set(title,tr('已保存的密钥暂时无法打开','Saved keys could not be opened'));set(lead,mac?tr('更新或重新打包后，macOS 可能需要再次允许钥匙串访问。原加密凭据、聊天和记忆都保留。','After an update or rebuild, macOS may need to allow Keychain access again. Original encrypted credentials, chats and memory are retained.'):tr('原加密凭据保持不变。可先重试读取；跨 Windows 应用配置迁移仍在“管理搭档”里。','Original encrypted credentials are unchanged. Retry opening them first; Windows profile migration remains under Manage companions.'));}
+    choices.hidden=form.hidden=importLine.hidden=other.hidden=locked;recovery.hidden=!locked;
+    set(recoveryNote,mac?tr('点击重试。若系统询问，请允许当前 Agent Arcade 访问钥匙串；若仍失败，完全退出并重新打开 App。钥匙串项目丢失时不能凭空恢复旧密钥。','Retry opening saved keys. If macOS asks, allow this Agent Arcade access to Keychain. If it still fails, fully quit and reopen the App. A deleted Keychain item cannot recreate the old keys.'):tr('重试不会改写原凭据或连接账号。','Retry does not rewrite the original credentials or connect an account.'));
+    set(recoveryStatus,message);recoveryStatus.hidden=!message;recoveryStatus.dataset.error=String(failed);recoveryStatus.setAttribute('role',failed?'alert':'status');
+    set(retry,busy?tr('正在处理…','Working…'):tr('重试读取已保存密钥','Retry saved keys'));retry.disabled=busy||typeof window.arcade.accountRetryCredentials!=='function';
+    set(reset,resetIntent?tr('确认备份原凭据并重新设置','Confirm backup and reset credentials'):tr('无法恢复？保留聊天并重新设置…','Cannot recover? Keep chats and reset…'));reset.disabled=busy||typeof window.arcade.accountResetCredentials!=='function';set(resetCancel,tr('取消重新设置','Cancel reset'));resetCancel.hidden=!resetIntent;resetCancel.disabled=busy;
     choices.setAttribute('aria-label',tr('选择 AI','Choose an AI'));
     const personas=latest.personas||[],key=JSON.stringify([z,partners().map(p=>p.id),personas.map(p=>[p.id,p.portrait])]);
     if(choiceKey!==key){
@@ -190,18 +239,19 @@
       if(!dialog.open){dialog.append(card);moves++;dialog.showModal();if(typeof render==='function')render();}
     }
     draw();
-    requestAnimationFrame(()=>{card.scrollIntoView({block:'nearest'});input.focus({preventScroll:true});});
+    requestAnimationFrame(()=>{card.scrollIntoView({block:'nearest'});(latest?.bot?.credentialState==='locked'?retry:input).focus({preventScroll:true});});
     return true;
   }
   window.ArcadeFirstRun=Object.freeze({
-    needed,hasChannel,open,providerOf,keyProblem,known,explain,
+    needed,hasChannel,open,providerOf,keyProblem,known,explain,recoveryExplanation,
     close(){if(dialog.open)dialog.close();},
     inline(d){return !dialog.open&&needed(d)?card:null;},
     stateKey:()=>`${moves}:${dialog.open}`,
   });
   window.renderFirstRun=next=>{
     const account=latest?.accounts?.selectedId;latest=next;
-    if(account!==undefined&&account!==next.accounts?.selectedId){picked=null;input.value='';message='';failed=false;localMessage='';localFailed=false;revealed=false;if(dialog.open)dialog.close();}
+    if(resetIntent&&!sameRecovery(resetIntent.scope,recoveryScope()))resetIntent=null;
+    if(account!==undefined&&account!==next.accounts?.selectedId){resetIntent=null;picked=null;input.value='';message='';failed=false;localMessage='';localFailed=false;revealed=false;if(dialog.open)dialog.close();}
     // A provider picked on the card stays picked until the profile's own service says otherwise.
     if(picked&&!partners().some(p=>p.id===picked))picked=null;
     draw();

@@ -8,6 +8,7 @@ const {atomicJSON} = require('../../core/files.cjs');
 const {DEFAULT_PRESET} = require('./prompt-builder.cjs');
 const {validatePreset} = require('./presets.cjs');
 const {CHAT_PROMPT_CHARS, RANGES} = require('../generation.cjs');
+const {publicCatalog} = require('../../core/personas.cjs');
 
 const VERSION = 1;
 const MAX_FILE_BYTES = 200000;
@@ -18,7 +19,7 @@ const LIMITS = Object.freeze({
   contextChars: [4000, CHAT_PROMPT_CHARS], budgetChars: [500, 12000], scanDepth: [1, 20],
 });
 const ROLES = ['system', 'user', 'assistant'];
-const KEYS = ['version', 'characterId', 'greeting', 'user', 'lorebookIds', 'useCharacterBook', 'authorsNote', 'preset', 'sampling', 'contextChars', 'worldInfo', 'regex', 'streaming', 'branchId', 'groupId', 'wikiAccess'];
+const KEYS = ['version', 'characterId', 'greeting', 'user', 'lorebookIds', 'useCharacterBook', 'authorsNote', 'preset', 'sampling', 'contextChars', 'worldInfo', 'regex', 'streaming', 'branchId', 'groupId', 'wikiAccess', 'builtinPersonaId'];
 // wikiAccess keys: a library character id or a built-in persona id.
 const ACCESS_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const MAX_WIKI_ACCESS = 200;
@@ -31,7 +32,7 @@ function presetShape(value) {
 }
 function defaults() {
   return {
-    version: VERSION, characterId: null, greeting: 0, user: {name: '你', description: ''}, lorebookIds: [], useCharacterBook: true,
+    version: VERSION, characterId: null, builtinPersonaId: null, greeting: 0, user: {name: '你', description: ''}, lorebookIds: [], useCharacterBook: true,
     authorsNote: {text: '', depth: 4, role: 'system'}, preset: presetShape({name: DEFAULT_PRESET.name}),
     sampling: {temperature: null, topP: null, maxTokens: null}, contextChars: CHAT_PROMPT_CHARS,
     worldInfo: {budgetChars: 6000, scanDepth: 2, recursive: true},
@@ -81,6 +82,8 @@ function validate(value) {
   if (value.version !== undefined && value.version !== VERSION) throw bad('These settings were written by a different app version.');
   const characterId = value.characterId === undefined ? base.characterId : value.characterId;
   if (characterId !== null && (typeof characterId !== 'string' || !ID.test(characterId))) throw bad('Invalid character.');
+  const builtinPersonaId = value.builtinPersonaId === undefined ? null : value.builtinPersonaId;
+  if (builtinPersonaId !== null && !publicCatalog().some(persona => persona.id === builtinPersonaId)) throw bad('Invalid built-in persona.');
   const user = {...base.user, ...section(value.user ?? {}, 'user')};
   const name = text(user.name, LIMITS.userName, 'user name');
   if (!name.trim() || /[\r\n\t]/.test(name) || name !== name.trim()) throw bad('Invalid user name.');
@@ -103,7 +106,7 @@ function validate(value) {
   if (groupId !== null && (typeof groupId !== 'string' || !ID.test(groupId))) throw bad('Invalid group.');
   if (groupId !== null && branchId !== null) throw bad('A group conversation has no branches.');
   return {
-    version: VERSION, characterId,
+    version: VERSION, characterId, builtinPersonaId,
     greeting: integer(value.greeting ?? base.greeting, LIMITS.greeting, 'greeting'),
     user: {name, description: text(user.description, LIMITS.userDescription, 'user description')},
     lorebookIds: [...lorebookIds],

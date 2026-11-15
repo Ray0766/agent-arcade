@@ -6,6 +6,7 @@ if(process.argv.includes('--arcade-vault-migration-worker')){
 }else{
   require('./core/desktop-stdio.cjs').guardDesktopOutput();
   const {app,BrowserWindow,dialog}=require('electron');
+  require('./core/app-identity.cjs').configureAppIdentity(app);
   const {acquireSingleInstance}=require('./core/single-instance.cjs');
   let guard,pendingRaise=false,quitting=false;
   function flushRaise(){
@@ -28,7 +29,9 @@ if(process.argv.includes('--arcade-vault-migration-worker')){
     require('./main.cjs');flushLater();
   }).catch(async error=>{
     quitting=true;await guard?.close();
-    dialog.showErrorBox('Agent Arcade',error?.code==='INSTANCE_UNKNOWN'
+    dialog.showErrorBox('Agent Arcade',error?.code==='UPDATE_BACKUP_FAILED'
+      ?'更新前的数据备份未能完成，已停止启动以保护原数据。请检查数据目录的可用空间和访问权限，保留原目录后重试。'
+      :error?.code==='INSTANCE_UNKNOWN'
       ?'无法确认已有的 Agent Arcade 窗口。请正常关闭旧版后重试；没有启动第二个窗口。'
       :'无法启动 Agent Arcade 的唯一窗口。请正常关闭旧版后重试。');
     app.exit(1);
