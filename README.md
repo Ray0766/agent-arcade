@@ -6,6 +6,8 @@
 
 Agent Arcade is an open-source desktop app for chatting with AI characters on your own computer. It is released under AGPL-3.0 with no paid features. The app runs locally and keeps conversations and memory on this computer; the model is called with one API key that you bring (Claude, GPT, DeepSeek, Gemini or Doubao). This describes the **0.4.0-preview.1 development source**, not the older downloadable Windows app. Read the version table below before choosing a route.
 
+**Current local integration:** `0.4.0-preview.2` includes the 75-path repair snapshot and eight readiness commits. It is unpublished; the exact new build identity and checks are recorded in [the integration report](docs/MACOS_INTEGRATION_20261115.md). The version table below distinguishes earlier publicly obtainable source/releases.
+
 ## Choose the version first
 
 Availability read-only checked on **2026-11-15**:
