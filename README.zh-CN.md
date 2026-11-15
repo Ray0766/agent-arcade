@@ -6,7 +6,7 @@
 
 Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 角色聊天。它以 AGPL-3.0 发布，不设收费功能；应用在本机运行，聊天记录和记忆保存在本机，模型由你自带的一个 API key 调用（Claude、GPT、DeepSeek、Gemini 或豆包任选其一）。这里描述的是 **0.4.0-preview.1 开发源码**，与可下载的旧 Windows 版不同。请先按下表选择版本。
 
-**当前本地候选：**`0.4.0-preview.4` 修复「渠道页保存 API → App 对话恢复」，沿用固定本机签名，尚未发布。[源码、包校验和与验证](docs/API_CHAT_CREDENTIALS_20261116.md)区分真实 DeepSeek runner 与 App 内保存／重保存／回复验证；后续更新的钥匙串免弹窗仍未解决；下表继续区分公开可得版本。
+**当前本地候选：**`0.4.0-preview.6` 已在主人的 Mac 安装，使用不随 App 更新重建的固定凭据组件。真实签名 A→B→冷启动 B 的非交互读取通过，旧密钥和聊天保留。本机自用 arm64，未公证、未发布。[源码、包校验和与边界](docs/MAC_CREDENTIAL_BROKER_20261116.md)；下表继续区分公开可得版本。
 
 ## 先选对版本
 
@@ -16,6 +16,7 @@ Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 
 | --- | --- | --- |
 | **公开版 0.3.0-preview.2** | [Windows 可执行文件、校验和、依赖锁文件](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，属于旧版微信派活／观察器，沿用 MIT 许可。 | 按[该版本说明](docs/releases/0.3.0-preview.2.md)配对微信 ClawBot 和任务后端；它**没有**下文的 App 首用密钥卡片。 |
 | **开发源码 0.4.0-preview.1** | 远端 `codex/companion-nine`，固定基线 `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`，AGPL-3.0-only，**尚未发布**。 | 按[从源码运行](#从源码运行)取精确提交，再按[第一次使用](#第一次使用)操作。 |
+| **本机签名版 0.4.0-preview.6** | 本地 `codex/stable-credential-broker-20261116`，构建源码 `00e7b31b79f353ed7b28637fa043ef4e21d32619`；新 arm64 DMG／ZIP，另有固定本机凭据组件。 | 仅在本机安装／验证，未公证，无公开下载。[首次授权、更新验证与剩余边界](docs/MAC_CREDENTIAL_BROKER_20261116.md)。 |
 | **本机签名版 0.4.0-preview.4** | 本地 `codex/api-chat-credentials-20261116`，源码 `ad1531e4bef53943f0acea34f4a9f917636cc9c7`；新构建 arm64 DMG／ZIP，沿用相同个人证书，未公证。 | 仅本地可得，不在远端固定源码或公开版中。[精确身份与边界](docs/API_CHAT_CREDENTIALS_20261116.md)；主人授权后已通过本机 DeepSeek 保存／重保存／真实回复路径；后续更新免弹窗及更广真人验收仍未通过。 |
 
 **目前没有公开可下载的 Mac 候选包。** 本地包和 Actions artifact 不等于公开发布。Mac 用户目前需要从源码运行；构建与平台边界见 [macOS 说明](docs/MACOS.md)。不带分支的普通 clone 会取得较旧的默认 `main`。

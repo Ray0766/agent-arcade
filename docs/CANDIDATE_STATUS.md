@@ -1,5 +1,16 @@
 # Candidate identity and evidence — 2026-11-15
 
+## Fixed credential client candidate — 2026-11-16
+
+Current installed local candidate is `0.4.0-preview.6`, build source
+`00e7b31b79f353ed7b28637fa043ef4e21d32619`, self-signed by the pinned personal
+certificate and unnotarized. The fixed helper remains unchanged across actual
+signed preview.5/preview.6 and cold reads; all ordinary requests prohibit UI.
+The initial owner grant is confirmed in the exact item ACL/partition, original
+vault bytes/history are retained and the installed native UI is checked. No new
+model call, publication or first-stranger acceptance is claimed.
+[Hashes, commands, backup and remaining boundaries](MAC_CREDENTIAL_BROKER_20261116.md).
+
 ## Latest local repair — 2026-11-16
 
 `0.4.0-preview.4`, build source `ad1531e4bef53943f0acea34f4a9f917636cc9c7`, uses the existing pinned certificate and fresh arm64 ZIP/DMG. Source tests and a separate real DeepSeek runner probe pass. After owner-controlled OS authorization, the native DeepSeek save/re-save/reply path passes in an independent test profile. Signature identity did not prevent the observed partition mismatch; prompt-free future updates remain unresolved. [Current artifact identities and limits](API_CHAT_CREDENTIALS_20261116.md). The dated records below retain their original scope.

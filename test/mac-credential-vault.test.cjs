@@ -26,6 +26,7 @@ function fakeNative(f,{readyPid=4321,result={version:1,status:'ok',available:tru
 
 test('profile refuses changed pin, arbitrary helper and unexpected metadata',t=>{
  const f=fixture(t);
+ assert.throws(()=>validateProfile({...f.profile,account:'agent-arcade'},f.options),{code:'INVALID_PROFILE'});
  assert.throws(()=>validateProfile({...f.profile,identitySha1:'0'.repeat(40)},f.options),{code:'IDENTITY_MISMATCH'});
  assert.throws(()=>validateProfile({...f.profile,helperPath:'/tmp/evil'},f.options),{code:'INVALID_PROFILE'});
  assert.throws(()=>validateProfile({...f.profile,debug:true},f.options),{code:'INVALID_PROFILE'});

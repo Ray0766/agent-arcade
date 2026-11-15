@@ -1,5 +1,16 @@
 # Active delivery scope — single-window companion application
 
+## Fixed local Keychain client — 2026-11-16
+
+Local preview.6 is installed with a fixed native credential component outside
+App updates. Actual signed A→B→cold B ordinary crypto passes with UI forbidden;
+the owner completed the initial grant, and exact read-only ACL metadata confirms
+its persistence. The original three encrypted vaults and 33 chat/memory tables
+are unchanged. Original history/saved key and cold native readiness are checked.
+Full source regression: 4347 pass / 717 platform skips / zero fail. This is local
+personal-use arm64 evidence, unnotarized/unpublished, not a new real-model or
+external-adoption acceptance. [Exact source, package identities and boundaries](MAC_CREDENTIAL_BROKER_20261116.md).
+
 ## API settings to chat follow-up — 2026-11-16
 
 Local preview.4 repairs channel-page key save → App runner recovery and stale first-run provider drafts. Full regression 4322 pass / 717 skip / zero fail, 14 renderer cases and one real service lifecycle case pass. The owner-authorized separate DeepSeek test key received a bounded real runner reply, and, after the owner completed the existing OS authorization, the installed App passed independent test-profile save/re-save/real-reply/context recovery. Future-update Keychain prompts remain unresolved: matching requirements did not prevent an observed partition mismatch. No original credential is overwritten and no public release occurs. See [current evidence](API_CHAT_CREDENTIALS_20261116.md).

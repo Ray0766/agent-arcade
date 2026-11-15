@@ -1,11 +1,25 @@
 # Updates, saved keys and conversations
 
+## Fixed personal-use macOS client — 2026-11-16
+
+Local preview.6 uses a separately installed, pinned native credential component
+instead of the changing Electron executable for vault operations. The original
+`agent-arcade Safe Storage` / `agent-arcade Key` item and v10 ciphertext are kept.
+The owner completed its initial OS grant; exact ACL/partition checks and actual
+signed A→B→cold B reads pass with ordinary system interaction disabled. Original
+three vault files and all 33 chat/memory tables are retained; the new App is
+installed and normally running. [Current implementation and evidence](MAC_CREDENTIAL_BROKER_20261116.md)
+supersede the unresolved ordinary-update mechanism in the historical records
+below. The helper itself is not rebuilt/replaced during App updates. Locked or
+revoked access stops safely; another Mac/certificate/helper transition remains
+explicit, not guaranteed prompt-free.
+
 ## Observed same-signer update boundary — 2026-11-16
 
 The preview.3 → preview.4 real update has matching, strictly verified designated requirements, but still requested OS Keychain authorization. The agent stopped on that one current dialog rather than running repeated decryption tests. A stable signature alone does not prove an existing item ACL grants access; the owner completed that current grant. A passive log check matched this App’s partition mismatch and authorization request. Original vault bytes and chat/memory rows were retained; future-update prompts remain unresolved. [API-to-chat repair and current acceptance](API_CHAT_CREDENTIALS_20261116.md) supersede any inference that all future updates are already prompt-free.
 
 This describes the local development candidate, not an already published Mac
-release. API keys are encrypted through Electron `safeStorage` in each
+release. On Windows/Linux and historical Mac builds, API keys are encrypted through Electron `safeStorage` in each
 companion's `bot-vault.json`. App conversations and private memory are stored
 separately in that companion's `local-companion/social-memory.sqlite`.
 The normal data root is `~/.agent-arcade`; replacing the `.app` bundle does not

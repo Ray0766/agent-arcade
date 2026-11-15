@@ -36,8 +36,11 @@ The setup flow must generate that value from the verified local signing profile,
 and require agreement with the signed App metadata and helper signing identity;
 the public source does not embed one owner's signing certificate.
 Electron [45.2.1 source, lines 654–656](https://github.com/electron/electron/blob/v45.2.1/shell/browser/electron_browser_main_parts.cc#L654)
-sets service to `app_name + " Safe Storage"` and account to `app_name`. The App
-preserves its historic `agent-arcade` name before Electron readiness.
+sets the base service/account names. Its [MAS-compatibility patch](https://github.com/electron/electron/blob/v45.2.1/patches/chromium/feat_ensure_mas_builds_of_the_same_application_can_use_safestorage.patch)
+then appends `" Key"` for this non-MAS App. The exact existing item is service
+`agent-arcade Safe Storage`, account `agent-arcade Key`; both were confirmed by
+read-only local metadata. The helper reads that existing item without copying,
+deleting or migrating it. The App preserves its historic name before readiness.
 
 From a trusted build environment (example arm64; set the intended architecture
 explicitly):

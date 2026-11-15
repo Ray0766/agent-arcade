@@ -6,7 +6,7 @@
 
 Agent Arcade is an open-source desktop app for chatting with AI characters on your own computer. It is released under AGPL-3.0 with no paid features. The app runs locally and keeps conversations and memory on this computer; the model is called with one API key that you bring (Claude, GPT, DeepSeek, Gemini or Doubao). This describes the **0.4.0-preview.1 development source**, not the older downloadable Windows app. Read the version table below before choosing a route.
 
-**Current local candidate:** `0.4.0-preview.4` repairs API settings → App-chat recovery and retains the pinned personal-use Mac signer. It is unpublished. [Source, package hashes and verification](docs/API_CHAT_CREDENTIALS_20261116.md) distinguish the successful real DeepSeek runner probe from the completed bounded native save-to-chat test; future-update Keychain prompts remain unresolved. The table below keeps the publicly obtainable versions separate.
+**Current local candidate:** `0.4.0-preview.6` is installed on the owner's Mac with a fixed native credential component. Actual signed A→B→cold B reads pass without interactive requests; saved keys/history are retained. Personal-use arm64, unnotarized and unpublished. [Source, package hashes and limits](docs/MAC_CREDENTIAL_BROKER_20261116.md). The table below keeps publicly obtainable versions separate.
 
 ## Choose the version first
 
@@ -16,6 +16,7 @@ Availability read-only checked on **2026-11-15**:
 | --- | --- | --- |
 | **Public 0.3.0-preview.2** | [Windows executable, checksum and lockfile](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2). This is the older WeChat task/observer preview, licensed under MIT. | Use its [version-specific instructions](docs/releases/0.3.0-preview.2.md): WeChat ClawBot pairing and a task backend. It does **not** have the App-first key card described below. |
 | **Development 0.4.0-preview.1** | Source on `codex/companion-nine`, with reproducible baseline `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4` (AGPL-3.0-only). **Not a published release.** | Follow [Run from source](#run-from-source), then [First run](#first-run). |
+| **Local signed 0.4.0-preview.6** | Local `codex/stable-credential-broker-20261116`, build source `00e7b31b79f353ed7b28637fa043ef4e21d32619`; fresh arm64 DMG/ZIP and separately pinned local helper. | Installed/verified on this Mac only; unnotarized, no public download. [Initial grant, update checks and remaining gates](docs/MAC_CREDENTIAL_BROKER_20261116.md). |
 | **Local signed 0.4.0-preview.4** | Local `codex/api-chat-credentials-20261116`, source `ad1531e4bef53943f0acea34f4a9f917636cc9c7`; rebuilt arm64 DMG/ZIP with the same personal certificate. Unnotarized. | Local only, absent from pinned remote source/public executable. [Exact identity and limits](docs/API_CHAT_CREDENTIALS_20261116.md); the bounded native DeepSeek save/re-save/reply path passes after owner authorization; future-update Keychain prompts and broader human acceptance remain open. |
 
 **There is no publicly downloadable Mac candidate package.** A local build or
