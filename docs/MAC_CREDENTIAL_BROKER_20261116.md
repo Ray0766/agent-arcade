@@ -13,7 +13,7 @@ The original Keychain item and v10 encrypted files are retained in place.
 
 ## Decision and boundaries
 
-- Fixed helper reads only `agent-arcade Safe Storage` / `agent-arcade` from login
+- Fixed helper reads only `agent-arcade Safe Storage` / `agent-arcade Key` from login
   Keychain. No key creation/deletion, master export, arbitrary service/path,
   blanket ACL or partition change is implemented for production.
 - Legacy v10 compatibility follows the pinned Electron 45.2.1 macOS algorithm:
@@ -55,3 +55,10 @@ Pending: complete source regression, build the hardened actual App, verify
 production peer admission without prompting, authorize the fixed helper once if
 needed, compare distinct final App builds, activate normally and verify original
 vault bytes/chat rows. Final evidence will replace this checkpoint before delivery.
+
+Production admission found and corrected the legacy account suffix before any
+owner authorization: the existing item metadata is service `agent-arcade Safe
+Storage`, account `agent-arcade Key`. An earlier unactivated helper used only
+`agent-arcade`, so its noninteractive status returned `KEYCHAIN_MISSING`. The
+unused helper/profile were archived privately; the existing item and vaults
+were left untouched. New production pins refer only to the corrected helper.

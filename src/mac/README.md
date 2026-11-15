@@ -19,7 +19,7 @@ with the exact verified local signing-profile certificate pin at compile time:
 enum BrokerConfiguration {
     static let peerRequirement = "identifier \"io.github.agentarcade.desktop\" and certificate root = H\"0123456789abcdef0123456789abcdef01234567\""
     static let service = "agent-arcade Safe Storage"
-    static let account = "agent-arcade"
+    static let account = "agent-arcade Key"
     static let keychainPath = ""
     static let testing = false
 }

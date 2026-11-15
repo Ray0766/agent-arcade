@@ -8,7 +8,7 @@ const PIN='61B339CA14A652471B585499FE49F8C3615CDEBD',HASH='a'.repeat(40),SECRET=
 function fixture(t){
  const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'arcade-native-broker-')));fs.chmodSync(dir,0o700);const helper=path.join(dir,'helper-v1');fs.writeFileSync(helper,'synthetic executable bytes',{mode:0o500});
  t.after(()=>fs.rmSync(dir,{force:true,recursive:true}));
- const profile={schema:1,protocol:1,helperPath:helper,helperSha256:crypto.createHash('sha256').update(fs.readFileSync(helper)).digest('hex'),helperCdHash:HASH,identitySha1:PIN,sourceSha256:'b'.repeat(64),service:'agent-arcade Safe Storage',account:'agent-arcade'};
+ const profile={schema:1,protocol:1,helperPath:helper,helperSha256:crypto.createHash('sha256').update(fs.readFileSync(helper)).digest('hex'),helperCdHash:HASH,identitySha1:PIN,sourceSha256:'b'.repeat(64),service:'agent-arcade Safe Storage',account:'agent-arcade Key'};
  return {dir,helper,profile,options:{trustedIdentity:PIN,pathRoot:dir}};
 }
 function fakeNative(f,{readyPid=4321,result={version:1,status:'ok',available:true},neverReady=false,beforeReady=null,firstFrame=null,signatureFails=false,signatureFailureOutput='',cdHash=HASH,liveCdHash=cdHash,flags='10200',liveFlags=flags,extraFrame=false,code=0}={}){

@@ -5,7 +5,7 @@ const {credentialStartupAllowed}=require('../src/core/credential-startup-policy.
 const PIN='A'.repeat(40),HASH='b'.repeat(64),CD='c'.repeat(40);
 function fixture(t){
  const home=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'arcade-app-vault-'))),dir=path.join(home,'Library','Application Support','Agent Arcade Credentials');fs.mkdirSync(dir,{recursive:true,mode:0o700});fs.chmodSync(dir,0o700);
- const profile={schema:1,protocol:1,helperPath:path.join(dir,'helper-v1'),helperSha256:HASH,helperCdHash:CD,identitySha1:PIN,sourceSha256:HASH,service:'agent-arcade Safe Storage',account:'agent-arcade'};
+ const profile={schema:1,protocol:1,helperPath:path.join(dir,'helper-v1'),helperSha256:HASH,helperCdHash:CD,identitySha1:PIN,sourceSha256:HASH,service:'agent-arcade Safe Storage',account:'agent-arcade Key'};
  const file=path.join(dir,'profile-v1.json');fs.writeFileSync(file,JSON.stringify(profile),{mode:0o600});
  const metadata={macCredentialBroker:{protocol:1,identitySha1:PIN,helperSha256:HASH,helperCdHash:CD,sourceSha256:HASH}};
  t.after(()=>fs.rmSync(home,{recursive:true,force:true}));return {home,dir,file,profile,metadata};

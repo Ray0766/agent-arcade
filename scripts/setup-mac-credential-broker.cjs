@@ -29,7 +29,7 @@ function install({allowInstall=false}={}){
  const stage=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'arcade-fixed-credential-build-'));fs.chmodSync(stage,0o700);
  const configuration=path.join(stage,'BrokerConfiguration.swift'),binary=path.join(stage,'helper-v1'),plist=path.join(stage,'Info.plist');
  const peer=`identifier "io.github.agentarcade.desktop" and certificate root = H"${local.identitySha1.toLowerCase()}"`;
- fs.writeFileSync(configuration,`enum BrokerConfiguration {\n static let peerRequirement = ${JSON.stringify(peer)}\n static let service = "agent-arcade Safe Storage"\n static let account = "agent-arcade"\n static let keychainPath = ""\n static let testing = false\n}\n`,{mode:0o600});
+ fs.writeFileSync(configuration,`enum BrokerConfiguration {\n static let peerRequirement = ${JSON.stringify(peer)}\n static let service = "agent-arcade Safe Storage"\n static let account = "agent-arcade Key"\n static let keychainPath = ""\n static let testing = false\n}\n`,{mode:0o600});
  fs.writeFileSync(plist,'<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>io.github.agentarcade.credentials.v1</string><key>CFBundleName</key><string>Agent Arcade Credentials</string><key>CFBundleDisplayName</key><string>Agent Arcade Credentials</string><key>CFBundleVersion</key><string>1</string></dict></plist>',{mode:0o600});
  command('/usr/bin/swiftc',['-O','-parse-as-library','-target',`${process.arch==='arm64'?'arm64':'x86_64'}-apple-macos13.0`,'-module-cache-path',path.join(stage,'module-cache'),SOURCE,configuration,'-Xlinker','-sectcreate','-Xlinker','__TEXT','-Xlinker','__info_plist','-Xlinker',plist,'-o',binary]);
  signing.unlockLocalSigning(local);
@@ -41,7 +41,7 @@ function install({allowInstall=false}={}){
  if(!fs.existsSync(DIRECTORY))fs.mkdirSync(DIRECTORY,{mode:0o700});
  const folder=fs.lstatSync(DIRECTORY);if(folder.isSymbolicLink()||folder.uid!==process.getuid()||(folder.mode&0o7777)!==0o700||fs.readdirSync(DIRECTORY).length)throw Error('Credential installation changed; existing files were preserved.');
  const helperPath=path.join(DIRECTORY,'helper-v1');fs.copyFileSync(binary,helperPath,fs.constants.COPYFILE_EXCL);fs.chmodSync(helperPath,0o500);
- const profile={schema:1,protocol:1,helperPath,helperSha256:sha(fs.readFileSync(helperPath)),helperCdHash:match[1].toLowerCase(),identitySha1:local.identitySha1,sourceSha256:sha(fs.readFileSync(SOURCE)),service:'agent-arcade Safe Storage',account:'agent-arcade'};
+ const profile={schema:1,protocol:1,helperPath,helperSha256:sha(fs.readFileSync(helperPath)),helperCdHash:match[1].toLowerCase(),identitySha1:local.identitySha1,sourceSha256:sha(fs.readFileSync(SOURCE)),service:'agent-arcade Safe Storage',account:'agent-arcade Key'};
  const fd=fs.openSync(PROFILE,'wx',0o600);try{fs.writeFileSync(fd,JSON.stringify(profile,null,2)+'\n');fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
  existingProfile(local.identitySha1);
  return {installed:true,profile};

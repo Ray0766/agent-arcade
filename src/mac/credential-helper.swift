@@ -13,7 +13,7 @@ private func brokerCSOps(_ pid: pid_t, _ operation: UInt32,
 private let maximumFrame = 512 * 1024
 private let productionRequirementPattern = #"\Aidentifier "io\.github\.agentarcade\.desktop" and certificate root = H"[A-Fa-f0-9]{40}"\z"#
 private let productionService = "agent-arcade Safe Storage"
-private let productionAccount = "agent-arcade"
+private let productionAccount = "agent-arcade Key"
 
 private enum BrokerFailure: String, Error {
     case configuration_invalid, invalid_request, request_too_large, peer_rejected
