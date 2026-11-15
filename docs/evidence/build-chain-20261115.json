@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "date": "2026-11-15",
+  "advisory": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+  "before": {
+    "lockSha256": "8193a032cce462d5d6434be2e45561528efde609a40098b32ae277d11eae0592",
+    "audit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 6,
+      "high": 0,
+      "critical": 0,
+      "total": 6
+    },
+    "affected": [
+      "app-builder-lib@26.18.1 -> minimatch@10.2.6",
+      "@electron/universal@2.0.3 -> minimatch@9.0.9"
+    ]
+  },
+  "after": {
+    "lockSha256": "df5a84bf97d4413f030fde9a27ea1443c82c43cde220bd928e3f49cdeb15f6a6",
+    "audit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "productionAudit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "override": {
+      "minimatch@>=7.0.0 <11.0.1": "11.0.1"
+    },
+    "matcher": "11.0.1",
+    "cleanInstall": {
+      "ignoreScripts": true,
+      "packages": 410
+    },
+    "consumerTests": {
+      "command": "npm test -- test/build-matchers.test.cjs",
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "boundaries": {
+    "nativePackageRebuilt": false,
+    "realProfileOpened": false,
+    "modelCalled": false,
+    "pushedOrPublished": false
+  }
+}
