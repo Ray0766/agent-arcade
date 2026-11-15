@@ -7,8 +7,10 @@ Current installed local candidate is `0.4.0-preview.6`, build source
 certificate and unnotarized. The fixed helper remains unchanged across actual
 signed preview.5/preview.6 and cold reads; all ordinary requests prohibit UI.
 The initial owner grant is confirmed in the exact item ACL/partition, original
-vault bytes/history are retained and the installed native UI is checked. No new
-model call, publication or first-stranger acceptance is claimed.
+vault bytes/history are retained and the installed native UI is checked. The later owner-requested [real DeepSeek check](REAL_CHAT_PREVIEW6_20261116.md)
+passes three requests, persona switching and cold-reopen retention without key
+re-entry or authorization tests; normal full-process Quit remains defective.
+No publication or first-stranger acceptance is claimed.
 [Hashes, commands, backup and remaining boundaries](MAC_CREDENTIAL_BROKER_20261116.md).
 
 ## Latest local repair — 2026-11-16

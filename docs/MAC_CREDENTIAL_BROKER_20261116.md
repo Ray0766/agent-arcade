@@ -11,6 +11,11 @@ the macOS vault cryptographic client into a fixed, separately installed native
 executable. Ordinary App updates neither recompile, re-sign nor replace it.
 The original Keychain item and v10 encrypted files are retained in place.
 
+Later owner-requested [real DeepSeek validation](REAL_CHAT_PREVIEW6_20261116.md)
+exercised this installed build with three real requests, switching and a cold
+restart. Its results supersede “no new model call” only for that later follow-up;
+the repair-phase records below retain their original time/scope.
+
 ## Decision and boundaries
 
 - Fixed helper reads only `agent-arcade Safe Storage` / `agent-arcade Key` from login

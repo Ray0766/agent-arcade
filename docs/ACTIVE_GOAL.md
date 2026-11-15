@@ -1,5 +1,15 @@
 # Active delivery scope — single-window companion application
 
+## Real DeepSeek check on installed preview.6 — 2026-11-16
+
+The owner-authorized existing test key completed three real requests in the
+installed preview.6: Ju, switched Whale, then Ju's earlier marker recovered after
+cold restart. No key re-entry or Keychain authorization test occurred. All three
+vault files and all old database rows remain unchanged; only six test messages
+and one persona scope were added. Normal full-process Quit still leaves an idle
+main; cold verification explicitly ended that verified own process before reopen.
+[Commands, evidence and precise acceptance](REAL_CHAT_PREVIEW6_20261116.md).
+
 ## Fixed local Keychain client — 2026-11-16
 
 Local preview.6 is installed with a fixed native credential component outside
