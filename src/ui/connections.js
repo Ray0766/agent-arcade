@@ -14,7 +14,8 @@
   document.querySelector('nav').insertBefore(nav,document.querySelector('nav [data-view="settings"]'));
   const option=el('option','');option.value='connections';$('view-picker').append(option);
   let previous='',latest,appearanceOpen=false,plannedOpen=false,renderedContext=null,expandedOwner=null,optionalChoice=null;
-  const auth=new Map(),busy=new Set(),loginNotes=new Map();
+  const auth=new Map(),busy=new Set(),loginNotes=new Map(),keySaves=new Map(),keyNotes=new Map();
+  const keyScope=next=>JSON.stringify([next?.accounts?.selectedId||'',next?.bot?.mode||'api',next?.bot?.channel||'wechat']);
   const refresh=()=>{previous='';if(latest)window.renderConnections(latest);};
   window.openConnectionOnboarding=()=>{switchView('connections');$('connections-view').scrollTop=0;};
   function checkProvider(provider,login=false){
@@ -34,7 +35,8 @@
   window.renderConnections=next=>{
     latest=next;
     const zh=next.config.language==='zh',name=zh?'AI 与渠道':'AI and channels',bot=next.bot||{},mode=bot.mode||'api';
-    const credentialContext={profileId:next.accounts?.selectedId||'',expectedMode:mode,expectedChannel:bot.channel||'wechat'};
+    if(renderedContext&&(renderedContext.profileId!==(next.accounts?.selectedId||'')||renderedContext.expectedMode!==mode||renderedContext.expectedChannel!==(bot.channel||'wechat')))keyNotes.clear();
+    const credentialContext={profileId:next.accounts?.selectedId||'',expectedMode:mode,expectedChannel:bot.channel||'wechat'},scope=keyScope(next),saving=keySaves.has(scope),keyNote=keyNotes.get(scope);
     const active=!['disconnected',undefined].includes(bot.status),partner=partners.find(p=>p.local===mode||p.api===mode)||(mode==='native'?partners[0]:partners[0]);
     const legacy=mode==='native',local=mode===partner.local,providerState=auth.get(partner.provider),working=busy.has(partner.provider);
     const current=next.persona||(next.personas||[]).find(p=>p.id===partner.persona),getPersona=id=>(next.personas||[]).find(p=>p.id===id);
@@ -48,10 +50,11 @@
     if(renderedContext&&renderedContext.profileId!==credentialContext.profileId)optionalChoice=null;
     const optionalOpen=optionalChoice??(window.ArcadeFirstRun?.hasChannel(next)===true||!!bot.workspace||active);
     const savedConnection=window.selectedSavedConnection?.(next);
-    const key=JSON.stringify([optionalOpen,window.ArcadeFirstRun?.needed(next),window.ArcadeDesktopConversation?.stateKey(),next.bot?.local, next.desktopChat?.kind,next.accounts?.selectedId||'',zh,next.config.portrait,next.config.character,next.config.personaVoice,next.persona,bot.social?.config.enabled,bot.social?.supported,mode,bot.geminiModel,bot.doubaoModel,bot.channel,bot.status,bot.hasKey,bot.workspace,bot.paired,providerState,working,loginNotes.get(partner.provider),expandedOwner,window.ArcadeQQStartConnect?.stateKey()]);
+    const key=JSON.stringify([saving,keyNote,optionalOpen,window.ArcadeFirstRun?.needed(next),window.ArcadeDesktopConversation?.stateKey(),next.bot?.local, next.desktopChat?.kind,next.accounts?.selectedId||'',zh,next.config.portrait,next.config.character,next.config.personaVoice,next.persona,bot.social?.config.enabled,bot.social?.supported,mode,bot.geminiModel,bot.doubaoModel,bot.channel,bot.status,bot.hasKey,bot.workspace,bot.paired,providerState,working,loginNotes.get(partner.provider),expandedOwner,window.ArcadeQQStartConnect?.stateKey()]);
     if(previous===key)return;previous=key;
     const content=$('connections-content'),focused=document.activeElement;
-    // Restore the current control, never its value, after a same-profile redraw.
+    // Restore focus after a same-profile redraw. Only an in-flight scoped save
+    // retains its input; ordinary provider/method changes discard the field.
     // Provider/method choices can intentionally change mode; other controls cannot.
     const sameOwner=renderedContext?.profileId===credentialContext.profileId&&renderedContext?.expectedChannel===credentialContext.expectedChannel;
     const focusKey=sameOwner&&document.body.dataset.view==='connections'&&content.contains(focused)?
@@ -100,15 +103,39 @@
     }else if(!legacy){
       account.append(el('p','onboarding-copy',partner.id==='deepseek'?(zh?'DeepSeek 目前使用 API key 接入，按 API 用量计费。':'DeepSeek currently connects with an API key and API usage billing.'):(zh?'使用对应服务的 API key，按 API 用量计费；与账号订阅分开。':'Use this service’s API key. API usage is billed separately from an account subscription.')));
       const label=el('label','',partner.id==='claude'?'Anthropic API key':partner.id==='gpt'?'OpenAI API key':partner.id==='gemini'?'Google AI Studio API key':partner.id==='doubao'?'Volcengine Ark API key':'DeepSeek API key');label.htmlFor='onboarding-key';
-      const keyRow=el('div','onboarding-key-row'),input=el('input','');input.type='password';input.id='onboarding-key';input.autocomplete='off';input.spellcheck=false;input.maxLength=500;input.placeholder=bot.hasKey?(zh?'已保存，无需重复填写；留空保留':'Saved; no need to re-enter. Leave blank to keep'):['gemini','doubao'].includes(partner.id)?'API key':'sk-…';input.disabled=active;
-      const save=el('button','secondary',zh?'保存密钥':'Save key');save.id='onboarding-key-save';save.disabled=active;save.onclick=()=>action(async()=>{
+      const keyRow=el('div','onboarding-key-row'),input=el('input','');input.type='password';input.id='onboarding-key';input.autocomplete='off';input.spellcheck=false;input.maxLength=500;input.placeholder=bot.hasKey?(zh?'已保存，无需重复填写；留空保留':'Saved; no need to re-enter. Leave blank to keep'):['gemini','doubao'].includes(partner.id)?'API key':'sk-…';input.disabled=active||saving;if(saving)input.value=keySaves.get(scope).value;
+      const save=el('button','secondary',zh?'保存密钥':'Save key');save.id='onboarding-key-save';save.disabled=active||saving;save.onclick=()=>action(async()=>{
+        if(keySaves.has(scope))return;
         // What was typed stays in the field until the key is actually saved.
         const value=input.value.trim(),say=(text,failed)=>{status.textContent=text;status.dataset.error=String(!!failed);};
         if(!value){say(bot.hasKey?(zh?'密钥未更改。':'Key unchanged.'):(zh?'请先输入 API key。':'Enter an API key first.'),!bot.hasKey);input.focus();return;}
         const problem=window.ArcadeFirstRun?.keyProblem(value,zh);if(problem){say(problem,true);input.focus();return;}
-        try{await window.arcade.botConfigure({...credentialContext,mode:partner.api,key:value});input.value='';}catch(error){const known=window.ArcadeFirstRun?.known(error,zh);if(known){say(known,true);input.focus();return;}if(error?.code==='credentials_busy'||String(error?.message||'').endsWith('(credentials_busy)'))throw Error(zh?'这位搭档的凭据正在清除。请等待完成后重新打开设置，再保存或连接。':'This companion’s credentials are being cleared. Wait for completion, then reopen settings before saving or connecting.');if(error?.code==='credential_scope_changed'||String(error?.message||'').endsWith('(credential_scope_changed)'))throw Error(zh?'搭档或连接方式已变化。请重新打开对应搭档的连接设置，再保存凭据。':'The companion or connection method changed. Reopen that companion’s connection settings before saving credentials.');throw error;}});keyRow.append(input,save);account.append(label,keyRow);
+        const resume=next.desktopChat?.kind==='local'||bot.local?.available===true,provider=zh&&partner.zh?partner.zh:partner.name;
+        const token={value};keySaves.set(scope,token);keyNotes.set(scope,{text:zh?'正在保存…':'Saving…',error:false});refresh();let saved=false;
+        const note=(text,error=false)=>keyNotes.set(scope,{text,error});
+        try{
+          await window.arcade.botConfigure({...credentialContext,mode:partner.api,key:value});saved=true;input.value='';token.value='';
+          note(zh?`${provider} 密钥已保存。`:`${provider} key saved.`);
+          if(resume){
+            // Saving retires the old runner even when its mode is unchanged. Never
+            // take the renderer shortcut that still sees that old runner as usable.
+            const current=await window.arcade.snapshot();
+            if(keyScope(latest)!==scope||keyScope(current)!==scope)return;
+            const result=await window.ArcadeDesktopConversation?.select('local',false,{force:true});
+            if(keyScope(latest)!==scope)return;
+            if(result?.ok===true)note(zh?`${provider} 密钥已保存，App 对话已就绪。`:`${provider} key saved. App chat is ready.`);
+            else note(zh?`${provider} 密钥已保存，但 App 对话尚未开始。请点击“在 App 里聊”重试。`:`${provider} key saved, but App chat did not start. Choose “Chat in App” to retry.`,true);
+          }
+        }catch(error){
+          if(saved)note(zh?`${provider} 密钥已保存，但 App 对话尚未开始。请点击“在 App 里聊”重试。`:`${provider} key saved, but App chat did not start. Choose “Chat in App” to retry.`,true);
+          else note(window.ArcadeFirstRun?.known(error,zh)||(zh?'密钥未能保存，请重试。':'The key could not be saved. Try again.'),true);
+        }finally{
+          if(keySaves.get(scope)===token)keySaves.delete(scope);refresh();
+          if(!saved&&keyScope(latest)===scope){const field=$('onboarding-key');if(field){field.value=value;field.focus();}}
+        }
+      });keyRow.append(input,save);account.append(label,keyRow);
       if(partner.model){const modelLabel=el('label','',zh?'模型':'Model'),model=el('select','');model.id='onboarding-model';modelLabel.htmlFor=model.id;const item=el('option','',partner.modelName);item.value=partner.model;model.append(item);model.value=bot[partner.id+'Model']||partner.model;model.disabled=active;model.onchange=()=>action(()=>window.arcade.botConfigure({[partner.id+'Model']:model.value}));account.append(modelLabel,model);account.append(el('p','onboarding-fine',partner.id==='doubao'?(zh?'火山方舟 API；不使用豆包应用登录。':'Volcengine Ark API; not a Doubao app login.'):(zh?'Google AI Studio API；与 Gemini 应用订阅分开计费。':'Google AI Studio API; billed separately from the Gemini app subscription.')));}
-      const status=el('p','onboarding-key-state',bot.hasKey?(zh?'已加密保存，无需重复填写；留空保留。':'Saved with OS encryption; no need to enter it again. Leave blank to keep it.'):(zh?'密钥只在本机使用系统加密保存，不会显示在聊天中。':'The key is stored locally with OS encryption and is not shown in chat.'));status.id='onboarding-key-state';status.setAttribute('role','status');account.append(status);if(window.arcade.providerGuide){const guide=el('button','plain onboarding-key-guide',zh?'获取 API key':'Get an API key');guide.id='onboarding-key-guide';guide.onclick=()=>action(()=>window.arcade.providerGuide(partner.id==='claude'?'claude-api':partner.id));account.append(guide);}
+      const status=el('p','onboarding-key-state',bot.hasKey?(zh?'已加密保存，无需重复填写；留空保留。':'Saved with OS encryption; no need to enter it again. Leave blank to keep it.'):(zh?'密钥只在本机使用系统加密保存，不会显示在聊天中。':'The key is stored locally with OS encryption and is not shown in chat.'));status.id='onboarding-key-state';if(keyNote){status.textContent=keyNote.text;status.dataset.error=String(keyNote.error);}status.setAttribute('role',keyNote?.error?'alert':'status');account.append(status);if(window.arcade.providerGuide){const guide=el('button','plain onboarding-key-guide',zh?'获取 API key':'Get an API key');guide.id='onboarding-key-guide';guide.onclick=()=>action(()=>window.arcade.providerGuide(partner.id==='claude'?'claude-api':partner.id));account.append(guide);}
     }
     content.append(account);
     // One disclosure for everything a pure-chat user does not need: work folder, chat channels,

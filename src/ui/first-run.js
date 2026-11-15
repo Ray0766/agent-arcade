@@ -134,6 +134,7 @@
   // force restarts the conversation with what was just saved; without it a running one is kept.
   async function startChat(force=true){
     const result=await window.ArcadeDesktopConversation?.select('local',true,{force});
+    if(result?.ok!==true)throw Object.assign(Error(tr('App 对话尚未开始。请重试；已保存的密钥会保留。','App chat did not start. Try again; saved keys are retained.')),{code:result?.code||'start_failed'});
     if(inDialog())dialog.close();
     // select() focuses the composer once the conversation is running; this covers a slower start.
     requestAnimationFrame(()=>document.getElementById('desktop-chat-input')?.focus({preventScroll:true}));
@@ -152,18 +153,25 @@
     if(busy||localBusy||!latest)return;
     const partner=chosen(),value=input.value.trim(),current=latest.bot?.mode||'api',keep=!value&&latest.bot?.hasKey===true&&partner.api===current,first=needed(latest);
     if(!keep){const problem=keyProblem(input.value,zh());if(problem){say(problem,true);input.focus({preventScroll:true});return;}}
-    busy=true;say(tr('正在保存…','Saving…'));
+    const origin=recoveryScope();busy=true;say(tr('正在保存…','Saving…'));let saved=keep,modeSelected=partner.api===current;
+    const scope={profileId:latest.accounts?.selectedId||'',expectedMode:partner.api,expectedChannel:latest.bot?.channel||'wechat'};
+    const check=()=>{if(!sameRecovery(scope,recoveryScope()))throw Object.assign(Error('Conversation changed.'),{code:'changed'});};
     try{
       if(!keep){
         const profileId=latest.accounts?.selectedId||'',expectedChannel=latest.bot?.channel||'wechat';
         // The main process accepts a key only for the mode that is already selected.
-        if(partner.api!==current)await window.arcade.botConfigure({mode:partner.api});
-        await window.arcade.botConfigure({profileId,expectedMode:partner.api,expectedChannel,key:value});
+        if(partner.api!==current){await window.arcade.botConfigure({mode:partner.api});modeSelected=true;}
+        await window.arcade.botConfigure({profileId,expectedMode:partner.api,expectedChannel,key:value});saved=true;
       }
-      input.value='';revealed=false;message='';failed=false;picked=null;
+      // IPC can settle before its subscription snapshot reaches this renderer.
+      // Read back the saved scope before deciding which conversation to resume.
+      const next=await window.arcade.snapshot(),actual={profileId:next.accounts?.selectedId||'',expectedMode:next.bot?.mode||'api',expectedChannel:next.bot?.channel||'wechat'};
+      if(!sameRecovery(scope,actual)||latest.accounts?.selectedId!==scope.profileId)throw Object.assign(Error('Conversation changed.'),{code:'changed'});
+      latest=next;if(typeof data!=='undefined')data=next;if(typeof render==='function')render();
+      check();input.value='';revealed=false;message='';failed=false;picked=null;
       if(first)await alignPersona(partner).catch(()=>{});
-      await startChat(!keep);
-    }catch(error){say(explain(error,zh()),true);requestAnimationFrame(()=>input.focus({preventScroll:true}));}
+      check();await startChat(!keep);
+    }catch(error){if(sameRecovery(scope,recoveryScope())||!modeSelected&&sameRecovery(origin,recoveryScope())){if(!saved)input.value=value;say(saved?tr('密钥已保存，但 App 对话尚未开始。请点击下方按钮重试。','The key is saved, but App chat did not start. Choose the button below to retry.'):explain(error,zh()),true);requestAnimationFrame(()=>input.focus({preventScroll:true}));}}
     finally{busy=false;draw();}
   }
   form.addEventListener('submit',event=>{event.preventDefault();void submit();});
@@ -249,10 +257,12 @@
     stateKey:()=>`${moves}:${dialog.open}`,
   });
   window.renderFirstRun=next=>{
-    const account=latest?.accounts?.selectedId;latest=next;
+    const account=latest?.accounts?.selectedId,mode=latest?.bot?.mode;latest=next;
     if(resetIntent&&!sameRecovery(resetIntent.scope,recoveryScope()))resetIntent=null;
     if(account!==undefined&&account!==next.accounts?.selectedId){resetIntent=null;picked=null;input.value='';message='';failed=false;localMessage='';localFailed=false;revealed=false;if(dialog.open)dialog.close();}
-    // A provider picked on the card stays picked until the profile's own service says otherwise.
+    // A draft belongs to the service that was current when it was typed. An
+    // external backend change must not make that draft look like saved settings.
+    if(mode!==undefined&&mode!==next.bot?.mode){picked=null;input.value='';message='';failed=false;revealed=false;}
     if(picked&&!partners().some(p=>p.id===picked))picked=null;
     draw();
   };
