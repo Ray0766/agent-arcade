@@ -145,6 +145,9 @@ function runMacBuild(argv,env=process.env,{inspection,exec=execFileSync,spawn=sp
   const result=spawn(process.execPath,[builderFile,...plan.args,...extra],{stdio:'inherit',env:buildEnvironment(env,plan),shell:false});
   return {plan,status:result.error?1:result.status??1};
 }
+// The CLI's credential preflight imports the explicit installer, which reuses
+// these signing primitives. Publish them before entering that dependency chain.
+module.exports={macArgs,installedIdentities,prepareMacBuild,localSigningProfile,buildEnvironment,unlockLocalSigning,runMacBuild};
 if(require.main===module){
   try{
     const {plan,status}=runMacBuild(process.argv.slice(2),process.env,{credentialArgs:profile=>{
@@ -156,4 +159,3 @@ if(require.main===module){
     process.exitCode=status;
   }catch(error){console.error(error.message);process.exitCode=1;}
 }
-module.exports={macArgs,installedIdentities,prepareMacBuild,localSigningProfile,buildEnvironment,unlockLocalSigning,runMacBuild};
