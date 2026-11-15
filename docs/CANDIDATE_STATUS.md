@@ -1,5 +1,9 @@
 # Candidate identity and evidence — 2026-11-15
 
+## Latest local repair — 2026-11-16
+
+`0.4.0-preview.4`, build source `ad1531e4bef53943f0acea34f4a9f917636cc9c7`, uses the existing pinned certificate and fresh arm64 ZIP/DMG. Source tests and a separate real DeepSeek runner probe pass. After owner-controlled OS authorization, the native DeepSeek save/re-save/reply path passes in an independent test profile. Signature identity did not prevent the observed partition mismatch; prompt-free future updates remain unresolved. [Current artifact identities and limits](API_CHAT_CREDENTIALS_20261116.md). The dated records below retain their original scope.
+
 This is a tracked, sanitized status summary. It does not publish a package or
 turn maintenance records into independent/human acceptance.
 

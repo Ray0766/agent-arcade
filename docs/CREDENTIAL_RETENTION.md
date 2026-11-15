@@ -1,5 +1,9 @@
 # Updates, saved keys and conversations
 
+## Observed same-signer update boundary — 2026-11-16
+
+The preview.3 → preview.4 real update has matching, strictly verified designated requirements, but still requested OS Keychain authorization. The agent stopped on that one current dialog rather than running repeated decryption tests. A stable signature alone does not prove an existing item ACL grants access; the owner completed that current grant. A passive log check matched this App’s partition mismatch and authorization request. Original vault bytes and chat/memory rows were retained; future-update prompts remain unresolved. [API-to-chat repair and current acceptance](API_CHAT_CREDENTIALS_20261116.md) supersede any inference that all future updates are already prompt-free.
+
 This describes the local development candidate, not an already published Mac
 release. API keys are encrypted through Electron `safeStorage` in each
 companion's `bot-vault.json`. App conversations and private memory are stored

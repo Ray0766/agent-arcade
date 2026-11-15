@@ -1,5 +1,9 @@
 # Active delivery scope — single-window companion application
 
+## API settings to chat follow-up — 2026-11-16
+
+Local preview.4 repairs channel-page key save → App runner recovery and stale first-run provider drafts. Full regression 4322 pass / 717 skip / zero fail, 14 renderer cases and one real service lifecycle case pass. The owner-authorized separate DeepSeek test key received a bounded real runner reply, and, after the owner completed the existing OS authorization, the installed App passed independent test-profile save/re-save/real-reply/context recovery. Future-update Keychain prompts remain unresolved: matching requirements did not prevent an observed partition mismatch. No original credential is overwritten and no public release occurs. See [current evidence](API_CHAT_CREDENTIALS_20261116.md).
+
 ## Stable Mac signing follow-up — 2026-11-15
 
 After the initial zero-identity inspection, the owner authorized provisioning a persistent personal-use signer. Version `0.4.0-preview.3` is now rebuilt with that exact certificate, including a verified locked-Keychain → automatic-unlock cold build. No owner App/profile/API key/chat was opened or replaced. See [LOCAL_MAC_SIGNING_20261115](LOCAL_MAC_SIGNING_20261115.md) for the final source, artifact identity and first-transition limits; [the earlier inspection](MAC_SIGNING_STATUS_20261115.md) remains historical. No public release is created.
