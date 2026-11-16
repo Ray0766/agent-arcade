@@ -142,3 +142,21 @@ test('component cleanup waits for its exact owner and requires a positive close 
   valid=true;f.quit();await f.api.pending();assert.equal(calls,2);assert.equal(f.state.quitCalls,1);
  }
 });
+
+test('native menu microtask checkpoint cannot resume Quit before the cancelled native call returns',async()=>{
+ const f=fixture();
+ assert.equal(f.quit().prevented,1);
+ // Electron's native Emit drains Promise callbacks before returning its
+ // before-quit cancellation to Browser::Quit. Keep that outer native stack
+ // represented here while all immediately settled cleanup promises drain.
+ for(let i=0;i<100;i++)await Promise.resolve();
+ assert.equal(f.state.quitCalls,0,'Resuming in this checkpoint lets the outer native cancellation overwrite the resumed Quit state.');
+ assert.equal(f.api.flags().cleanedUp,false);
+ const pending=f.api.pending();assert(pending);
+ assert.equal(f.quit().prevented,1,'A repeated native request must share the cleanup/turn barrier.');
+ assert.equal(f.api.pending(),pending);
+ await pending;
+ assert.equal(f.state.quitCalls,1);
+ assert.equal(f.api.flags().cleanedUp,true);
+ assert.equal(f.quit().prevented,0);
+});

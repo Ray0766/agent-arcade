@@ -2094,6 +2094,12 @@ app.on('before-quit', event => {
       throw Object.assign(Error('Remote cleanup unconfirmed.'),{code});
     }
     try{qqStopTrace?.close();}catch{/* Optional diagnostics do not own workers. */}
+    // Native macOS menu Emit drains Promise callbacks before the cancelled
+    // Browser::Quit call has returned. Re-entering Quit in that checkpoint lets
+    // its outer cancellation overwrite the resumed quit flag. Cross a complete
+    // event-loop turn after confirmed cleanup; keep repeated Quit requests on
+    // this same shutdownTask until that barrier has passed.
+    await new Promise(resolve=>require('node:timers').setImmediate(resolve));
     cleanedUp=true;app.quit();
   })().catch(error=>{
     quitting=false;
