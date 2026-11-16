@@ -1,5 +1,16 @@
 # Candidate identity and evidence — 2026-11-15
 
+## Real-memory verified local candidate — 2026-11-16
+
+Current installed local candidate is `0.4.0-preview.8`, build source
+`8dd258c401554b51d89a8e6923586e8095783515`. It fixes stale hidden reply
+announcements after forgetting or changing conversation, with actual native AX
+verification. Manual structured-fact recall after App restart, two-persona
+isolation and forgetting pass with the owner's existing DeepSeek test key.
+Original credentials/history are retained; no Keychain authorization command.
+Same personal signer/fixed helper, unnotarized and unpublished. [Exact package
+hashes, live flow and limits](REAL_MEMORY_FLOW_20261116.md).
+
 ## Complete-Quit local candidate — 2026-11-16
 
 Current installed version is `0.4.0-preview.7`, build source

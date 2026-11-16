@@ -155,6 +155,13 @@ that a provider's current credentials, quota or every image will work.
 
 ## Manage App memory
 
+Local preview.8 has [bounded real DeepSeek evidence](REAL_MEMORY_FLOW_20261116.md)
+for manual facts surviving App restart, two-persona isolation and forgetting
+before/after restart. It also clears hidden completed-reply announcements when
+their message or conversation is no longer current. The dated evidence is local
+and unpublished; it does not certify arbitrary natural-language extraction or
+large-memory recall.
+
 Open **Together → Memory → App memory / 相处 → 记得的事 → App 记忆**.
 Choose the companion, enter up to 500 characters and select **Remember this**.
 Each saved row can be edited or explicitly forgotten. This editor works while

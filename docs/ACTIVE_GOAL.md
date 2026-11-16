@@ -1,5 +1,17 @@
 # Active delivery scope — single-window companion application
 
+## Real memory/isolation/forgetting and renderer repair — 2026-11-16
+
+Installed preview.8 passes the owner-authorized real DeepSeek flow: manual App
+facts persist across normal Quit/reopen, two personas answer their own distinct
+facts, and forgetting removes the target from current and reopened replies while
+the other fact survives. Actual testing found and fixed stale hidden reply text
+remaining in the AX tree after forgetting/switching. Original vault bytes and all
+old rows are retained; temporary facts cleaned, original persona restored. Six
+bounded real requests across initial/final builds; no Keychain authorization test.
+Full regression: 4348 pass / 717 skips / zero fail; complete memory UI 19 checks.
+[Build identity, live evidence and acceptance limits](REAL_MEMORY_FLOW_20261116.md).
+
 ## Complete macOS Quit and reopen — 2026-11-16
 
 Installed local preview.7 fixes native menu Quit reentrancy by crossing one full

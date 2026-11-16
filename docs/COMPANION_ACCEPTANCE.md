@@ -16,6 +16,17 @@ Owner-authorized long-running scope, 2026-11-05. Priority determines order, not 
 | Unified accounts | Companion switcher / connections | Multiple real QQ identities concurrently, independent histories, stop/reconnect one without affecting others | Bounded live pass: three connected backends, Ju-only disconnect/reconnect while others stayed connected, two negative/one positive memory isolation and full-app reconnect without QR |
 | Interruptible voice | Desktop conversation microphone | Real microphone recognition, useful transcription and natural enough playback, interruption stops audio and old turn, new spoken turn works | Corrected neural manual mode has owner-confirmed recording, accurate sample text and audible gentle voice. Bounded manual flow passed; quantitative accuracy, hands-free interruption and its new spoken turn remain unaccepted |
 
+## Local Mac App memory follow-up — 2026-11-16
+
+Preview.8 has bounded real DeepSeek evidence for manual App-memory writes,
+structured-fact-only recall after normal App restart, two personas sharing one
+backend, explicit forgetting immediately and after restart, and retention of the
+other persona's fact. The actual check also found/fixed old text left in a hidden
+AX announcement. Temporary synthetic facts were cleaned and all pre-existing
+rows/key ciphertext retained. [Full identity and evidence](REAL_MEMORY_FLOW_20261116.md).
+This does not repeat or expand the historical QQ/account acceptances below, nor
+prove cross-month/large-memory, all-provider or external-user behavior.
+
 ## Implementation decisions
 
 - Reuse the current Node SQLite store and BotService; no framework migration or unrelated model adoption. Vespera is excluded at the owner's request.
