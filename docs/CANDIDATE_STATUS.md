@@ -1,5 +1,15 @@
 # Candidate identity and evidence — 2026-11-15
 
+## Complete-Quit local candidate — 2026-11-16
+
+Current installed version is `0.4.0-preview.7`, build source
+`ec5d79a15de1dac0f20dba94b7a823cf8c724c0a`. Native menu Quit exits fully on the
+real archive and both installed cycles, without force-exit; key/history retention
+and one real DeepSeek reply pass after reopening. The fixed credential helper is
+unchanged, with no authorization tests. Self-signed arm64, unnotarized and local
+only. [Artifact identities, commands and remaining gates](MAC_QUIT_FIX_20261116.md).
+The dated preview.6 records below describe the earlier defect/acceptance point.
+
 ## Fixed credential client candidate — 2026-11-16
 
 Current installed local candidate is `0.4.0-preview.6`, build source

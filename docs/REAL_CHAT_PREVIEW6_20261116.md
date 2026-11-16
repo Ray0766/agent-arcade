@@ -5,6 +5,10 @@ DeepSeek test key to exercise the installed new version, companion switching and
 quit/reopen retention, without Keychain authorization tests. This is a follow-up
 to [the fixed-client repair](MAC_CREDENTIAL_BROKER_20261116.md), not a new build.
 
+The later [preview.7 Quit repair](MAC_QUIT_FIX_20261116.md) resolves the idle main
+left by normal native menu Quit. This earlier report preserves the original
+preview.6 observation, including its required TERM, rather than rewriting it.
+
 ## Exact tested installation
 
 - Installed App: `/Users/ray/Applications/Agent Arcade.app`, `0.4.0-preview.6`.

@@ -1,5 +1,15 @@
 # Active delivery scope — single-window companion application
 
+## Complete macOS Quit and reopen — 2026-11-16
+
+Installed local preview.7 fixes native menu Quit reentrancy by crossing one full
+event-loop turn after confirmed cleanup. The real ZIP and two normal installed
+Quit cycles exit 0 with no remaining observed descendants or forced termination.
+The saved DeepSeek test key still obtains a real reply; reopening retains it and
+all old history. No Keychain authorization test/permission change. Source suite:
+4348 pass / 717 skips / zero fail. [Source, package hashes, backup and precise
+acceptance](MAC_QUIT_FIX_20261116.md) supersede the old preview.6 Quit defect below.
+
 ## Real DeepSeek check on installed preview.6 — 2026-11-16
 
 The owner-authorized existing test key completed three real requests in the
