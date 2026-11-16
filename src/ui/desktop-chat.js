@@ -233,7 +233,7 @@
   // per-message edit / delete / regenerate / continue / swipe. bot.js owns the
   // message rows and rebuilds one whenever its message changes, so everything
   // here is re-applied after each render and must be idempotent.
-  const library=new Map();let messageOp=null,editing=null,lastTool=null,branchOp=false,branching=null,stream=null,bar=null;
+  const library=new Map();let messageOp=null,editing=null,lastTool=null,branchOp=false,branching=null,stream=null,announcement=null,bar=null;
   const toolCopy={zh:{edit:'编辑',remove:'删除',removeConfirm:'再点一次删除',regenerate:'重新生成',continue:'续写',save:'保存',cancel:'取消',edited:'已编辑',previous:'上一个版本',next:'下一个版本',nextNew:'下一个版本（重新生成）',position:(a,b)=>`第 ${a} 个版本，共 ${b} 个`,editLabel:'编辑这条消息',editHint:'Ctrl+Enter 保存，Esc 取消',needRunning:'先开始聊天才能使用',working:'正在生成…',saving:'正在保存…',
     codes:{busy:'正在回复或处理上一项操作，请等它结束后再试。',invalid_request:'这个操作现在不能用于这条消息。',invalid_text:'文字为空或超过长度上限，没有保存。',message_not_found:'这条消息已经不存在，没有改动。',unsupported:'这条消息现在不能重新生成或续写：需要正在运行的角色对话，并且最后一条是角色的回复。',unavailable:'App 对话没有在运行，请先点“开始聊天”。',storage_unavailable:'本机聊天记录暂时无法打开，请稍后再试。',scope_limit:'已保存 20 段角色对话，达到上限。请先清除一段不用的对话。',speaker_unavailable:'这个成员现在不能发言：它已静音，或已不在群聊或角色库中。',character_missing:'有成员已不在角色库中。请到角色库编辑这个群聊，把它移出。',group_not_found:'这个群聊已经不存在。请到角色库另选一个。',group_branch_unsupported:'群聊不能使用分支。'},fallback:'操作没有完成，请稍后再试。',failedReply:'这次没有生成出回复，原来的内容没有改动。'},
    en:{edit:'Edit',remove:'Delete',removeConfirm:'Click again to delete',regenerate:'Regenerate',continue:'Continue',save:'Save',cancel:'Cancel',edited:'edited',previous:'Previous version',next:'Next version',nextNew:'Next version (regenerate)',position:(a,b)=>`Version ${a} of ${b}`,editLabel:'Edit this message',editHint:'Ctrl+Enter saves, Esc cancels',needRunning:'Start chatting first',working:'Generating…',saving:'Saving…',
@@ -425,6 +425,17 @@
     if(!live){live=node('div','sr-only');live.id='desktop-stream-live';live.setAttribute('role','status');live.setAttribute('aria-live','polite');document.getElementById('bot-inbox')?.append(live);}
     return live;
   }
+  const announcementScope=local=>local&&document.body.dataset.view==='bot'?JSON.stringify([state.accounts?.selectedId,kindOf(state),state.desktopChat?.contextId,local.characterId,local.libraryCharacterId,local.libraryGroupId,local.historyId,state.bot?.st?.settings?.branchId,state.bot?.st?.branch?.id]):null;
+  const announcementMessage=m=>JSON.stringify([m.role,m.text,m.display,m.swipeIndex,m.speakerId,m.speakerName]);
+  function clearAnnouncement(){announcement=null;document.getElementById('desktop-stream-live')?.remove();}
+  function validateAnnouncement(local){
+    const scope=announcementScope(local);
+    // A stream from another context cannot complete against this thread's last row.
+    if(stream&&stream.scope!==scope)dropStream();
+    if(!announcement)return;
+    const row=Array.isArray(local?.history)?local.history.find(m=>m.id===announcement.id):null;
+    if(scope!==announcement.scope||row?.role!=='assistant'||announcementMessage(row)!==announcement.message)clearAnnouncement();
+  }
   function dropStream(){
     const old=stream;stream=null;if(!old)return false;
     old.bubble.remove();old.text.remove();old.tail.remove();old.marker.remove();
@@ -432,23 +443,23 @@
     return true;
   }
   function renderStream(list,rows,local,history,byId,identityInfo,group){
-    const s=local?.streaming&&typeof local.streaming.text==='string'&&['reply','regenerate','continue'].includes(local.streaming.mode)?local.streaming:null,t=bt(),last=history.at(-1);
+    const scope=announcementScope(local),s=scope&&local?.streaming&&typeof local.streaming.text==='string'&&['reply','regenerate','continue'].includes(local.streaming.mode)?local.streaming:null,t=bt(),last=history.at(-1);
     if(!s){
       if(!stream)return false;
       const done=stream.mode==='reply'?(last?.role==='assistant'&&last.id!==stream.baseLast?last:null):byId.get(stream.targetId)||null,text=done?(typeof done.display==='string'?done.display:done.text)||'':'',by=group?speakerOf(done?.speakerId,done?.speakerName,identityInfo):identityInfo;
-      if(done&&(stream.mode==='reply'||text!==stream.before))announcer().textContent=`${by?.name||''}${by?.name?(language()==='zh'?'：':': '):''}${text}`.slice(0,8200);
+      if(done?.role==='assistant'&&typeof done.id==='string'&&(stream.mode==='reply'||text!==stream.before)){announcement={scope,id:done.id,message:announcementMessage(done)};announcer().textContent=`${by?.name||''}${by?.name?(language()==='zh'?'：':': '):''}${text}`.slice(0,8200);}
       return dropStream();
     }
     // In a group chat the provisional bubble belongs to whoever is speaking now.
     const speakerId=group&&typeof s.speakerId==='string'?s.speakerId:'',info=speakerId?speakerOf(speakerId,group.members.find(m=>m.id===speakerId)?.name,identityInfo):identityInfo;
-    const key=`${s.mode}:${s.messageId||''}:${language()}:${speakerId}`;let changed=false;
+    const key=JSON.stringify([scope,s.mode,s.messageId||'',language(),speakerId]);let changed=false;
     if(stream?.key!==key){
       dropStream();changed=true;
       const lastReply=[...history].reverse().find(m=>m.role==='assistant'),targetId=s.mode==='reply'?null:(s.messageId&&byId.has(s.messageId)?s.messageId:lastReply?.id||null),before=byId.get(targetId);
       const bubble=node('article','bot-message from-agent desktop-stream'),meta=node('div','message-meta'),author=node('span','message-author'),text=node('div','message-body desktop-stream-text'),tail=node('span','desktop-stream-text desktop-stream-tail'),marker=node(s.mode==='reply'?'span':'p','desktop-stream-marker',s.mode==='reply'?t.typing:s.mode==='regenerate'?t.regenerating:t.continuing);
       bubble.dataset.role='assistant';text.setAttribute('aria-live','off');tail.setAttribute('aria-live','off');meta.append(author);
-      stream={key,mode:s.mode,targetId,baseLast:last?.id||null,before:before?(typeof before.display==='string'?before.display:before.text)||'':'',bubble,meta,author,text,tail,marker,shown:null};
-      const live=document.getElementById('desktop-stream-live');if(live)live.textContent='';
+      stream={key,scope,mode:s.mode,targetId,baseLast:last?.id||null,before:before?(typeof before.display==='string'?before.display:before.text)||'':'',bubble,meta,author,text,tail,marker,shown:null};
+      clearAnnouncement();
     }
     const v=stream,host=v.targetId?rows.find(row=>row.dataset.messageId===v.targetId):null,body=host?.querySelector(':scope>.message-body');
     const after=(el,ref)=>{if(el.previousSibling!==ref){ref.after(el);changed=true;}};
@@ -624,7 +635,7 @@
   document.addEventListener('focusin',e=>{const tool=e.target?.closest?.('#bot-messages [data-tool]');lastTool=tool?{id:tool.closest('article')?.dataset.messageId,name:tool.dataset.tool}:null;});
   document.addEventListener('focusout',e=>{if(e.target?.dataset?.tool&&e.target.isConnected&&!e.target.disabled&&!e.relatedTarget)lastTool=null;});
   window.renderDesktopChat=next=>{
-    state=next;const nextObserved=JSON.stringify([state.accounts?.selectedId,document.body.dataset.view]),arrived=nextObserved!==observed&&document.body.dataset.view==='bot';if(nextObserved!==observed){observed=nextObserved;navigation++;selectionMessage='';}
+    state=next;validateAnnouncement(localSnapshot());const nextObserved=JSON.stringify([state.accounts?.selectedId,document.body.dataset.view]),arrived=nextObserved!==observed&&document.body.dataset.view==='bot';if(nextObserved!==observed){observed=nextObserved;navigation++;selectionMessage='';}
     const selected=state.accounts?.selectedId,prior=credentials.get(selected),cleared=prior?.mode===state.bot?.mode&&prior?.hasKey===true&&state.bot?.hasKey===false;credentials.set(selected,{mode:state.bot?.mode,hasKey:state.bot?.hasKey});
     const context=currentContext(),lang=state.config.language==='zh'?'zh':'en';
     if(current&&(current.context!==context||current.lang!==lang||current.scope!==draftScope(state)||cleared))dispose();
@@ -636,6 +647,6 @@
     const ids=new Set(state.accounts?.accounts?.map(a=>a.id)||[]);for(const [key,draft]of drafts)if(!ids.has(draft.accountId))drafts.delete(key);renderChoice();decorate();
     const note=document.querySelector('.bot-input-note');if(note)note.hidden=!!current;
   };
-  addEventListener('pagehide',dispose);
+  addEventListener('pagehide',()=>{dispose();dropStream();clearAnnouncement();});
   if(typeof data!=='undefined'&&data)window.renderDesktopChat(data);
 })();
