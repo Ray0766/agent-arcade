@@ -10,7 +10,8 @@ commit records its real-memory evidence. Source upload does not publish the
 personal-use package, signing identity, fixed installed helper, profiles or raw
 acceptance captures. The dated sections below are historical checkpoints;
 “current” and “not integrated/pushed” there apply to their original execution.
-The [first-run guide](FIRST_RUN.md) uses the integrated source pin.
+The owner authorized updating both this source branch and `main`. Neither is a
+Release. The [first-run guide](FIRST_RUN.md) uses the integrated source pin.
 
 ## Real-memory verified local candidate — 2026-11-16
 

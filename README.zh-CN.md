@@ -21,7 +21,7 @@ Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 
 | **本机签名版 0.4.0-preview.6** | 本地 `codex/stable-credential-broker-20261116`，构建源码 `00e7b31b79f353ed7b28637fa043ef4e21d32619`；新 arm64 DMG／ZIP，另有固定本机凭据组件。 | 仅在本机安装／验证，未公证，无公开下载。[首次授权、更新验证与剩余边界](docs/MAC_CREDENTIAL_BROKER_20261116.md)。 |
 | **本机签名版 0.4.0-preview.4** | 本地 `codex/api-chat-credentials-20261116`，源码 `ad1531e4bef53943f0acea34f4a9f917636cc9c7`；新构建 arm64 DMG／ZIP，沿用相同个人证书，未公证。 | 仅本地可得，不在远端固定源码或公开版中。[精确身份与边界](docs/API_CHAT_CREDENTIALS_20261116.md)；主人授权后已通过本机 DeepSeek 保存／重保存／真实回复路径；后续更新免弹窗及更广真人验收仍未通过。 |
 
-**目前没有公开可下载的 Mac 候选包。** 本地包和 Actions artifact 不等于公开发布。Mac 用户目前需要从源码运行；构建与平台边界见 [macOS 说明](docs/MACOS.md)。不带分支的普通 clone 会取得较旧的默认 `main`。
+**目前没有公开可下载的 Mac 候选包。** 本地包和 Actions artifact 不等于公开发布。Mac 用户目前需要从源码运行；构建与平台边界见 [macOS 说明](docs/MACOS.md)。默认 `main` 跟随开发源码，与旧 Release 可执行文件分开；复现本检查点请按下文固定分支与提交。
 
 本轮优先验证**已有 API key 的中文桌面文本陪伴**。QQ 不扩展，3D 角色留作后续；既有工作区与渠道能力继续保留。中英文共用[首次使用指南](docs/FIRST_RUN.md)。
 

@@ -39,8 +39,8 @@ npm start
 
 Expected HEAD / 预期 HEAD：`e0decedf41cac1b8217fd51b5711b925c45b0b60`。
 [Exact tree / 精确源码树](https://github.com/Ray0766/agent-arcade/tree/e0decedf41cac1b8217fd51b5711b925c45b0b60).
-A plain clone selects older `main`; a matching version string does not identify later local repairs.
-普通 clone 会取得较旧的 `main`；相同包版本号不能标识后续本地修复。
+`main` follows development source; use the full commit above for this checkpoint. A matching version string does not identify an installer.
+`main` 跟随开发源码；复现本检查点请使用上述完整提交。相同版本号不能唯一标识安装包。
 
 ## English
 

@@ -24,7 +24,8 @@ Availability read-only checked on **2026-11-19**:
 **There is no publicly downloadable Mac candidate package.** A local build or
 an Actions artifact is not a published Mac release. Mac users currently need
 source; platform limits and build instructions are in [macOS notes](docs/MACOS.md).
-A plain clone without the branch below selects the older default `main`.
+The default `main` follows development source; it is separate from the older
+Release executable. Use the explicit branch and commit below to reproduce this checkpoint.
 
 The next acceptance path prioritizes **Chinese desktop text companionship for people who already have an API key**. QQ expansion stays frozen and 3D characters remain a later plan; existing Work and channel features are retained. Both languages use the same [first-run guide](docs/FIRST_RUN.md).
 

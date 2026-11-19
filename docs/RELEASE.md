@@ -30,7 +30,7 @@ do not attach a same-version package from a different source tree.
 
 The development branch is `codex/github-update-20261119`; this draft's reproducible
 baseline is [`e0decedf41cac1b8217fd51b5711b925c45b0b60`](https://github.com/Ray0766/agent-arcade/tree/e0decedf41cac1b8217fd51b5711b925c45b0b60).
-A plain clone selects the older default `main`. In a **new directory**, with
+The default `main` follows development source, separately from Release assets. In a **new directory**, with
 Git and Node.js 24.18+ within 24.x installed (the pinned package minimum is
 22.13; the complete test suite requires 24.18+):
 
