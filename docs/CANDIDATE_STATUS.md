@@ -1,5 +1,21 @@
 # Candidate identity and evidence — 2026-11-15
 
+## Local Mac candidate — 2026-11-20
+
+The README displays the local Apple Silicon `0.4.0-preview.34` interface.
+The package was built from `19e7878deb3053cb22d048dca45a7a93cab54aba`. It
+adds Mac LLBot setup and distinct suggested ports for companions with saved
+local connections. Isolated package checks prepared and saved two connections
+on different ports, rejected a saved-port conflict, and routed replies from
+two synthetic groups through separate loopback WebSockets. The source run
+passed 4,748 tests, with zero failures and 717 platform or opt-in skips.
+
+Live LLBot startup, signing service, QQ login and group delivery on this build
+remain pending. The local package is unnotarized and unavailable from GitHub
+Releases. The public source below remains `0.4.0-preview.8`. See the
+[screenshot manifest and public-source images](README_MEDIA.md) and the
+[first-run guide](FIRST_RUN.md).
+
 ## Source synchronization checkpoint — 2026-11-19
 
 `codex/github-update-20261119` carries the complete integration and follow-up

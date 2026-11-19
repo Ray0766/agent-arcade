@@ -2,41 +2,45 @@
 
 # Agent Arcade
 
-**在桌面上和 AI 搭档聊天。** 自带一个 API key，选个角色，就能开始对话。聊天记录和每位搭档的记忆保存在自己的电脑上。Agent Arcade 以 AGPL-3.0 开源，模型调用费用由提供商另行收取。
+**在桌面上和 AI 搭档聊天。** 用自己的 API key 开始对话，随时换角色，也能查看和管理每位搭档记住的事。聊天记录和记忆保存在你的电脑上。Agent Arcade 以 AGPL-3.0 开源，API 调用由模型提供商计费。
 
 [English](README.md) · [首次使用](docs/FIRST_RUN.md) · [验证记录](docs/VALIDATION.md)
 
-![鲸鱼娘的沉浸式夜间对话界面，显示关于周末安排的演示对话](docs/images/companion-chat-zh.png)
+![鲸鱼娘的沉浸式夜间对话界面，显示关于雨天安排的演示对话](docs/images/preview34/companion-chat-zh.png)
 
-*「陪伴 → 对话」的沉浸式布局。本文配图均使用 preview.8 界面和合成演示数据。[配图来源](docs/README_MEDIA.md)。*
+*「陪伴 → 对话」的沉浸式布局，取自最新的本机 Apple Silicon 候选版 0.4.0-preview.34，使用合成数据。下文可公开运行的源码是 preview.8。[配图版本与来源](docs/README_MEDIA.md)。*
 
 ## 开始聊天
 
-1. 运行下文的[开发源码](#从源码运行)，打开 **陪伴 → 对话**。
-2. 选择 Claude、GPT、DeepSeek、Gemini 或豆包，粘贴对应服务的 API key。
-3. 点击 **保存并开始聊天**，发出第一条消息。
+1. 按[从源码运行](#从源码运行)启动 App，打开 **陪伴 → 对话**。
+2. 根据手上的 API key，选择对应的 Claude、GPT、DeepSeek、Gemini 或豆包。
+3. 粘贴密钥，点击 **保存并开始聊天**，发出第一条消息。
 
-![首用界面已选中 DeepSeek，API key 输入框为空，下方是保存并开始聊天按钮](docs/images/first-run-zh.png)
+![首用界面已选中 GPT，API key 输入框为空，下方是保存并开始聊天按钮](docs/images/preview34/first-run-zh.png)
 
-App 对话直接调用所选提供商。可以跳过社交账号、项目目录和本机 CLI 登录，陪伴对话也不会使用文件或终端工具。[提供商与渠道说明](docs/CHANNELS_AND_AI.md)。
+App 内聊天只需对应提供商的 API key。请求直接发给该提供商，陪伴对话不会使用文件或终端工具。[提供商与渠道说明](docs/CHANNELS_AND_AI.md)。
 
 ## 切换搭档，查看和修改记忆
 
-打开搭档切换器，可以换一位内置角色，沿用当前 AI 提供商和密钥。每位角色有自己的 App 对话与记忆，分别保存的搭档档案也会隔离凭据。已有 SillyTavern 角色卡时，可以在「角色」中导入 PNG 或 JSON，再选「用这个角色聊天」。[角色卡支持范围](docs/SILLYTAVERN_PARITY.md)。
+用搭档切换器换一位角色聊天，沿用当前 AI 提供商和密钥。每位角色有各自的 App 对话和记忆。需要分开用密钥时，可以另建搭档档案。已有 SillyTavern 角色卡时，可以在「角色」中导入 PNG 或 JSON，再选「用这个角色聊天」。[角色卡支持范围](docs/SILLYTAVERN_PARITY.md)。
 
-![搭档切换器展开，显示当前档案和内置角色选择框](docs/images/companion-switcher-zh.png)
+![搭档切换器展开，显示当前档案和内置角色选择框](docs/images/preview34/companion-switcher-zh.png)
 
 进入 **相处 → 记得的事**，可查看、添加、修改或遗忘 App 记忆。若同时显示渠道来源，选择 **App 记忆** 查看当前搭档的本机事实。修改或遗忘也会清理该角色近期 App 对话和自由笔记，避免旧内容再次进入上下文；其他角色和 QQ 记录保留。[App 对话与记忆](docs/DESKTOP_CHAT.md)。
 
-![极简日间布局下的两条演示记忆，每条都有修改与忘记按钮](docs/images/memory-zh.png)
+![极简日间布局下的两条演示记忆，每条都有修改与忘记按钮](docs/images/preview34/memory-zh.png)
 
 可以切换沉浸式、聊天应用式和极简工具式布局，选择日间、夜间或跟随系统，并让强调色跟随角色。[外观设置](docs/APPEARANCE.md)。
 
 ## 从源码运行
 
-GitHub `main` 是 **0.4.0-preview.8 开发源码**。公开下载的是以前的 Windows [0.3.0-preview.2 预览版](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，使用[旧版微信派活与观察器流程](docs/releases/0.3.0-preview.2.md)。**目前没有公开可下载的 Mac 安装包。** [候选版状态](docs/CANDIDATE_STATUS.md) · [macOS 说明](docs/MACOS.md)。
+| 版本 | 使用入口 |
+| --- | --- |
+| **0.4.0-preview.8** 开发源码 | GitHub `main`。用下方固定提交体验 App 内对话、搭档切换和 App 记忆。 |
+| **0.4.0-preview.34** 本机 Mac 候选版 | 本文配图所用版本，已在 Apple Silicon 上构建和验证。目前没有公开可下载的 Mac 安装包。 |
+| **0.3.0-preview.2** Windows 下载版 | [公开 Windows 预览版](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，使用[微信派活与观察器流程](docs/releases/0.3.0-preview.2.md)。 |
 
-安装 Git 和 [Node.js 24.18+（24.x）](https://nodejs.org/)，在新目录运行以下命令，即可使用和本文配图一致的源码检查点。
+安装 Git 和 [Node.js 24.18+（24.x）](https://nodejs.org/)，在新目录运行以下命令，启动公开源码检查点。
 
 ```sh
 git clone --branch main --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
@@ -59,11 +63,17 @@ npm start
 
 - **工作**可查看 Claude Code 会话事件、本地产物及 worktree 任务看板。任务交回后仍需验收。[任务看板](docs/TASK_BOARD.md)。
 - **提醒**可按需启用日历、文件夹和订阅源。共享笔记与反思建议需主人批准。[陪伴功能](docs/COMPANION.md)。
-- **渠道与语音**可单独设置。QQ 文档中的路线使用用户自备的桥接。[渠道与 AI](docs/CHANNELS_AND_AI.md) · [语音设置](docs/VOICE_LOCAL_SETUP.md)。
+- **渠道与语音**可单独设置。公开源码中的 QQ 接入使用自备的 OneBot 桥接。[渠道与 AI](docs/CHANNELS_AND_AI.md) · [语音设置](docs/VOICE_LOCAL_SETUP.md)。
+
+### 本机 Mac 候选版的新界面
+
+preview.34 可在 Mac 上接入已有 OneBot 桥接，也可为单独安装的 LLBot 准备配置。入口是 **工作 → 渠道 → 设置 QQ 群聊**。App 根据其他搭档保存的本机连接推荐不同端口，系统端口是否空闲需另行核对。[本机候选版范围](docs/CANDIDATE_STATUS.md#local-mac-candidate--2026-11-20)。
+
+![Mac 的 QQ 群聊设置，QQ 号为空，建议使用 OneBot 端口 3002](docs/images/preview34/mac-qq-zh.png)
 
 ## 验证到哪一步
 
-未发布的 Apple Silicon preview.8 已用真实 DeepSeek 做过有界检查，包括首条回复、切换搭档、退出重开后保留数据、手动记忆召回、搭档隔离和遗忘。另一台 Mac 首装、Intel、系统弹窗、中文输入法、休眠唤醒和外部用户试用仍待验收。[构建身份与验证范围](docs/REAL_MEMORY_FLOW_20261116.md) · [试用清单](docs/ADOPTION_TRIAL_KIT.md)。
+preview.8 用真实 DeepSeek 检查了首条回复、切换搭档、退出重开后保留数据、手动记忆召回、搭档隔离和遗忘。preview.34 在 Apple Silicon 上用 QQ 桥接替身完成了隔离安装包验证。该版的真实 QQ 登录与群消息收发、另一台 Mac 首装、Intel、系统弹窗、中文输入法、休眠唤醒和外部用户试用仍待验收。[真实模型检查](docs/REAL_MEMORY_FLOW_20261116.md) · [本机候选版检查](docs/CANDIDATE_STATUS.md#local-mac-candidate--2026-11-20) · [试用清单](docs/ADOPTION_TRIAL_KIT.md)。
 
 ## 参与开发
 

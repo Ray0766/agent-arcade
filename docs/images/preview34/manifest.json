@@ -1,0 +1,86 @@
+{
+  "schema": "readme-media-public/2",
+  "capturedOn": "2026-11-20",
+  "sourceCommit": "5452a4bb53075a25483b30ba27a742e0d085a32c",
+  "buildSourceCommit": "19e7878deb3053cb22d048dca45a7a93cab54aba",
+  "packageVersion": "0.4.0-preview.34",
+  "browser": "157.0.8103.79",
+  "productionRenderer": true,
+  "syntheticData": true,
+  "realModel": false,
+  "ownerProfileRead": false,
+  "credentialStoreRead": false,
+  "viewport": {
+    "width": 1160,
+    "height": 760
+  },
+  "macViewport": {
+    "width": 1160,
+    "height": 1080
+  },
+  "observedInputs": 111,
+  "errors": 0,
+  "externalRequests": 0,
+  "images": [
+    {
+      "path": "docs/images/preview34/companion-chat-zh.png",
+      "sha256": "ae5927029fc93e233b16b12cea31a5c8ce60dbacc9ad01d516d12b3c4be59095",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview34/companion-switcher-zh.png",
+      "sha256": "6ea4fd7a78ba33d583a35cf5f651a84f50b9f29d170b80a4305fcd476ddc9fc0",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview34/memory-zh.png",
+      "sha256": "d91a3f5e0b325d9c41bf6221e4fb7bfc70828d04ab04af30ec1bbdb24defa212",
+      "layout": "minimal",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview34/first-run-zh.png",
+      "sha256": "dcefd33a91ad1a5f11fb7ec48643fedd1d9bb1be3b127aed6f2604a20914f78f",
+      "layout": "messenger",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview34/mac-qq-zh.png",
+      "sha256": "59e94d81f63c59518205d9938410a772e94e8d9f78624b2b43a9ceb7738a966d",
+      "layout": "messenger",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview34/companion-chat-en.png",
+      "sha256": "a55cd46029244158316a1d6f99b63e32435aea7b066dcbb71cf341d4565db512",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview34/companion-switcher-en.png",
+      "sha256": "ac4e332d5cb1762c60bc6319d1b543b6e83afa33b5df31b19ef5d479e1fd2823",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview34/memory-en.png",
+      "sha256": "d02fce5324ba7aefd3192b9bdb19e1b95b6c7658f62d540b1a957b661ca9569b",
+      "layout": "minimal",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview34/first-run-en.png",
+      "sha256": "182d808436d2a7cbd7ba8ca8cc71181355e03f275d56abcea1866a7cd3a27bb7",
+      "layout": "messenger",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview34/mac-qq-en.png",
+      "sha256": "04838ec244e5fe123832cd038eff5af562e78a50fb0c68d40ba8eade37fa61b0",
+      "layout": "messenger",
+      "appearance": "day"
+    }
+  ]
+}
