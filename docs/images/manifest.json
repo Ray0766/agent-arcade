@@ -1,0 +1,45 @@
+{
+  "schema": "readme-media-public/1",
+  "capturedOn": "2026-11-19",
+  "sourceCommit": "6e38ccf5fc7fd3c219164bf96505885d59517e14",
+  "packageVersion": "0.4.0-preview.8",
+  "productionRenderer": true,
+  "syntheticData": true,
+  "realModel": false,
+  "ownerProfileRead": false,
+  "credentialStoreRead": false,
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "memoryFullPage": true,
+  "observedInputs": 108,
+  "errors": 0,
+  "externalRequests": 0,
+  "images": [
+    {
+      "path": "docs/images/companion-chat-zh.png",
+      "sha256": "b4ce5cced80348333b2183befcecf1de4cfffdc4154483b828eb4ae229c68ba0"
+    },
+    {
+      "path": "docs/images/memory-zh.png",
+      "sha256": "a57d1d6b610b5777dffb5528bc98172a15d22a2b8de15a5c15e347f94217b88e"
+    },
+    {
+      "path": "docs/images/first-run-zh.png",
+      "sha256": "c6c49596ac992d45e0bb605abdb7ff7ce5343a0f0ee5f4d14d2b902b52c4b884"
+    },
+    {
+      "path": "docs/images/companion-chat-en.png",
+      "sha256": "153397298c345845dc0f91edfa20eb982a4d2cae795cdb90c0f1a86fa6159339"
+    },
+    {
+      "path": "docs/images/memory-en.png",
+      "sha256": "7e3c8c1b1633d0bf4300b31caa266d553c073c5397aa682f6f294d061a89cd04"
+    },
+    {
+      "path": "docs/images/first-run-en.png",
+      "sha256": "eb267b0213d8b0d2e56760d4aca9cdffbec82e9f2cb2db5b1417407f5cd358f1"
+    }
+  ]
+}
