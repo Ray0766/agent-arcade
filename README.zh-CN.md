@@ -4,18 +4,18 @@
 
 [English](README.md) · [构建状态](https://github.com/Ray0766/agent-arcade/actions) · [公开 Windows 预览版 0.3.0-preview.2](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2) · [制作主题](docs/THEMES.md)
 
-Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 角色聊天。它以 AGPL-3.0 发布，不设收费功能；应用在本机运行，聊天记录和记忆保存在本机，模型由你自带的一个 API key 调用（Claude、GPT、DeepSeek、Gemini 或豆包任选其一）。这里描述的是 **0.4.0-preview.1 开发源码**，与可下载的旧 Windows 版不同。请先按下表选择版本。
+Agent Arcade 是一个开源的桌面应用，用来在自己的电脑上和 AI 角色聊天。它以 AGPL-3.0 发布，不设收费功能；应用在本机运行，聊天记录和记忆保存在本机，模型由你自带的一个 API key 调用（Claude、GPT、DeepSeek、Gemini 或豆包任选其一）。这里描述的是 **0.4.0-preview.8 开发源码**，与可下载的旧 Windows 版不同。请先按下表选择版本。
 
 **当前本地候选：**`0.4.0-preview.8` 已在主人的 Mac 安装。真实 DeepSeek 已通过手动长期记忆重开召回、两个人设隔离及遗忘的有界流程；测试发现的隐藏回复播报残留已修复，旧密钥／聊天保留，沿用固定凭据组件。本机自用 arm64，未公证、未发布。[源码、包校验和与边界](docs/REAL_MEMORY_FLOW_20261116.md)；下表继续区分公开可得版本。
 
 ## 先选对版本
 
-公开可获得版本已于 **2026-11-15** 只读核对：
+公开可获得版本已于 **2026-11-19** 只读核对：
 
 | 版本 | 实际能拿到什么 | 首次使用路径 |
 | --- | --- | --- |
 | **公开版 0.3.0-preview.2** | [Windows 可执行文件、校验和、依赖锁文件](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，属于旧版微信派活／观察器，沿用 MIT 许可。 | 按[该版本说明](docs/releases/0.3.0-preview.2.md)配对微信 ClawBot 和任务后端；它**没有**下文的 App 首用密钥卡片。 |
-| **开发源码 0.4.0-preview.1** | 远端 `codex/companion-nine`，固定基线 `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`，AGPL-3.0-only，**尚未发布**。 | 按[从源码运行](#从源码运行)取精确提交，再按[第一次使用](#第一次使用)操作。 |
+| **开发源码 0.4.0-preview.8** | 远端 `codex/github-update-20261119`，固定基线 `e0decedf41cac1b8217fd51b5711b925c45b0b60`，AGPL-3.0-only，**尚未发布**。 | 按[从源码运行](#从源码运行)取精确提交，再按[第一次使用](#第一次使用)操作。 |
 | **本机签名版 0.4.0-preview.8** | 本地 `codex/real-memory-flow-20261116`，构建源码 `8dd258c401554b51d89a8e6923586e8095783515`；新 arm64 DMG／ZIP，沿用签名及固定凭据组件。 | 仅在本机安装，未公证，无公开下载。[手动记忆／隔离／遗忘验证](docs/REAL_MEMORY_FLOW_20261116.md)。 |
 | **本机签名版 0.4.0-preview.7** | 本地 `codex/mac-quit-lifecycle-20261116`，构建源码 `ec5d79a15de1dac0f20dba94b7a823cf8c724c0a`；新 arm64 DMG／ZIP，沿用签名及固定凭据组件。 | 仅在本机安装，未公证，无公开下载。[完整退出／重开与数据保留](docs/MAC_QUIT_FIX_20261116.md)。 |
 | **本机签名版 0.4.0-preview.6** | 本地 `codex/stable-credential-broker-20261116`，构建源码 `00e7b31b79f353ed7b28637fa043ef4e21d32619`；新 arm64 DMG／ZIP，另有固定本机凭据组件。 | 仅在本机安装／验证，未公证，无公开下载。[首次授权、更新验证与剩余边界](docs/MAC_CREDENTIAL_BROKER_20261116.md)。 |
@@ -42,10 +42,10 @@ App 优先路径仍是开发候选，请区分证据层级：
 
 - **组件／自动检查与隔离窗口：**角色卡、世界书、预设、采样、消息操作、流式、群聊、笔记／反思、来源提醒、布局和任务看板。测试可以使用真实文件、SQLite 和 Electron 窗口，同时仍使用模型替身；这不是真实模型或真人验收。
 - **早期版本的有界实用记录：**QQ 陪伴回复（Claude／GPT／DeepSeek）、部分本机 Claude 派活与观察器事件，不能代替新 App 优先路径的验收。见[九项验收表](docs/COMPANION_ACCEPTANCE.md)与[已跟踪验证摘要](docs/VALIDATION.md#public-first-use-evidence--2026-11-14)。
-- **macOS：**源码启动、假 key 的系统加密保存、模型替身对话和 ad-hoc 打包有有界证据。后续本地候选另有保留既有真实档案的维护记录，但本轮未重跑，也未调用模型。版本归属见[候选身份摘要](docs/CANDIDATE_STATUS.md)。真实模型、钥匙串／通知等系统弹窗、真实中文输入法及真人日常使用仍未验收。
-- **真实提供商缺口：**Gemini／豆包的真实凭据和调用，以及 App 优先路径的记忆／提醒质量与完整首条真实回复，仍未验收。
+- **macOS：**本机 Apple Silicon preview.8 已有真实 DeepSeek 对话、搭档切换、重启保留、手动记忆与遗忘的有界证据；此前签名版本验证了完整退出及固定凭据组件。[精确版本与边界](docs/CANDIDATE_STATUS.md)。陌生人首次安装、Intel、另一台 Mac、通知／文件选择弹窗、真实中文输入法与日常使用仍未验收。
+- **真实提供商缺口：**Gemini／豆包调用、更广的记忆／提醒质量及陌生人首用仍未验收。现有 DeepSeek 结果只接受已记录的主人授权流程，不代表普遍质量或用户采用。
 
-公开证据见 [docs/VALIDATION.md](docs/VALIDATION.md)。`WORK_LOG.md`、原始 `outputs/` 回执和本地包路径是私有／本机维护记录，不是首次 clone 需要的文件或公开下载入口。固定源码不包含后续未提交修复。
+公开证据见 [docs/VALIDATION.md](docs/VALIDATION.md)。`WORK_LOG.md`、原始 `outputs/` 回执和本地包路径是私有／本机维护记录，不是首次 clone 需要的文件或公开下载入口。固定源码已包含整合后的 Mac、凭据、聊天和记忆修复；不含私有运行档案和主人签名身份。
 
 ## 第一次使用
 
@@ -68,18 +68,18 @@ App 优先路径仍是开发候选，请区分证据层级：
 
 ## 从源码运行
 
-需要 Git；建议安装 [Node.js 24.18+（24.x）](https://nodejs.org/)，与完整测试要求一致。固定基线的 package engines 下限仍为 22.13，这不代表完整测试也只需该版本。请使用**新目录**，不要切换或重置已有未提交改动的 checkout。以下 detached checkout 固定远端基线，不会取得之后的分支变动或维护者本地修复。
+需要 Git；建议安装 [Node.js 24.18+（24.x）](https://nodejs.org/)，与完整测试要求一致。固定基线的 package engines 下限仍为 22.13，这不代表完整测试也只需该版本。请使用**新目录**，不要切换或重置已有未提交改动的 checkout。以下 detached checkout 固定已整合修复与验证的检查点，不会自动取得后续分支变动。安装包构建源码仍为 `8dd258c401554b51d89a8e6923586e8095783515`；固定的证据提交只补充文档。
 
 ```sh
-git clone --branch codex/companion-nine --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
+git clone --branch codex/github-update-20261119 --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
 cd agent-arcade-companion
-git checkout --detach 3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4
+git checkout --detach e0decedf41cac1b8217fd51b5711b925c45b0b60
 git rev-parse HEAD
 npm ci
 npm start
 ```
 
-`git rev-parse HEAD` 应输出 `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`。[精确源码树](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4)的包版本为 `0.4.0-preview.1`，含 App 首用卡片；版本号和构建成功都不等于已经发布。
+`git rev-parse HEAD` 应输出 `e0decedf41cac1b8217fd51b5711b925c45b0b60`。[精确源码树](https://github.com/Ray0766/agent-arcade/tree/e0decedf41cac1b8217fd51b5711b925c45b0b60)的包版本为 `0.4.0-preview.8`，含 App 首用卡片；版本号和构建成功都不等于已经发布。
 
 - `npm start` 执行 `electron .`：启动应用本身，使用上面的数据目录。
 - `npm run demo` 执行 `electron . --demo`：同一个应用，只是“工作 › 会话”页显示内置的示例会话（与真实观测分开）；演示状态下不发桌面通知，不加载提醒的数据源，也不运行定时反思。它用的仍是同一个数据目录，不是隔离的试用环境。

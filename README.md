@@ -4,18 +4,18 @@
 
 # Agent Arcade
 
-Agent Arcade is an open-source desktop app for chatting with AI characters on your own computer. It is released under AGPL-3.0 with no paid features. The app runs locally and keeps conversations and memory on this computer; the model is called with one API key that you bring (Claude, GPT, DeepSeek, Gemini or Doubao). This describes the **0.4.0-preview.1 development source**, not the older downloadable Windows app. Read the version table below before choosing a route.
+Agent Arcade is an open-source desktop app for chatting with AI characters on your own computer. It is released under AGPL-3.0 with no paid features. The app runs locally and keeps conversations and memory on this computer; the model is called with one API key that you bring (Claude, GPT, DeepSeek, Gemini or Doubao). This describes the **0.4.0-preview.8 development source**, not the older downloadable Windows app. Read the version table below before choosing a route.
 
 **Current local candidate:** `0.4.0-preview.8` is installed on the owner's Mac. Bounded real DeepSeek checks pass manual memory after App restart, two-persona isolation and forgetting; a stale hidden reply announcement found during testing is repaired. Saved keys/history are retained with the same fixed credential helper. Personal-use arm64, unnotarized and unpublished. [Source, package hashes and limits](docs/REAL_MEMORY_FLOW_20261116.md). The table below keeps publicly obtainable versions separate.
 
 ## Choose the version first
 
-Availability read-only checked on **2026-11-15**:
+Availability read-only checked on **2026-11-19**:
 
 | Version | What you can obtain | First-use route |
 | --- | --- | --- |
 | **Public 0.3.0-preview.2** | [Windows executable, checksum and lockfile](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2). This is the older WeChat task/observer preview, licensed under MIT. | Use its [version-specific instructions](docs/releases/0.3.0-preview.2.md): WeChat ClawBot pairing and a task backend. It does **not** have the App-first key card described below. |
-| **Development 0.4.0-preview.1** | Source on `codex/companion-nine`, with reproducible baseline `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4` (AGPL-3.0-only). **Not a published release.** | Follow [Run from source](#run-from-source), then [First run](#first-run). |
+| **Development 0.4.0-preview.8** | Source on `codex/github-update-20261119`, with reproducible baseline `e0decedf41cac1b8217fd51b5711b925c45b0b60` (AGPL-3.0-only). **Not a published release.** | Follow [Run from source](#run-from-source), then [First run](#first-run). |
 | **Local signed 0.4.0-preview.8** | Local `codex/real-memory-flow-20261116`, build source `8dd258c401554b51d89a8e6923586e8095783515`; fresh arm64 DMG/ZIP, same signer/fixed credential helper. | Installed only on this Mac, unnotarized, no public download. [Manual memory/isolation/forgetting evidence](docs/REAL_MEMORY_FLOW_20261116.md). |
 | **Local signed 0.4.0-preview.7** | Local `codex/mac-quit-lifecycle-20261116`, build source `ec5d79a15de1dac0f20dba94b7a823cf8c724c0a`; fresh arm64 DMG/ZIP, same signer and fixed credential helper. | Installed only on this Mac, unnotarized, no public download. [Complete Quit/reopen and data retention](docs/MAC_QUIT_FIX_20261116.md). |
 | **Local signed 0.4.0-preview.6** | Local `codex/stable-credential-broker-20261116`, build source `00e7b31b79f353ed7b28637fa043ef4e21d32619`; fresh arm64 DMG/ZIP and separately pinned local helper. | Installed/verified on this Mac only; unnotarized, no public download. [Initial grant, update checks and remaining gates](docs/MAC_CREDENTIAL_BROKER_20261116.md). |
@@ -45,13 +45,13 @@ The App-first path remains a development candidate:
 
 - **Automated/component and isolated-window evidence:** character cards, lorebooks, presets, sampling, message operations, streaming, groups, notes/reflection, source notices, layouts and task-board dispatch. Real files, SQLite and an Electron window can be used while model replies are still stand-ins; that is not real-model or human acceptance.
 - **Bounded real-use evidence from earlier versions:** QQ companion replies with Claude/GPT/DeepSeek, selected local Claude task flows and observer events. These do not accept the new App-first route. See the [nine-feature ledger](docs/COMPANION_ACCEPTANCE.md) and [tracked validation summary](docs/VALIDATION.md#public-first-use-evidence--2026-11-14).
-- **macOS:** real-Mac startup, encrypted fake-key storage, stand-in-provider chat and ad-hoc packaging have bounded evidence. Later local ICS/folder checks used temporary files and a fake wording model, not the owner's data. Real models, Keychain/notification dialogs, real Chinese IME and human use remain unaccepted; see [macOS notes](docs/MACOS.md).
-- **Real-provider gaps:** Gemini and Doubao credentials/calls, App-first memory/reminder quality and the complete first-run real-key conversation remain unaccepted.
+- **macOS:** local Apple Silicon preview.8 has bounded real DeepSeek chat, persona switching, restart retention, manual memory and forgetting evidence. Native Quit and the fixed credential client were checked in earlier signed builds. [Exact versions and limits](docs/CANDIDATE_STATUS.md). This does not accept a fresh stranger's installation, Intel, another Mac, notification/file-picker dialogs, real Chinese IME or daily use.
+- **Real-provider gaps:** Gemini/Doubao calls, broader memory/reminder quality and first-stranger onboarding remain unaccepted. The recorded DeepSeek flows are bounded owner-authorized checks, not general quality or adoption evidence.
 
 Public evidence is indexed in [docs/VALIDATION.md](docs/VALIDATION.md).
 `WORK_LOG.md`, raw `outputs/` receipts and local build paths are private/local
-records, not files a fresh clone needs. Local uncommitted repairs are reported
-separately there and are not included in the pinned source below.
+records, not files a fresh clone needs. The pinned source includes the integrated Mac, credential, chat and memory repairs;
+private runtime records and the owner's signing identity are not included.
 
 ## First run
 
@@ -79,21 +79,22 @@ Requires Git; use [Node.js 24.18+ within the 24.x line](https://nodejs.org/)
 for the documented development/test route. The pinned package declares a
 22.13 minimum, but that is not the complete-suite test requirement. Use a **new directory** for these
 commands; do not switch or reset an existing checkout with local changes.
-The detached checkout pins the documented remote baseline rather than any
-later branch changes or the maintainer's uncommitted repairs.
+The detached checkout pins the integrated repair and verification checkpoint;
+later branch changes are not silently included. The runtime build source remains
+`8dd258c401554b51d89a8e6923586e8095783515`; the pinned evidence commit adds documentation.
 
 ```sh
-git clone --branch codex/companion-nine --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
+git clone --branch codex/github-update-20261119 --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
 cd agent-arcade-companion
-git checkout --detach 3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4
+git checkout --detach e0decedf41cac1b8217fd51b5711b925c45b0b60
 git rev-parse HEAD
 npm ci
 npm start
 ```
 
-`git rev-parse HEAD` should print `3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4`;
-[the exact source tree](https://github.com/Ray0766/agent-arcade/tree/3edf1ced8ec2d05fc50be01a163b83cf16d6a7a4)
-contains package version `0.4.0-preview.1` and the App-first card. Neither that
+`git rev-parse HEAD` should print `e0decedf41cac1b8217fd51b5711b925c45b0b60`;
+[the exact source tree](https://github.com/Ray0766/agent-arcade/tree/e0decedf41cac1b8217fd51b5711b925c45b0b60)
+contains package version `0.4.0-preview.8` and the App-first card. Neither that
 version string nor a successful build means a release was published.
 
 - `npm start` runs `electron .`: the app itself, using the data folder above.

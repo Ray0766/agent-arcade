@@ -1,5 +1,17 @@
 # Candidate identity and evidence — 2026-11-15
 
+## Source synchronization checkpoint — 2026-11-19
+
+`codex/github-update-20261119` carries the complete integration and follow-up
+history through `e0decedf41cac1b8217fd51b5711b925c45b0b60`, plus updated public
+source instructions. Package version is `0.4.0-preview.8`; the installed Mac
+package was built from `8dd258c401554b51d89a8e6923586e8095783515`, and the later
+commit records its real-memory evidence. Source upload does not publish the
+personal-use package, signing identity, fixed installed helper, profiles or raw
+acceptance captures. The dated sections below are historical checkpoints;
+“current” and “not integrated/pushed” there apply to their original execution.
+The [first-run guide](FIRST_RUN.md) uses the integrated source pin.
+
 ## Real-memory verified local candidate — 2026-11-16
 
 Current installed local candidate is `0.4.0-preview.8`, build source
