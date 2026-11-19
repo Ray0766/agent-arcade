@@ -26,6 +26,7 @@ const marker = 'await page.addInitScript(({catalog,settings})=>{';
 const start = raw.indexOf(marker), end = raw.indexOf('  },{catalog,settings:', start);
 assert(start >= 0 && end > start, 'Renderer fixture boundaries changed');
 const fixture = raw.slice(start + marker.length, end);
+read(__filename);
 const catalog = require('../src/core/personas.cjs').publicCatalog();
 const settings = require('../src/bot/st/local-settings.cjs').defaults();
 
@@ -37,9 +38,9 @@ async function main() {
   const browser = await chromium.launch({headless: true, executablePath});
   const receipt = {
     schema: 'readme-media/1', sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim(),
-    productionRenderer: true, syntheticData: true, realModel: false,
+    productionRenderer: true, syntheticData: true, realModel: false, browser: browser.version(),
     ownerProfileRead: false, credentialStoreRead: false, passed: false,
-    viewport: {width: 1280, height: 900}, images: [], errors: [], externalRequests: [],
+    viewport: {width: 1160, height: 760}, images: [], errors: [], externalRequests: [],
   };
   try {
     for (const language of ['zh', 'en']) {
@@ -67,6 +68,11 @@ async function main() {
         f.base.config.appearance = 'dark';
         f.roles.primary = 'deepseek-whale';
         f.mediaView = 'chat';
+        const settingsByView = {
+          chat: {layout: 'immersive', appearance: 'dark'},
+          memory: {layout: 'minimal', appearance: 'day'},
+          'first-run': {layout: 'messenger', appearance: 'day'},
+        };
         const publish = f.publish;
         f.publish = () => {
           // The fixture's original publisher notifies listeners. Build its
@@ -76,8 +82,9 @@ async function main() {
           const s = publish();
           f.listeners = listeners;
           const zh = language === 'zh';
-          s.config.appearance = 'dark';
-          s.appearance = {preference: 'dark', colorScheme: 'dark'};
+          const {layout, appearance} = settingsByView[f.mediaView];
+          s.config = {...s.config, layout, appearance};
+          s.appearance = {preference: appearance, colorScheme: appearance === 'day' ? 'light' : 'dark'};
           s.accounts.accounts[0].name = zh ? '演示档案' : 'Demo profile';
           s.accounts.accounts[0].mode = 'deepseek';
           s.bot.mode = 'deepseek';
@@ -87,8 +94,8 @@ async function main() {
           s.bot.local.available = f.mediaView !== 'first-run';
           s.bot.local.state = s.bot.local.available ? 'active' : 'stopped';
           s.bot.local.history = f.mediaView === 'first-run' ? [] : [
-            {id: 'demo-question', role: 'user', text: zh ? '演示对话：今天有点累，想聊点轻松的。' : 'Demo conversation: I am a little tired today. Can we keep things light?', at: 1795000000000},
-            {id: 'demo-answer', role: 'assistant', text: zh ? '演示回复：那今天先慢下来吧。泡杯不加糖的茶，坐一会儿。\n想说说今天的小事，还是一起想想周末去哪儿散步？' : 'Demo reply: Let us slow down for a moment. Make a cup of tea without sugar and take a seat.\nWould you like to talk about today, or think of somewhere to walk this weekend?', at: 1795000001000, swipeCount: 1, swipeIndex: 0},
+            {id: 'demo-question', role: 'user', text: zh ? '演示：这周一直在赶进度，周末想慢下来。帮我想个轻松的安排？' : 'Demo: I have been rushing all week. Can you help me plan a slower weekend?', at: 1795000000000},
+            {id: 'demo-answer', role: 'assistant', text: zh ? '演示回复：那就挑一件想做的事吧。上午去公园走一圈，回来泡杯不加糖的茶。\n下午先留白，到了再决定要不要出门。' : 'Demo reply: Pick one thing to look forward to. Take a morning walk in the park, then make a cup of tea without sugar.\nLeave the afternoon open and decide how you feel when it comes.', at: 1795000001000, swipeCount: 1, swipeIndex: 0},
           ];
           s.bot.local.memory = {id: 'demo-memory', memoryId: 'demo-memory', available: true, reason: null, facts: [
             {id: 'demo-tea', revision: 1, text: zh ? '演示记忆：喝茶不加糖。' : 'Demo memory: prefers tea without sugar.', updatedAt: 1795000000000, sourceIds: []},
@@ -114,14 +121,22 @@ async function main() {
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         const file = path.join(output, name + '-' + language + '.png');
         await page.screenshot({path: file, fullPage: name === 'memory', animations: 'disabled'});
-        receipt.images.push({path: path.relative(root, file), sha256: hash(fs.readFileSync(file))});
+        const {layout, appearance} = await page.evaluate(() => pickerFixture.snapshot.config);
+        receipt.images.push({path: path.relative(root, file), sha256: hash(fs.readFileSync(file)), layout, appearance});
       };
       await capture('companion-chat');
-      await page.evaluate(() => switchView('relationship'));
+      await page.locator('#imm-companion-toggle').click();
+      await page.locator('#companion-builtin-persona').waitFor();
+      await capture('companion-switcher');
+      await page.locator('#imm-companion-toggle').click();
+      await page.evaluate(() => {pickerFixture.mediaView = 'memory'; pickerFixture.publish(); switchView('relationship');});
+      await page.waitForFunction(() => document.documentElement.dataset.layout === 'minimal');
       await page.getByText(language === 'zh' ? '演示记忆：喝茶不加糖。' : 'Demo memory: prefers tea without sugar.', {exact: true}).waitFor();
       await capture('memory');
       await page.evaluate(() => {pickerFixture.mediaView = 'first-run'; pickerFixture.publish(); switchView('bot');});
-      await page.locator('#first-run-card').waitFor();
+      await page.waitForFunction(() => document.documentElement.dataset.layout === 'messenger');
+      await page.locator('#first-run-save').waitFor();
+      assert.equal(await page.locator('#first-run-key').inputValue(), '');
       await capture('first-run');
       await page.close();
     }

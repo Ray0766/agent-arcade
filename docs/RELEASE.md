@@ -3,12 +3,12 @@
 **Unpublished release-note draft, checked 2026-11-19.** The available public
 release is still [0.3.0-preview.2 for Windows](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2),
 with its older WeChat task/observer workflow. Its archived instructions are in
-[the version-specific notes](https://github.com/Ray0766/agent-arcade/blob/e0decedf41cac1b8217fd51b5711b925c45b0b60/docs/releases/0.3.0-preview.2.md).
+[the version-specific notes](https://github.com/Ray0766/agent-arcade/blob/e7b58508ffc79a108dc95f20685288ae3ca078d6/docs/releases/0.3.0-preview.2.md).
 That executable does not contain the App-first key card described here.
 No 0.4.0-preview.8 release has been published, and **no public Mac candidate
 package is available**. Local packages and CI artifacts are not release assets.
 
-> Source update — 2026-11-19: this branch contains the integrated repairs through `e0decedf41cac1b8217fd51b5711b925c45b0b60`. The locally installed preview.8 was built from `8dd258c401554b51d89a8e6923586e8095783515`; [package hashes and bounded real-flow evidence](REAL_MEMORY_FLOW_20261116.md) identify that earlier build. Updating source is not publishing an installer.
+> Source update — 2026-11-19: the documented `main` checkpoint is `e7b58508ffc79a108dc95f20685288ae3ca078d6`. The locally installed preview.8 was built from `8dd258c401554b51d89a8e6923586e8095783515`; [package hashes and bounded real-flow evidence](REAL_MEMORY_FLOW_20261116.md) identify that earlier build. Updating source is not publishing an installer.
 
 ## Publication readiness
 
@@ -28,16 +28,16 @@ do not attach a same-version package from a different source tree.
 
 ## Get the documented source
 
-The development branch is `codex/github-update-20261119`; this draft's reproducible
-baseline is [`e0decedf41cac1b8217fd51b5711b925c45b0b60`](https://github.com/Ray0766/agent-arcade/tree/e0decedf41cac1b8217fd51b5711b925c45b0b60).
+The development branch is `main`; this draft's reproducible
+baseline is [`e7b58508ffc79a108dc95f20685288ae3ca078d6`](https://github.com/Ray0766/agent-arcade/tree/e7b58508ffc79a108dc95f20685288ae3ca078d6).
 The default `main` follows development source, separately from Release assets. In a **new directory**, with
 Git and Node.js 24.18+ within 24.x installed (the pinned package minimum is
 22.13; the complete test suite requires 24.18+):
 
 ```sh
-git clone --branch codex/github-update-20261119 --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
+git clone --branch main --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
 cd agent-arcade-companion
-git checkout --detach e0decedf41cac1b8217fd51b5711b925c45b0b60
+git checkout --detach e7b58508ffc79a108dc95f20685288ae3ca078d6
 git rev-parse HEAD
 npm ci
 npm start
@@ -92,7 +92,7 @@ On macOS, source startup and local ad-hoc packaging have bounded real-machine
 evidence. The package is unnotarized; Intel and second-Mac use remain unaccepted.
 Voice, local QQ management, managed terminal startup and provider sign-in
 windows are not supported there; manual existing OneBot settings are separate.
-See the [macOS platform notes](https://github.com/Ray0766/agent-arcade/blob/e0decedf41cac1b8217fd51b5711b925c45b0b60/docs/MACOS.md).
+See the [macOS platform notes](https://github.com/Ray0766/agent-arcade/blob/e7b58508ffc79a108dc95f20685288ae3ca078d6/docs/MACOS.md).
 Windows speech models and optional Python runtimes are not downloaded automatically.
 
 QQ remains optional, user-supplied and frozen for expansion. NapCat's upstream
@@ -110,7 +110,7 @@ dated local checks; historical uncommitted statements apply only to their record
 paths are not public evidence or downloads.
 
 - The local preview.8 has bounded real DeepSeek chat, manual-memory recall, isolation and forgetting evidence; the fixed credential component and native Quit have versioned checks. These do not accept first-stranger installation, general memory/reminder quality, another Mac's Keychain authorization, notification/file-picker dialogs, real IME, human daily use or sleep/wake.
-- Earlier bounded QQ/Claude task and observer evidence retains its own version and route. It does not accept the new App-first path. The [sanitized nine-feature receipt](https://github.com/Ray0766/agent-arcade/blob/e0decedf41cac1b8217fd51b5711b925c45b0b60/docs/evidence/companion-nine-20261105.json) explicitly leaves the milestone unfinished.
+- Earlier bounded QQ/Claude task and observer evidence retains its own version and route. It does not accept the new App-first path. The [sanitized nine-feature receipt](https://github.com/Ray0766/agent-arcade/blob/e7b58508ffc79a108dc95f20685288ae3ca078d6/docs/evidence/companion-nine-20261105.json) explicitly leaves the milestone unfinished.
 - Real Claude Code background dispatch/rework, trust prompts and `acceptEdits` scope require separate acceptance with a supported CLI (2.1.317+). Hand-back is not owner acceptance. Gemini/Doubao credentials and broader channel deployment remain unaccepted.
 - Excluded-friend Qzone visibility, a known remaining bubble queue and hands-free spoken interruption remain unfinished; the voice exercise is deferred, not passed.
 

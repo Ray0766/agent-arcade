@@ -1,45 +1,70 @@
 {
   "schema": "readme-media-public/1",
   "capturedOn": "2026-11-19",
-  "sourceCommit": "6e38ccf5fc7fd3c219164bf96505885d59517e14",
+  "sourceCommit": "e7b58508ffc79a108dc95f20685288ae3ca078d6",
   "packageVersion": "0.4.0-preview.8",
+  "browser": "157.0.8103.79",
   "productionRenderer": true,
   "syntheticData": true,
   "realModel": false,
   "ownerProfileRead": false,
   "credentialStoreRead": false,
   "viewport": {
-    "width": 1280,
-    "height": 900
+    "width": 1160,
+    "height": 760
   },
   "memoryFullPage": true,
-  "observedInputs": 108,
+  "observedInputs": 109,
   "errors": 0,
   "externalRequests": 0,
   "images": [
     {
       "path": "docs/images/companion-chat-zh.png",
-      "sha256": "b4ce5cced80348333b2183befcecf1de4cfffdc4154483b828eb4ae229c68ba0"
+      "sha256": "d800a29be6c85b03b077ae4c5d7fcdc34849f58a6f931ca4e07f6d39de057e66",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/companion-switcher-zh.png",
+      "sha256": "4bc7e0793c2c2dc0aa90a8e20e229e2584db69575adbe23d7b040e76810923ab",
+      "layout": "immersive",
+      "appearance": "dark"
     },
     {
       "path": "docs/images/memory-zh.png",
-      "sha256": "a57d1d6b610b5777dffb5528bc98172a15d22a2b8de15a5c15e347f94217b88e"
+      "sha256": "3704bbccb90ad610f74358924daaab16cc82cb3d39ff27650a4a6f1b0bd81051",
+      "layout": "minimal",
+      "appearance": "day"
     },
     {
       "path": "docs/images/first-run-zh.png",
-      "sha256": "c6c49596ac992d45e0bb605abdb7ff7ce5343a0f0ee5f4d14d2b902b52c4b884"
+      "sha256": "5e97d542dca1b1119439d4c04e675bb0d94a7a265ef64aad820531ad2be9df60",
+      "layout": "messenger",
+      "appearance": "day"
     },
     {
       "path": "docs/images/companion-chat-en.png",
-      "sha256": "153397298c345845dc0f91edfa20eb982a4d2cae795cdb90c0f1a86fa6159339"
+      "sha256": "e03f22cb2e6534a7b313fc4cc32469c63301b08978f311057ab19a233e2a88a7",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/companion-switcher-en.png",
+      "sha256": "468ec3fdd79e4e80511e7c6855a6f998ce2dfddc7f6d883fd3adac9ca3ba9b01",
+      "layout": "immersive",
+      "appearance": "dark"
     },
     {
       "path": "docs/images/memory-en.png",
-      "sha256": "7e3c8c1b1633d0bf4300b31caa266d553c073c5397aa682f6f294d061a89cd04"
+      "sha256": "a26f517563eb29e8f2e15e671675961dbb3100db6f6ca4996e0f25820f626d12",
+      "layout": "minimal",
+      "appearance": "day"
     },
     {
       "path": "docs/images/first-run-en.png",
-      "sha256": "eb267b0213d8b0d2e56760d4aca9cdffbec82e9f2cb2db5b1417407f5cd358f1"
+      "sha256": "6fb02a952a411fc09e01b26bfa172e8c27220d827ccf1e0fd91317d451a3cdad",
+      "layout": "messenger",
+      "appearance": "day"
     }
   ]
 }

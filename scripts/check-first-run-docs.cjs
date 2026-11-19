@@ -10,9 +10,9 @@ const documents = [
   'docs/VALIDATION.md', 'docs/FIRST_RUN.md', 'docs/CANDIDATE_STATUS.md',
 ];
 const allowedNew = new Set(['docs/FIRST_RUN.md']);
-const commit = 'e0decedf41cac1b8217fd51b5711b925c45b0b60';
+const commit = 'e7b58508ffc79a108dc95f20685288ae3ca078d6';
 const expectedCommands = [
-  'git clone --branch codex/github-update-20261119 --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion',
+  'git clone --branch main --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion',
   'cd agent-arcade-companion',
   `git checkout --detach ${commit}`,
   'git rev-parse HEAD', 'npm ci', 'npm start', '',

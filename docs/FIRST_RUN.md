@@ -11,7 +11,7 @@
 | 你拿到的版本 | 应使用的说明 |
 | --- | --- |
 | 公开 Windows `0.3.0-preview.2` | [该版的微信派活／观察器说明](releases/0.3.0-preview.2.md)。没有下面的 App 首用卡片。 |
-| 开发源码 `codex/github-update-20261119`，固定 `e0deced…` | 使用下方完整提交与步骤。包版本 `0.4.0-preview.8`，尚未发布。 |
+| 开发源码 `main`，固定 `e7b5850…` | 使用下方完整提交与步骤。包版本 `0.4.0-preview.8`，尚未发布。 |
 | 维护者的后续本地候选 | 本机安装包为 preview.8，构建源码 `8dd258c…`，固定源码包含其产品修复及后续证据文档；查[身份与验收摘要](CANDIDATE_STATUS.md)。包本身未公开下载。 |
 
 **没有公开可下载的 Mac 候选包。** [公开发布页](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)目前只有旧 Windows 版；本地包和 CI artifact 不等于公开下载。
@@ -29,16 +29,16 @@
 Use a new directory / 使用新目录：
 
 ```sh
-git clone --branch codex/github-update-20261119 --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
+git clone --branch main --single-branch https://github.com/Ray0766/agent-arcade.git agent-arcade-companion
 cd agent-arcade-companion
-git checkout --detach e0decedf41cac1b8217fd51b5711b925c45b0b60
+git checkout --detach e7b58508ffc79a108dc95f20685288ae3ca078d6
 git rev-parse HEAD
 npm ci
 npm start
 ```
 
-Expected HEAD / 预期 HEAD：`e0decedf41cac1b8217fd51b5711b925c45b0b60`。
-[Exact tree / 精确源码树](https://github.com/Ray0766/agent-arcade/tree/e0decedf41cac1b8217fd51b5711b925c45b0b60).
+Expected HEAD / 预期 HEAD：`e7b58508ffc79a108dc95f20685288ae3ca078d6`。
+[Exact tree / 精确源码树](https://github.com/Ray0766/agent-arcade/tree/e7b58508ffc79a108dc95f20685288ae3ca078d6).
 `main` follows development source; use the full commit above for this checkpoint. A matching version string does not identify an installer.
 `main` 跟随开发源码；复现本检查点请使用上述完整提交。相同版本号不能唯一标识安装包。
 
