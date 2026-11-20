@@ -8,6 +8,8 @@
 
 现在可从公开 **preview.8** 源码体验 App 内聊天。下面的 **preview.61** 配图取自较新的本机 Mac 候选版。[从源码运行](#从源码运行)一节列出了两个版本的入口。
 
+Apple Silicon 用户可以从 [QQ 群聊验证版源码](https://github.com/Ray0766/agent-arcade/tree/preview/mac-qq-qa.3) 构建 preview.61.qa.3，在隔离窗口复测好友关系检查和模型故障恢复。此版本每次启动都会新建临时档案。
+
 ![鲸鱼娘的沉浸式夜间对话界面，显示关于周六去看海的演示对话](docs/images/preview61/companion-chat-zh.png)
 
 *「陪伴 → 对话」的沉浸式布局，取自本机 Apple Silicon 验证包。对话、档案和记忆均为合成数据。[配图版本与来源](docs/README_MEDIA.md)。*

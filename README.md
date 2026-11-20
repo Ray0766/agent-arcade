@@ -8,6 +8,8 @@
 
 Run the public **preview.8** source to try App chat. The **preview.61** screenshots below show a newer local Mac candidate. See [Run from source](#run-from-source) for both versions.
 
+On Apple Silicon, build the [QQ group QA source](https://github.com/Ray0766/agent-arcade/tree/preview/mac-qq-qa.3) to exercise friendship checks and recovery from model failures in preview.61.qa.3. Each QA launch uses a fresh temporary profile.
+
 ![Whale Girl in the immersive night layout, with a sample conversation about a Saturday trip to the coast](docs/images/preview61/companion-chat-en.png)
 
 *Companion → Chat in the local Apple Silicon verification build. Screenshots use synthetic chats, profiles, and memories. [Screenshot versions and sources](docs/README_MEDIA.md).*
