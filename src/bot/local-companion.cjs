@@ -379,6 +379,8 @@ class LocalCompanion{
  _store(create=false){if(!this.store&&(create||fs.existsSync(path.join(this.dataRoot,'social-memory.sqlite')))){directory(this.dataRoot);this.store=new SocialStore({root:this.dataRoot,maxScopes:100,branches:true});}if(this.store&&!this.store.available)throw error('storage_unavailable');return this.store;}
  _current(run){if(this.run!==run||run.abort.signal.aborted||run.stKey!==this._stKey()||!same(run.binding,this._capture())||this._capture().reason)throw error('changed');}
  _st(){return this.stLoaded||=localSettings.load(this.stFile);}
+ currentSamplingPreset(){return generation.presetSampling(this._st().settings);}
+ desktopPetChoice(){return this._st().settings.builtinPersonaId;}
  // Memory wiki and reflection of this profile. Constructing it creates no file.
  knowledge(){
   return this.knowledgeModule||=new CompanionKnowledge({root:this.dataRoot,now:this.knowledgeNow,onChange:()=>this.onChange(),rowsFor:characterId=>this._knowledgeRows(characterId),ask:(prompt,signal)=>this._askOnce(prompt,signal),access:characterId=>this._wikiSwitches(characterId)});

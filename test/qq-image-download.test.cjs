@@ -1,7 +1,9 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),https=require('node:https'),tls=require('node:tls'),net=require('node:net');
-const {QQImageDownloader,publicAddress,MAX_BYTES}=require('../src/bot/qq-image-download.cjs'),{imageSource}=require('../src/bot/qq-image-source.cjs');
+const {QQImageDownloader,QQVoiceDownloader,publicAddress,MAX_BYTES}=require('../src/bot/qq-image-download.cjs'),{imageSource}=require('../src/bot/qq-image-source.cjs');
 const material=require('./helpers/qq-image-tls-fixture.cjs');
+const {groupVoiceSource}=require('../src/bot/qq-group-voice.cjs');
+const {createHash}=require('node:crypto');
 const URL='https://multimedia.nt.qq.com.cn/download?appid=1406&fileid=synthetic_A&rkey=synthetic_key',DIGEST=imageSource(URL).resourceDigest,IP='8.8.8.8';
 const PNG=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1FcAAAAASUVORK5CYII=','base64');
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};},tick=()=>new Promise(r=>setImmediate(r));
@@ -37,3 +39,28 @@ test('cancel and close during response do not release partial bytes',async t=>{f
 test('scope changes before final data prevent successful output',async t=>{let response;const f=await fixture(t,{handler:(_q,r)=>{response=r;r.writeHead(200,{'content-type':'image/png'});r.write(PNG.subarray(0,12));}});let current=true;const p=download(f.client(),{assertCurrent:()=>{if(!current)throw Object.assign(Error('old profile'),{code:'changed'});}});await f.seen.promise;current=false;response.end(PNG.subarray(12));await assert.rejects(p,{code:'changed'});});
 test('absolute budget cannot be extended by small continuing chunks',async t=>{let timer;const f=await fixture(t,{handler:(_q,r)=>{r.writeHead(200,{'content-type':'image/png'});r.write(PNG.subarray(0,8));timer=setInterval(()=>r.write(Buffer.from([0])),5);r.on('close',()=>clearInterval(timer));}});t.after(()=>clearInterval(timer));await assert.rejects(download(f.client({timeoutMs:120})),{code:'timeout'});assert.equal(f.requests.length,1);});
 test('single in-flight request refuses reentry; closed downloader never restarts',async t=>{const f=await fixture(t,{handler:()=>{}}),c=f.client(),p=download(c);await f.seen.promise;await assert.rejects(download(c),{code:'busy'});c.close();await assert.rejects(p,{code:'closed'});await assert.rejects(download(c),{code:'closed'});assert.equal(f.requests.length,1);});
+
+test('voice CDN shares pinned TLS and credential isolation, with exact original length and no redirects',async t=>{
+ const raw=Buffer.alloc(256,31);
+ const fileId=Buffer.concat([Buffer.from([0x12,20]),createHash('sha1').update(raw).digest(),
+  Buffer.from([0x18,0x80,0x02,0x20,0xfb,0x0a])]).toString('base64url');
+ const url=`https://multimedia.nt.qq.com.cn/download?appid=1403&fileid=${fileId}&rkey=fixture_key`;
+ const source=groupVoiceSource(url);
+ for(const name of ['valid','short','oversize','compressed','redirect','different_media'])await t.test(name,async t=>{
+  const f=await fixture(t,{handler:(_q,r)=>{
+   const headers={'content-type':name==='different_media'?'image/png':'application/octet-stream'};
+   if(name==='compressed')headers['content-encoding']='gzip';
+   if(name==='redirect'){r.writeHead(302,{location:url});r.end();return;}
+   r.writeHead(200,headers);
+   r.end(name==='short'?raw.subarray(0,255):name==='oversize'?Buffer.alloc(257):raw);
+  }});
+  const client=new QQVoiceDownloader({lookup:f.lookup,connect:f.connect});t.after(()=>client.close());
+  const result=client.download(url,{assertCurrent:()=>{},expectedResourceDigest:source.resourceDigest,expectedSourceBytes:raw.length});
+  if(name==='valid'){
+   const output=await result;assert.deepEqual(output,{bytes:raw,resourceDigest:source.resourceDigest});output.bytes.fill(0);
+  }else await assert.rejects(result,{code:name==='oversize'?'response_too_large':name==='redirect'?'redirect_rejected':'invalid_response'});
+  assert.equal(f.requests.length,1);assert.equal(f.state.lookups,1);
+  assert.equal(f.requests[0].method,'GET');assert.equal(f.requests[0].headers['accept-encoding'],'identity');
+  for(const header of ['authorization','cookie','origin','referer','proxy-authorization'])assert.equal(f.requests[0].headers[header],undefined);
+ });
+});

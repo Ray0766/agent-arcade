@@ -5,11 +5,34 @@ const {randomUUID,createHash}=require('node:crypto');
 const {atomicJSON,readJSON}=require('../core/files.cjs');
 const {personaForBackend}=require('../core/personas.cjs');
 const {BotService}=require('./service.cjs');
+const {GroupPeerTurns}=require('./group-peer-turns.cjs');
+const {groupMemberAlias}=require('./group-public-context.cjs');
+const {QQGroupSpeakerDispatch}=require('./qq-group-speaker-dispatch.cjs');
+const {groupCommandRecipient}=require('./commands.cjs');
 const {validateQQUrl,validateQQOwner}=require('./qq.cjs');
 const {validateXId}=require('./x-channel-policy.cjs');
 const {validateId:validateMessengerId}=require('./messenger-channel-policy.cjs');
 
-const MAX_ACCOUNTS=6;
+const MAX_ACCOUNTS=6, MAX_GROUP_COMMAND_ASSIGNMENTS=256;
+const groupDispatchError=code=>Object.assign(Error('QQ group reply dispatch ('+code+').'),{code});
+function groupVoiceEvent(message){
+  const {accountId,groupId,voice,from}=message;
+  if(message.groupPeerTurn||voice?.kind!=='qq-group-voice'||voice.accountId!==accountId||
+     voice.groupId!==groupId||voice.senderId!==from||message.id!=='group:'+groupId+':'+voice.id)return null;
+  const source=voice.resourceDigest||voice.sourceDigest;
+  if(typeof source!=='string'||!/^[a-f0-9]{64}$/.test(source)||
+     typeof message.groupEventKey!=='string'||!/^[a-f0-9]{64}$/.test(message.groupEventKey))return null;
+  const eventKey=createHash('sha256').update(JSON.stringify(['group-voice',from,message.groupEventKey,source])).digest('hex');
+  return {kind:'voice',groupId,eventKey,createdAt:voice.createdAt,accountId,from};
+}
+function groupPhotoEvent(message){
+  const {accountId,groupId,image,from}=message;
+  if(message.groupPeerTurn||image?.kind!=='qq-group-image'||image.accountId!==accountId||
+     image.groupId!==groupId||image.senderId!==from||message.id!=='group:'+groupId+':'+image.id||
+     !/^[a-f0-9]{64}$/.test(message.groupEventKey)||!/^[a-f0-9]{64}$/.test(image.resourceDigest))return null;
+  const eventKey=createHash('sha256').update(JSON.stringify([message.groupEventKey,image.resourceDigest])).digest('hex');
+  return {kind:'photo',groupId,eventKey,createdAt:image.createdAt,accountId,from};
+}
 function label(value){if(typeof value!=='string'||!value.trim()||value.length>40||/[\x00-\x1f]/.test(value))throw Error('Give this companion a name of 1–40 characters.');return value.trim();}
 function canonical(root){if(typeof root!=='string'||!path.isAbsolute(root)||!fs.statSync(root).isDirectory())throw Error('Choose an existing Agent Arcade data folder.');return fs.realpathSync(root);}
 function qqContext(config){
@@ -33,12 +56,22 @@ function readQQBinding(binding){
     return {...base,contextVersion:1,ownerId,expectedAccountId};
   }catch{throw Error('Companion registry contains an invalid QQ identity record.');}
 }
+function currentQQBinding(entry,config){
+  const saved=entry.qqBinding;
+  if(config?.channel!=='qq'||saved?.contextVersion!==1)return null;
+  const context=qqContext(config);
+  return context&&saved.url===context.url&&saved.ownerId===context.ownerId&&
+    saved.expectedAccountId===context.expectedAccountId?saved:null;
+}
 
 // Each service retains its own vault, journal, conversation and cancellation.
 // Import references an existing data folder; credentials are never exported.
 class AccountManager {
   constructor({root,onChange=()=>{},serviceFactory=options=>new BotService(options),...serviceOptions}){
-    fs.mkdirSync(root,{recursive:true});this.root=canonical(root);this.file=path.join(root,'companions.json');this.onChange=onChange;this.serviceFactory=serviceFactory;this.serviceOptions=serviceOptions;this.services=new Map();this.claims=new Map();this.credentialMigrations=new Set();
+    fs.mkdirSync(root,{recursive:true});this.root=canonical(root);this.file=path.join(root,'companions.json');this.onChange=onChange;this.serviceFactory=serviceFactory;this.serviceOptions=serviceOptions;this.services=new Map();this.claims=new Map();this.groupPeerTurns=new GroupPeerTurns();this.credentialMigrations=new Set();
+    this.groupCommandAssignments=new Map();
+    this.groupSpeakerTurns=new QQGroupSpeakerDispatch({file:path.join(this.root,'qq-group-speaker-dispatch.json'),now:serviceOptions.knowledgeNow});
+    this.groupSpeakerProbes=new Set();
     let stored=null;
     if(fs.existsSync(this.file)){try{if(fs.statSync(this.file).size>64000)throw Error();stored=JSON.parse(fs.readFileSync(this.file,'utf8'));if(!stored||typeof stored!=='object')throw Error();}catch{throw Error('Companion registry is invalid. Your account data has not been changed.');}}
     if(stored){
@@ -58,7 +91,15 @@ class AccountManager {
   }
   save(){atomicJSON(this.file,{version:1,selectedId:this.selectedId,accounts:this.accounts});}
   makeService(entry,{register=true}={}){
-    const service=this.serviceFactory({...this.serviceOptions,root:entry.root,vaultFile:entry.managedVault?path.join(this.managedCredentialRoot(entry.id),'bot-vault.json'):undefined,onChange:()=>this.onChange(),claimIdentity:identity=>this.claim(entry.id,identity)});
+    const service=this.serviceFactory({...this.serviceOptions,root:entry.root,vaultFile:entry.managedVault?path.join(this.managedCredentialRoot(entry.id),'bot-vault.json'):undefined,onChange:()=>this.onChange(),claimIdentity:identity=>this.claim(entry.id,identity),
+      groupPeerTurnFor:message=>this.groupPeerTurn(entry.id,message),groupCommandFor:message=>this.groupCommand(entry.id,message),
+      groupSpeakerVote:(event,willing,signal,cancel)=>this.groupSpeakerVote(entry.id,event,willing,signal,cancel),
+      groupAddressAdmission:message=>this.groupAddressAdmission(entry.id,message),
+      groupSpeakerMetadata:(action,event,earlier)=>this.groupSpeakerMetadata(entry.id,action,event,earlier),
+      groupVoiceClaim:message=>this.groupVoiceClaim(entry.id,message),
+      groupPhotoSource:message=>this.groupPhotoSource(entry.id,message),
+      groupMediaContinuation:(message,action)=>this.groupMediaContinuation(entry.id,message,action),
+      beginGroupCommandReply:(accountId,groupId)=>this.beginGroupCommandReply(entry.id,accountId,groupId)});
     if(register)this.services.set(entry.id,service);return service;
   }
   managedCredentialRoot(id,{create=false}={}){
@@ -124,9 +165,28 @@ class AccountManager {
   }
   current(){return this.get(this.selectedId);}
   get(id){const service=this.services.get(id);if(!service)throw Error('Companion was not found.');return service;}
+  configuredQQPorts(excludeId){
+    const ports=new Set();
+    for(const [id,service] of this.services){
+      if(id===excludeId)continue;
+      const {qqUrl,qqOwnerId,qqAccountId}=service.config;
+      // Use stored configuration, never the default address in a blank snapshot.
+      // A locked vault with an explicit binding might still own its port.
+      const bound=qqOwnerId||qqAccountId;
+      const configured=service.secret.qqToken&&(qqUrl||bound)||
+        service.credentialState==='locked'&&qqUrl&&bound;
+      if(!configured)continue;
+      try{ports.add(Number(new URL(validateQQUrl(qqUrl)).port));}
+      catch{/* An invalid saved address cannot identify a local port. */}
+    }
+    return ports;
+  }
   claim(id,{channel,accountId}){
     const service=this.get(id),entry=this.accounts.find(item=>item.id===id);
     let context;
+    if(channel==='qqofficial'){
+      if(typeof accountId!=='string'||!/^\d{5,32}$/.test(accountId)||accountId!==service.config.qqOfficialAppId)throw Object.assign(Error('The official QQ application does not match this companion.'),{code:'account_mismatch'});
+    }
     if(channel==='messenger'){
       accountId=validateMessengerId(accountId);
       if(accountId!==service.config.messengerPageId||accountId===service.config.messengerOwnerId)throw Object.assign(Error('The Messenger Page does not match this companion.'),{code:'page_changed'});
@@ -143,8 +203,8 @@ class AccountManager {
     }
     const key=`${channel}:${accountId}`;
     const owner=this.claims.get(key);if(owner&&owner.id!==id)throw Object.assign(Error('This social account is already connected by another companion.'),{code:'account_in_use'});
-    // Retain an observed identity for the account page across restarts. This is
-    // display metadata, not an online state or authorization to route messages.
+    // Retain the observed identity across restarts. This can withhold an
+    // explicit @ from other roles, but cannot authorize a send or media read.
     if(channel==='qq'){
       const previous=entry.qqBinding;
       entry.qqBinding={accountId,...context,contextVersion:1,verifiedAt:Date.now()};
@@ -153,13 +213,275 @@ class AccountManager {
     const lease={id,token:randomUUID()};this.claims.set(key,lease);
     return ()=>{if(this.claims.get(key)===lease)this.claims.delete(key);};
   }
+  groupPeerTurn(profileId,message){
+    const active=this.claims.get('qq:'+message.accountId);
+    if(active?.id!==profileId)return;
+    const sender=message.from;
+    const local=this.claims.has('qq:'+sender)||this.accounts.some(entry=>
+      currentQQBinding(entry,this.services.get(entry.id)?.config)?.accountId===sender);
+    if(local)return {...this.groupPeerTurns.peerTurn(message,profileId),commandEcho:this.groupPeerTurns.commandEcho(message)};
+    this.groupPeerTurns.observeHuman(message);
+  }
+  groupSpeakerOwner(groupId, setting){
+    if(!setting.enabled)return null;
+    const service=this.services.get(setting.profileId);
+    try{
+      const scorer=service?.qqGroupSpeakerScorer(setting.accountId,groupId);
+      return scorer?{scorer,name:this.accounts.find(entry=>entry.id===setting.profileId)?.name||null}:null;
+    }catch{return null;}
+  }
+  async groupSpeakerDispatch(profileId,{expectedAccountId:accountId,groupId,action,revision,endpoint,model,keySlot}={}){
+    const valid=['view','configure','probe','enable','disable'];
+    if(typeof groupId!=='string'||!/^[1-9]\d{4,14}$/.test(groupId)||!valid.includes(action)){
+      throw groupDispatchError('group_dispatch_invalid');
+    }
+    const service=this.get(profileId),scorer=service.qqGroupSpeakerScorer(accountId,groupId),policy=this.groupSpeakerTurns;
+    const status=()=>{
+      const row=policy.read(groupId), owner=this.groupSpeakerOwner(groupId,row);
+      const editable=!owner||row.profileId===profileId&&row.accountId===accountId;
+      const config=(owner?.scorer||scorer).status();
+      const ready=config.ready&&(config.keySlot===null||config.keyPresent);
+      const ownerName=owner?.name||(config.configured?this.accounts.find(entry=>entry.id===profileId)?.name:null);
+      return {revision:row.revision,editable,ownerName:ownerName||null,enabled:!!owner,configured:config.configured,
+        ready,endpoint:config.endpoint,model:config.model,keySlot:config.keySlot,
+        problem:(config.keySlot!==null&&!config.keyPresent?'key_missing':null)||
+          config.probe?.problem||(owner?config.diagnostics.at(-1)?.error:null)||null};
+    };
+    const before=status();
+    if(action==='view')return before;
+    if(before.revision!==revision)throw groupDispatchError('group_dispatch_changed');
+    if(!before.editable)throw groupDispatchError('group_dispatch_read_only');
+    if(this.groupSpeakerProbes.has(groupId))throw groupDispatchError('group_dispatch_busy');
+    const previous=policy.read(groupId);
+    if(action==='configure'){
+      if(before.enabled)throw groupDispatchError('group_dispatch_busy');
+      try{scorer.configure({endpoint,model,keySlot});}catch{throw groupDispatchError('group_dispatch_configure_failed');}
+      policy.save(groupId,previous,{profileId,accountId,enabled:false});
+    }else if(action==='probe'){
+      if(before.enabled||!before.configured)throw groupDispatchError('group_dispatch_not_ready');
+      this.groupSpeakerProbes.add(groupId);
+      try{await scorer.probe();}finally{this.groupSpeakerProbes.delete(groupId);}
+      if(this.services.get(profileId)!==service||service.qqGroupSpeakerScorer(accountId,groupId)!==scorer){
+        throw groupDispatchError('group_dispatch_changed');
+      }
+      policy.save(groupId,previous,{profileId,accountId,enabled:false});
+    }else{
+      const enabling=action==='enable';
+      if(enabling&&!before.ready)throw groupDispatchError('group_dispatch_not_ready');
+      if(enabling!==before.enabled)policy.save(groupId,previous,{profileId,accountId,enabled:enabling});
+    }
+    this.onChange();
+    return status();
+  }
+  groupSpeakerPolicy(profileId,{accountId,groupId}){
+    if(this.claims.get('qq:'+accountId)?.id!==profileId)return null;
+    try{return this.groupSpeakerOwner(groupId,this.groupSpeakerTurns.read(groupId));}
+    catch{return null;}
+  }
+  groupSpeakerMetadata(profileId,action,event,earlier){
+    if(this.claims.get('qq:'+event.accountId)?.id!==profileId)return;
+    if(action==='quote-recall'){
+      this.groupSpeakerTurns.forgetQuoteOwner(event);
+    }else if(this.groupSpeakerPolicy(profileId,event)){
+      this.groupSpeakerTurns.observe(action,this.groupSpeakerAddress(event),earlier);
+    }
+  }
+  groupSpeakerAddress(event){
+    if(event.addressKind==='mention'||!event.reference)return event;
+    // Only the companion's own retained OneBot receipt can nominate it.
+    // Other bridges may use entirely different native message numbers.
+    return {...event,targets:[event.accountId],addressKey:event.reference.eventKey,addressAt:event.reference.createdAt,addressKind:'quote'};
+  }
+  groupVoiceClaim(profileId,message){
+    if(!this.groupSpeakerPolicy(profileId,message))return true;
+    const {accountId,groupId}=message, targets=message.commandAddress?.targets, event=groupVoiceEvent(message);
+    if(!event||!Array.isArray(targets))return false;
+    const photo=!message.commandAddress.blocked&&this.groupSpeakerTurns.photoForVoice(event,targets,source=>
+      this.groupTextRoute(source.accountId,groupId)?.photoFollowupState(groupId,event.from,source.eventKey));
+    if(photo){
+      // Reserve before consulting other readers. A permission missing on the
+      // photo's named companion does not give the audio to another companion.
+      this.groupSpeakerTurns.reserveMedia({...event,accountId:photo.accountId,photo});
+      if(accountId!==photo.accountId||!this.groupVoiceRoute(accountId,groupId)||
+         !this.groupSpeakerTurns.claimVoice(event))return false;
+      return photo.attachable&&!photo.recalled?{photoKey:photo.eventKey}:true;
+    }
+    if(targets.length&&!targets.includes(accountId)){
+      if(targets.length===1&&this.groupVoiceRoute(targets[0],groupId)){
+        this.groupSpeakerTurns.reserveMedia({...event,accountId:targets[0]});
+      }
+      return false;
+    }
+    // Keep the existing local ASR error for a uniquely addressed companion.
+    if(targets.length!==1&&!this.services.get(profileId)?.canAttemptFileAsr())return false;
+    return this.groupSpeakerTurns.claimVoice(event);
+  }
+  groupTextRoute(accountId,groupId){
+    const route=this.groupRouteForAccount(accountId);
+    return route?.allowsOrdinaryGroupCommand(accountId,groupId)?route:null;
+  }
+  groupRouteForAccount(accountId){
+    return this.services.get(this.claims.get('qq:'+accountId)?.id)?.groupRoute;
+  }
+  groupQuoteAccount(profileId,message){
+    const {accountId,groupId}=message;
+    const original=this.services.get(profileId)?.groupRoute?.retainedOrdinaryGroupQuote(message);
+    if(!original)return null;
+    if(original.kind==='character')return accountId;
+    const authors=[...this.claims].filter(([identity,claim])=>{
+      if(!identity.startsWith('qq:'))return false;
+      const candidate=identity.slice(3);
+      return candidate!==accountId&&this.services.get(claim.id)?.groupRoute?.ownsOrdinaryGroup(candidate,groupId)&&
+        groupMemberAlias('qq-onebot',accountId,groupId,candidate)===original.speaker;
+    });
+    return authors.length===1?authors[0][0].slice(3):null;
+  }
+  groupAddressAdmission(profileId,message){
+    const {accountId,groupId,commandAddress}=message;
+    if(message.image?.replyId){
+      if(commandAddress?.blocked!==false||!Array.isArray(commandAddress.targets)||commandAddress.targets.length>1)return null;
+      const author=this.groupQuoteAccount(profileId,message),[target]=commandAddress.targets;
+      if(!author||target&&target!==accountId&&!this.groupRouteForAccount(target)?.ownsOrdinaryGroup(target,groupId))return null;
+      return (target||author)===accountId;
+    }
+    if(commandAddress?.blocked!==false||!Array.isArray(commandAddress.targets))return true;
+    const targets=commandAddress.targets;
+    const [target]=targets;
+    if(targets.length>1||target===accountId)return true;
+    if(!targets.length&&(!message.quote||message.image||message.voice))return true;
+    if(target){
+      const targetProfile=this.claims.get('qq:'+target)?.id;
+      // Binding a message to a live local QQ account is separate from that
+      // account's text or media permissions for this group.
+      if(this.services.get(targetProfile)?.groupRoute?.ownsOrdinaryGroup(target,groupId)){
+        return !!this.groupSpeakerPolicy(profileId,message);
+      }
+      // A verified but offline addressee has no route to vote or read media.
+      // Keep its address private to the enabled group, even with a scorer.
+      return !this.accounts.some(entry=>{
+        if(targetProfile&&entry.id!==targetProfile)return false;
+        const service=this.services.get(entry.id);
+        return currentQQBinding(entry,service?.config)?.accountId===target&&service.hasEnabledOrdinaryGroup(groupId);
+      });
+    }
+    if(this.groupSpeakerPolicy(profileId,message))return true;
+    const author=this.groupQuoteAccount(profileId,message);
+    return !author||author===accountId;
+  }
+  groupVoiceRoute(accountId,groupId){
+    const route=this.groupTextRoute(accountId,groupId);
+    return route?.configuration.voiceGroupIds?.includes(groupId)&&route.makeVoicePipeline?route:null;
+  }
+  groupPhotoSource(profileId,message){
+    if(!this.groupSpeakerPolicy(profileId,message))return null;
+    const event=groupPhotoEvent(message), address=message.commandAddress;
+    if(!event||address?.blocked||address?.targets.length!==1)return null;
+    const accountId=address.targets[0], route=this.groupTextRoute(accountId,event.groupId);
+    const target=this.services.get(this.claims.get('qq:'+accountId)?.id);
+    if(!route)return null;
+    const attachable=!!route.configuration.imageGroupIds?.includes(event.groupId)&&!!target?.qqGroupImageCapability();
+    const eventKey=this.groupSpeakerTurns.observePhoto({...event,accountId},event.accountId,message.id,attachable);
+    return attachable&&event.accountId===accountId?eventKey:null;
+  }
+  groupMediaContinuation(profileId,message,action){
+    if(!this.groupSpeakerPolicy(profileId,message))return true;
+    if(action==='recall'){
+      const event=groupVoiceEvent(message);
+      if(event)this.groupSpeakerTurns.recallVoice(event);
+      else this.groupSpeakerTurns.recallPhoto(message);
+      return true;
+    }
+    const {groupId,from,accountId,createdAt,groupEventKey}=message,targets=message.commandAddress?.targets;
+    if(!Array.isArray(targets))return true;
+    const named=targets.length===1&&this.groupTextRoute(targets[0],groupId)?targets[0]:null;
+    const assignment=this.groupSpeakerTurns.mediaFollowup({groupId,from,createdAt,eventKey:groupEventKey},source=>{
+      if(source.kind==='photo')return this.groupTextRoute(source.accountId,groupId)?.photoFollowupState(groupId,from,source.eventKey);
+      return this.groupVoiceRoute(source.accountId,groupId)?.hasPendingVoice(groupId,from);
+    },named);
+    if(!assignment)return true;
+    const {source,accountId:recipient}=assignment;
+    if(source.kind==='photo'){
+      if(message.commandAddress.blocked||targets.length&&!named)return true;
+      if(!recipient)return true;
+      if(accountId!==recipient)return false;
+      return recipient===source.accountId?{photoKey:source.eventKey}:true;
+    }
+    if(named&&accountId!==named)return false;
+    const photo=source.photo,route=this.groupVoiceRoute(accountId,groupId);
+    if(photo&&recipient===accountId&&!route?.hasPendingVoice(groupId,from)&&
+       route?.photoFollowupState(groupId,from,photo.eventKey))return {photoKey:photo.eventKey};
+    if(named)return true;
+    // A new native @ can carry its own text turn without receiving the old
+    // companion's audio or transcription, even while ASR is working.
+    if(targets.length)return accountId!==source.accountId||targets.includes(source.accountId);
+    return recipient&&this.groupTextRoute(recipient,groupId)?accountId===recipient:accountId!==source.accountId;
+  }
+  groupSpeakerVote(profileId,event,willing,signal,cancel){
+    const {accountId,groupId}=event;
+    const owner=this.groupSpeakerPolicy(profileId,event);
+    if(!owner)return willing;
+    const roster=[], local=new Set();
+    for(const [key,{id}] of this.claims){
+      if(!key.startsWith('qq:'))continue;
+      const account=key.slice(3),service=this.services.get(id),route=service?.groupRoute;
+      if(!route?.allowsOrdinaryGroupCommand(account,groupId))continue;
+      local.add(account);
+      if(event.photo&&(!route.configuration.imageGroupIds?.includes(groupId)||!service.qqGroupImageCapability()))continue;
+      roster.push({id:account,name:route.publicRoles.get(groupId)?.name||route.persona.name});
+    }
+    // Do not send a targeted photo to another role when the named local
+    // companion has no picture permission or model support for this group.
+    if(event.photo&&event.addressKind==='mention'&&event.targets.some(target=>local.has(target))&&
+       !roster.some(role=>event.targets.includes(role.id)))return false;
+    return this.groupSpeakerTurns.vote(this.groupSpeakerAddress(event),willing,signal,cancel,{roster,scorer:owner.scorer});
+  }
+  beginGroupCommandReply(profileId,accountId,groupId){
+    const route=this.services.get(profileId)?.groupRoute;
+    if(this.claims.get('qq:'+accountId)?.id===profileId&&route?.allowsOrdinaryGroupCommand?.(accountId,groupId)){
+      return this.groupPeerTurns.beginCommandReply(groupId,accountId);
+    }
+  }
+  groupCommand(profileId,{accountId,groupId,groupEventKey,commandAddress,from,commandReceipt}){
+    if(this.claims.get('qq:'+accountId)?.id!==profileId)return null;
+    const eligible=[];
+    for(const [key,{id}] of this.claims){
+      if(!key.startsWith('qq:'))continue;
+      const account=key.slice(3);
+      if(this.services.get(id)?.groupRoute?.allowsOrdinaryGroupCommand?.(account,groupId))eligible.push(account);
+    }
+    if(!eligible.includes(accountId))return null;
+    if(commandReceipt&&commandAddress?.blocked===false&&commandAddress.targets?.length===0){
+      // A bridge-local ID can refer to an unrelated confirmation on
+      // another QQ connection. Only the receiving route can resolve it.
+      const ownsReceipt=this.services.get(profileId)?.groupRoute?.ownsCommandReceipt({
+        accountId,groupId,senderId:from,receipt:commandReceipt,
+      });
+      // In a multi-role group another bridge may already be acting on its
+      // own copy. An unresolved copy must not ask the member to repeat it.
+      return ownsReceipt||eligible.length===1?'execute':null;
+    }
+    eligible.sort();
+    // Keep the first audience decision for the same event through local
+    // connect/disconnect races. The receiving route owns durable receipt dedup.
+    const key=/^[a-f0-9]{64}$/.test(groupEventKey)?
+      groupId+':'+groupEventKey+(commandReceipt?':'+commandReceipt.kind+':'+commandReceipt.id:''):null;
+    let assignment=key&&this.groupCommandAssignments.get(key);
+    if(assignment===undefined||!key){
+      assignment=groupCommandRecipient(commandAddress,eligible);
+      if(key){
+        this.groupCommandAssignments.set(key,assignment);
+        if(this.groupCommandAssignments.size>MAX_GROUP_COMMAND_ASSIGNMENTS)this.groupCommandAssignments.delete(this.groupCommandAssignments.keys().next().value);
+      }
+    }
+    return assignment?.accountId===accountId?assignment.action:null;
+  }
   snapshot(){return {selectedId:this.selectedId,maxAccounts:MAX_ACCOUNTS,accounts:this.accounts.map(entry=>{
     const service=this.get(entry.id),state=typeof service.accountSnapshot==='function'?service.accountSnapshot():service.snapshot(),settings=state.social?.config;
     const backend=({native:'claude-native',claude:'claude-native',api:'claude-api',codex:'codex',deepseek:'deepseek',gpt:'gpt',gemini:'gemini',doubao:'doubao'})[state.mode]||'claude-api';
     const defaultCharacter=personaForBackend(backend).id;
     const characterId=settings?.enabled&&state.social.supported?settings.characterId||defaultCharacter:defaultCharacter;
-    const context=qqContext(service.config),saved=entry.qqBinding;
-    const binding=state.channel==='qq'&&context&&saved?.contextVersion===1&&saved.url===context.url&&saved.ownerId===context.ownerId&&saved.expectedAccountId===context.expectedAccountId?{accountId:saved.accountId,verifiedAt:saved.verifiedAt,source:'last_verified'}:null;
+    const context=qqContext(service.config),saved=currentQQBinding(entry,service.config);
+    const binding=state.channel==='qq'&&saved?{accountId:saved.accountId,verifiedAt:saved.verifiedAt,source:'last_verified'}:null;
     const checked=state.qq?.check,lease=checked?.accountId&&this.claims.get(`qq:${checked.accountId}`);
     const accountId=state.channel==='qq'&&state.status==='connected'&&checked?.state==='checked'&&lease?.id===entry.id&&binding?.accountId===checked.accountId?checked.accountId:'';
     return {id:entry.id,name:entry.name,root:entry.root,mode:state.mode,channel:state.channel,status:state.status,credentialState:state.credentialState||'empty',credentialMigration:this.credentialMigrations.has(entry.id),problem:state.problem,characterId,companion:!!settings?.enabled,accountId,qqOwnerId:context?.ownerId||'',expectedQQAccountId:context?.expectedAccountId||'',qqBinding:binding,incomingCount:state.incomingCount,outgoingAccepted:state.outgoingAccepted,busy:!!state.social?.busy};
@@ -190,6 +512,6 @@ class AccountManager {
     await service.connect(guard?{assertCurrent:guard}:undefined);this.onChange();return service.snapshot();
   }
   async disconnect(id){await this.get(id).disconnect();this.onChange();}
-  async close(){await Promise.allSettled([...this.services.values()].map(service=>service.disconnect()));}
+  async close(){this.groupSpeakerTurns.close();await Promise.allSettled([...this.services.values()].map(service=>service.disconnect()));}
 }
 module.exports={AccountManager,MAX_ACCOUNTS};

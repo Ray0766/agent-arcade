@@ -3,7 +3,7 @@
 // Input bytes must come from a main-process picker or a bounded owned TTS job.
 const MAX_BYTES=4*1024*1024,MAX_SECONDS=30,MIN_SECONDS=0.2;
 const RATES=new Set([16000,24000,32000,44100,48000]);
-const CODES=new Set(['invalid_request','invalid_owner','voice_too_large','voice_invalid','voice_format','voice_duration','voice_not_canonical','unsafe_file','file_changed','file_unavailable','media_unavailable','stale_ticket','expired_ticket','changed','disconnected','account_mismatch','account_changed','account_offline','status_unverified','bridge_unhealthy','cancelled','operation_in_progress','closed','send_unknown','voice_failed']);
+const CODES=new Set(['invalid_request','invalid_owner','voice_too_large','voice_invalid','voice_format','voice_duration','voice_not_canonical','unsafe_file','file_changed','file_unavailable','media_unavailable','stale_ticket','expired_ticket','changed','disconnected','account_mismatch','account_changed','account_offline','status_unverified','bridge_unhealthy','group_unavailable','cancelled','operation_in_progress','closed','send_unknown','voice_failed']);
 class QQVoiceError extends Error{constructor(code){const fixed=CODES.has(code)?code:'voice_failed';super(`QQ voice operation failed (${fixed}).`);this.code=fixed;this.name=fixed==='cancelled'?'AbortError':'QQVoiceError';}}
 const fail=code=>{throw new QQVoiceError(code);};
 function canonicalWav(bytes){
@@ -31,12 +31,19 @@ function canonicalWav(bytes){
   const output=Buffer.alloc(44+pcm.length);output.write('RIFF');output.writeUInt32LE(output.length-8,4);output.write('WAVEfmt ',8);output.writeUInt32LE(16,16);output.writeUInt16LE(1,20);output.writeUInt16LE(1,22);output.writeUInt32LE(format.sampleRate,24);output.writeUInt32LE(format.sampleRate*2,28);output.writeUInt16LE(2,32);output.writeUInt16LE(16,34);output.write('data',36);output.writeUInt32LE(pcm.length,40);pcm.copy(output,44);
   return {bytes:output,sampleRate:format.sampleRate,channels:1,bits:16,frames,durationSeconds,metadataStripped:true};
 }
-function ownerRecordParams(ownerId,canonicalBytes){
-  if(typeof ownerId!=='string'||!/^[1-9]\d{4,14}$/.test(ownerId)||!Number.isSafeInteger(Number(ownerId)))fail('invalid_owner');
+function recordMessage(canonicalBytes){
   const checked=canonicalWav(canonicalBytes);
   try{
     if(!checked.bytes.equals(canonicalBytes))fail('voice_not_canonical');
-    return {user_id:ownerId,message:[{type:'record',data:{file:`base64://${canonicalBytes.toString('base64')}`}}]};
+    return [{type:'record',data:{file:`base64://${checked.bytes.toString('base64')}`}}];
   }finally{checked.bytes.fill(0);}
 }
-module.exports={canonicalWav,ownerRecordParams,QQVoiceError,MAX_BYTES,MAX_SECONDS};
+function ownerRecordParams(ownerId,canonicalBytes){
+  if(typeof ownerId!=='string'||!/^[1-9]\d{4,14}$/.test(ownerId)||!Number.isSafeInteger(Number(ownerId)))fail('invalid_owner');
+  return {user_id:ownerId,message:recordMessage(canonicalBytes)};
+}
+function groupRecordParams(groupId,canonicalBytes){
+  if(typeof groupId!=='string'||!/^[1-9]\d{4,14}$/.test(groupId)||!Number.isSafeInteger(Number(groupId)))fail('group_unavailable');
+  return {group_id:Number(groupId),message:recordMessage(canonicalBytes)};
+}
+module.exports={canonicalWav,ownerRecordParams,groupRecordParams,QQVoiceError,MAX_BYTES,MAX_SECONDS};

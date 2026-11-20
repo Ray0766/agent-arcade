@@ -13,7 +13,7 @@ const TOOLS = Object.freeze([
   definition('List','List at most 100 entries in one project directory, without recursion or following links. Explicit approval required.',{path:string('Project-relative directory path; use . for the project root.')}),
   definition('AskUserQuestion','Ask one short clarification question. An answer never approves a separate file action.',{question:string('One question, at most 1000 characters.')}),
 ]);
-class SafeError extends Error { constructor(message, outcome='error') {super(message); this.outcome=outcome;} }
+class SafeError extends Error { constructor(message, outcome='error', httpStatus) {super(message); this.outcome=outcome; this.httpStatus=httpStatus;} }
 function checkAbort(signal) { if(signal.aborted) throw new SafeError('This turn was cancelled. Existing file changes were not rolled back.','cancelled'); }
 function abortable(promise,signal) {
   return new Promise((resolve,reject)=>{

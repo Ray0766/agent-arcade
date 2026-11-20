@@ -13,8 +13,26 @@
   let textDraft = '', generator = 'checking', generatorReason = '', renderOp = null, composing = false, draftSource = null, receipt = null, progressTimer = null;
   const tr = (zh, en) => language === 'zh' ? zh : en;
   const selected = () => latest?.accounts?.selectedId;
-  const available = () => latest?.bot?.channel === 'qq' && latest.bot?.voiceMedia?.available === true;
-  const binding = () => JSON.stringify([selected(), latest?.accounts?.accounts?.find(row => row.id === selected())?.accountId, latest?.bot?.qq?.ownerId, latest?.persona?.id, latest?.persona?.name, latest?.bot?.status]);
+  const account = () => latest?.accounts?.accounts?.find(row => row.id === selected());
+  const mac = () => window.arcade.platform?.os === 'darwin';
+  const qqNumber = /^[1-9]\d{4,14}$/;
+  const owner = Object.freeze({});
+  function groupTargets() {
+    const targets = latest?.bot?.voiceMedia?.groupTargets;
+    if (!Array.isArray(targets)) return [];
+    return targets.filter(target => target && typeof target.groupId === 'string' && qqNumber.test(target.groupId) &&
+      typeof target.role === 'string' && target.role.trim() && target.role.length <= 64 &&
+      typeof target.roleId === 'string' && target.roleId.length > 0 && target.roleId.length <= 64 &&
+      targets.filter(row => row?.groupId === target.groupId).length === 1);
+  }
+  const supported = () => latest?.bot?.channel === 'qq' && (mac() ? groupTargets().length > 0 : latest.bot.voiceMedia?.supported === true);
+  const available = () => supported() && latest.bot.voiceMedia?.available === true;
+  const binding = target => JSON.stringify([selected(), account()?.accountId, latest?.bot?.status,
+    ...(target === owner ? [latest?.bot?.qq?.ownerId, latest?.persona?.id, latest?.persona?.name] : [])]);
+  const groupCurrent = target => groupTargets().some(row => row.groupId === target.groupId && row.roleId === target.roleId && row.role === target.role);
+  const canSend = () => !waiting && !!draft && !!panel?.target;
+  const groupNameOf = value => typeof value === 'string' && value.trim() && value.length <= 128 && !/[\p{Cc}\p{Cf}]/u.test(value) ? value : '';
+  const groupLabel = (groupId, groupName) => groupName ? `${groupId} · ${groupName}` : groupId;
   const problems = {
     disconnected: ['请先连接这位搭档的 QQ，再选择语音。', 'Connect this companion’s QQ before choosing audio.'],
     changed: ['搭档或连接已变化，请关闭后重新选择语音。', 'The companion or connection changed. Close this view and choose audio again.'],
@@ -25,6 +43,7 @@
     voice_duration: ['请选择 0.2–30 秒的语音。', 'Choose audio between 0.2 and 30 seconds long.'],
     voice_not_canonical: ['语音格式校验未通过，请重新选择符合要求的 WAV。', 'Audio format validation failed. Choose a supported WAV again.'],
     voice_render_unavailable: ['本机语音生成尚未配置或配置不可用。仍可选择 WAV 文件。', 'Local voice generation is not configured or its configuration is unavailable. You can still choose a WAV.'],
+    voice_render_unsupported_platform: ['此平台暂不能生成语音。请选择现有的 WAV 文件。', 'Voice generation is unavailable on this platform. Choose an existing WAV.'],
     voice_render_busy: ['上一项本机语音生成尚未结束，请等待或取消。', 'The previous local generation is still finishing. Wait or cancel it.'],
     voice_render_limit: ['请缩短文字。最多 120 个字符，生成语音还需在 30 秒以内。', 'Shorten the text. It must fit 120 characters and produce audio no longer than 30 seconds.'],
     voice_render_timeout: ['本机生成超时，文字已保留。可以手动再试，或选择 WAV。', 'Local generation timed out. Your text is kept. Try again manually or choose a WAV.'],
@@ -35,6 +54,7 @@
     file_unavailable: ['文件无法读取，请检查文件后重新选择。', 'The file is unavailable. Check it and choose it again.'],
     expired_ticket: ['语音预览已过期，请重新选择。', 'The voice preview expired. Choose audio again.'],
     stale_ticket: ['这份预览已失效，请重新选择语音。', 'This preview is no longer valid. Choose audio again.'],
+    group_unavailable: ['无法核实这个群的授权、搭档角色或当前成员资格。请检查 QQ 群聊设置。', 'This group’s authorization, companion role, or membership could not be verified. Check QQ group settings.'],
     account_mismatch: ['QQ 身份与当前搭档不符，未继续发送。请检查连接。', 'The QQ identity does not match this companion. Sending did not continue. Check the connection.'],
     account_changed: ['QQ 身份发生变化，未继续发送。请检查连接。', 'The QQ identity changed. Sending did not continue. Check the connection.'],
     account_offline: ['QQ 尚未在线，请恢复连接后重新选择语音。', 'QQ is not online. Restore its connection and choose audio again.'],
@@ -43,7 +63,16 @@
     cancelled: ['已取消，没有继续发送语音。', 'Cancelled. Voice sending did not continue.'],
   };
   const explain = code => problems[code] ? tr(...problems[code]) : tr('语音操作未完成。请检查连接和 WAV 文件后重新选择。', 'The voice operation did not complete. Check the connection and WAV before choosing again.');
-  const args = () => ({accountId: panel.accountId, panelId: panel.panelId});
+  const args = (source = panel) => ({accountId: source.accountId, panelId: source.panelId,
+    ...(source.target?.groupId ? {groupId: source.target.groupId} : {})});
+  const matchesPanel = (result, source = panel) => result?.accountId === source.accountId && result.panelId === source.panelId && result.groupId === source.target?.groupId;
+  function validRecipient(recipient) {
+    if (!recipient || !qqNumber.test(recipient.accountId) || typeof recipient.role !== 'string' || recipient.role.length > 64) return false;
+    const target = panel?.target;
+    if (!target?.groupId) return target === owner && qqNumber.test(recipient.ownerId) && !Object.hasOwn(recipient, 'groupId');
+    return recipient.accountId === panel.qqAccountId && recipient.groupId === target.groupId &&
+      recipient.role === target.role && recipient.roleId === target.roleId && !Object.hasOwn(recipient, 'ownerId');
+  }
   const action = (id, label, fn, disabled = false, primary = false) => { const node = el('button', primary ? 'primary' : 'secondary', label); node.id = id; node.disabled = disabled; node.onclick = fn; return node; };
   function stopPreview(release = false) {
     playEpoch++;
@@ -51,12 +80,34 @@
     playback = 'idle';
   }
   function clearDraft() { clearTimeout(timer); timer = null; stopPreview(true); draft = null; draftSource = null; receipt = null; }
-  function close() {
+  function replacePanel(next) {
     clearTimeout(progressTimer); progressTimer = null;
-    const previous = panel; epoch++; panel = null; clearDraft(); waiting = false; feedback = ''; problem = false; textDraft = ''; renderOp = null; composing = false;
+    const previous = panel; epoch++; panel = next; clearDraft(); waiting = false; feedback = ''; problem = false;
+    textDraft = ''; renderOp = null; composing = false; generator = 'checking'; generatorReason = '';
+    return previous;
+  }
+  function newPanel(target) {
+    return {accountId: selected(), qqAccountId: account()?.accountId, panelId: crypto.randomUUID(), binding: binding(target), target};
+  }
+  function close() {
+    const previous = replacePanel(null);
     if (drawer.open) drawer.close(); drawer.replaceChildren(); document.documentElement.classList.remove('qq-voice-open');
-    if (previous) void window.arcade.qqVoiceClose({accountId: previous.accountId, panelId: previous.panelId}).catch(() => {});
+    if (previous?.target) void window.arcade.qqVoiceClose(args(previous)).catch(() => {});
     if (returnFocus?.isConnected && !returnFocus.hidden) returnFocus.focus({preventScroll: true});
+  }
+  async function changeTarget(value) {
+    if (!panel || waiting) return;
+    const target = value === 'owner' && !mac() ? owner : groupTargets().find(row => row.groupId === value) || null;
+    const next = newPanel(target), previous = replacePanel(next);
+    waiting = !!previous.target;
+    draw();
+    if (previous.target) {
+      const result = await window.arcade.qqVoiceClose(args(previous)).catch(() => null);
+      if (panel !== next || !drawer.open) return;
+      if (result?.ok !== true) { feedback = explain(result?.code || 'operation_in_progress'); problem = true; draw(); return; }
+    }
+    waiting = false; draw(); $('qq-voice-target')?.focus({preventScroll: true});
+    if (target) void checkGenerator();
   }
   function acceptDraft(value) {
     if (!value || value.kind !== 'voice' || typeof value.ticketId !== 'string' || !/^[a-f0-9-]{36}$/.test(value.ticketId) ||
@@ -64,9 +115,7 @@
       typeof value.preview !== 'string' || value.preview.length !== 22 + 4 * Math.ceil(value.bytes / 3) || !/^data:audio\/wav;base64,[A-Za-z0-9+/]+={0,2}$/.test(value.preview) ||
       ![16000, 24000, 32000, 44100, 48000].includes(value.sampleRate) || value.channels !== 1 || value.bits !== 16 ||
       !Number.isFinite(value.durationSeconds) || value.durationSeconds < 0.2 || value.durationSeconds > 30 ||
-      !Number.isSafeInteger(value.expiresAt) || value.expiresAt <= Date.now() || !value.recipient ||
-      !/^[1-9]\d{4,14}$/.test(value.recipient.accountId) || !/^[1-9]\d{4,14}$/.test(value.recipient.ownerId) ||
-      typeof value.recipient.role !== 'string' || value.recipient.role.length > 64) throw Error('Invalid preview');
+      !Number.isSafeInteger(value.expiresAt) || value.expiresAt <= Date.now() || !validRecipient(value.recipient)) throw Error('Invalid preview');
     draft = value; audio = new Audio(); audio.preload = 'none'; audio.src = value.preview;
     const current = audio;
     audio.onended = () => { if (audio === current && panel && draft) { playback = 'ended'; drawPlayback(); } };
@@ -92,7 +141,7 @@
     const counter = $('qq-voice-text-count'), generate = $('qq-voice-generate'), sendButton = $('qq-voice-send');
     if (counter) { counter.textContent = `${[...textDraft].length} / 120`; counter.classList.toggle('invalid', !!textDraft && !validText()); }
     if (generate) generate.disabled = waiting || composing || generator !== 'available' || !validText();
-    if (sendButton) sendButton.disabled = waiting || !draft;
+    if (sendButton) sendButton.disabled = !canSend();
   }
   function editText(event) {
     textDraft = event.target.value;
@@ -101,12 +150,16 @@
   }
   async function checkGenerator() {
     const current = panel;
+    if (!current?.target) return;
     if (!['qqVoiceAvailability', 'qqVoiceRender', 'qqVoiceCancelRender'].every(method => typeof window.arcade[method] === 'function')) { generator = 'unavailable'; generatorReason = 'voice_render_unavailable'; draw(); return; }
     try {
       const result = await window.arcade.qqVoiceAvailability(args());
       if (panel !== current || !drawer.open) return;
-      generator = result?.ok === true && result.available === true ? 'available' : 'unavailable';
-      generatorReason = result?.ok === true ? result.reason || 'voice_render_unavailable' : result?.code || 'voice_render_unavailable';
+      if (result?.ok === true && !matchesPanel(result, current)) { generator = 'unavailable'; generatorReason = 'changed'; }
+      else {
+        generator = result?.ok === true && result.available === true ? 'available' : 'unavailable';
+        generatorReason = result?.ok === true ? result.reason || 'voice_render_unavailable' : result?.code || 'voice_render_unavailable';
+      }
     } catch { if (panel !== current || !drawer.open) return; generator = 'unavailable'; generatorReason = 'voice_render_unavailable'; }
     if (panel === current) draw();
   }
@@ -124,10 +177,10 @@
     const current=()=>renderOp===op&&panel===op.panel&&op.token===epoch&&!op.done&&!op.cancelRequested&&drawer.open;
     if(!current())return;
     try{
-      const result=await window.arcade.qqVoiceAvailability({accountId:op.panel.accountId,panelId:op.panel.panelId});
+      const result=await window.arcade.qqVoiceAvailability(args(op.panel));
       if(!current())return;
       const labels={preparing:['正在准备声音，首次使用可能需要稍等…','Preparing the voice. The first use may take a little longer…'],generating:['正在合成这段语音…','Creating this voice clip…'],finalizing:['正在检查语音，请稍候…','Checking the clip before local preview…']};
-      if(result?.ok===true&&result.accountId===op.panel.accountId&&result.panelId===op.panel.panelId&&Object.hasOwn(labels,result.progress?.stage)){
+      if(result?.ok===true&&matchesPanel(result,op.panel)&&Object.hasOwn(labels,result.progress?.stage)){
         feedback=tr(...labels[result.progress.stage]);const status=$('qq-voice-status');if(status)status.textContent=feedback;
       }
     }catch{/* Keep the last observed stage; do not retry a render or change cancellation. */}
@@ -142,7 +195,7 @@
       const result = await window.arcade.qqVoiceRender({...args(), text});
       if (renderOp !== op || panel !== op.panel || op.token !== epoch || op.cancelRequested || !drawer.open) return;
       if (result?.ok !== true) { feedback = explain(result?.code || 'voice_render_failed'); problem = result?.code !== 'cancelled'; if (result?.code === 'voice_render_exit_unconfirmed') { op.cancelRequested = true; op.cancelSettled = true; op.cancelFailed = true; } }
-      else if (result.accountId === panel.accountId && result.panelId === panel.panelId) { acceptDraft(result.draft); draftSource = 'text'; feedback = tr('语音已生成。可以先试听，再决定是否发送。', 'Voice generated. Listen locally before deciding whether to send.'); }
+      else if (matchesPanel(result)) { acceptDraft(result.draft); draftSource = 'text'; feedback = tr('语音已生成。可以先试听，再决定是否发送。', 'Voice generated. Listen locally before deciding whether to send.'); }
       else { feedback = explain('changed'); problem = true; }
     } catch { if (renderOp === op && panel === op.panel && !op.cancelRequested) { clearDraft(); feedback = explain('voice_render_failed'); problem = true; } }
     finally { op.done = true; finishRender(op); }
@@ -155,11 +208,11 @@
     finally { op.cancelSettled = true; finishRender(op); }
   }
   async function choose() {
-    if (!panel || waiting) return; const token = ++epoch; clearDraft(); waiting = true; feedback = tr('正在选择并检查 WAV…', 'Choosing and checking the WAV…'); problem = false; draw();
+    if (!panel?.target || waiting) return; const token = ++epoch; clearDraft(); waiting = true; feedback = tr('正在选择并检查 WAV…', 'Choosing and checking the WAV…'); problem = false; draw();
     try { const result = await window.arcade.qqVoicePick(args()); if (token !== epoch || !panel || !drawer.open) return;
       if (result?.ok !== true) { problem = result?.code !== 'cancelled'; feedback = explain(result?.code); }
       else if (result.cancelled) feedback = tr('已取消选择，没有发送语音。', 'Selection cancelled. No voice was sent.');
-      else if (result.accountId === panel.accountId && result.panelId === panel.panelId) { acceptDraft(result.draft); draftSource = 'file'; feedback = ''; }
+      else if (matchesPanel(result)) { acceptDraft(result.draft); draftSource = 'file'; feedback = ''; }
       else { problem = true; feedback = explain('changed'); }
     } catch { if (token === epoch && panel) { clearDraft(); problem = true; feedback = tr('语音预览暂不可用，没有发出语音。请重新选择。', 'The voice preview is unavailable. No voice was sent. Choose audio again.'); } }
     finally { if (token === epoch && panel && drawer.open) { waiting = false; draw(); } }
@@ -169,9 +222,14 @@
     try { await window.arcade.qqVoiceDiscard({...args(), ticketId: id}); } catch {} finally { if (token === epoch && panel) { waiting = false; draw(); } }
   }
   async function send() {
-    if (!panel || waiting || !draft) return; const id = draft.ticketId, recipient = {accountId: draft.recipient.accountId, ownerId: draft.recipient.ownerId}, token = ++epoch; clearDraft(); textDraft = ''; waiting = true; feedback = tr('正在向主人 QQ 发送语音…', 'Sending voice to the owner on QQ…'); problem = false; draw();
+    if (!canSend() || !validRecipient(draft.recipient)) return;
+    const {ticketId: id, recipient: {accountId, ownerId, groupId, role, groupName}} = draft, token = ++epoch;
+    const recipient = groupId ? {accountId, groupId, role, groupName: groupNameOf(groupName)} : {accountId, ownerId};
+    clearDraft(); textDraft = ''; waiting = true;
+    feedback = groupId ? tr(`正在向 QQ 群 ${groupId} 发送语音…`, `Sending voice to QQ group ${groupId}…`) : tr('正在向主人 QQ 发送语音…', 'Sending voice to the owner on QQ…');
+    problem = false; draw();
     try { const result = await window.arcade.qqVoiceSend({...args(), ticketId: id}); if (token !== epoch || !panel || !drawer.open) return;
-      const belongs = result?.ok === true && result.accountId === panel.accountId && result.panelId === panel.panelId && result.ticketId === id && result.kind === 'voice';
+      const belongs = result?.ok === true && matchesPanel(result) && result.ticketId === id && result.kind === 'voice';
       if (belongs && result.outcome === 'accepted' && typeof result.messageId === 'string' && /^-?\d{1,20}$/.test(result.messageId)) { receipt = {messageId: result.messageId, ...recipient}; feedback = tr('QQ 已接受语音发送请求，不代表已听到。', 'QQ accepted the voice send request. This does not confirm it was heard.'); problem = false; }
       else if (belongs && result.outcome === 'not_sent') { feedback = explain(result.code); problem = result.code !== 'cancelled'; }
       else { feedback = tr('是否发送成功尚未确认。请先在 QQ 查看，避免重复发送；这份预览不会重发。', 'The send outcome is unconfirmed. Check QQ before sending another copy. This preview will not be sent again.'); problem = true; }
@@ -180,12 +238,29 @@
   }
   function draw() {
     if (!panel || composing) return; const active = document.activeElement, focus = active?.id, selection = focus === 'qq-voice-text' ? [active.selectionStart, active.selectionEnd] : null, scroll = drawer.querySelector('.qq-voice-content')?.scrollTop || 0, head = el('div', 'qq-voice-heading'), heading = el('div'), title = el('h2', '', tr('分享语音', 'Share a voice clip'));
-    title.id = 'qq-voice-title'; heading.append(title, el('p', '', tr('由当前搭档的 QQ 发给主人', 'Send from this companion’s QQ to its owner'))); head.append(heading, action('qq-voice-close', tr('关闭', 'Close'), close));
-    const content = el('div', 'qq-voice-content');
-    const account = latest?.accounts?.accounts?.find(row => row.id === selected());
-    const recipientInfo = draft?.recipient || {role: account?.name || tr('当前搭档', 'Current companion'), accountId: account?.accountId, ownerId: latest?.bot?.qq?.ownerId};
-    if (/^[1-9]\d{4,14}$/.test(recipientInfo.accountId) && /^[1-9]\d{4,14}$/.test(recipientInfo.ownerId)) {
-      const recipient = el('section', 'qq-voice-recipient'); recipient.append(el('strong', '', recipientInfo.role || tr('当前搭档', 'Current companion')), el('p', '', tr(`发送账号 QQ ${recipientInfo.accountId}`, `Sending account: QQ ${recipientInfo.accountId}`)), el('p', '', tr(`主人 QQ ${recipientInfo.ownerId}`, `Owner: QQ ${recipientInfo.ownerId}`))); content.append(recipient);
+    const target = panel.target, group = target?.groupId, groupMode = mac() || !!group;
+    const verifiedGroup = group && groupLabel(group, groupNameOf(draft?.recipient?.groupName || receipt?.groupName));
+    title.id = 'qq-voice-title'; heading.append(title, el('p', '', groupMode ? tr('由当前搭档的 QQ 发到所选群', 'Send from this companion’s QQ to the selected group') : tr('由当前搭档的 QQ 发给主人', 'Send from this companion’s QQ to its owner'))); head.append(heading, action('qq-voice-close', tr('关闭', 'Close'), close));
+    const content = el('div', 'qq-voice-content'), targets = groupTargets();
+    if (targets.length) {
+      const picker = el('div', 'qq-voice-target'), label = el('label', '', tr('发送目标', 'Recipient')), select = el('select');
+      select.id = 'qq-voice-target'; label.htmlFor = select.id;
+      const option = (value, text) => {const node = el('option', '', text);node.value = value;return node;};
+      select.append(mac() ? option('', tr('请选择一个群', 'Choose a group')) : option('owner', tr('主人 QQ', 'Owner QQ')));
+      for (const {groupId, role} of targets) select.append(option(groupId, tr(`群 ${groupId} · ${role}`, `Group ${groupId} · ${role}`)));
+      select.value = group || (target === owner ? 'owner' : ''); select.disabled = waiting;
+      select.onchange = () => void changeTarget(select.value);
+      picker.append(label, select); content.append(picker);
+    }
+    if (target) {
+      const currentAccount = account();
+      const recipientInfo = draft?.recipient || (group ? {role: target.role, accountId: panel.qqAccountId, groupId: group} : {role: currentAccount?.name, accountId: currentAccount?.accountId, ownerId: latest?.bot?.qq?.ownerId});
+      if (qqNumber.test(recipientInfo.accountId) && qqNumber.test(recipientInfo.groupId || recipientInfo.ownerId)) {
+        const recipient = el('section', 'qq-voice-recipient');
+        recipient.append(el('strong', '', recipientInfo.role || tr('当前搭档', 'Current companion')), el('p', '', tr(`发送账号 QQ ${recipientInfo.accountId}`, `Sending account: QQ ${recipientInfo.accountId}`)),
+          el('p', '', group ? tr(`目标 QQ 群 ${verifiedGroup}`, `Recipient: QQ group ${verifiedGroup}`) : tr(`主人 QQ ${recipientInfo.ownerId}`, `Owner: QQ ${recipientInfo.ownerId}`)));
+        content.append(recipient);
+      }
     }
     const composer = el('section', 'qq-voice-composer');
     if (generator === 'available') {
@@ -198,31 +273,53 @@
       if (renderOp) row.append(action('qq-voice-cancel-render', renderOp.cancelFailed ? tr('停止未确认', 'Stop unconfirmed') : renderOp.cancelRequested ? tr('正在停止…', 'Stopping…') : tr('取消生成', 'Cancel generation'), () => void cancelRender(), renderOp.cancelRequested));
       composer.append(label, input, help, row);
     } else composer.append(el('p', 'qq-voice-text-help', generator === 'checking' ? tr('正在检查本机语音配置；也可以直接选择 WAV。', 'Checking local voice configuration. You can also choose a WAV now.') : explain(generatorReason || 'voice_render_unavailable')));
-    content.append(composer);
+    if (target) content.append(composer);
     if (draft) {
       const player = el('section', 'qq-voice-player'), duration = el('strong', 'qq-voice-duration', tr(`${draft.durationSeconds.toFixed(1)} 秒`, `${draft.durationSeconds.toFixed(1)} seconds`));
       const format = el('p', 'qq-voice-format', tr(`WAV · 单声道 · 16 位 · ${draft.sampleRate / 1000} kHz · ${(draft.bytes / 1024).toFixed(0)} KiB`, `WAV · mono · 16-bit · ${draft.sampleRate / 1000} kHz · ${(draft.bytes / 1024).toFixed(0)} KiB`));
       const playbackStatus = el('p'); playbackStatus.id = 'qq-voice-playback'; playbackStatus.setAttribute('role', 'status');
       player.append(el('p', 'qq-voice-source', draftSource === 'text' ? tr('文字生成的语音', 'Voice generated from your text') : tr('本机 WAV 预览', 'Local WAV preview')), duration, format, action('qq-voice-preview', '', () => void preview(), waiting), playbackStatus); content.append(player);
     }
-    content.append(el('p', 'qq-voice-note', tr('生成和试听都在本机进行，不读取聊天。只有“发送给主人”才会将语音交给 QQ，不发到群或空间。WAV 文件需为单声道 16 位 PCM、0.2–30 秒、不超过 4 MiB。', 'Generation and preview stay on this device and do not read your chats. Only Send to owner uploads the voice to QQ, not a group or Qzone. WAV files must be mono 16-bit PCM, 0.2–30 seconds, up to 4 MiB.')));
-    const actions = el('div', 'qq-voice-actions'); actions.append(action('qq-voice-choose', draft ? tr('换一段', 'Choose another') : tr('选择 WAV', 'Choose WAV'), () => void choose(), waiting)); if (draft) actions.append(action('qq-voice-remove', tr('移除语音', 'Remove voice'), () => void remove(), waiting)); content.append(actions);
+    if (target) {
+      content.append(el('p', 'qq-voice-note', group ? tr('可以选择在本机试听。核对群号和角色后，点击“发送到群”将语音交给 QQ。WAV 需为单声道 16 位 PCM、0.2–30 秒、不超过 4 MiB。', 'Listening locally is optional. Confirm the group number and role, then choose Send to group to upload to QQ. WAV files must be mono 16-bit PCM, 0.2–30 seconds, up to 4 MiB.') : tr('生成和试听都在本机进行，不读取聊天。只有“发送给主人”才会将语音交给 QQ，不发到群或空间。WAV 文件需为单声道 16 位 PCM、0.2–30 秒、不超过 4 MiB。', 'Generation and preview stay on this device and do not read your chats. Only Send to owner uploads the voice to QQ, not a group or Qzone. WAV files must be mono 16-bit PCM, 0.2–30 seconds, up to 4 MiB.')));
+      const actions = el('div', 'qq-voice-actions'); actions.append(action('qq-voice-choose', draft ? tr('换一段', 'Choose another') : tr('选择 WAV', 'Choose WAV'), () => void choose(), waiting)); if (draft) actions.append(action('qq-voice-remove', tr('移除语音', 'Remove voice'), () => void remove(), waiting)); content.append(actions);
+    }
     const footer = el('div', 'qq-voice-footer'), result = el('div', 'qq-voice-result'), status = el('p', problem ? 'problem' : '', feedback); status.id = 'qq-voice-status'; status.setAttribute('role', problem ? 'alert' : 'status'); result.append(status);
     if (receipt) {
       const details = el('details', 'qq-voice-receipt'), summary = el('summary', '', tr('发送详情', 'Send details')); details.id = 'qq-voice-receipt'; summary.id = 'qq-voice-receipt-summary'; details.open = $('qq-voice-receipt')?.open === true; details.append(summary);
-      for (const [key, label] of [['messageId', tr('消息 ID', 'Message ID')], ['accountId', tr('发送账号 QQ', 'From QQ')], ['ownerId', tr('主人 QQ', 'Owner QQ')]]) { const row = el('p', '', `${label}：${receipt[key]}`); row.dataset.field = key; details.append(row); }
+      const fields = [['messageId', tr('消息 ID', 'Message ID')], ['accountId', tr('发送账号 QQ', 'From QQ')]];
+      if (receipt.groupId) fields.push(['groupId', tr('目标 QQ 群', 'QQ group')], ['role', tr('角色', 'Role')]);
+      else fields.push(['ownerId', tr('主人 QQ', 'Owner QQ')]);
+      for (const [key, label] of fields) {
+        const value = key === 'groupId' ? groupLabel(receipt.groupId, receipt.groupName) : receipt[key];
+        const row = el('p', '', `${label}：${value}`); row.dataset.field = key; details.append(row);
+      }
       details.append(el('p', 'qq-voice-note', tr('这是本次请求的回执，不代表对方已收到或听过语音。', 'This is the request receipt, not confirmation of delivery or listening.'))); result.append(details);
     }
-    footer.append(result, action('qq-voice-send', tr('发送给主人', 'Send to owner'), () => void send(), waiting || !draft, true)); drawer.replaceChildren(head, content, footer); drawPlayback(); updateTextControls(); content.scrollTop = scroll;
+    footer.append(result, action('qq-voice-send', groupMode ? tr('发送到群', 'Send to group') : tr('发送给主人', 'Send to owner'), () => void send(), !canSend(), true)); drawer.replaceChildren(head, content, footer); drawPlayback(); updateTextControls(); content.scrollTop = scroll;
     const restore = focus && $(focus); if (restore && drawer.contains(restore) && !restore.disabled) { restore.focus({preventScroll: true}); if (selection && restore.setSelectionRange) restore.setSelectionRange(...selection); }
   }
-  button.onclick = () => { if (!available() || !selected()) return; returnFocus = document.activeElement; panel = {accountId: selected(), panelId: crypto.randomUUID(), binding: binding()}; clearDraft(); textDraft = ''; renderOp = null; generator = 'checking'; generatorReason = ''; composing = false; waiting = false; feedback = ''; problem = false; draw(); document.documentElement.classList.add('qq-voice-open'); drawer.showModal(); $('qq-voice-close').focus(); void checkGenerator(); };
+  button.onclick = () => {
+    if (!available() || !selected()) return;
+    returnFocus = document.activeElement;
+    replacePanel(newPanel(mac() ? null : owner));
+    draw(); document.documentElement.classList.add('qq-voice-open'); drawer.showModal();
+    (mac() ? $('qq-voice-target') : $('qq-voice-close'))?.focus();
+    void checkGenerator();
+  };
   drawer.addEventListener('cancel', event => { event.preventDefault(); close(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && panel) close(); }); window.addEventListener('pagehide', close);
   const previous = window.renderBot;
   window.renderBot = next => {
-    previous?.(next); latest = next; language = next.config?.language || 'en'; button.textContent = tr('分享语音', 'Share voice'); button.hidden = !next.bot?.voiceMedia?.supported; button.disabled = !available(); button.title = available() ? tr('先试听，再由搭档 QQ 发给主人', 'Listen locally, then send from this companion’s QQ to its owner') : tr('请先连接当前搭档的 QQ', 'Connect this companion’s QQ first');
-    if (panel) { if (view !== 'bot' || next.bot?.status !== 'connected' || !next.bot?.voiceMedia?.supported || binding() !== panel.binding) { close(); return; } if (draft && next.bot?.voiceMedia?.draft?.ticketId !== draft.ticketId) { clearDraft(); feedback = explain('stale_ticket'); problem = false; } draw(); }
+    previous?.(next); latest = next; language = next.config?.language || 'en'; button.textContent = tr('分享语音', 'Share voice'); button.hidden = !supported(); button.disabled = !available();
+    button.title = available() ? (mac() ? tr('选群后，由搭档的 QQ 发到群', 'Choose a group to send from this companion’s QQ') : tr('先试听，再由搭档 QQ 发给主人', 'Listen locally, then send from this companion’s QQ to its owner')) : tr('请先连接当前搭档的 QQ', 'Connect this companion’s QQ first');
+    if (panel) {
+      const target = panel.target;
+      if (view !== 'bot' || next.bot?.status !== 'connected' || !supported() || binding(target) !== panel.binding || (target?.groupId && !groupCurrent(target))) { close(); return; }
+      const currentDraft = next.bot?.voiceMedia?.draft;
+      if (draft && (currentDraft?.ticketId !== draft.ticketId || (target?.groupId && !validRecipient(currentDraft.recipient)))) { clearDraft(); feedback = explain('stale_ticket'); problem = false; }
+      draw();
+    }
   };
   if (typeof data !== 'undefined' && data) window.renderBot(data);
 })();

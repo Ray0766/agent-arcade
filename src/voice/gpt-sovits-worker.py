@@ -1,12 +1,16 @@
 """Optional local Serena TTS: fixed verified assets, JSON control, in-memory PCM.
 
 This worker has no microphone or network listener. The owning Node provider kills
-only this process to stop active generation/playback. Idle models stay resident.
+its owned host to stop active work. Idle models stay resident.
 """
 import sys, os, json, pathlib, hashlib, socket, re, base64
 PROTOCOL=sys.stdout
 sys.stdout=sys.stderr  # Third-party status/text prints never enter the protocol.
-if len(sys.argv)!=3 or any('\0' in value or value.startswith(('//','\\\\')) for value in sys.argv[1:]):raise SystemExit(2)
+RENDER_ONLY = len(sys.argv) == 5 and sys.platform == 'darwin' and sys.argv[4] == '--render-only'
+NONCE = sys.argv[3] if RENDER_ONLY else None
+if RENDER_ONLY and not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', NONCE):
+    raise SystemExit(2)
+if (not RENDER_ONLY and len(sys.argv)!=3) or any('\0' in value or value.startswith(('//','\\\\')) for value in sys.argv[1:3]):raise SystemExit(2)
 REPO=pathlib.Path(sys.argv[1]).resolve()
 REFERENCE=pathlib.Path(sys.argv[2]).resolve()
 REFERENCE_HASH='20a9b9c687db1dc2e9c5783c3e915c9694e49118fff9e72dad56b1c32a37d179'
@@ -52,7 +56,11 @@ def get_model():
     os.chdir(REPO);sys.path.insert(0,str(REPO));sys.path.insert(0,str(REPO/'GPT_SoVITS'))
     import torch, torchaudio, soundfile as sf
     torch.set_num_threads(1)
-    if not torch.cuda.is_available():raise ValueError('voice_unavailable')
+    if RENDER_ONLY:
+        device, half = 'cpu', False
+    else:
+        if not torch.cuda.is_available():raise ValueError('voice_unavailable')
+        device, half = 'cuda', True
     audio,rate=sf.read(str(REFERENCE),dtype='float32',always_2d=True)
     if rate!=24000 or audio.shape[1]!=1 or not 3<=len(audio)/rate<=10:raise ValueError('voice_assets')
     def fixed_reference(path,*args,**kwargs):
@@ -66,7 +74,7 @@ def get_model():
     fast_langdetect.infer._default_detector=fast_langdetect.infer.LangDetector(
         fast_langdetect.infer.LangDetectConfig(custom_model_path=str(local_detector),allow_fallback=False))
     pre=REPO/'GPT_SoVITS/pretrained_models'
-    config=TTS_Config({'custom':{'device':'cuda','is_half':True,'version':'v2ProPlus','t2s_weights_path':str(pre/'s1v3.ckpt'),'vits_weights_path':str(pre/'v2Pro/s2Gv2ProPlus.pth'),'bert_base_path':str(pre/'chinese-roberta-wwm-ext-large'),'cnhuhbert_base_path':str(pre/'chinese-hubert-base')}})
+    config=TTS_Config({'custom':{'device':device,'is_half':half,'version':'v2ProPlus','t2s_weights_path':str(pre/'s1v3.ckpt'),'vits_weights_path':str(pre/'v2Pro/s2Gv2ProPlus.pth'),'bert_base_path':str(pre/'chinese-roberta-wwm-ext-large'),'cnhuhbert_base_path':str(pre/'chinese-hubert-base')}})
     config.save_configs=lambda *args,**kwargs:None
     MODEL=TTS(config)
     return MODEL
@@ -147,7 +155,8 @@ def speak(identifier,text):
 
 def main():
     # Starting a render host and reading capabilities never touches a device.
-    emit('ready',outputAvailable=False,outputDevice='',outputChecked=False,renderAvailable=True)
+    identity = {'nonce': NONCE, 'pid': os.getpid(), 'parentPid': os.getppid()} if RENDER_ONLY else {}
+    emit('ready',outputAvailable=False,outputDevice='',outputChecked=False,renderAvailable=True,**identity)
     while True:
         raw=sys.stdin.buffer.readline(16385)
         if not raw:return
@@ -155,7 +164,7 @@ def main():
         identifier=None
         try:
             row=json.loads(raw);identifier=row.get('id');op=row.get('op')
-            if not isinstance(identifier,str) or len(identifier)>80:return
+            if not isinstance(identifier,str) or len(identifier)>80 or (RENDER_ONLY and op!='render'):return
             if op=='warmup' and set(row)=={'id','op'}:get_model();emit('warm',id=identifier)
             elif op=='render' and set(row)=={'id','op','text'}:render(identifier,row['text'])
             elif op=='render' and set(row)=={'id','op','text','clean'} and row['clean'] is True:

@@ -10,16 +10,29 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{reso
 const local=value=>typeof value==='string'&&path.isAbsolute(value)&&!/^[/\\]{2}/.test(value)&&!/[\0\r\n]/.test(value);
 const signalLike=value=>value==null||(typeof value.aborted==='boolean'&&typeof value.addEventListener==='function'&&typeof value.removeEventListener==='function');
 const exact=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===keys.length&&keys.every(k=>Object.hasOwn(value,k));
+const isMac=process.platform==='darwin';
+function createProcessProof(options){
+  if(isMac)return new (require('./posix-python-process-proof.cjs').PosixPythonProcessProof)(options);
+  return new (require('./python-process-proof.cjs').PythonProcessProof)(options);
+}
+function workerEnvironment(){
+  const env=isMac?Object.fromEntries(['HOME','PATH','TMPDIR','LANG','LC_ALL','LC_CTYPE'].filter(key=>process.env[key]!==undefined).map(key=>[key,process.env[key]])):process.env;
+  return {...env,PYTHONUTF8:'1',HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1',HF_HUB_DISABLE_TELEMETRY:'1',DO_NOT_TRACK:'1',...(isMac?{PYTHONNOUSERSITE:'1'}:{})};
+}
 class QwenWarmFileAsr{
-  constructor({pythonPath,modelPath,spawnProcess=spawn,proofFactory=options=>new (require('./python-process-proof.cjs').PythonProcessProof)(options),timeoutMs=120000}={}){
-    if(!local(pythonPath)||!local(modelPath)||typeof spawnProcess!=='function'||typeof proofFactory!=='function'||!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>180000)throw failure('invalid_config');
-    Object.assign(this,{pythonPath,modelPath,spawnProcess,proofFactory,timeoutMs});
+  constructor({pythonPath,modelPath,spawnProcess=spawn,proofFactory=createProcessProof,onVerification=()=>{},timeoutMs=120000}={}){
+    if(!local(pythonPath)||!local(modelPath)||typeof spawnProcess!=='function'||typeof proofFactory!=='function'||typeof onVerification!=='function'||!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>180000)throw failure('invalid_config');
+    Object.assign(this,{pythonPath,modelPath,spawnProcess,proofFactory,onVerification,timeoutMs});
     this.child=null;this.proof=null;this.bound=false;this.job=null;this.lastJobId=null;this.closed=false;this.closing=false;this.closePromise=null;this.proving=null;this.ready=null;this.readySeen=false;this.buffer='';this.outputBytes=0;this.seen=new Set();this.nonce=randomUUID();this.failure=null;
   }
   get busy(){return !!this.job||this.closing&&!this.closed;}
   _current(op){if(this.closed||this.closing||this.job!==op)throw failure(this.failure?.code||'cancelled');if(op.signal?.aborted)throw failure('cancelled');if(this.failure)throw this.failure;}
   _reject(code){
-    this.failure ||= failure(code);this.buffer='';if(this.job){this.job.text=null;this.job.reply.reject(this.failure);}this.ready?.reject(this.failure);
+    if(!this.failure){
+      this.failure=failure(code);
+      if(isMac&&this.failure.code!=='cancelled')this.onVerification(false);
+    }
+    this.buffer='';if(this.job){this.job.text=null;this.job.reply.reject(this.failure);}this.ready?.reject(this.failure);
   }
   _fault(code){
     if(this.closed)return;this._reject(code);
@@ -61,12 +74,12 @@ class QwenWarmFileAsr{
     if(!this.proof||['bind','proveReady','close'].some(name=>typeof this.proof[name]!=='function'))throw failure('asr_unavailable');
     this._current(op);const source=fs.readFileSync(path.join(__dirname,'qwen-warm-file-worker.py'),'utf8');if(source.length>16000)throw failure('asr_unavailable');
     this.ready=deferred();const startedAt=Date.now();
-    this.child=this.spawnProcess(this.pythonPath,['-u','-c',source,this.modelPath,this.nonce,'--resident'],{windowsHide:true,shell:false,stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONUTF8:'1',HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1',HF_HUB_DISABLE_TELEMETRY:'1',DO_NOT_TRACK:'1'}});
+    this.child=this.spawnProcess(this.pythonPath,['-u','-c',source,this.modelPath,this.nonce,'--resident'],{windowsHide:true,shell:false,detached:isMac,stdio:['pipe','pipe','pipe'],env:workerEnvironment()});
     const child=this.child;child.stdout.setEncoding('utf8');child.stdout.on('data',chunk=>this._data(chunk));child.stderr.on('data',()=>{});child.stdin.on('error',()=>{if(!this.closing)this._fault('asr_failed');});
     child.once('error',()=>this._fault(child.pid?'asr_failed':'asr_unavailable'));
     child.once('close',()=>{if(!this.closing)this._fault('asr_failed');});
     if(!Number.isSafeInteger(child.pid)||child.pid<1){this.child=null;this.proof=null;throw failure('asr_unavailable');}
-    this.proof.bind({pid:child.pid,startedAt});this.bound=true;
+    this.proof.bind({pid:child.pid,startedAt,...(isMac?{child}:{})});this.bound=true;
     await this.ready.promise;this._current(op);
   }
   transcribe(audio,{jobId,signal,locale='zh-CN'}={}){
@@ -81,7 +94,9 @@ class QwenWarmFileAsr{
         this._current(op);if(this.seen.size>=MAX_JOBS)throw failure('asr_unavailable');this.seen.add(jobId);
         if(!this.child)await this._start(op);this._current(op);op.phase='sent';
         this.child.stdin.write(JSON.stringify({version:VERSION,nonce:this.nonce,event:'transcribe',id:jobId,pcm:pcm.toString('base64'),sampleRate:rate,locale})+'\n',error=>{if(error)this._fault('asr_failed');});
-        const text=await op.reply.promise;this._current(op);clearTimeout(op.timer);return text;
+        const text=await op.reply.promise;this._current(op);clearTimeout(op.timer);
+        if(isMac&&text.trim())this.onVerification(true);
+        return text;
       }catch(error){this._reject(error?.code);try{await this._shutdown();}catch{throw failure('asr_exit_unconfirmed');}throw failure(error?.code);}
       finally{if(op.phase!=='succeeded'||this.closed){clearTimeout(op.timer);signal?.removeEventListener('abort',cancel);op.text=null;}}
     })();op.task=task;return task;

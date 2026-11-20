@@ -68,9 +68,12 @@ class SocialStore {
   // maxScopes and branches are for the App conversation's own database (local-companion.cjs):
   // more conversation slots and the branch index of schema version 5. The defaults keep every
   // other store, including the QQ companion's, exactly as before.
-  constructor({root,now=Date.now,loadSqlite=()=>require('node:sqlite'),maxScopes=20,branches=false}={}) {
-    if(!Number.isInteger(maxScopes)||maxScopes<1||maxScopes>100||typeof branches!=='boolean')throw inputError('Invalid memory store options.');
+  constructor({root,now=Date.now,loadSqlite=()=>require('node:sqlite'),maxScopes=20,branches=false,groupFollowupGraceMs=0,ordinaryGroupFollowups=false}={}) {
+    if(!Number.isInteger(maxScopes)||maxScopes<1||maxScopes>100||typeof branches!=='boolean'||
+        !Number.isSafeInteger(groupFollowupGraceMs)||groupFollowupGraceMs<0||groupFollowupGraceMs>3600000||
+        typeof ordinaryGroupFollowups!=='boolean'||ordinaryGroupFollowups&&branches)throw inputError('Invalid memory store options.');
     this.maxScopes=maxScopes;this.branchesEnabled=branches;this.detailColumns=branches?SPEAKER_DETAIL:MESSAGE_DETAIL;
+    this.ordinaryGroupFollowups=ordinaryGroupFollowups;
     this.file=path.join(root,'social-memory.sqlite');this.configFile=path.join(root,'social-config.json');
     this.now=now;this.available=false;this.problem='';this.settings={...DEFAULTS};
     try{
@@ -97,7 +100,7 @@ class SocialStore {
         // Version 6, App conversation store only: old rows keep NULL (no recorded speaker).
         if(branches)for(const name of ['speaker','speaker_name'])if(!columns.has(name))db.exec(`ALTER TABLE messages ADD COLUMN ${name} TEXT`);
         db.exec('CREATE TABLE IF NOT EXISTS scope_state (scope TEXT PRIMARY KEY,world_info TEXT NOT NULL)');
-        initializeContinuity(db,now(),{branches});
+        initializeContinuity(db,now(),{branches,groupFollowupGraceMs,ordinaryGroupFollowups});
         if(branches)initializeBranches(db);
       },true);
       this.available=!this.#closeFailed;
@@ -170,6 +173,7 @@ class SocialStore {
       const idle=db.prepare("SELECT id FROM scopes s WHERE "+kept+"NOT EXISTS(SELECT 1 FROM messages WHERE scope=s.id) AND NOT EXISTS(SELECT 1 FROM scoped_notes WHERE scope=s.id) AND NOT EXISTS(SELECT 1 FROM facts WHERE scope=s.id) AND NOT EXISTS(SELECT 1 FROM public_journal WHERE scope=s.id) AND NOT EXISTS(SELECT 1 FROM followups WHERE scope=s.id AND (state IN ('pending','attempting') OR updated_at>=?)) AND NOT EXISTS(SELECT 1 FROM actions WHERE scope=s.id AND updated_at>=?) ORDER BY (SELECT max(updated_at) FROM actions WHERE scope=s.id) LIMIT 1").get(this.now()-30*86400000,this.now()-30*86400000);
       if(!idle)throw Object.assign(inputError('Character memory scope limit reached. Clear an unused scope first.'),{reason:'scope_limit'});
       for(const table of ['actions','followups','scope_state'])db.prepare(`DELETE FROM ${table} WHERE scope=?`).run(idle.id);
+      if(this.ordinaryGroupFollowups)db.prepare('DELETE FROM group_preferred_name_order WHERE scope=?').run(idle.id);
       db.prepare('DELETE FROM scopes WHERE id=?').run(idle.id);
     }
     db.prepare('INSERT INTO scopes(id) VALUES(?)').run(scope);
@@ -333,7 +337,8 @@ class SocialStore {
       db.prepare('DELETE FROM scoped_notes WHERE scope=?').run(key);
       db.prepare('DELETE FROM scope_state WHERE scope=?').run(key);
       db.prepare('DELETE FROM facts WHERE scope=?').run(key);
-      db.prepare("UPDATE followups SET state=CASE WHEN state='attempting' THEN 'unknown' WHEN state='pending' THEN 'cancelled' ELSE state END,text='',source_ids='[]',fact_ids='[]',updated_at=? WHERE scope=?").run(this.now(),key);
+      const clearProof=this.ordinaryGroupFollowups?',member_direct=NULL':'';
+      db.prepare(`UPDATE followups SET state=CASE WHEN state='attempting' THEN 'unknown' WHEN state='pending' THEN 'cancelled' ELSE state END,text='',local_time=NULL,source_ids='[]',fact_ids='[]',updated_at=?${clearProof} WHERE scope=?`).run(this.now(),key);
       // Keep action receipts: forgetting a conversation must not reset rate
       // limits, duplicate-send barriers, or uncertain-send records.
       if(!db.prepare('SELECT 1 FROM actions WHERE scope=?').get(key)&&!db.prepare('SELECT 1 FROM followups WHERE scope=?').get(key)&&!db.prepare('SELECT 1 FROM public_journal WHERE scope=?').get(key))db.prepare('DELETE FROM scopes WHERE id=?').run(key);

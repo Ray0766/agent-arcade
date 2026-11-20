@@ -190,3 +190,10 @@ html[data-layout="immersive"] .compact .page-heading h1,html[data-layout="immers
 html[data-layout="immersive"] :is(.kn-item,.tb-card,.tb-sandbox){background:color-mix(in oklab,var(--surface) 78%,transparent)}
 html[data-layout="immersive"] .tb-column{border-radius:var(--r-lg);background:color-mix(in oklab,var(--surface-2) 70%,transparent)}
 html[data-layout="immersive"] .tb-card{border-radius:14px}
+
+/* Fit the floating dock at phone-sized window widths without hiding tools. */
+@media(max-width:600px){
+  html[data-layout="immersive"] .shell-ws-button{padding:6px 9px}
+  html[data-layout="immersive"] .shell-tool,html[data-layout="immersive"] .shell-tools .quiet{width:32px;height:32px}
+  html[data-layout="immersive"] .shell-tools .shell-tool-text{width:auto;min-width:32px;padding:0 6px}
+}

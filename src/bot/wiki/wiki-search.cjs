@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Line-level BM25 search over the owner's wiki (lexical only, no model).
+ * Line-level BM25 search with bounded Chinese question matching (no model).
  *
  * Adapted from bothouse, https://github.com/zuiho-kai/bothouse
  * Upstream paths:
@@ -16,6 +16,7 @@
  * - the settled-line markers are our own (see PIN);
  * - the index is rebuilt when the page list or any page's mtime / size changes, or after 300 s.
  */
+const {questionKey, factKeys, anchors, matchesAnchors, distinguishingText} = require('./wiki-question.cjs');
 const TOP = 10, TOP_PAGES = 3, MIN_LINE = 6, K1 = 1.2, B = 0.75;
 const GRACE = 7, HALF = 14, FLOOR = 0.3, TTL_MS = 300 * 1000, DESC_CHARS = 120, QUERY_CHARS = 2000, LINE_CHARS = 300;
 const DATE = /(?<![\d-])(?:(20\d\d)-)?(1[0-2]|0?[1-9])-([0-2]?\d|3[01])(?![\d-])/g;
@@ -25,7 +26,7 @@ const DAY_MS = 86400000;
 // Conversational glue alone must not recall private notebook pages. Keep domain
 // words and numbers (including short queries such as SSH or 2222).
 const STOP = new Set(('the a an and or of on in to for from with is are was were be been it its this that these those i me my we our you your he she they their please what which who where when why how do does did can could would should tell about again now today hello hi thanks '
-  + '今天 现在 什么 怎么 么样 可以 以吗 你好 好吗 谢谢 一下 请问 告诉 诉我 我的 你的 我们 你们 这个 那个 这是 那是 的吗 了呢 了吗 记得 还记').split(/\s+/));
+  + '今天 现在 什么 怎么 么样 可以 以吗 你好 好吗 谢谢 一下 请问 告诉 诉我 我的 你的 我们 你们 这个 那个 这是 那是 的吗 了呢 了吗 记得 还记 么安 安排 哪里 哪儿 去哪 在哪 几点 何时 开始 出发').split(/\s+/));
 const MIN_RELEVANCE = 0.25;
 
 /** Chinese runs as overlapping two-character pieces; Latin words of 2+ characters; numbers of 3+ digits. */
@@ -80,7 +81,14 @@ class Index {
     this.avg = this.lines.reduce((sum, row) => sum + row.tokens.length, 0) / n || 1;
     const df = new Map();
     this.inv = new Map();
+    this.byQuestion = new Map();
     this.lines.forEach((row, index) => {
+      const keys = factKeys(row.text);
+      if (keys.length) row.anchors = anchors(row.text);
+      for (const key of keys) {
+        if (!this.byQuestion.has(key)) this.byQuestion.set(key, new Set());
+        this.byQuestion.get(key).add(index);
+      }
       const counts = new Map();
       for (const token of row.tokens) counts.set(token, (counts.get(token) || 0) + 1);
       for (const [token, count] of counts) {
@@ -94,17 +102,36 @@ class Index {
 
   /** The best `k` lines: `[{rel, line, text, score}]`, best first. */
   search(query, k = TOP) {
-    const scores = new Map(), queryTerms = new Set(tokens(String(query ?? '').slice(0, QUERY_CHARS)).filter(token => !STOP.has(token)));
+    const text = String(query ?? '').slice(0, QUERY_CHARS), question = questionKey(text);
+    const constraint = question ? anchors(text) : null;
+    const eligible = question ? new Set([...(this.byQuestion.get(question.key) || [])]
+      .filter(index => matchesAnchors(constraint, this.lines[index].anchors))) : null;
+    const scores = new Map();
+    let queryTokens = tokens(text);
+    if (question?.allowAlias && eligible.size > 1) {
+      // Shared wording for the requested topic, date and detail supplies no
+      // evidence that one of several eligible activities is the intended one.
+      queryTokens = tokens(distinguishingText(constraint)).filter(token => {
+        const matching = (this.inv.get(token) || []).filter(([index]) => eligible.has(index));
+        return matching.length > 0 && matching.length < eligible.size;
+      });
+    }
+    const queryTerms = new Set(queryTokens.filter(token => !STOP.has(token)));
     // Normalise by the terms present in the notebook: a fixed raw BM25 cutoff
     // would reject precise terms repeated in a small notebook (low IDF).
     const possible = [...queryTerms].reduce((sum, token) => sum + (this.idf.get(token) || 0), 0);
     for (const token of queryTerms) {
       for (const [index, count] of this.inv.get(token) || []) {
+        if (eligible && !eligible.has(index)) continue;
         const length = this.lines[index].tokens.length;
         scores.set(index, (scores.get(index) || 0) + this.idf.get(token) * count * (K1 + 1) / (count + K1 * (1 - B + B * length / this.avg)));
       }
     }
-    return [...scores].filter(([, score]) => possible > 0 && score / possible >= MIN_RELEVANCE).map(([index, score]) => [index, score * this.decay[index]]).sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, k)
+    const ranked = [...scores].filter(([, score]) => possible > 0 && score / possible >= MIN_RELEVANCE);
+    // A phrase match alone may introduce one answer. When several lines match
+    // the topic and requested detail, require literal evidence to choose.
+    if (!ranked.length && question?.allowAlias && eligible.size === 1) ranked.push([eligible.values().next().value, MIN_RELEVANCE]);
+    return ranked.map(([index, score]) => [index, score * this.decay[index]]).sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, k)
       .map(([index, score]) => ({rel: this.lines[index].rel, line: this.lines[index].line, text: this.lines[index].text, score}));
   }
 }

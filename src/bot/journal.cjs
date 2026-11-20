@@ -6,7 +6,7 @@ const { createHash } = require('node:crypto');
 const MAX_RECORDS = 10000;
 const STATES = new Set(['received', 'queued', 'running', 'waiting_permission', 'waiting_question',
   'cancelling', 'reply_ended', 'error', 'limit', 'cancelled', 'command_handled', 'rejected',
-  'forwarded_unverified', 'interrupted_unknown']);
+  'forwarded_unverified', 'interrupted_unknown', 'skipped']);
 const INCOMPLETE = ['received', 'queued', 'running', 'waiting_permission', 'waiting_question', 'cancelling', 'forwarded_unverified'];
 const digest = value => createHash('sha256').update(value).digest('hex');
 const storageError = () => Object.assign(new Error('Durable message storage is unavailable. New dispatch is paused.'), { code: 'journal_unavailable' });

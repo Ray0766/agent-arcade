@@ -5,6 +5,7 @@ const {promisify}=require('node:util');
 const {discoverNative}=require('./native-launch.cjs');
 const {styleInstructions}=require('../core/personas.cjs');
 const {childEnvironment}=require('../core/platform.cjs');
+const {terminateProcessGroup}=require('../core/posix-process.cjs');
 
 const TOOLS=['Read','Glob','Grep','Edit','Write','Bash','AskUserQuestion'];
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,15 +26,7 @@ async function terminateChild(child,{groupId,timeoutMs=2000,killImpl=process.kil
   // This is the live child we spawned, never a PID restored from disk. The exit
   // of its leader need not end its POSIX process group. Keep that group only for
   // this transport's immediate disposal; never persist or rediscover it by name.
-  if(groupId!==undefined){
-    if(!Number.isSafeInteger(groupId)||groupId<=1||groupId===process.pid)return false;
-    const signal=value=>{try{killImpl(-groupId,value);return true;}catch(error){if(error.code==='ESRCH')return false;throw error;}};
-    const gone=async()=>{const until=Date.now()+timeoutMs;do{if(!signal(0))return true;await new Promise(resolve=>setTimeout(resolve,20));}while(Date.now()<until);return !signal(0);};
-    if(!signal('SIGTERM'))return true;
-    if(await gone())return true;
-    if(!signal('SIGKILL'))return true;
-    return gone();
-  }
+  if(groupId!==undefined)return terminateProcessGroup(groupId,{timeoutMs,killImpl});
   if(child.exitCode!==null&&child.exitCode!==undefined||child.signalCode)return;
   if(process.platform==='win32'&&Number.isSafeInteger(child.pid)&&child.pid>0){
     await promisify(execFile)('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,timeout:5000,maxBuffer:8192}).catch(()=>{});

@@ -8,7 +8,7 @@ const validateQQUrl=value=>require('./qq.cjs').validateQQUrl(value);
 const validateQQOwner=value=>require('./qq.cjs').validateQQOwner(value);
 const {canonicalWav}=require('./qq-voice-payload.cjs');
 const MAX_SOURCE_BYTES=1024*1024,MAX_WAV_BYTES=3*1024*1024,MAX_FRAME=4*1024*1024+4096;
-const CODES=new Set(['unsupported','wrong_scope','invalid_config','invalid_response','response_too_large','source_too_large','duration_limit','voice_format','cancelled','timeout','disconnected','account_changed','account_offline','status_unverified','action_failed','message_changed','busy','duplicate','asr_unavailable','asr_failed','asr_exit_unconfirmed','asr_cleanup_unconfirmed','transcript_empty','transcript_invalid','journal_unavailable']);
+const CODES=new Set(['unsupported','wrong_scope','invalid_config','invalid_response','response_too_large','source_too_large','duration_limit','voice_format','cancelled','timeout','disconnected','account_changed','account_offline','status_unverified','action_failed','message_changed','busy','duplicate','asr_unavailable','asr_failed','asr_exit_unconfirmed','asr_cleanup_unconfirmed','transcript_empty','transcript_invalid','journal_unavailable','source_unavailable']);
 class InboundVoiceError extends Error{constructor(code){const fixed=CODES.has(code)?code:'invalid_response';super(`Owner voice was not transcribed (${fixed}).`);this.code=fixed;this.name=fixed==='cancelled'?'AbortError':'InboundVoiceError';}}
 const failure=code=>new InboundVoiceError(code);
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
@@ -114,13 +114,13 @@ class OwnerRecordReader{
   }
 }
 function bindingEqual(a,b){return b?.companion===true&&a.clientGeneration===b.client?.generation&&a.socket===b.client?.socket&&['accountId','ownerId','scopeId','generation','client','dispatcher','url','token'].every(k=>a[k]===b[k]);}
-class OwnerVoicePipeline{
+class ScopedVoicePipeline{
   // claim/disposition are the existing durable journal adapter, not an in-memory
   // substitute. No retry follows an uncertain/failed claimed message.
-  constructor({getBinding,reader,createAsr,acquireLease,claim,disposition,keepWarm=false}={}){
+  constructor({getBinding,reader,createAsr,acquireLease,claim,disposition,keepWarm=false}={},policy){
     if([getBinding,createAsr,acquireLease,claim,disposition].some(f=>typeof f!=='function')||typeof reader?.read!=='function')throw failure('invalid_config');
     if(typeof keepWarm!=='boolean')throw failure('invalid_config');
-    Object.assign(this,{getBinding,reader,createAsr,acquireLease,claim,disposition,keepWarm});this.operation=null;this.closed=false;this.idleCleanup=null;
+    Object.assign(this,{getBinding,reader,createAsr,acquireLease,claim,disposition,keepWarm,policy});this.operation=null;this.closed=false;this.idleCleanup=null;
   }
   get busy(){return this.operation!==null;}
   _assertLease(op){
@@ -169,16 +169,15 @@ class OwnerVoicePipeline{
     if(this.closed||signal?.aborted)throw failure('cancelled');if(this.operation)throw failure('busy');
     const currentBinding=this.getBinding(),b={...currentBinding,clientGeneration:currentBinding?.client?.generation,socket:currentBinding?.client?.socket};
     if(!b.scopeId||!Number.isSafeInteger(b.generation)||!Number.isSafeInteger(b.clientGeneration)||!b.socket||!b.dispatcher)throw failure('wrong_scope');
-    const captured=frame?.kind==='qq-owner-voice'?{post_type:'message',message_type:'private',sub_type:'friend',self_id:frame.accountId,user_id:frame.ownerId,message_id:frame.id,time:frame.createdAt/1000,message:[{type:'record',data:{file:frame.file,file_size:frame.sourceBytes}}]}:frame;
-    let resolveSettled;const voice=captureOwnerVoice(captured,{...b,acceptAfter}),op={jobId:randomUUID(),controller:new AbortController(),settled:new Promise(resolve=>{resolveSettled=resolve;}),lease:null,asr:null,cleaned:false};this.operation=op;
+    let resolveSettled;const voice=this.policy.capture(frame,b,acceptAfter),op={jobId:randomUUID(),controller:new AbortController(),settled:new Promise(resolve=>{resolveSettled=resolve;}),lease:null,asr:null,cleaned:false};this.operation=op;
     const cancel=()=>op.controller.abort();signal?.addEventListener('abort',cancel,{once:true});let audio,claimed=false,result,error;
-    const current=()=>{if(this.closed||op.controller.signal.aborted)throw failure('cancelled');if(!bindingEqual(b,this.getBinding()))throw failure('account_changed');this._assertLease(op);};
+    const current=()=>{if(this.closed||op.controller.signal.aborted)throw failure('cancelled');if(!this.policy.matches(b,this.getBinding()))throw failure('account_changed');this._assertLease(op);};
     try{
       current();try{claimed=await this.claim(b.scopeId,voice.id);if(typeof claimed!=='boolean')throw Error();}catch{throw failure('journal_unavailable');}if(!claimed)return {outcome:'duplicate'};current();
-      audio=await this.reader.read(voice,{url:b.url,token:b.token,signal:op.controller.signal});current();
+      audio=await this.policy.read(this.reader,voice,b,op.controller.signal,current);current();
       // The app supplies one shared ASR gate, also used by microphone capture.
       // It receives no audio, secret, filename or message text.
-      op.lease=await this.acquireLease(Object.freeze({scopeId:b.scopeId,accountId:b.accountId,ownerId:b.ownerId,generation:b.generation,clientGeneration:b.clientGeneration,client:b.client,socket:b.socket,dispatcher:b.dispatcher,jobId:op.jobId,signal:op.controller.signal}));
+      op.lease=await this.acquireLease(Object.freeze({scopeId:b.scopeId,accountId:b.accountId,...this.policy.speaker(b),generation:b.generation,clientGeneration:b.clientGeneration,client:b.client,socket:b.socket,dispatcher:b.dispatcher,jobId:op.jobId,signal:op.controller.signal}));
       // A resumed resource belongs to this lease before the awaited acquisition
       // returns. Capture it before any scope check can fail and require cleanup.
       op.asr=op.lease?.resource||null;
@@ -194,7 +193,7 @@ class OwnerVoicePipeline{
       try{await this.disposition(b.scopeId,voice.id,'received');}catch{throw failure('journal_unavailable');}current();
       // Service integration MUST use a companion-only receiveVoice path
       // which bypasses command parsing, publication, memory mutation and tools.
-      result={outcome:'transcribed',id:voice.id,text,source:'qq-owner-voice',allowCommands:false,target:'companion-chat-only',durationSeconds:audio.durationSeconds};
+      result={outcome:'transcribed',id:voice.id,text,source:this.policy.source,allowCommands:false,target:this.policy.target,durationSeconds:audio.durationSeconds};
       await this._park(op,current);
     }catch(cause){error=cause instanceof InboundVoiceError?cause:failure(cause?.code);if(op.parked)try{await this.closeIdle();}catch(cleanupError){error=cleanupError;}if(claimed)try{await this.disposition(b.scopeId,voice.id,'rejected');}catch{error=failure('journal_unavailable');}}
     finally{
@@ -215,4 +214,17 @@ class OwnerVoicePipeline{
     await op.settled;await this._cleanup(op);if(this.operation===op)this.operation=null;await this.closeIdle();
   }
 }
-module.exports={InboundVoiceError,captureOwnerVoice,recordSegment,decodeRecord,OwnerRecordReader,OwnerVoicePipeline,MAX_FRAME};
+const ownerVoicePolicy=Object.freeze({
+  capture(frame,b,acceptAfter){
+    const captured=frame?.kind==='qq-owner-voice'?{post_type:'message',message_type:'private',sub_type:'friend',self_id:frame.accountId,user_id:frame.ownerId,message_id:frame.id,time:frame.createdAt/1000,message:[{type:'record',data:{file:frame.file,file_size:frame.sourceBytes}}]}:frame;
+    return captureOwnerVoice(captured,{...b,acceptAfter});
+  },
+  matches:bindingEqual,
+  read:(reader,voice,b,signal)=>reader.read(voice,{url:b.url,token:b.token,signal}),
+  speaker:b=>({ownerId:b.ownerId}),
+  source:'qq-owner-voice',target:'companion-chat-only',
+});
+class OwnerVoicePipeline extends ScopedVoicePipeline{
+  constructor(options){super(options,ownerVoicePolicy);}
+}
+module.exports={InboundVoiceError,captureOwnerVoice,recordSegment,decodeRecord,OwnerRecordReader,OwnerVoicePipeline,ScopedVoicePipeline,MAX_FRAME};

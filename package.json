@@ -1,8 +1,8 @@
 {
   "name": "agent-arcade",
-  "version": "0.4.0-preview.8",
+  "version": "0.4.0-preview.61.qa.3",
   "description": "One desktop home for AI companions, social accounts and agent tasks.",
-  "main": "src/bootstrap.cjs",
+  "main": "src/qa/entry.cjs",
   "private": true,
   "author": "Agent Arcade contributors",
   "license": "AGPL-3.0-only",
@@ -50,8 +50,8 @@
     "yazl": "3.3.1"
   },
   "build": {
-    "appId": "io.github.agentarcade.desktop",
-    "productName": "Agent Arcade",
+    "appId": "io.github.agentarcade.qq-first-use-qa",
+    "productName": "Agent Arcade QQ QA",
     "directories": {
       "output": "dist"
     },
@@ -79,6 +79,17 @@
       "signExecutable": false
     },
     "mac": {
+      "extraResources": [
+        {
+          "from": "node_modules/three/examples/jsm",
+          "to": "desktop-pet-addons",
+          "filter": [
+            "loaders/GLTFLoader.js",
+            "utils/BufferGeometryUtils.js",
+            "utils/SkeletonUtils.js"
+          ]
+        }
+      ],
       "target": [
         {
           "target": "dmg",
@@ -105,13 +116,30 @@
       "additionalArguments": [
         "--options",
         "runtime,hard,kill"
-      ]
+      ],
+      "notarize": false,
+      "artifactName": "Agent-Arcade-QQ-QA-${version}-${arch}.${ext}"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
       "category": "Development"
+    },
+    "artifactName": "Agent-Arcade-QQ-QA-${version}-${arch}.${ext}",
+    "npmRebuild": false,
+    "extraMetadata": {
+      "verificationOnly": true,
+      "recoveredRuntimeCommit": "2c9de2dab7154820e86e5c3d03d3f196eb6a9395",
+      "archivedBuildInputCommit": "1e5a4831d5aec61286615170a41b0438f36472fc"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": true
     }
   },
   "dependencies": {
@@ -119,6 +147,8 @@
     "@larksuiteoapi/node-sdk": "1.76.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "qrcode": "1.5.4",
+    "silk-wasm": "3.7.1",
+    "three": "0.187.0",
     "ws": "8.22.1",
     "yauzl": "3.4.0",
     "zod": "4.6.7"

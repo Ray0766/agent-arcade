@@ -12,7 +12,7 @@ const receipt={kind:'production-dom-real-workbench',syntheticAccountState:true,r
 const pass=text=>receipt.checks.push(text);
 (async()=>{
   fs.mkdirSync(OUT,{recursive:true});const temporaryRoot=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-local-sample-ui-'));
-  const browser=await chromium.launch({headless:true});let page,acceptPublish=true,publishQueue=Promise.resolve(),discoverCalls=0,failNext=false,releaseSample=null,sampleCalls=0;
+  const browser=await chromium.launch({headless:true,...(process.env.ARCADE_HEADLESS_BROWSER?{executablePath:process.env.ARCADE_HEADLESS_BROWSER}:{})});let page,acceptPublish=true,publishQueue=Promise.resolve(),discoverCalls=0,failNext=false,releaseSample=null,sampleCalls=0;
   const errors=[],blockedNetwork=[],bridgeCalls=[];
   const workbench=new Workbench({root:temporaryRoot,discover:async()=>{discoverCalls++;throw Error('CLI discovery forbidden in this test');},onChange:()=>{
     const state=workbench.snapshot();publishQueue=publishQueue.then(async()=>{if(acceptPublish&&page&&!page.isClosed())await page.evaluate(work=>{if(window.sampleFixture){sampleFixture.state.work=work;sampleFixture.publish();}},state);});
@@ -54,6 +54,10 @@ const pass=text=>receipt.checks.push(text);
         configure:forbidden('configure'),botConfigure:forbidden('botConfigure'),botConnect:forbidden('botConnect'),botLogin:forbidden('botLogin'),accountSelect:forbidden('accountSelect'),workChooseFolder:forbidden('workChooseFolder'),backgroundCreate:forbidden('backgroundCreate'),inspectArtifact:forbidden('inspectArtifact')};
     },{catalog,work:workbench.snapshot()});
     await page.emulateMedia({reducedMotion:'reduce'});await page.goto('http://127.0.0.1:41278/');
+    // Follow the current first-run disclosure to Channels, then open the optional local-work controls.
+    const enterChannels=async()=>{if(!await page.locator('#first-run-other').evaluate(n=>n.open))await page.locator('#first-run-other > summary').click();await page.locator('#first-run-open-wizard').click();if(await page.locator('#onboarding-optional-toggle').getAttribute('aria-expanded')==='false')await page.locator('#onboarding-optional-toggle').click();};
+    const openGuide=async()=>{if(await page.locator('#view-picker').isVisible())await page.locator('#view-picker').selectOption('settings');else await page.locator('#shell-bar [data-view=settings]').click();await page.locator('#ai-card-open').click();await enterChannels();};
+    await enterChannels();
     const entry=page.locator('#onboarding-local-sample');await entry.waitFor();
     const capture=async name=>{
       await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
@@ -61,9 +65,9 @@ const pass=text=>receipt.checks.push(text);
       const file=path.join(OUT,name+'.png');await page.screenshot({path:file,fullPage:true});receipt.screenshots.push(file);
     };
     assert.equal(await page.evaluate(()=>document.body.dataset.view),'connections');assert.equal(sampleCalls,0);
-    assert.equal(await page.locator('#onboarding-sample-note').evaluate(n=>getComputedStyle(n).fontSize),'14px');
+    assert.equal(await page.locator('#onboarding-sample-note').evaluate(n=>getComputedStyle(n).fontSize),'15px');
     assert.match(await entry.getAttribute('aria-describedby'),/onboarding-sample-note/);await capture('first-open-zh-wide');
-    pass('Empty profile opens the real Connections page with a no-account/no-AI sample entry; opening or rendering it performs no inspection or configuration.');
+    pass('An empty profile reaches Channels through the real first-run disclosure, then opens the optional no-account/no-AI sample entry without inspection or configuration; --fs-md=15px matches theme.css.');
 
     // Keep the invocation pending long enough to exercise actual keyboard focus
     // and the renderer single-flight guard; completion still uses real sample().
@@ -88,7 +92,7 @@ const pass=text=>receipt.checks.push(text);
     pass('Keyboard navigation enters the sandboxed real result app and formats its actual JSON; no account, project directory, model, or tool approval is needed.');
 
     // Failure is an injected adapter outage, followed by the real service retry.
-    await page.evaluate(()=>window.openConnectionOnboarding());failNext=true;await entry.click();
+    await openGuide();failNext=true;await entry.click();
     await page.waitForFunction(()=>!document.getElementById('artifact-sample').disabled&&document.getElementById('work-error').textContent.includes('重试'));
     await page.locator('#work-error').scrollIntoViewIfNeeded();await capture('sample-failure-retry-zh-wide');
     assert.equal(workbench.snapshot().inspections.length,1);const beforeRetry=sampleCalls;
@@ -98,7 +102,7 @@ const pass=text=>receipt.checks.push(text);
     assert.equal(workbench.snapshot().inspections.filter(t=>t.status==='completed').length,2);
     pass('An adapter failure shows localized retry guidance without a fabricated result or automatic retry; the existing sample button retries once and clears the error.');
 
-    await page.setViewportSize({width:430,height:900});await page.evaluate(()=>window.openConnectionOnboarding());await entry.focus();
+    await page.setViewportSize({width:430,height:900});await openGuide();await entry.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');assert.equal(await entry.evaluate(n=>document.activeElement===n),true);
     assert.equal(await entry.evaluate(n=>getComputedStyle(n).outlineStyle),'solid');await capture('first-open-zh-430-keyboard');
     await page.evaluate(()=>{sampleFixture.state.config.language='en';sampleFixture.publish();});await entry.focus();await capture('first-open-en-430-keyboard');
     const original=sampleCalls;failNext=true;await page.keyboard.press('Enter');await page.waitForFunction(()=>document.getElementById('work-error').textContent.includes('retry'));
@@ -106,7 +110,7 @@ const pass=text=>receipt.checks.push(text);
     await page.locator('#artifact-sample').click();await page.waitForFunction(()=>document.getElementById('work-inspections').querySelectorAll('article').length===3);
     await page.locator('#artifact-app').scrollIntoViewIfNeeded();await capture('sample-result-en-430');
     pass('430 CSS px Chinese/English entry, failure guidance, retry and result remain readable and keyboard reachable with reduced motion.');
-    await page.setViewportSize({width:787,height:600});await page.evaluate(()=>window.openConnectionOnboarding());await capture('first-open-en-150pct');
+    await page.setViewportSize({width:787,height:600});await openGuide();await capture('first-open-en-150pct');
     pass('A 1180 × 900 window at 150% equivalent CSS dimensions retains the sample entry; this is layout coverage, not an OS DPI claim.');
 
     await publishQueue;assert.equal(discoverCalls,0);assert.deepEqual(fs.readdirSync(temporaryRoot),[]);assert.deepEqual(await page.evaluate(()=>sampleFixture.writes),[]);

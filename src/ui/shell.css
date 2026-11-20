@@ -112,3 +112,15 @@ html[data-workspace=work] .shell-observer{display:flex}
 .compact .layout-choice-large .layout-option svg{width:72px;max-width:72px;padding:var(--sp-2)}
 @media(prefers-reduced-motion:reduce){.shell-pop-panel{animation:none}}
 @media(forced-colors:active){.shell-ws-button[aria-pressed=true],.layout-option[aria-pressed=true],.accent-swatch[aria-pressed=true],.shell-nav .nav.active{outline:2px solid Highlight}}
+
+/* At narrow widths the view picker yields to the
+   workspace and tool controls instead of widening the document. */
+@media(max-width:600px){
+  html[data-layout] .shell-tools{flex:0 1 auto;min-width:0}
+  html[data-layout] .shell-tools .compact-nav{flex:1 1 64px;min-width:64px;max-width:104px}
+  html[data-layout] .shell-ws{margin-right:0}
+}
+
+@media(max-width:600px){
+  html[data-layout] .shell-tools .shell-tool-text{flex-shrink:0;white-space:nowrap}
+}

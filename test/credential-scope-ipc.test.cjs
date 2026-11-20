@@ -6,7 +6,7 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),vm=r
 const {createRequire}=require('node:module'),{pathToFileURL}=require('node:url');
 const {AccountManager}=require('../src/bot/account-manager.cjs');
 const main=path.resolve(__dirname,'../src/main.cjs'),source=fs.readFileSync(main,'utf8'),fromMain=createRequire(main);
-const fields=['key','qqToken','feishuAppSecret','xAccessToken','messengerPageAccessToken','messengerRelayToken'];
+const fields=['key','qqToken','qqOfficialSecret','feishuAppSecret','xAccessToken','messengerPageAccessToken','messengerRelayToken'];
 const changed={code:'credential_scope_changed'},synthetic='synthetic-credential-scope-value-with-32chars';
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
 function fixture(t){
@@ -33,7 +33,7 @@ test('invalid requests and foreign or missing registered scopes fail before encr
   }assert.equal(f.encryptions(),0);
 });
 test('all fixed credential fields save only to the exact service and scope metadata is stripped',async t=>{
-  const f=fixture(t);const result=await f.invoke('botConfigure',{...f.scope(),key:synthetic,qqToken:synthetic,feishuAppSecret:synthetic,xAccessToken:synthetic,messengerPageAccessToken:synthetic,messengerRelayToken:synthetic});
+  const f=fixture(t);const result=await f.invoke('botConfigure',{...f.scope(),key:synthetic,qqToken:synthetic,qqOfficialSecret:synthetic,feishuAppSecret:synthetic,xAccessToken:synthetic,messengerPageAccessToken:synthetic,messengerRelayToken:synthetic});
   assert.equal(f.encryptions(),1);assert.equal(result.hasKey,true);assert.equal(f.first.secret.key,synthetic);assert.deepEqual(f.second.secret,{});
   const config=JSON.parse(fs.readFileSync(path.join(f.root,'bot-config.json'),'utf8'));for(const name of ['profileId','expectedMode','expectedChannel'])assert.equal(Object.hasOwn(config,name),false);
   assert(!JSON.stringify(result).includes(synthetic));

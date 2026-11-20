@@ -45,6 +45,32 @@ test('paused-bootstrap prelude keeps the real guard and a throwing native safeSt
 });
 
 function paused(url,id){return {callFrames:[{callFrameId:id,url,location:{scriptId:id,lineNumber:0}}]};}
+test('debug/vault shims are restricted to explicitly keyless verification artifacts',()=>{
+ const metadata={verificationOnly:false},argv=['fixture','--inspect-brk=127.0.0.1:0'];
+ const startup={credentialStartupAllowed:()=>false};let nativeCalls=0;
+ const vaultPolicy={applicationCredentialVault:()=>{nativeCalls++;throw Error('Native vault forbidden');}};
+ const identity={configureAppIdentity(){}},single={acquireSingleInstance(){}};
+ const modules={'core/credential-startup-policy.cjs':startup,'core/application-credential-vault.cjs':vaultPolicy,'core/app-identity.cjs':identity,'core/single-instance.cjs':single};
+ const loader={_load:name=>{
+  if(['node:path','node:crypto','node:buffer'].includes(name))return require(name);
+  if(name.endsWith('/app.asar/package.json'))return metadata;
+  const key=Object.keys(modules).find(key=>name.endsWith(key));if(key)return modules[key];
+  throw Error('Unexpected fixture import');
+ },createRequire(){return name=>loader._load(name);}};
+ const context=vm.createContext({process:{platform:'darwin',resourcesPath:'/private/tmp/keyless/resources',argv,env:{AGENT_ARCADE_HOME:'/private/tmp/keyless/data'},getBuiltinModule:()=>loader}});
+ const config={root:'/private/tmp/keyless',namespace:'arcade-keyless',verificationOnly:true};
+ const expression=preludeExpression(config);
+ assert.throws(()=>vm.runInContext(expression,context),/Not a keyless verification artifact/);
+ metadata.verificationOnly=true;metadata.macCredentialBroker={protocol:1};
+ assert.throws(()=>vm.runInContext(expression,context),/Not a keyless verification artifact/);
+ delete metadata.macCredentialBroker;
+ assert.equal(vm.runInContext(expression,context).installed,true);
+ assert.equal(startup.credentialStartupAllowed(argv),true);
+ assert.equal(startup.credentialStartupAllowed([...argv]),false,'only this owned process argument object is admitted');
+ assert.equal(vaultPolicy.applicationCredentialVault().decryptString(vaultPolicy.applicationCredentialVault().encryptString('{}')),'{}');
+ assert.equal(nativeCalls,0);
+ assert.equal(context.__integratedMacSmoke.verificationPoliciesInjected,true);
+});
 test('an initial non-bootstrap pause installs early isolation before its first resume',async()=>{
  const probe=Object.create(Inspector.prototype),events=[];probe.pauses=[paused('node:electron/js2c/browser_init','first')];probe.scripts=new Map();
  probe.send=async(method,params)=>{

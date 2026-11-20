@@ -1,6 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const {Bus} = require('../src/core/bus.cjs');
+const {makeEvent} = require('../src/sources/event.cjs');
 const {createFeedSource, parseFeed} = require('../src/sources/feed.cjs');
 
 const URL_ = 'https://news.example/feed.xml?key=abc';
@@ -102,6 +104,54 @@ test('page mode: baseline, then one event when the body hash changes', async () 
   result = await src.poll(result.cursor);
   assert.deepEqual(result.events.map(e => [e.kind, e.subject, e.title]), [['page.changed', 'https://news.example/feed.xml', 'Page changed']]);
   assert.deepEqual((await src.poll(result.cursor)).events, []);
+});
+
+test('page mode delivers every observed transition, including a repeated body after reopening', async () => {
+  let body = '<html>Synthetic Saturday schedule</html>', now = 7000;
+  const create = () => feed(() => body, {mode:'page', now:() => now}).src;
+  const bus = new Bus(), received = [];
+  bus.subscribe({kind:'page.changed'}, event => received.push(event.id));
+  const baseline = await create().poll(null);
+  assert.deepEqual(baseline.events, []);
+  assert.deepEqual(Object.keys(baseline.cursor), ['hash']);
+  assert.deepEqual(await create().poll(baseline.cursor), baseline);
+
+  const saturday = body;
+  const sunday = '<html>Synthetic Sunday schedule</html>';
+  const transitions = [sunday, saturday, sunday];
+  let saved = baseline.cursor;
+  for (const nextBody of transitions) {
+    body = nextBody;
+    const cursor = JSON.parse(JSON.stringify(saved));
+    const result = await create().poll(cursor);
+    assert.equal(result.events.length, 1);
+    assert.match(result.cursor.occurrence, /^[a-f0-9]{32}$/);
+    const [event] = result.events;
+    assert.deepEqual({...event, id:null}, {
+      id:null, at:now, source:'news', kind:'page.changed', subject:'https://news.example/feed.xml',
+      title:'Page changed', detail:'https://news.example/feed.xml', importance:'normal', data:{url:'https://news.example/feed.xml'},
+    });
+    assert(bus.publish(event));
+    now += 300000;
+    const retry = await create().poll(cursor);
+    assert.deepEqual(retry.cursor, result.cursor);
+    assert.equal(retry.events[0].id, event.id);
+    assert.equal(bus.publish(retry.events[0]), false);
+    assert.deepEqual(await create().poll(result.cursor), {cursor:result.cursor, events:[]});
+    saved = result.cursor;
+  }
+  assert.equal(new Set(received).size, 3);
+  const legacyEvent = makeEvent({source:'news', kind:'page.changed', subject:'https://news.example/feed.xml',
+    key:saved.hash, title:'Page changed', at:now});
+  assert(!received.includes(legacyEvent.id));
+
+  const replacement = feed(saturday, {mode:'page', url:URL_.replace('abc', 'replacement')});
+  const replacementBaseline = await replacement.src.poll(null);
+  assert.deepEqual(replacementBaseline, baseline);
+  replacement.state.body = sunday;
+  const firstReplacement = await replacement.src.poll(replacementBaseline.cursor);
+  assert.equal(firstReplacement.events[0].subject, 'https://news.example/feed.xml');
+  assert(!received.includes(firstReplacement.events[0].id), 'same body transition on a different exact URL is a new event');
 });
 
 test('only credential-free https URLs and bounded options are accepted', () => {

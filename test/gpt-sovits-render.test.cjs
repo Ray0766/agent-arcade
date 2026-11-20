@@ -9,7 +9,7 @@ const {createHash}=require('node:crypto');
 const {GptSovitsSpeech}=require('../src/voice/gpt-sovits.cjs');
 const {canonicalWav}=require('../src/bot/qq-voice-payload.cjs');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function harness({ready=true,exitOnKill=true,exitTimeoutMs=40}={}){
+function harness({ready=true,exitOnKill=true,exitTimeoutMs=40,renderOnly=false,proofFactory}={}){
   const children=[],calls=[];
   const spawnProcess=(executable,args,options)=>{
     const child=new EventEmitter();child.pid=100+children.length;child.rows=[];child.killed=false;
@@ -18,10 +18,12 @@ function harness({ready=true,exitOnKill=true,exitTimeoutMs=40}={}){
     child.send=row=>child.stdout.write(JSON.stringify(row)+'\n');
     child.kill=()=>{child.killed=true;if(exitOnKill)queueMicrotask(()=>child.emit('exit',0));};
     children.push(child);calls.push({executable,args,options});
-    if(ready)queueMicrotask(()=>child.send({event:'ready',outputAvailable:false,outputDevice:'',outputChecked:false,renderAvailable:true}));
+    child.readyRow={event:'ready',outputAvailable:false,outputDevice:'',outputChecked:false,renderAvailable:true,
+      ...(renderOnly?{nonce:args[5],pid:child.pid,parentPid:process.pid}:{})};
+    if(ready)queueMicrotask(()=>child.send(child.readyRow));
     return child;
   };
-  const speech=new GptSovitsSpeech({pythonPath:path.resolve('fake-python.exe'),repoPath:path.resolve('fake-repo'),referencePath:path.resolve('fake.wav'),spawnProcess,exitTimeoutMs});
+  const speech=new GptSovitsSpeech({pythonPath:path.resolve('fake-python.exe'),repoPath:path.resolve('fake-repo'),referencePath:path.resolve('fake.wav'),spawnProcess,exitTimeoutMs,renderOnly,proofFactory});
   async function rendering(text='原创合成测试。',options={}){const promise=speech.render(text,options);await tick();const child=children.at(-1),id=child.rows.findLast(row=>row.op==='render')?.id;return{promise,child,id};}
   return{speech,children,calls,rendering};
 }
@@ -165,4 +167,138 @@ test('a real ENOENT spawn has no phantom retiring process and remains retryable'
 
 test('QQ clean render requires an explicit clean terminal and otherwise keeps old render protocol unchanged',async()=>{
  for(const clean of [true,false]){const h=harness(),a=await h.rendering('合成测试',{clean:true}),rows=protocol(a.id).rows;assert.equal(a.child.rows.at(-1).clean,true);if(clean)rows.at(-1).cleaned=true;const result=clean?a.promise:assert.rejects(a.promise,{code:'voice_unavailable'});for(const row of rows)a.child.send(row);const value=await result;if(clean){assert.equal(value.cleaned,true);assert.equal(h.speech.pending.size,0);assert.equal(h.speech.diagnostics().audioRetained,false);assert.equal(a.child.killed,false);}else assert.equal(a.child.killed,true);await h.speech.close();}
+});
+
+function renderOnlyHarness({ready=true,prove=async()=>({verified:true}),close=async()=>({closed:true})}={}){
+  const proofs=[];
+  const h=harness({renderOnly:true,ready,proofFactory:options=>{
+    const tracked={options,binding:null,readiness:[],closeAttempts:0};
+    proofs.push(tracked);
+    return {
+      bind(binding){tracked.binding=binding;},
+      proveReady(identity){tracked.readiness.push(identity);return prove(identity);},
+      close(){return close(++tracked.closeAttempts);},
+    };
+  }});
+  return {...h,proofs};
+}
+
+test('render-only host independently proves readiness before sending one clean non-shell request',async()=>{
+  let verified;
+  const held=new Promise(resolve=>{verified=resolve;});
+  const h=renderOnlyHarness({prove:()=>held});
+  await assert.rejects(h.speech.speak('不能播放'),{code:'voice_unavailable'});
+  await assert.rejects(h.speech.warmup(),{code:'voice_unavailable'});
+  await assert.rejects(h.speech.request('render',{text:'不能覆盖动作',op:'speak'}),{code:'voice_unavailable'});
+  assert.deepEqual(h.children,[]);
+
+  const text='隔离测试文本';
+  const rendering=h.speech.render(text);
+  await tick();
+  const [child]=h.children,[proof]=h.proofs;
+  assert.equal(proof.options.parentPid,process.pid);
+  assert.equal(proof.binding.child,child);
+  assert.equal(proof.binding.pid,child.pid);
+  assert(Number.isSafeInteger(proof.binding.startedAt));
+  assert.deepEqual(proof.readiness,[{pid:child.pid,parentPid:process.pid}]);
+  assert.deepEqual(child.rows,[]);
+  const [spawned]=h.calls;
+  assert.equal(spawned.options.shell,false);
+  assert.equal(spawned.options.detached,true);
+  assert.equal(spawned.args.at(-1),'--render-only');
+  assert(!spawned.args.some(argument=>argument.includes(text)));
+  const environment=spawned.options.env;
+  assert.equal(environment.PYTHONNOUSERSITE,'1');
+  assert.equal(environment.HF_HUB_OFFLINE,'1');
+  assert.equal(environment.TRANSFORMERS_OFFLINE,'1');
+  assert(!Object.hasOwn(environment,'PYTHONPATH'));
+  assert(!Object.hasOwn(environment,'OPENAI_API_KEY'));
+
+  verified({verified:true});
+  await tick();
+  assert.equal(child.rows.length,1);
+  const [{id}]=child.rows;
+  assert.deepEqual(child.rows[0],{id,op:'render',text,clean:true});
+  const rows=protocol(id).rows;
+  rows.at(-1).cleaned=true;
+  for(const row of rows)child.send(row);
+  const result=await rendering;
+  assert.equal(result.cleaned,true);
+  assert.equal(result.frames,9600);
+  assert.equal(h.speech.diagnostics().audioRetained,false);
+  await h.speech.close();
+  assert.equal(child.killed,false,'the host does not signal a single PID outside the independent proof');
+  assert.equal(proof.closeAttempts,1);
+});
+
+test('render-only readiness with a foreign nonce or playback capability is rejected before input',async()=>{
+  for(const patch of [{nonce:'not-the-issued-nonce'},{outputAvailable:true},{parentPid:0}]){
+    const h=renderOnlyHarness({ready:false});
+    const rendering=h.speech.render('不得转发');
+    const rejected=assert.rejects(rendering,{code:'voice_unavailable'});
+    await tick();
+    const [child]=h.children;
+    child.send({...child.readyRow,...patch});
+    await rejected;
+    assert.deepEqual(child.rows,[]);
+    assert.deepEqual(h.proofs[0].readiness,[]);
+    assert.equal(h.proofs[0].closeAttempts,1);
+    await h.speech.close();
+  }
+});
+
+test('render-only mode cannot hand off a WAV when a playback frame follows clean completion',async()=>{
+  const h=renderOnlyHarness();
+  const active=await h.rendering();
+  const op=h.speech.pending.get(active.id),resolve=op.resolve;
+  let completed;
+  op.resolve=value=>{completed=value.wav;resolve(value);};
+  const rejected=assert.rejects(active.promise,{code:'voice_interrupted'});
+  const rows=protocol(active.id).rows;
+  rows.at(-1).cleaned=true;
+  rows.push({event:'playback-start',id:active.id});
+  for(const row of rows)active.child.send(row);
+  await rejected;
+  assert(completed);
+  assert(completed.every(byte=>byte===0));
+  assert.equal(h.proofs[0].closeAttempts,1);
+  await h.speech.close();
+});
+
+test('render-only cancellation during process proof still prevents any text from reaching the worker',async()=>{
+  let verified;
+  const held=new Promise(resolve=>{verified=resolve;});
+  const h=renderOnlyHarness({prove:()=>held});
+  const controller=new AbortController();
+  const rendering=h.speech.render('取消启动',{signal:controller.signal});
+  const rejected=assert.rejects(rendering,{code:'voice_interrupted'});
+  await tick();
+  controller.abort();
+  await tick();
+  const [child]=h.children,[proof]=h.proofs;
+  assert.equal(proof.closeAttempts,0);
+  verified({verified:true});
+  await rejected;
+  assert.deepEqual(child.rows,[]);
+  assert.equal(proof.closeAttempts,1);
+  await h.speech.close();
+});
+
+test('render-only exit uncertainty stays bound to the old proof despite an individual exit event',async()=>{
+  const h=renderOnlyHarness({close:async attempt=>({closed:attempt>1})});
+  const controller=new AbortController();
+  const active=await h.rendering('第一句',{signal:controller.signal});
+  const rejected=assert.rejects(active.promise,{code:'voice_exit_timeout'});
+  controller.abort();
+  active.child.emit('exit',0);
+  await rejected;
+  assert.equal(h.speech.diagnostics().retiringWorkers,1);
+  assert.equal(h.proofs[0].closeAttempts,1);
+  await assert.rejects(h.speech.render('不能提前创建替换进程'),{code:'voice_exit_timeout'});
+  assert.equal(h.children.length,1);
+  await h.speech.close();
+  assert.equal(h.proofs.length,1);
+  assert.equal(h.proofs[0].binding.child,active.child);
+  assert.equal(h.proofs[0].closeAttempts,2);
+  assert.equal(h.speech.diagnostics().retiringWorkers,0);
 });

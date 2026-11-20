@@ -8,6 +8,7 @@ const {makeEvent, isSourceId, cleanText, digest} = require('./event.cjs');
 const MAX_BYTES = 2 * 1024 * 1024, MAX_ITEMS = 200, MAX_SEEN = 500, MAX_EVENTS = 20;
 const MIN_INTERVAL = 300000, MAX_INTERVAL = 86400000;
 const fail = (code, message) => Object.assign(new Error(message || code), {code});
+const isHexDigest = (value, length) => typeof value === 'string' && value.length === length && !/[^a-f0-9]/.test(value);
 
 function httpsUrl(value) {
   if (typeof value !== 'string' || !value || value.length > 2048 || /[\s\x00-\x1f\x7f]/.test(value)) throw fail('invalid_input', 'The URL must be an https:// address.');
@@ -146,15 +147,22 @@ function createFeedSource({id, url, mode = 'feed', intervalMs = 900000, fetchImp
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 60000) throw fail('invalid_input', 'The timeout must be between 1 and 60 seconds.');
   if (typeof fetchImpl !== 'function' || typeof now !== 'function') throw fail('invalid_input', 'Invalid feed source options.');
   const subject = displayUrl(target);
+  const pageIdentity = mode === 'page' ? digest(target.href) : null;
   async function poll(cursor, signal) {
     const {bytes, contentType} = await fetchBounded(target.href, {fetchImpl, timeoutMs, signal,
       accept:mode === 'feed' ? 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8' : 'text/html, */*;q=0.5'});
     const at = now(), previous = cursor && typeof cursor === 'object' ? cursor : {};
     if (mode === 'page') {
       const hash = createHash('sha256').update(bytes).digest('hex');
-      const events = typeof previous.hash === 'string' && previous.hash !== hash
-        ? [makeEvent({source:id, kind:'page.changed', subject, key:hash, title:'Page changed', detail:subject, at, data:{url:subject}})] : [];
-      return {cursor:{hash}, events};
+      if (!isHexDigest(previous.hash, 64)) return {cursor:{hash}, events:[]};
+      const lastOccurrence = isHexDigest(previous.occurrence, 32) ? previous.occurrence : null;
+      if (previous.hash === hash) return {cursor:{hash, ...(lastOccurrence ? {occurrence:lastOccurrence} : {})}, events:[]};
+      // Track the transition, not just the arriving body. A saved-cursor retry
+      // has the same identity, while a later return to the same bytes is new.
+      const occurrence = digest(JSON.stringify([lastOccurrence || pageIdentity, previous.hash, hash]));
+      const event = makeEvent({source:id, kind:'page.changed', subject, key:`page-occurrence-v1:${occurrence}`,
+        title:'Page changed', detail:subject, at, data:{url:subject}});
+      return {cursor:{hash, occurrence}, events:[event]};
     }
     const items = parseFeed(decodeBody(bytes, contentType));
     const baseline = !Array.isArray(previous.seen), seen = new Set(baseline ? [] : previous.seen.filter(x => typeof x === 'string'));

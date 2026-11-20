@@ -9,16 +9,91 @@
   let snapshot=null,scope='',eligibility=null,inspecting=false,inspected=false,manualConnecting=false,attempt=null,result=null,feedback='',revision=0,readyRevision=0,recoveryUsed=false;
   const tr=(zh,en)=>snapshot?.config?.language==='zh'?zh:en;
   const selected=next=>next?.accounts?.accounts?.find(p=>p.id===next.accounts.selectedId);
+  function officialReady(bot){
+    return bot?.channel==='qqofficial'&&bot.paired===true&&bot.credentialState==='ready'&&
+      bot.qqOfficial?.groups?.enabled===true&&bot.qqOfficial.groups.proactive!==true&&
+      (bot.mode==='claude'||API_MODES.has(bot.mode)&&bot.hasKey===true);
+  }
   function saved(next){
     const b=next?.bot,p=selected(next);if(!b||!p||p.mode!==b.mode||p.channel!==b.channel||b.credentialState!=='ready'||p.credentialMigration||!b.paired)return null;
     if(b.channel==='x'&&b.x?.optedOut||b.channel==='messenger'&&b.messenger?.optedOut)return null;
     if(!(API_MODES.has(b.mode)?b.hasKey===true:LOCAL_MODES.has(b.mode)))return null;
-    if(!(typeof b.workspace==='string'&&b.workspace.length||b.channel==='qq'&&b.social?.config?.enabled===true&&b.social?.supported===true))return null;
+    if(b.channel==='qqofficial'){
+      if(!officialReady(b))return null;
+    }else if(!(typeof b.workspace==='string'&&b.workspace.length||b.channel==='qq'&&b.social?.config?.enabled===true&&b.social?.supported===true))return null;
     if(b.channel==='qq'&&(!qq(b.qq?.expectedAccountId)||!qq(b.qq?.ownerId)||b.qq.expectedAccountId===b.qq.ownerId||p.expectedQQAccountId!==b.qq.expectedAccountId||p.qqOwnerId!==b.qq.ownerId))return null;
     return {accountId:p.id,name:p.name,mode:b.mode,channel:b.channel,qqAccountId:b.channel==='qq'?b.qq.expectedAccountId:null,api:API_MODES.has(b.mode)};
   }
-  function key(next){const b=next?.bot,p=selected(next);return JSON.stringify([p?.id,b?.mode,b?.channel,b?.qq?.expectedAccountId,b?.qq?.ownerId,b?.hasKey,b?.credentialState,!!p?.credentialMigration,b?.workspace,b?.social?.config?.enabled,b?.social?.supported,p?.characterId]);}
+  function key(next){const b=next?.bot,p=selected(next);return JSON.stringify([p?.id,b?.mode,b?.channel,b?.qqOfficial?.appId,b?.qqOfficial?.groups,b?.qq?.expectedAccountId,b?.qq?.ownerId,b?.hasKey,b?.credentialState,!!p?.credentialMigration,b?.workspace,b?.social?.config?.enabled,b?.social?.supported,p?.characterId,manualQQ(b)?[b.qq?.url,b.qq?.hasToken]:null]);}
   function available(){return ['qqCompanionLaunchInspect','qqCompanionLaunch','qqCompanionLaunchCancel'].every(k=>typeof window.arcade?.[k]==='function');}
+  const manualQQ=info=>info?.channel==='qq'&&window.arcade?.platform?.os==='darwin';
+  function macOneBotStatus(bot,language){
+    if(!manualQQ(bot)||bot.credentialState==='locked'||bot.credentialState==='busy')return null;
+    const zh=language==='zh';
+    const show=(labelZh,labelEn,detailZh,detailEn,tone='unknown',issue=false)=>
+      ({label:zh?labelZh:labelEn,detail:zh?detailZh:detailEn,tone,issue});
+    const check=bot.qq?.check;
+    const failure=bot.qq?.connectionIssue||(check?.state==='failed'?{code:check.code,phase:'test'}:null);
+    if(bot.status==='connected')return show('QQ 已连接','QQ connected','本机 OneBot 已连接，可以接收新消息。','Local OneBot is connected and can receive new messages.','');
+    if(bot.status==='checking')return show('正在检查 QQ','Checking QQ','正在核对本机 OneBot 的登录账号与在线状态。','Checking the signed-in account and online status through local OneBot.','waiting');
+    if(bot.status==='disconnecting'&&!bot.qq?.connectionIssue)return show('正在断开 QQ','Disconnecting QQ','正在结束此搭档的 OneBot 连接。','Closing this companion’s OneBot connection.','waiting');
+    if(failure?.phase==='retrying'){
+      if(failure.code==='account_offline')return show('等待 QQ 恢复','Waiting for QQ recovery',
+        'QQ 当前离线。应用正在等待本机 OneBot 恢复并重新检查。','QQ is offline. The app is waiting for local OneBot to recover and checking it again.','waiting',true);
+      if(failure.code==='connection_unconfirmed')return show('正在重新检查连接','Checking the connection again',
+        '搭档连接状态尚未确认。应用正在重新检查。','The companion’s connection state is unconfirmed. The app is checking it again.','waiting',true);
+      return show('正在重连 OneBot','Reconnecting OneBot','本机 OneBot 连接中断。应用正在重新检查。','The local OneBot connection was interrupted. The app is checking it again.','waiting',true);
+    }
+    if(failure){
+      const test=failure.phase==='test';
+      const nextZh=test?'恢复后点击「测试连接」。':'恢复后点击「连接」。';
+      const nextEn=test?' Use Test connection after recovery.':' Select Connect after recovery.';
+      const resetZh=failure.phase==='paused'?'自动重连已暂停。':'';
+      const resetEn=failure.phase==='paused'?' Automatic reconnection is paused.':'';
+      switch(failure.code){
+        case 'account_offline': return show('QQ 离线','QQ offline',
+          (failure.accountKnown===true?'已识别搭档 QQ，当前离线。':'QQ 当前离线。')+'请核对本机 OneBot 桥接和 QQ 在线状态。'+resetZh+nextZh,
+          (failure.accountKnown===true?'The companion’s QQ account was identified and is offline.':'QQ is offline.')+' Check the local OneBot bridge and QQ online status.'+resetEn+nextEn,'error',true);
+        case 'login_required': return show('QQ 需要登录','QQ sign-in required',
+          '桥接报告 QQ 登录已失效。请在本机 OneBot 桥接重新登录搭档 QQ。'+nextZh,
+          'The bridge reported an expired QQ sign-in. Sign in to the companion account through your local OneBot bridge.'+nextEn,'error',true);
+        case 'account_mismatch':case 'account_changed':case 'account_in_use':
+          return show('请核对 QQ 账号','Check the QQ account','请核对搭档绑定的 QQ 号、本机 OneBot 地址和桥接账号。'+nextZh,
+            'Check the companion’s QQ number, local OneBot address and bridge account.'+nextEn,'error',true);
+        case 'status_unverified':case 'invalid_login_info':
+          return show('QQ 状态未核实','QQ status unverified','请核对本机 OneBot 能否报告搭档 QQ 账号及在线状态。'+resetZh+nextZh,
+            'Check that local OneBot can report the companion’s account and online status.'+resetEn+nextEn,'unknown',true);
+        case 'unauthorized':case 'invalid_token':
+          return show('OneBot 验证失败','OneBot authentication failed','请核对本机 OneBot 桥接与搭档连接保存的 Token。'+nextZh,
+            'Check the token saved in your local OneBot bridge and the companion’s connection.'+nextEn,'error',true);
+        case 'invalid_owner':case 'owner_is_agent_account':case 'owner_not_friend':
+          return show('请核对主人 QQ','Check the owner’s QQ','请核对设置中填写的主人 QQ，并确认它是搭档 QQ 的好友。'+nextZh,
+            'Check the owner’s QQ number in settings and confirm it is a friend of the companion’s QQ account.'+nextEn,'error',true);
+        case 'bridge_unhealthy':
+          return show('OneBot 状态异常','OneBot needs attention','桥接报告状态异常。请检查本机 OneBot 桥接。'+resetZh+nextZh,
+            'The bridge reported an unhealthy status. Check your local OneBot bridge.'+resetEn+nextEn,'error',true);
+        case 'connect_failed':case 'connect_timeout':case 'timeout':case 'heartbeat_timeout':case 'disconnected':case 'invalid_bridge_url':
+          return show('OneBot 未连接','OneBot disconnected',
+          '无法核实本机 OneBot 连接。请检查桥接是否运行，并核对保存的连接地址。'+resetZh+nextZh,
+          'The local OneBot connection could not be verified. Check that the bridge is running and confirm the saved address.'+resetEn+nextEn,'unknown',true);
+        default: return show('连接未确认','Connection unconfirmed','请核对搭档配置后重试。',
+          'Check the companion’s settings and try again.','unknown',true);
+      }
+    }
+    if(bot.status==='connecting')return show('正在连接 OneBot','Connecting OneBot','正在检查本机 OneBot 连接。','Checking the local OneBot connection.','waiting');
+    if(check?.state==='checked'){
+      if(check.online===false)return show('QQ 离线','QQ offline','已识别搭档 QQ，当前离线。请核对本机 OneBot 与 QQ 在线状态，恢复后再次测试。',
+        'The companion’s QQ account was identified and is offline. Check local OneBot and QQ online status, then test again after recovery.','error');
+      if(check.online!==true)return show('QQ 状态未核实','QQ status unverified','已识别搭档 QQ。请核对本机 OneBot 提供的在线状态，再测试连接。',
+        'The companion’s QQ account was identified. Check the online status reported by local OneBot, then test again.');
+      if(check.ownerIsFriend===false)return show('请核对 QQ 好友关系','Check QQ friendship','已识别在线的搭档 QQ。请先确认它与你的 QQ 互为好友，再测试连接。',
+        'The companion’s QQ account was identified online. Confirm it is friends with your QQ account, then test again.','waiting');
+      return show('QQ 已核对','QQ checked','已核对搭档 QQ 在线。点击「连接」开始接收新消息。','The companion’s QQ account was verified online. Select Connect to receive new messages.');
+    }
+    if(bot.paired)return show('OneBot 未连接','OneBot disconnected','请确认本机 OneBot 桥接与搭档 QQ 在线，然后点击「连接」。',
+      'Check that the local OneBot bridge and the companion’s QQ account are online, then select Connect.');
+    return null;
+  }
   function redraw(){window.render?.();}
   function current(req){return attempt===req&&req.scope===scope&&!req.invalidated;}
   function errorText(code){return ({
@@ -54,7 +129,7 @@
   async function inspect(){const info=saved(snapshot);if(!info||info.channel!=='qq'||!available()||inspecting||attempt?.running)return;const own=scope,seq=++revision,beforeReady=readyRevision;inspecting=true;inspected=true;redraw();try{const r=await window.arcade.qqCompanionLaunchInspect({accountId:info.accountId});if(own!==scope||seq!==revision)return;if(!inspectOK(r,info.accountId)){eligibility=null;feedback=errorText(r?.code);return;}eligibility=r;feedback=r.available?'':errorText(r.reason);}catch{if(own===scope&&seq===revision){eligibility=null;feedback=errorText('unavailable');}}finally{if(own===scope&&seq===revision){inspecting=false;redraw();if(readyRevision!==beforeReady)recoverInspection();}}}
   async function start(){
     const info=saved(snapshot);if(!info||snapshot.bot.status!=='disconnected'||attempt?.running||manualConnecting)return;
-    if(info.channel!=='qq'){const own=scope;feedback='';manualConnecting=true;redraw();try{await window.arcade.accountConnect(info.accountId);const fresh=await window.arcade.snapshot();if(scope!==own)return;feedback=fresh.accounts?.accounts?.find(p=>p.id===info.accountId)?.status==='connected'?tr('已连接。','Connected.'):tr('连接尚未确认，请查看当前连接状态。','Connection is not confirmed. Check its current state.');}catch{if(scope===own)feedback=tr('连接未完成，请检查已有设置后重试。','Connection did not finish. Check saved settings before trying again.');}finally{if(scope===own){manualConnecting=false;redraw();}}return;}
+    if(info.channel!=='qq'||manualQQ(info)){const own=scope;feedback='';manualConnecting=true;redraw();try{await window.arcade.accountConnect(info.accountId);const fresh=await window.arcade.snapshot();if(scope!==own)return;feedback=fresh.accounts?.accounts?.find(p=>p.id===info.accountId)?.status==='connected'?tr('已连接。','Connected.'):tr('连接尚未确认，请查看当前连接状态。','Connection is not confirmed. Check its current state.');}catch{if(scope===own)feedback=tr('连接未完成，请检查已有设置后重试。','Connection did not finish. Check saved settings before trying again.');}finally{if(scope===own){manualConnecting=false;redraw();}}return;}
     if(!available()||!eligibility?.available||eligibility.accountId!==info.accountId||eligibility.qqAccountId!==info.qqAccountId)return;
     const req={...info,scope,operationId:crypto.randomUUID(),running:true,invalidated:false,cancelRequested:false,phase:'checking'};attempt=req;result=null;feedback='';redraw();
     try{const r=await window.arcade.qqCompanionLaunch({accountId:req.accountId,operationId:req.operationId});if(!current(req))return;const c=object(r)?Object.fromEntries(Object.entries(r).filter(([k])=>k!=='ok')):null;result=r.ok===true&&receiptOK(c,req)?c:unknown(req);}
@@ -63,7 +138,10 @@
   }
   async function cancel(req=attempt){if(!req?.running||req.cancelRequested)return;req.cancelRequested=true;if(current(req))redraw();try{const r=await window.arcade.qqCompanionLaunchCancel({accountId:req.accountId,operationId:req.operationId});if(!current(req))return;if(!exact(r,['ok','accountId','operationId','cancelled','settled','result'])||r.ok!==true||r.accountId!==req.accountId||r.operationId!==req.operationId||typeof r.cancelled!=='boolean'||r.settled!==true||(r.result!==null&&!receiptOK(r.result,req))){feedback=tr('取消结果尚未确认，请查看 QQ 当前状态。','Cancellation is not confirmed. Check the current QQ state.');return;}if(r.result)result=r.result;}catch{if(current(req))feedback=tr('取消结果尚未确认，请查看 QQ 当前状态。','Cancellation is not confirmed. Check the current QQ state.');}finally{if(current(req))redraw();}}
   function update(next){
+    const previous=snapshot?.bot;
     const nextKey=key(next);snapshot=next;if(nextKey!==scope){const old=attempt;if(old?.running){old.invalidated=true;void cancel(old);}scope=nextKey;revision++;eligibility=null;inspecting=false;inspected=false;manualConnecting=false;attempt=null;result=null;feedback='';recoveryUsed=false;}
+    if(manualQQ(next.bot)&&(previous?.status==='checking'&&next.bot?.status==='disconnected'||
+      previous?.qq?.connectionIssue&&!next.bot?.qq?.connectionIssue))feedback='';
     if(attempt?.running){const p=next.qqCompanionLaunch;if(progressOK(p)&&p.accountId===attempt.accountId&&p.operationId===attempt.operationId&&p.qqAccountId===attempt.qqAccountId)attempt.phase=p.phase;}
     if(attempt?.running&&!['bot','connections'].includes(document.body.dataset.view)){attempt.invalidated=true;void cancel(attempt);}
   }
@@ -76,10 +154,13 @@
     add('p','',info.api?tr('密钥已加密保存，无需重复填写。','The key is saved with OS encryption; no need to re-enter it.'):tr('沿用本机程序的原有登录；连接时会检查。','Use the local program’s existing login; it will be checked when connecting.'));
     const row=add('div','button-row','');const button=(suffix,label,fn,disabled=false)=>{const b=document.createElement('button');b.type='button';b.id=id+'-'+suffix;b.className=suffix==='start'?'primary':'secondary';b.textContent=label;b.disabled=disabled;b.onclick=fn;row.append(b);return b;};
     const running=attempt?.running&&attempt.scope===scope,status=snapshot.bot.status;
+    const connection=macOneBotStatus(snapshot.bot,snapshot.config?.language);
+    const macStatus=connection&&manualConnecting&&status==='disconnected'
+      ? macOneBotStatus({...snapshot.bot,status:'connecting',qq:null},snapshot.config?.language) : connection;
     if(running){const phase=attempt.cancelRequested?tr('正在结束本次连接…','Finishing this attempt…'):{checking:tr('正在检查已有配置…','Checking saved settings…'),starting:tr('正在启动 QQ…','Starting QQ…'),waiting_login:tr('正在确认 QQ 登录…','Checking QQ sign-in…'),connecting:tr('正在连接 AI…','Connecting AI…')}[attempt.phase];const note=add('p','saved-connection-status',phase);note.setAttribute('role','status');button('cancel',tr('取消本次连接','Cancel this attempt'),()=>void cancel(),attempt.cancelRequested);}
-    else if(status==='connected')add('p','saved-connection-status',tr('当前已连接。','Currently connected.'));
-    else if(status!=='disconnected'||manualConnecting)add('p','saved-connection-status',tr('正在处理当前连接…','The current connection is being processed…'));
-    else if(info.channel==='qq'){
+    else if(status==='connected'){if(!macStatus)add('p','saved-connection-status',tr('当前已连接。','Currently connected.'));}
+    else if(status!=='disconnected'||manualConnecting){if(!macStatus)add('p','saved-connection-status',tr('正在处理当前连接…','The current connection is being processed…'));}
+    else if(info.channel==='qq'&&!manualQQ(info)){
       if(available())button('start',tr('启动并连接','Start and connect'),()=>void start(),!eligibility?.available||inspecting);
       button('qq',result?.outcome==='login_required'?tr('登录这个 QQ','Sign in to this QQ'):tr('QQ 登录与运行','QQ sign-in & runtime'),()=>showQQ(result?.outcome==='login_required'));
       if(!inspected&&!inspecting&&!result&&available()&&['bot','connections'].includes(document.body.dataset.view))queueMicrotask(()=>void inspect());
@@ -87,13 +168,16 @@
     }else button('start',tr('连接','Connect'),()=>void start(),typeof window.arcade.accountConnect!=='function');
     if(settings)button('settings',tr('更改连接设置','Change connection settings'),settings,!!running);
     if(result){const p=add('p','saved-connection-status',textResult(result));p.setAttribute('role','status');}
-    if(feedback)add('p','saved-connection-note',feedback);
-    if(info.channel==='qq'&&status==='disconnected'&&!running&&!result)add('p','saved-connection-note',tr('只启动并连接当前搭档。需要时再扫码，不发送测试消息。','Start and connect only this companion. Scan if needed; no test message is sent.'));
+    if(feedback&&!(macStatus&&(macStatus.issue||status==='connected')))add('p','saved-connection-note',feedback);
+    if(macStatus){
+      const note=add('p','saved-connection-status',macStatus.detail);note.setAttribute('role','status');
+    }else if(info.channel==='qq'&&status==='disconnected'&&!running&&!result)add('p','saved-connection-note',
+      tr('只启动并连接当前搭档。需要时再扫码，不发送测试消息。','Start and connect only this companion. Scan if needed; no test message is sent.'));
     if(old&&parent.contains(old))old.replaceWith(n);else parent.append(n);if(oldFocus&&parent.closest('.view')?.hidden!==true){const target=document.getElementById(oldFocus)||n.querySelector(running?'[id$="-cancel"]':'[id$="-check"]');if(target&&!target.disabled)target.focus({preventScroll:true});}return true;
   }
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&attempt?.running){attempt.invalidated=true;void cancel(attempt);}else if(!document.hidden)ready();});
   window.addEventListener('focus',ready);
   window.addEventListener('pagehide',()=>{if(attempt?.running){attempt.invalidated=true;void cancel(attempt);}});
   window.selectedSavedConnection=saved;
-  window.ArcadeQQStartConnect={saved,update,mount,start,cancel,inspect,isRunning:()=>!!(attempt?.running&&attempt.scope===scope),stateKey:()=>JSON.stringify([eligibility,inspecting,manualConnecting,attempt?.running,attempt?.phase,attempt?.cancelRequested,result,feedback])};
+  window.ArcadeQQStartConnect={saved,officialReady,macOneBotStatus,update,mount,start,cancel,inspect,isRunning:()=>!!(attempt?.running&&attempt.scope===scope),stateKey:()=>JSON.stringify([eligibility,inspecting,manualConnecting,attempt?.running,attempt?.phase,attempt?.cancelRequested,result,feedback])};
 })();

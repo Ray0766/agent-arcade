@@ -88,6 +88,7 @@ function render(){if(!data)return;window.ArcadeAppearance?.apply(data);window.Ar
   else updateAges();
   if($('detail').open)renderDetail();
   window.ArcadeQQStartConnect?.update(data);
+  window.renderDesktopPets?.(data);
   window.renderFirstRun?.(data);
   window.renderBot?.(data);
   window.renderAccounts?.(data);

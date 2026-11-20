@@ -17,7 +17,17 @@ const platform=Object.freeze({os:hostPlatform,modifier:hostPlatform==='darwin'?'
 // SSQQ view, system speech) are left out of the bridge on other platforms. The
 // interface checks for these functions before offering them; the main process
 // refuses the same channels independently.
-const platformBridge=api=>{if(hostPlatform!=='win32')for(const key of Object.keys(api))if(/^(?:qq|onQQ|voice)[A-Z]/.test(key))delete api[key];return api;};
+const macQQMediaChannels=new Set(['qqImagePick','qqImageSend','qqImageDiscard','qqImageClose',
+  'qqVoicePick','qqVoiceAvailability','qqVoiceRender','qqVoiceCancelRender',
+  'qqVoiceSend','qqVoiceDiscard','qqVoiceClose']);
+const platformBridge=api=>{
+  if(hostPlatform==='win32')return api;
+  for(const key of Object.keys(api)){
+    if(hostPlatform==='darwin'&&macQQMediaChannels.has(key))continue;
+    if(/^(?:qq|onQQ|voice)[A-Z]/.test(key))delete api[key];
+  }
+  return api;
+};
 contextBridge.exposeInMainWorld('arcade', platformBridge({
   initialAppearance,
   platform,
@@ -30,12 +40,23 @@ contextBridge.exposeInMainWorld('arcade', platformBridge({
   snapshot: () => ipcRenderer.invoke('arcade:snapshot'),
   demo: value => ipcRenderer.invoke('arcade:demo',value),
   configure: patch => ipcRenderer.invoke('arcade:config',patch),
+  desktopPetSet: value => ipcRenderer.invoke('arcade:desktopPetSet',value),
   acknowledge: id => ipcRenderer.invoke('arcade:acknowledge',id),
   clear: () => ipcRenderer.invoke('arcade:clear'),
   install: () => ipcRenderer.invoke('arcade:install'),
   uninstall: () => ipcRenderer.invoke('arcade:uninstall'),
   importTheme: () => ipcRenderer.invoke('arcade:importTheme'),
   botConfigure: value => ipcRenderer.invoke('arcade:botConfigure',value),
+  groupRolePreview: value => ipcRenderer.invoke('arcade:groupRolePreview',value),
+  groupRoleSet: value => ipcRenderer.invoke('arcade:groupRoleSet',value),
+  groupLorebookPreview: value => ipcRenderer.invoke('arcade:groupLorebookPreview',value),
+  groupLorebookSet: value => ipcRenderer.invoke('arcade:groupLorebookSet',value),
+  groupWiki: value => ipcRenderer.invoke('arcade:groupWiki',value),
+  groupReflection: value => ipcRenderer.invoke('arcade:groupReflection',value),
+  groupOutputFormat: value => ipcRenderer.invoke('arcade:groupOutputFormat',value),
+  groupSpeakerDispatch: value => ipcRenderer.invoke('arcade:groupSpeakerDispatch',value),
+  groupGenerationPreset: value => ipcRenderer.invoke('arcade:groupGenerationPreset',value),
+  groupGenerationSet: value => ipcRenderer.invoke('arcade:groupGenerationSet',value),
   accountSelect: id => ipcRenderer.invoke('arcade:accountSelect',id),
   accountRename: value => ipcRenderer.invoke('arcade:accountRename',value),
   accountCreate: name => ipcRenderer.invoke('arcade:accountCreate',name),
@@ -312,10 +333,22 @@ contextBridge.exposeInMainWorld('arcade', platformBridge({
   providerStatus: provider => ipcRenderer.invoke('arcade:providerStatus',provider),
   providerLogin: provider => ipcRenderer.invoke('arcade:providerLogin',provider),
   providerGuide: provider => ipcRenderer.invoke('arcade:providerGuide',provider),
+  ...(hostPlatform==='darwin'?{
+    botQQMacInspect: value => ipcRenderer.invoke('arcade:botQQMacInspect',value),
+    botQQMacPrepare: value => ipcRenderer.invoke('arcade:botQQMacPrepare',value),
+    botQQMacUsePrepared: value => ipcRenderer.invoke('arcade:botQQMacUsePrepared',value),
+    botQQMacLaunchStatus: value => ipcRenderer.invoke('arcade:botQQMacLaunchStatus',value),
+    botQQMacLaunchReveal: value => ipcRenderer.invoke('arcade:botQQMacLaunchReveal',value),
+    botQQMacLaunchCopy: value => ipcRenderer.invoke('arcade:botQQMacLaunchCopy',value),
+    botQQMacLaunchRelink: value => ipcRenderer.invoke('arcade:botQQMacLaunchRelink',value),
+    botQQMacLaunchAuth: value => ipcRenderer.invoke('arcade:botQQMacLaunchAuth',value),
+    botQQMacOpenRelease: () => ipcRenderer.invoke('arcade:botQQMacOpenRelease'),
+  }:{}),
   botQQPrepare: () => ipcRenderer.invoke('arcade:botQQPrepare'),
   botQQCopyConfig: () => ipcRenderer.invoke('arcade:botQQCopyConfig'),
   botQQCopyToken: () => ipcRenderer.invoke('arcade:botQQCopyToken'),
   botQQTest: () => ipcRenderer.invoke('arcade:botQQTest'),
+  botQQSetupGroups: value => ipcRenderer.invoke('arcade:botQQSetupGroups',value),
   botQQOpenGuide: kind => ipcRenderer.invoke('arcade:botQQOpenGuide',kind),
   botProject: () => ipcRenderer.invoke('arcade:botProject'),
   botLogin: () => ipcRenderer.invoke('arcade:botLogin'),
@@ -349,6 +382,10 @@ contextBridge.exposeInMainWorld('arcade', platformBridge({
   taskDiff: id => ipcRenderer.invoke('arcade:taskDiff',id),
   taskCapabilities: () => ipcRenderer.invoke('arcade:taskCapabilities'),
   sourcesAdd: spec => ipcRenderer.invoke('arcade:sourcesAdd',spec),
+  groupFeedSet: value => ipcRenderer.invoke('arcade:groupFeedSet',value),
+  groupCalendarSet: value => ipcRenderer.invoke('arcade:groupCalendarSet',value),
+  groupFolderSet: value => ipcRenderer.invoke('arcade:groupFolderSet',value),
+  groupPageSet: value => ipcRenderer.invoke('arcade:groupPageSet',value),
   sourcesUpdate: (id,patch) => ipcRenderer.invoke('arcade:sourcesUpdate',{id,patch}),
   stConfigure: partial => ipcRenderer.invoke('arcade:stConfigure',partial),
   branches: () => ipcRenderer.invoke('arcade:branches'),

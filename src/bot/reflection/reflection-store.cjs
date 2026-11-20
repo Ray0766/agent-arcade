@@ -22,16 +22,23 @@ const ruleText = value => {
 };
 function candidateOf(row) {
   let evidence = [];
-  try { const parsed = JSON.parse(row.evidence); if (Array.isArray(parsed)) evidence = parsed.filter(item => item && typeof item.messageId === 'string' && typeof item.quote === 'string' && typeof item.day === 'string').map(item => ({messageId: item.messageId, quote: item.quote, day: item.day})); } catch { evidence = []; }
+  try { const parsed = JSON.parse(row.evidence); if (Array.isArray(parsed)) evidence = parsed.filter(item => item && typeof item.messageId === 'string' && typeof item.quote === 'string' && typeof item.day === 'string').map(item => ({messageId: item.messageId, quote: item.quote, day: item.day, ...groupEvidence(item)})); } catch { evidence = []; }
   return {id: row.id, characterId: row.character_id, kind: row.kind, ruleDraft: row.rule_draft, state: row.state, evidence, count: row.count, ruleId: row.rule_id, createdAt: row.created_at, updatedAt: row.updated_at, decidedAt: row.decided_at};
 }
+function groupEvidence(item) {
+  return typeof item.speaker === 'string' && /^[a-f0-9]{16}$/.test(item.speaker) &&
+    Number.isSafeInteger(item.at) && item.at >= 0 ? {speaker: item.speaker, at: item.at} : {};
+}
+
 const ruleOf = row => ({id: row.id, characterId: row.character_id, text: row.text, enabled: row.enabled === 1, createdAt: row.created_at, updatedAt: row.updated_at});
 
 class ReflectionStore {
-  /** @param {{file: string, now?: () => number, loadSqlite?: Function}} options file: absolute path of the SQLite file */
-  constructor({file, now = Date.now, loadSqlite = () => require('node:sqlite')} = {}) {
+  #scopedConnection = null;
+
+  /** @param {{file: string, now?: () => number, loadSqlite?: Function, groupState?: boolean}} options file: absolute path of the SQLite file */
+  constructor({file, now = Date.now, loadSqlite = () => require('node:sqlite'), groupState = false} = {}) {
     if (typeof file !== 'string' || !path.isAbsolute(file)) throw fail('reflection_unavailable');
-    Object.assign(this, {file, now});
+    Object.assign(this, {file, now, groupState});
     try {
       this.DatabaseSync = loadSqlite().DatabaseSync;
       fs.mkdirSync(path.dirname(file), {recursive: true});
@@ -48,11 +55,17 @@ class ReflectionStore {
           CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, character_id TEXT NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, outcome TEXT NOT NULL, read INTEGER NOT NULL);
           CREATE UNIQUE INDEX IF NOT EXISTS run_scheduled ON runs(character_id, day) WHERE kind='scheduled';
           PRAGMA user_version=${SCHEMA_VERSION};`);
+        // Only the separate group database has exact source-ID checkpointing.
+        if (this.groupState) db.exec(`CREATE TABLE IF NOT EXISTS group_reflection_state (
+            character_id TEXT PRIMARY KEY, revision TEXT NOT NULL, rule_revision TEXT, claimed_day TEXT);
+          CREATE TABLE IF NOT EXISTS group_reflection_consumed (
+            character_id TEXT NOT NULL, message_id TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(character_id,message_id));`);
       });
     } catch { throw fail('reflection_unavailable'); }
   }
 
   #db(operation) {
+    if (this.#scopedConnection) return operation(this.#scopedConnection);
     let db, done = false;
     try {
       db = new this.DatabaseSync(this.file, {allowExtension: false});
@@ -62,9 +75,23 @@ class ReflectionStore {
       return result;
     } catch (error) {
       if (db && !done) { try { db.exec('ROLLBACK'); } catch { /* no open transaction */ } }
-      if (typeof error?.code === 'string' && error.code.startsWith('reflection_')) throw error;
+      if (typeof error?.code === 'string' && (error.code.startsWith('reflection_') ||
+          this.groupState && error.code.startsWith('group_reflection_'))) throw error;
       throw fail('reflection_unavailable');
     } finally { try { db?.close(); } catch { /* already closed */ } }
+  }
+
+  /** Keep a group's checkpoint, proposals and run result in one transaction. */
+  groupTransaction(operation) {
+    if (!this.groupState || this.#scopedConnection || typeof operation !== 'function') throw fail('reflection_invalid_request');
+    return this.#db(db => {
+      this.#scopedConnection = db;
+      try {
+        const result = operation(db);
+        if (result && typeof result.then === 'function') throw fail('reflection_invalid_request');
+        return result;
+      } finally { this.#scopedConnection = null; }
+    });
   }
 
   #settings(db, characterId) {
@@ -140,7 +167,7 @@ class ReflectionStore {
       for (const operation of Array.isArray(operations) ? operations.slice(0, 20) : []) {
         if (!operation || !KINDS.includes(operation.kind) || typeof operation.ruleDraft !== 'string' || !operation.ruleDraft || operation.ruleDraft.length > DRAFT_CHARS || !['seen', 'pending'].includes(operation.state)
           || !Array.isArray(operation.evidence) || !operation.evidence.length || operation.evidence.length > MAX_EVIDENCE || !Number.isInteger(operation.count) || operation.count < 1) continue;
-        const evidence = JSON.stringify(operation.evidence.map(item => ({messageId: String(item.messageId).slice(0, 180), quote: String(item.quote).slice(0, 120), day: String(item.day).slice(0, 10)}))), at = this.now();
+        const evidence = JSON.stringify(operation.evidence.map(item => ({messageId: String(item.messageId).slice(0, 180), quote: String(item.quote).slice(0, 120), day: String(item.day).slice(0, 10), ...(this.groupState ? groupEvidence(item) : {})}))), at = this.now();
         if (operation.type === 'merge') {
           const row = db.prepare("SELECT id FROM candidates WHERE id=? AND character_id=? AND state IN ('seen','pending')").get(operation.id, characterId);
           if (!row) continue;

@@ -1,7 +1,12 @@
 'use strict';
-const {randomUUID}=require('node:crypto');
+const {createHash,randomUUID}=require('node:crypto');
+const {TIME_PATTERN,dueFromLocalTime}=require('./followup-time.cjs');
+const {parseGroupRelativeFollowup}=require('./group-relative-followup.cjs');
+const {preferredNameValue,preferredNameFromFact,groupPreferredNameFact,PREFERRED_NAME_KEY}=require('./group-natural-memory.cjs');
+const {clean}=require('./dispatcher.cjs');
 
 const invalid=message=>Object.assign(Error(message),{code:'social_invalid_input'});
+const STALE_FOLLOWUP_EDIT=Symbol('stale follow-up edit');
 const bounded=(value,max,label,empty=false)=>{
   if(typeof value!=='string'||value.length>max||(!empty&&!value.trim())||/[\x00-\x08\x0b-\x1f\x7f]/.test(value))throw invalid(`Invalid ${label}.`);
   return value;
@@ -15,14 +20,31 @@ const timeZone=value=>{
   bounded(value,80,'time zone');
   try{return new Intl.DateTimeFormat('en',{timeZone:value}).resolvedOptions().timeZone;}catch{throw invalid('Choose a valid IANA time zone.');}
 };
+function validateLocalTime(localTime,dueAt){
+  if(localTime===undefined)return null;
+  if(dueFromLocalTime(localTime)!==dueAt)throw invalid('The local follow-up time must match its due instant.');
+  return localTime;
+}
 const limit=(value,max)=>{if(!Number.isInteger(value)||value<1||value>max)throw invalid('Invalid record limit.');return value;};
 const factRow=row=>row?{id:row.id,key:row.fact_key,text:row.text,sourceIds:JSON.parse(row.source_ids),sourceAt:row.source_at,createdAt:row.created_at,updatedAt:row.updated_at,revision:row.revision}:null;
-const followupRow=row=>row?{id:row.id,text:row.text,dueAt:row.due_at,expiresAt:row.expires_at,timeZone:row.time_zone,state:row.state,sourceIds:JSON.parse(row.source_ids),factIds:JSON.parse(row.fact_ids),createdAt:row.created_at,updatedAt:row.updated_at,receipt:row.receipt,revision:row.revision}:null;
+function followupRow(row){
+  if(!row)return null;
+  const localTime=row.text&&dueFromLocalTime(row.local_time)===row.due_at?row.local_time:null;
+  return {id:row.id,text:row.text,dueAt:row.due_at,expiresAt:row.expires_at,timeZone:row.time_zone,
+    ...(localTime?{localTime}:{}),...(row.last_edit_posted_at!=null?{lastEditPostedAt:row.last_edit_posted_at}:{}),
+    state:row.state,sourceIds:JSON.parse(row.source_ids),factIds:JSON.parse(row.fact_ids),
+    createdAt:row.created_at,updatedAt:row.updated_at,receipt:row.receipt,revision:row.revision};
+}
 const publicRow=row=>row?{id:row.id,text:row.text,at:row.at,updatedAt:row.updated_at,state:row.state,postId:row.post_id,receipt:row.post_id}:null;
 const noticeRow=row=>row?{id:row.id,source:row.source,kind:row.kind,importance:row.importance,payload:row.payload,at:row.at,expiresAt:row.expires_at,state:row.state,batch:row.batch,createdAt:row.created_at,updatedAt:row.updated_at}:null;
+const MAX_FACTS_PER_SCOPE=100, MAX_FOLLOWUPS_PER_SCOPE=100, MAX_PENDING_FOLLOWUPS_PER_SCOPE=30;
 const NOTICE_PENDING=30,NOTICE_ROWS=300,NOTICE_RETENTION=7*86400000;
+const NATIVE_GROUP_SOURCE=/^in:group:[1-9]\d{4,14}:-?\d{1,20}$/u;
+const ABSOLUTE_GROUP_CREATION=new RegExp('^回访\\s+('+TIME_PATTERN+')\\s*\\|\\s*([\\s\\S]+)$','u');
+const MEMORY_REFERENCE=/(?:这件事|那件事|这个事|那个事|(?:这|那|上一|前一)(?:条|段|则)(?:记忆|记录|消息|偏好|约定)|(?:刚才|刚刚|上次|之前|前面)(?:说|提|记|聊)(?:的|过|到)|(?:按|照|根据)(?:你|我)?(?:的)?(?:记忆|记得|偏好)|记忆(?:里|中)|(?:^|[，。！？!?,.\s])(?:这条|那条|这个|那个)[。！？!?.\s]*$|\b(?:that (?:thing|note|memory|conversation)|(?:as|what) (?:you|i) (?:remember|mentioned|said))\b)/iu;
+const NO_MEMBER_PROOF='unverified';
 
-function initializeContinuity(db,now,{branches=false}={}){
+function initializeContinuity(db,now,{branches=false,groupFollowupGraceMs=0,ordinaryGroupFollowups=false}={}){
   // All additions share SocialStore's transaction. No shadow copy of private
   // memory is retained that could outlive a later correction or erasure.
   const version=db.prepare('PRAGMA user_version').get().user_version;
@@ -40,7 +62,7 @@ function initializeContinuity(db,now,{branches=false}={}){
     CREATE TABLE IF NOT EXISTS followups (
     scope TEXT NOT NULL,id TEXT NOT NULL,text TEXT NOT NULL,due_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,time_zone TEXT NOT NULL,
     state TEXT NOT NULL,source_ids TEXT NOT NULL,fact_ids TEXT NOT NULL,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,receipt TEXT NOT NULL,revision INTEGER NOT NULL,
-    PRIMARY KEY(scope,id));
+    local_time TEXT,PRIMARY KEY(scope,id));
     CREATE INDEX IF NOT EXISTS followup_due ON followups(scope,state,due_at);
     CREATE TABLE IF NOT EXISTS public_journal (
     scope TEXT NOT NULL,id TEXT NOT NULL,text TEXT NOT NULL,at INTEGER NOT NULL,updated_at INTEGER NOT NULL,state TEXT NOT NULL,post_id TEXT NOT NULL,
@@ -51,14 +73,57 @@ function initializeContinuity(db,now,{branches=false}={}){
     state TEXT NOT NULL,batch TEXT NOT NULL,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS source_notice_state ON source_notices(state,created_at);
     PRAGMA user_version=${target};`);
+  // Older builds name their write columns and continue to read these rows.
+  // Ignore stale annotations on read if an older build changes the due instant.
+  const followupColumns=new Set(db.prepare('PRAGMA table_info(followups)').all().map(column=>column.name));
+  if(!followupColumns.has('local_time')){
+    db.exec('ALTER TABLE followups ADD COLUMN local_time TEXT');
+  }
+  // Ordinary QQ group stores opt in through their existing offline grace. Do not
+  // change App/private databases or the schema version an earlier build can read.
+  if(groupFollowupGraceMs>0&&!followupColumns.has('last_edit_posted_at')){
+    db.exec('ALTER TABLE followups ADD COLUMN last_edit_posted_at INTEGER');
+  }
+  if(ordinaryGroupFollowups&&!followupColumns.has('member_direct')){
+    db.exec('ALTER TABLE followups ADD COLUMN member_direct TEXT');
+  }
+  if(ordinaryGroupFollowups){
+    db.exec('CREATE TABLE IF NOT EXISTS group_preferred_name_order (scope TEXT PRIMARY KEY,posted_at INTEGER NOT NULL)');
+  }
   db.prepare("UPDATE followups SET state='unknown',updated_at=? WHERE state='attempting'").run(now);
   db.prepare("UPDATE public_journal SET state='unknown',updated_at=? WHERE state='attempting'").run(now);
   // An offline deadline is shown for review, not replayed on the next launch.
-  db.prepare("UPDATE followups SET state='missed',updated_at=? WHERE state='pending' AND due_at<?").run(now,now);
+  db.prepare("UPDATE followups SET state='missed',updated_at=? WHERE state='pending' AND (due_at<? OR expires_at<=?)").run(now,now-groupFollowupGraceMs,now);
   // Version 3: owner-enabled source notices. They are not relationship memory,
   // so they carry no scope. An interrupted attempt is ambiguous and is never
   // replayed; a pending notice survives a restart until its own expiry.
   db.prepare("UPDATE source_notices SET state='unknown',payload='',updated_at=? WHERE state='attempting'").run(now);
+}
+
+function savePreferredNameOrder(db,scope,postedAt){
+  if(postedAt===undefined)return;
+  db.prepare(`INSERT INTO group_preferred_name_order(scope,posted_at) VALUES(?,?)
+    ON CONFLICT(scope) DO UPDATE SET posted_at=max(posted_at,excluded.posted_at)`).run(scope,postedAt);
+}
+
+function stalePreferredNameRequest(db,scope,postedAt){
+  if(postedAt===undefined)return false;
+  const last=db.prepare('SELECT posted_at FROM group_preferred_name_order WHERE scope=?').get(scope)?.posted_at;
+  return last!==undefined&&postedAt<last;
+}
+
+function checkedGroupPreferredName(store,{name,sourceId,postedAt}){
+  const valid=preferredNameValue(name);
+  if(!store.ordinaryGroupFollowups||!valid||!NATIVE_GROUP_SOURCE.test(sourceId))throw invalid('Invalid group name preference.');
+  if(postedAt!==undefined&&(!Number.isSafeInteger(postedAt)||postedAt<=0||postedAt%1000!==0||postedAt>store.now()+60000)){
+    throw invalid('Invalid group name sending time.');
+  }
+  return valid;
+}
+
+function storedGroupPreferredNames(rows){
+  const preferences=rows.filter(row=>preferredNameFromFact(row.text));
+  return {preferences,current:preferences.find(row=>row.fact_key===PREFERRED_NAME_KEY)||preferences[0]};
 }
 
 function sources(db,scope,ids,now){
@@ -67,12 +132,47 @@ function sources(db,scope,ids,now){
   if(rows.some(row=>!row))throw invalid('Memory sources must be retained owner messages in this relationship.');
   return {sourceIds:ids,sourceAt:rows.length?Math.min(...rows.map(row=>row.at)):now};
 }
-function discardDerived(store,db,scope,fact,preservedIds=[]){
+
+const factText=text=>text.replace(/[\p{P}\s]/gu,'');
+const directDigest=(scope,id,text)=>createHash('sha256').update(JSON.stringify(['member_direct',scope,id,text])).digest('hex');
+
+function independentTopic(text){
+  return !!text.trim()&&text.length<=600&&text.isWellFormed()&&/[\p{L}\p{N}]/u.test(text)&&
+    !/[|｜\p{Cc}\u2028-\u202e\u2066-\u2069]/u.test(text)&&clean(text,600)===text&&!MEMORY_REFERENCE.test(text);
+}
+
+function memberDirectProof(db,scope,id,text,sourceIds){
+  if(!independentTopic(text)||sourceIds.length!==1||!NATIVE_GROUP_SOURCE.test(sourceIds[0]))return null;
+  const source=db.prepare("SELECT text FROM messages WHERE scope=? AND id=? AND role='user'").get(scope,sourceIds[0]);
+  if(!source)return null;
+  const body=source.text.trim();
+  const relative=parseGroupRelativeFollowup(body);
+  if(relative)return !relative.operation&&!relative.error&&relative.topic===text?directDigest(scope,id,text):null;
+  const absolute=ABSOLUTE_GROUP_CREATION.exec(body);
+  return absolute&&Number.isFinite(dueFromLocalTime(absolute[1]))&&absolute[2].trim()===text?directDigest(scope,id,text):null;
+}
+
+function prepareFollowupCleanup(store,db,scope){
+  const now=store.now();
+  db.prepare("UPDATE followups SET state='missed',updated_at=? WHERE scope=? AND state='pending' AND expires_at<=?").run(now,scope,now);
+  const rows=db.prepare('SELECT * FROM followups WHERE scope=?').all(scope),proofs=new Map();
+  for(const row of rows){
+    if(row.state!=='pending'||!independentTopic(row.text))continue;
+    const expected=directDigest(scope,row.id,row.text);
+    const proof=row.member_direct===null?memberDirectProof(db,scope,row.id,row.text,JSON.parse(row.source_ids)):
+      row.member_direct===expected?expected:null;
+    if(proof)proofs.set(row.id,proof);
+  }
+  return {rows,proofs,now};
+}
+
+function discardDerived(store,db,scope,fact,preservedIds=[],otherPreferredNames=false){
   // A reply may paraphrase a fact without repeating its exact value. Drop the
   // complete recent conversation, including earlier mentions, rather than
   // pretending text matching can find every derivative. Independent structured
   // facts remain available; records containing this exact old fact do not.
   const suffix=db.prepare('SELECT id FROM messages WHERE scope=?').all(scope);
+  const group=store.ordinaryGroupFollowups?prepareFollowupCleanup(store,db,scope):null;
   for(const row of suffix)if(!preservedIds.includes(row.id))db.prepare('DELETE FROM messages WHERE scope=? AND id=?').run(scope,row.id);
   db.prepare('DELETE FROM scoped_notes WHERE scope=?').run(scope);
   // Version 4 (table created by SocialStore): lorebook timing state is derived
@@ -86,23 +186,48 @@ function discardDerived(store,db,scope,fact,preservedIds=[]){
   }
   db.prepare("UPDATE actions SET text='' WHERE scope=? AND kind IN ('reply','message','decision')").run(scope);
   const previousText=fact.text.trim().replace(/\s+/g,' ');
-  const duplicates=db.prepare('SELECT id,text FROM facts WHERE scope=? AND id<>?').all(scope,fact.id).filter(row=>row.text.trim().replace(/\s+/g,' ').includes(previousText));
+  const duplicates=db.prepare('SELECT id,text FROM facts WHERE scope=? AND id<>?').all(scope,fact.id)
+    .filter(row=>row.text.trim().replace(/\s+/g,' ').includes(previousText)||otherPreferredNames&&preferredNameFromFact(row.text));
   const removedFacts=new Set([fact.id,...duplicates.map(row=>row.id)]);
   for(const row of duplicates)db.prepare('DELETE FROM facts WHERE scope=? AND id=?').run(scope,row.id);
   const deletedIds=new Set(suffix.filter(row=>!preservedIds.includes(row.id)).map(row=>row.id));
-  const followups=db.prepare('SELECT * FROM followups WHERE scope=?').all(scope);
+  const retainedIds=group?new Set(suffix.filter(row=>!deletedIds.has(row.id)).map(row=>row.id)):null;
+  const removedText=group?[fact,...duplicates].map(row=>factText(row.text)).filter(Boolean):null;
+  const followups=group?.rows??db.prepare('SELECT * FROM followups WHERE scope=?').all(scope);
+  const counts=group?{cancelledFollowups:0,preservedPendingFollowups:0,unknownFollowups:0}:null;
   for(const row of followups){
-    const dependent=JSON.parse(row.fact_ids).some(id=>removedFacts.has(id))||JSON.parse(row.source_ids).some(id=>deletedIds.has(id))||row.text.includes(fact.text)||row.created_at>=fact.sourceAt;
-    if(!dependent)continue;
+    const sourceIds=JSON.parse(row.source_ids),normalized=group?factText(row.text):null;
+    const confirmed=JSON.parse(row.fact_ids).some(id=>removedFacts.has(id))||
+      (group?removedText.some(text=>normalized.includes(text)):row.text.includes(fact.text));
+    const proof=group?.proofs.get(row.id);
+    if(!confirmed&&proof){
+      const kept=sourceIds.filter(id=>retainedIds.has(id));
+      if(kept.length!==sourceIds.length||proof!==row.member_direct){
+        db.prepare('UPDATE followups SET source_ids=?,member_direct=? WHERE scope=? AND id=?').run(JSON.stringify(kept),proof,scope,row.id);
+      }
+      counts.preservedPendingFollowups++;
+      continue;
+    }
+    const dependent=confirmed||sourceIds.some(id=>deletedIds.has(id))||row.created_at>=fact.sourceAt;
+    if(!dependent){
+      if(counts&&row.state==='pending')counts.preservedPendingFollowups++;
+      continue;
+    }
     const state=row.state==='attempting'?'unknown':row.state==='pending'?'cancelled':row.state;
-    db.prepare("UPDATE followups SET state=?,text='',source_ids='[]',fact_ids='[]',updated_at=?,revision=revision+1 WHERE scope=? AND id=?").run(state,store.now(),scope,row.id);
+    if(counts){
+      if(row.state==='pending')counts.cancelledFollowups++;
+      if(row.state==='attempting')counts.unknownFollowups++;
+    }
+    const clearProof=group?',member_direct=NULL':'';
+    db.prepare(`UPDATE followups SET state=?,text='',local_time=NULL,source_ids='[]',fact_ids='[]',updated_at=?,revision=revision+1${clearProof} WHERE scope=? AND id=?`)
+      .run(state,group?.now??store.now(),scope,row.id);
   }
-  return {clearedConversation:true,clearedNotes:true};
+  return counts;
 }
 
 const continuityMethods={
-  facts(scope,count=100){
-    const key=this.scope(scope);limit(count,100);
+  facts(scope,count=MAX_FACTS_PER_SCOPE){
+    const key=this.scope(scope);limit(count,MAX_FACTS_PER_SCOPE);
     return this.withDb(db=>db.prepare('SELECT * FROM facts WHERE scope=? ORDER BY updated_at DESC,rowid DESC LIMIT ?').all(key,count).map(factRow));
   },
   remember(scope,{id=randomUUID(),key:factKey=id,text,sourceIds=[]}={}){
@@ -113,7 +238,7 @@ const continuityMethods={
       if(existing){if(existing.text===text&&existing.id===id)return factRow(existing);throw invalid('This fact already exists; correct it explicitly.');}
       const duplicate=db.prepare('SELECT * FROM facts WHERE scope=? AND text=?').get(key,text);
       if(duplicate)return factRow(duplicate);
-      if(db.prepare('SELECT count(*) AS count FROM facts WHERE scope=?').get(key).count>=100)throw invalid('The relationship has 100 facts. Forget one before adding another.');
+      if(db.prepare('SELECT count(*) AS count FROM facts WHERE scope=?').get(key).count>=MAX_FACTS_PER_SCOPE)throw invalid(`The relationship has ${MAX_FACTS_PER_SCOPE} facts. Forget one before adding another.`);
       const now=this.now();db.prepare('INSERT INTO facts(scope,id,fact_key,text,source_ids,source_at,created_at,updated_at,revision) VALUES(?,?,?,?,?,?,?,?,1)').run(key,id,factKey,text,JSON.stringify(sourceIds),origin.sourceAt,now,now);
       return factRow(db.prepare('SELECT * FROM facts WHERE scope=? AND id=?').get(key,id));
     });
@@ -124,6 +249,51 @@ const continuityMethods={
     if(existing){if(existing.text===value.text)return existing;return this.correctFact(scope,existing.id,value);}
     return this.remember(scope,value);
   },
+  saveGroupPreferredName(scope,{name,sourceId,factId,revision,postedAt}={}){
+    const key=this.scope(scope), valid=checkedGroupPreferredName(this,{name,sourceId,postedAt});
+    const text=groupPreferredNameFact(valid);
+    return this.withDb(db=>{
+      const origin=sources(db,key,[sourceId],this.now());
+      const known=db.prepare('SELECT * FROM facts WHERE scope=? ORDER BY updated_at DESC,rowid DESC').all(key);
+      const {preferences,current}=storedGroupPreferredNames(known);
+      if(factId&&(current?.id!==factId||revision!==undefined&&current.revision!==revision)){
+        throw invalid('The preferred name changed. Review the current value.');
+      }
+      if(stalePreferredNameRequest(db,key,postedAt))return {stale:true};
+      if(!current&&known.length>=MAX_FACTS_PER_SCOPE)throw invalid('The relationship has reached its fact limit.');
+      const now=this.now(), id=current?.id||randomUUID();
+      // A new preference supersedes only recognized name facts for this
+      // member and role. The original messages and appointments are retained.
+      for(const row of preferences){
+        if(row.id!==id)db.prepare('DELETE FROM facts WHERE scope=? AND id=?').run(key,row.id);
+      }
+      if(!current){
+        db.prepare('INSERT INTO facts(scope,id,fact_key,text,source_ids,source_at,created_at,updated_at,revision) VALUES(?,?,?,?,?,?,?,?,1)')
+          .run(key,id,PREFERRED_NAME_KEY,text,JSON.stringify([sourceId]),origin.sourceAt,now,now);
+      }else if(current.text!==text||current.fact_key!==PREFERRED_NAME_KEY){
+        db.prepare('UPDATE facts SET fact_key=?,text=?,source_ids=?,source_at=?,updated_at=?,revision=revision+1 WHERE scope=? AND id=?')
+          .run(PREFERRED_NAME_KEY,text,JSON.stringify([sourceId]),origin.sourceAt,now,key,id);
+      }
+      savePreferredNameOrder(db,key,postedAt);
+      return {fact:factRow(db.prepare('SELECT * FROM facts WHERE scope=? AND id=?').get(key,id))};
+    });
+  },
+  withdrawGroupPreferredName(scope,{name,sourceId,postedAt}={}){
+    const key=this.scope(scope), valid=checkedGroupPreferredName(this,{name,sourceId,postedAt});
+    return this.withDb(db=>{
+      sources(db,key,[sourceId],this.now());
+      if(stalePreferredNameRequest(db,key,postedAt))return {stale:true};
+      const rows=db.prepare('SELECT id,fact_key,text FROM facts WHERE scope=? ORDER BY updated_at DESC,rowid DESC').all(key);
+      const {preferences,current}=storedGroupPreferredNames(rows);
+      if(!current||preferredNameFromFact(current.text)!==valid)return {withdrawn:false};
+      // Remove superseded legacy name facts too so they cannot become the
+      // active preference again. Conversation and unrelated facts stay intact.
+      const remove=db.prepare('DELETE FROM facts WHERE scope=? AND id=?');
+      for(const row of preferences)remove.run(key,row.id);
+      savePreferredNameOrder(db,key,postedAt);
+      return {withdrawn:true};
+    });
+  },
   // keepIds: messages to retain besides the sources (a correction typed in a branch, whose
   // message is not in this scope and so cannot be one of the fact's sources).
   correctFact(scope,id,{text,sourceIds=[],revision,keepIds=[]}={}){
@@ -133,45 +303,60 @@ const continuityMethods={
       if(!previous)throw invalid('The fact was not found.');
       if(revision!==undefined&&revision!==previous.revision)throw invalid('The fact changed; review the current value.');
       const origin=sources(db,key,sourceIds,this.now());
-      discardDerived(this,db,key,previous,[...sourceIds,...keepIds]);
-      db.prepare('UPDATE facts SET text=?,source_ids=?,source_at=?,updated_at=?,revision=revision+1 WHERE scope=? AND id=?').run(text,JSON.stringify(sourceIds),origin.sourceAt,this.now(),key,id);
-      return factRow(db.prepare('SELECT * FROM facts WHERE scope=? AND id=?').get(key,id));
+      const preferred=!!(this.ordinaryGroupFollowups&&preferredNameFromFact(previous.text));
+      const followupImpact=discardDerived(this,db,key,previous,[...sourceIds,...keepIds],preferred);
+      const factKey=preferred&&previous.key===PREFERRED_NAME_KEY&&!preferredNameFromFact(text)?previous.id:previous.key;
+      db.prepare('UPDATE facts SET fact_key=?,text=?,source_ids=?,source_at=?,updated_at=?,revision=revision+1 WHERE scope=? AND id=?')
+        .run(factKey,text,JSON.stringify(sourceIds),origin.sourceAt,this.now(),key,id);
+      const updated=factRow(db.prepare('SELECT * FROM facts WHERE scope=? AND id=?').get(key,id));
+      return {...updated,...followupImpact};
     });
   },
-  forgetFact(scope,id,{revision}={}){
+  forgetFact(scope,id,{revision,preferredNamePostedAt}={}){
     const key=this.scope(scope);bounded(id,180,'fact identifier');
     return this.withDb(db=>{
       const previous=factRow(db.prepare('SELECT * FROM facts WHERE scope=? AND id=?').get(key,id));
       if(!previous)throw invalid('The fact was not found.');
       // A confirmation shown for an older value must not erase its correction.
       if(revision!==undefined&&revision!==previous.revision)throw invalid('The fact changed; review the current value.');
-      const impact=discardDerived(this,db,key,previous);
+      const preferred=!!(this.ordinaryGroupFollowups&&preferredNameFromFact(previous.text));
+      const impact=discardDerived(this,db,key,previous,[],preferred);
       db.prepare('DELETE FROM facts WHERE scope=? AND id=?').run(key,id);
-      return {forgotten:true,...impact};
+      // Keep only the validated order marker. The forgotten name is never
+      // written here, so a delayed request cannot resurrect it.
+      if(preferred&&Number.isSafeInteger(preferredNamePostedAt)&&preferredNamePostedAt>0&&
+         preferredNamePostedAt%1000===0&&preferredNamePostedAt<=this.now()+60000)savePreferredNameOrder(db,key,preferredNamePostedAt);
+      return {forgotten:true,clearedConversation:true,clearedNotes:true,...impact};
     });
   },
-  scheduleFollowup(scope,{id=randomUUID(),text,dueAt,timeZone:zone,expiresAt=dueAt+86400000,sourceIds=[],factIds=[]}={}){
+  scheduleFollowup(scope,{id=randomUUID(),text,dueAt,timeZone:zone,localTime,expiresAt=dueAt+86400000,sourceIds=[],factIds=[],memberDirect=false}={}){
     const key=this.scope(scope);bounded(id,180,'follow-up identifier');bounded(text,600,'follow-up');timestamp(dueAt,'due time');timestamp(expiresAt,'expiry');zone=timeZone(zone);identifiers(sourceIds,'source identifiers');identifiers(factIds,'fact identifiers');
+    if(typeof memberDirect!=='boolean'||memberDirect&&!this.ordinaryGroupFollowups)throw invalid('Invalid group follow-up source.');
+    const local=validateLocalTime(localTime,dueAt);
     if(dueAt<this.now()||dueAt>this.now()+366*86400000||expiresAt<=dueAt||expiresAt>dueAt+7*86400000)throw invalid('Choose a future follow-up within one year and an expiry within seven days.');
     return this.withDb(db=>{
       this.ensureScope(db,key);sources(db,key,sourceIds,this.now());
       if(factIds.some(factId=>!db.prepare('SELECT 1 FROM facts WHERE scope=? AND id=?').get(key,factId)))throw invalid('Follow-up facts must belong to this relationship.');
       if(db.prepare('SELECT 1 FROM followups WHERE scope=? AND id=?').get(key,id))throw invalid('This follow-up identifier was already recorded.');
-      if(db.prepare("SELECT count(*) AS count FROM followups WHERE scope=? AND state IN ('pending','attempting')").get(key).count>=30)throw invalid('There are already 30 pending follow-ups.');
+      if(db.prepare("SELECT count(*) AS count FROM followups WHERE scope=? AND state IN ('pending','attempting')").get(key).count>=MAX_PENDING_FOLLOWUPS_PER_SCOPE)throw invalid(`There are already ${MAX_PENDING_FOLLOWUPS_PER_SCOPE} pending follow-ups.`);
       const count=db.prepare('SELECT count(*) AS count FROM followups WHERE scope=?').get(key).count;
-      if(count>=100){
+      if(count>=MAX_FOLLOWUPS_PER_SCOPE){
         // Keep uncertain send identifiers for seven days to avoid accidental
         // recreation by a stale caller; remove only older terminal receipts.
         const old=db.prepare("SELECT id FROM followups WHERE scope=? AND state NOT IN ('pending','attempting') AND updated_at<? ORDER BY updated_at LIMIT 1").get(key,this.now()-7*86400000);
         if(!old)throw invalid('Follow-up history is full. Wait for old receipts to retire.');
         db.prepare('DELETE FROM followups WHERE scope=? AND id=?').run(key,old.id);
       }
-      const now=this.now();db.prepare("INSERT INTO followups(scope,id,text,due_at,expires_at,time_zone,state,source_ids,fact_ids,created_at,updated_at,receipt,revision) VALUES(?,?,?,?,?,?,'pending',?,?,?,?,?,1)").run(key,id,text,dueAt,expiresAt,zone,JSON.stringify(sourceIds),JSON.stringify(factIds),now,now,'');
+      const now=this.now(),group=this.ordinaryGroupFollowups;
+      const proof=memberDirect?memberDirectProof(db,key,id,text,sourceIds):null;
+      const proofColumn=group?',member_direct':'',proofValue=group?',?':'';
+      db.prepare(`INSERT INTO followups(scope,id,text,due_at,expires_at,time_zone,state,source_ids,fact_ids,created_at,updated_at,receipt,revision,local_time${proofColumn}) VALUES(?,?,?,?,?,?,'pending',?,?,?,?,?,1,?${proofValue})`)
+        .run(key,id,text,dueAt,expiresAt,zone,JSON.stringify(sourceIds),JSON.stringify(factIds),now,now,'',local,...(group?[proof??NO_MEMBER_PROOF]:[]));
       return followupRow(db.prepare('SELECT * FROM followups WHERE scope=? AND id=?').get(key,id));
     });
   },
-  followups(scope,{state,status,dueBefore,count=100,limit:requestedLimit}={}){
-    const key=this.scope(scope);count=requestedLimit??count;limit(count,100);state=state??status;
+  followups(scope,{state,status,dueBefore,count=MAX_FOLLOWUPS_PER_SCOPE,limit:requestedLimit}={}){
+    const key=this.scope(scope);count=requestedLimit??count;limit(count,MAX_FOLLOWUPS_PER_SCOPE);state=state??status;
     if(state!==undefined&&!['pending','attempting','sent','cancelled','unknown','failed','missed'].includes(state))throw invalid('Invalid follow-up state.');
     if(dueBefore!==undefined)timestamp(dueBefore,'due filter');
     return this.withDb(db=>{
@@ -181,18 +366,36 @@ const continuityMethods={
   },
   updateFollowup(scope,id,patch={}){
     const key=this.scope(scope);bounded(id,180,'follow-up identifier');
-    if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!['text','dueAt','expiresAt','timeZone','revision'].includes(k)))throw invalid('Invalid follow-up change.');
-    return this.withDb(db=>{
-      const previous=followupRow(db.prepare('SELECT * FROM followups WHERE scope=? AND id=?').get(key,id));
+    if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!['text','dueAt','expiresAt','timeZone','localTime','revision','editPostedAt'].includes(k)))throw invalid('Invalid follow-up change.');
+    const ordered=Object.hasOwn(patch,'editPostedAt'),postedAt=patch.editPostedAt;
+    if(ordered&&(!Number.isSafeInteger(postedAt)||postedAt<=0||postedAt>8640000000000000))throw invalid('Invalid follow-up edit time.');
+    const updated=this.withDb(db=>{
+      const row=db.prepare('SELECT * FROM followups WHERE scope=? AND id=?').get(key,id),previous=followupRow(row);
       if(!previous||previous.state!=='pending')throw invalid('Only a pending follow-up can change.');
+      if(ordered){
+        if(!Object.hasOwn(row,'last_edit_posted_at'))throw invalid('Verified edit ordering is unavailable for this follow-up.');
+        if(previous.lastEditPostedAt!==undefined&&postedAt<previous.lastEditPostedAt)return STALE_FOLLOWUP_EDIT;
+      }
       if(patch.revision!==undefined&&patch.revision!==previous.revision)throw invalid('The follow-up changed; review its current time.');
       const next={...previous,...patch};bounded(next.text,600,'follow-up');timestamp(next.dueAt,'due time');next.timeZone=timeZone(next.timeZone);
+      const timeChanged=next.dueAt!==previous.dueAt||next.timeZone!==previous.timeZone;
+      let localTime=patch.localTime;
+      if(localTime===undefined&&!timeChanged)localTime=previous.localTime;
+      const local=validateLocalTime(localTime,next.dueAt);
       if(patch.dueAt!==undefined&&patch.expiresAt===undefined)next.expiresAt=next.dueAt+86400000;
       timestamp(next.expiresAt,'expiry');
       if(next.dueAt<this.now()||next.dueAt>this.now()+366*86400000||next.expiresAt<=next.dueAt||next.expiresAt>next.dueAt+7*86400000)throw invalid('Invalid follow-up time or expiry.');
-      db.prepare('UPDATE followups SET text=?,due_at=?,expires_at=?,time_zone=?,updated_at=?,revision=revision+1 WHERE scope=? AND id=?').run(next.text,next.dueAt,next.expiresAt,next.timeZone,this.now(),key,id);
+      const orderColumn=ordered?',last_edit_posted_at=?':'';
+      const downgraded=this.ordinaryGroupFollowups&&next.text!==previous.text;
+      const proofColumn=downgraded?',member_direct=?':'';
+      db.prepare(`UPDATE followups SET text=?,due_at=?,expires_at=?,time_zone=?,local_time=?,updated_at=?,revision=revision+1${orderColumn}${proofColumn} WHERE scope=? AND id=?`)
+        .run(next.text,next.dueAt,next.expiresAt,next.timeZone,local,this.now(),...(ordered?[postedAt]:[]),...(downgraded?[NO_MEMBER_PROOF]:[]),key,id);
       return followupRow(db.prepare('SELECT * FROM followups WHERE scope=? AND id=?').get(key,id));
     });
+    // The stale decision was made under the write lock, with no changes to commit.
+    // Report it separately so withDb does not classify it as a storage failure.
+    if(updated===STALE_FOLLOWUP_EDIT)throw Object.assign(Error('The follow-up has a newer verified edit.'),{code:'social_stale_followup_edit'});
+    return updated;
   },
   claimFollowup(scope,id,{revision}={}){
     const key=this.scope(scope);bounded(id,180,'follow-up identifier');
@@ -213,11 +416,12 @@ const continuityMethods={
       return {...previous,state,receipt,updatedAt:this.now()};
     });
   },
-  cancelFollowup(scope,id,{reason}={}){
+  cancelFollowup(scope,id,{reason,revision}={}){
     const key=this.scope(scope);bounded(id,180,'follow-up identifier');
     return this.withDb(db=>{
       const previous=followupRow(db.prepare('SELECT * FROM followups WHERE scope=? AND id=?').get(key,id));
       if(!previous)throw invalid('The follow-up was not found.');
+      if(revision!==undefined&&(previous.state!=='pending'||previous.revision!==revision))return previous;
       if(!['pending','attempting'].includes(previous.state))return previous;
       const state=previous.state==='attempting'?'unknown':reason==='missed'?'missed':'cancelled';
       db.prepare('UPDATE followups SET state=?,updated_at=?,revision=revision+1 WHERE scope=? AND id=?').run(state,this.now(),key,id);
@@ -343,4 +547,4 @@ const continuityMethods={
     });
   }
 };
-module.exports={initializeContinuity,continuityMethods};
+module.exports={initializeContinuity,continuityMethods,MAX_FACTS_PER_SCOPE,MAX_FOLLOWUPS_PER_SCOPE,MAX_PENDING_FOLLOWUPS_PER_SCOPE};

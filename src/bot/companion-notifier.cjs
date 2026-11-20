@@ -106,14 +106,14 @@ class CompanionNotifier{
   }
   // Safe to call every second: real work happens at most every WORK_INTERVAL,
   // and not at all while nothing is pending or a delivery is in flight.
-  tick({onAppMessage,sourceEnabled=()=>true}={}){
+  tick({onAppMessage,sourceEnabled=()=>true,noticeCurrent=()=>true}={}){
     try{
       if(this.active)return {action:'wait',reason:'delivering'};
       const now=this.now();
       if(now<this.nextWorkAt&&this.nextWorkAt-now<=WORK_INTERVAL)return {action:'wait',reason:'interval'};
       this.nextWorkAt=now+WORK_INTERVAL;
       if(this.pending===0)return {action:'wait',reason:'empty'};
-      return this.#work(now,onAppMessage,sourceEnabled);
+      return this.#work(now,onAppMessage,row=>sourceEnabled(row.source)===true&&noticeCurrent(row)===true);
     }catch{this.lastProblem='storage_unavailable';return {action:'wait',reason:'storage_unavailable'};}
   }
   #attempts(exclude){return this.store.noticeAttempts().filter(row=>row.batch!==exclude);}
@@ -135,7 +135,7 @@ class CompanionNotifier{
       view:Object.freeze({id,sourceName:items.at(-1).sourceName,total:items.length,items:Object.freeze(items.slice(0,MAX_LISTED).map(({sourceName,...item})=>Object.freeze(item)))})};
   }
   #wait(reason,problem=''){if(this.lastProblem!==problem){this.lastProblem=problem;this.changed();}return {action:'wait',reason};}
-  #work(now,onAppMessage,sourceEnabled){
+  #work(now,onAppMessage,isCurrent){
     const rows=this.store.pendingNotices(),sent=this.store.noticeAttempts().filter(row=>row.sent);
     const before=this.pending;this.pending=rows.length;this.lastDeliveredAt=sent.length?Math.max(...sent.map(row=>row.at)):this.lastDeliveredAt;
     if(before!==this.pending)this.changed();
@@ -143,7 +143,7 @@ class CompanionNotifier{
     // A source may be disabled, removed or changed to desktop/record-only
     // while its notice is waiting. Leave those rows to expire, and let other
     // enabled sources proceed. Recheck again before committing model output.
-    const eligible=rows.filter(row=>sourceEnabled(row.source)===true);
+    const eligible=rows.filter(isCurrent);
     if(!eligible.length)return this.#wait('source_disabled');
     const batch=this.#select(eligible),gate=this.#gate(batch,now);
     if(gate)return this.#wait(gate,gate==='daily_limit'?gate:'');
@@ -157,8 +157,8 @@ class CompanionNotifier{
     const useQQ=!!qq&&qq.eligible()===true;
     if(!app&&!useQQ)return this.#wait('no_conversation','no_conversation');
     if(!this.store.claimNotices(batch.ids,batch.id))return this.#wait('changed');
-    const source=eligible.find(row=>row.id===batch.ids[0]).source;
-    const promise=this.#deliver(batch,app,useQQ?qq:null,onAppMessage,()=>sourceEnabled(source)===true);this.active=promise;
+    const selected=eligible.filter(row=>batch.ids.includes(row.id));
+    const promise=this.#deliver(batch,app,useQQ?qq:null,onAppMessage,()=>selected.every(isCurrent));this.active=promise;
     void promise.finally(()=>{if(this.active===promise)this.active=null;});
     return {action:'deliver',promise};
   }

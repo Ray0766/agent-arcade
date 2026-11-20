@@ -16,7 +16,7 @@ async function rejectStatus(response) {
   if(!response.ok){
     await response.body?.cancel().catch(()=>{});
     const messages={401:'OpenAI rejected the API key.',403:'This OpenAI account is not allowed to use this model.',404:'This OpenAI model is unavailable to the account.',429:'OpenAI quota or rate limit reached. Check billing and retry later.'};
-    throw new SafeError(messages[response.status]||'OpenAI could not complete this request. Check its service and your connection.');
+    throw new SafeError(messages[response.status]||'OpenAI could not complete this request. Check its service and your connection.','error',response.status);
   }
 }
 // Streamed conversation-only reply. Text deltas are display data; the terminal event's response
@@ -157,7 +157,7 @@ function createGPTRunner({workspace,key,model=DEFAULT_MODEL,persona={enabled:tru
       for(const call of pendingCalls)current.items.push({type:'function_call_output',call_id:call.call_id,output:JSON.stringify({error:'This call was interrupted or not executed. Do not retry without a new user request; previous file changes may remain.'})});
       const outcome=timedOut?'limit':controller.signal.aborted?'cancelled':error instanceof SafeError?error.outcome:'error';
       const text=timedOut?'The turn time limit was reached. Existing file changes were not rolled back.':controller.signal.aborted?'Local processing was cancelled. Existing file changes remain; cancellation of the submitted model request is not confirmed.':error instanceof SafeError?error.message:'OpenAI could not finish. Check the API key, billing and network; previous file changes may remain.';
-      onUpdate({text});return result(outcome,text);
+      onUpdate({text});return {...result(outcome,text),...(conversationOnly&&error instanceof SafeError&&error.httpStatus?{httpStatus:error.httpStatus}:{})};
     }finally{imageBytes=null;image=null;if(conversationOnly&&session===current)session=null;clearTimeout(timer);signal?.removeEventListener('abort',abort);if(active===controller){active=null;activeDone=null;}settle();}
   };
   execute.close=async()=>{closed=true;active?.abort();if(activeDone)await activeDone;session=null;};

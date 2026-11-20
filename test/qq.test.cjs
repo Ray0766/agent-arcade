@@ -54,8 +54,8 @@ test('QQ login identity and owner-only friend events precede task normalization'
   assert.equal(connections[0].options.followRedirects, false);
   assert.equal(connections[0].options.maxPayload, 1024 * 1024);
   const ws = sockets[0];
-  for (const extra of [{user_id: 99999999}, {post_type: 'message_sent'},
-    {message_type: 'group'}, {sub_type: 'group'}, {group_id: 12345}, {time: NOW / 1000 - 1}, {time: NOW / 1000 + 61}]) ws.frame(event(extra));
+  for (const [index,extra] of [{user_id: 99999999}, {post_type: 'message_sent'},
+    {message_type: 'group'}, {sub_type: 'group'}, {group_id: 12345}, {time: NOW / 1000 - 1}, {time: NOW / 1000 + 61}].entries()) ws.frame(event({...extra,message_id:100+index,message:[{type:'text',data:{text:`rejected-${index}`}}]}));
   ws.frame(event()); ws.frame(event());
   const batch = await client.getUpdates();
   assert.equal(batch.cursor, '1'); assert.equal(batch.messages.length, 1);
@@ -368,4 +368,41 @@ test('QQ real loopback WebSocket exchanges authenticated OneBot frames without a
   const result = await client.sendText(OWNER, 'fixture response', batch.messages[0].contextToken);
   assert.equal(result.id, '105'); assert.equal(sent.action, 'send_private_msg');
   assert.equal(sent.params.message[0].data.text, 'fixture response');
+});
+
+// Unique IDs/texts keep sender-policy defects from being hidden by dedupe.
+test('QQ private foreign sender never acquires a reply context', async t => {
+ const {client,sockets}=setup();t.after(()=>client.close());await client.connect();
+ sockets[0].frame(event({message_id:701,user_id:99999999,message:'foreign-unique-private'}));
+ assert.equal((await client.getUpdates()).messages.length,0);assert.equal(client.contextToken,'');
+ assert.equal(sockets[0].calls.filter(c=>c.action.startsWith('send_')).length,0);
+});
+
+const GROUP='55556666',MEMBER='44443333';
+function groupEvent(extra={}){return event({message_type:'group',sub_type:'normal',group_id:Number(GROUP),user_id:Number(MEMBER),...extra});}
+test('QQ groups default off; explicit membership never changes the private owner guard',async t=>{
+ const disabled=setup();t.after(()=>disabled.client.close());await disabled.client.connect();disabled.sockets[0].frame(groupEvent({message_id:801}));assert.equal((await disabled.client.getUpdates()).messages.length,0);
+ const {client,sockets}=setup({groupIds:[GROUP]});t.after(()=>client.close());await client.connect();
+ for(const [index,extra] of [{group_id:99999999},{anonymous:{id:1}},{sub_type:'anonymous'},{user_id:Number(ACCOUNT)},{sender:{user_id:99999999}},{group_id:'opaque-official-group'},{user_id:0}].entries()){
+  sockets[0].frame(groupEvent({...extra,message_id:810+index,message:`blocked-group-${index}`}));
+ }
+ assert.equal((await client.getUpdates()).messages.length,0);assert.equal(client.groupContexts.size,0);
+ sockets[0].frame(event({user_id:Number(MEMBER),message_id:820,message:'still-not-owner'}));
+ assert.equal((await client.getUpdates()).messages.length,0);assert.equal(sockets[0].calls.filter(c=>c.action.startsWith('send_')).length,0);
+});
+test('QQ group inbound and sends bind account/group/member/generation, preserve mentions and quotes',async t=>{
+ const {client,sockets}=setup({groupIds:[GROUP,'77778888']});t.after(()=>client.close());await client.connect();
+ sockets[0].frame(groupEvent({message_id:901,message:[{type:'at',data:{qq:ACCOUNT}},{type:'text',data:{text:'你好角色'}}]}));
+ const message=(await client.getUpdates()).messages[0];assert.equal(message.from,MEMBER);assert.equal(message.groupId,GROUP);assert.equal(message.accountId,ACCOUNT);assert.equal(message.route,'group');assert.equal(message.mentioned,true);assert.equal(message.text,'你好角色');
+ await assert.rejects(client.sendGroupText({groupId:'77778888',senderId:MEMBER},'cross-group',message.contextToken),{code:'stale_context'});
+ await assert.rejects(client.sendGroupText({groupId:GROUP,senderId:OWNER},'cross-member',message.contextToken),{code:'stale_context'});
+ await client.sendGroupText({groupId:GROUP,senderId:MEMBER},'正常回复',message.contextToken);
+ const call=sockets[0].calls.find(c=>c.action==='send_group_msg');assert.equal(call.params.group_id,Number(GROUP));assert.deepEqual(call.params.message,[{type:'reply',data:{id:'901'}},{type:'text',data:{text:'正常回复'}}]);
+ sockets[0].frame(groupEvent({message_id:901,message:'duplicate'}));assert.equal((await client.getUpdates()).messages.length,0);
+ sockets[0].terminate();await assert.rejects(client.sendGroupText({groupId:GROUP,senderId:MEMBER},'stale',message.contextToken),{code:'stale_context'});
+});
+test('QQ group media never uses private-owner image or voice descriptors',async t=>{
+ const {client,sockets}=setup({groupIds:[GROUP],allowOwnerVoice:true,allowOwnerImage:true});t.after(()=>client.close());await client.connect();
+ for(const [index,type] of ['image','record'].entries())sockets[0].frame(groupEvent({message_id:950+index,user_id:Number(OWNER),message:[{type,data:{file:'fixture'}}]}));
+ const batch=await client.getUpdates();assert.equal(batch.messages.length,2);for(const row of batch.messages){assert.equal(row.unsupported,'qq_segments');assert.equal(row.image,undefined);assert.equal(row.voice,undefined);}
 });

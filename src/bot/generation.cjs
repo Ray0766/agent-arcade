@@ -10,7 +10,7 @@ const RANGES = Object.freeze({temperature:[0, 2], topP:[0, 1], maxTokens:[64, 81
 // Returns a clean {temperature?, topP?, maxTokens?}; absent or null fields are omitted.
 function sampling(value) {
   if (value === undefined || value === null) return {};
-  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !(key in RANGES))) throw Error('Invalid sampling settings.');
+  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !Object.hasOwn(RANGES, key))) throw Error('Invalid sampling settings.');
   const out = {};
   for (const [key, [low, high]] of Object.entries(RANGES)) {
     const item = value[key];
@@ -19,6 +19,17 @@ function sampling(value) {
     out[key] = item;
   }
   return out;
+}
+// The App's explicit numeric fields override its preset values. Group setup
+// can copy the result without reading any of the preset's prompt sections.
+function presetSampling(settings = {}) {
+  const values = Object.create(null);
+  for (const source of [settings.preset?.sampling, settings.sampling]) {
+    for (const [key, value] of Object.entries(source || {})) {
+      if (value !== null && value !== undefined) values[key] = value;
+    }
+  }
+  return sampling(values);
 }
 // Streamed replies (conversation-only path of the API runners). `onDelta(chunk)` receives each
 // new piece of reply text in order; it is best-effort display data: a throwing or rejecting
@@ -114,4 +125,4 @@ function chatStream(label, emit) {
     },
   };
 }
-module.exports = {TASK_PROMPT_CHARS, CHAT_PROMPT_CHARS, promptLimit, sampling, RANGES, deltaEmitter, readSSE, sseJSON, chatStream};
+module.exports = {TASK_PROMPT_CHARS, CHAT_PROMPT_CHARS, promptLimit, sampling, presetSampling, RANGES, deltaEmitter, readSSE, sseJSON, chatStream};

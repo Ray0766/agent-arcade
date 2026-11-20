@@ -63,11 +63,15 @@ class ModelRuntime:
             raise ProtocolError("asr_unavailable")
         import torch
         from qwen_asr import Qwen3ASRModel
-        if not torch.cuda.is_available():
-            raise ProtocolError("asr_unavailable")
+        if sys.platform == "darwin":
+            dtype, device = torch.float32, "cpu"
+        else:
+            if not torch.cuda.is_available():
+                raise ProtocolError("asr_unavailable")
+            dtype, device = torch.bfloat16, "cuda:0"
         torch.set_num_threads(1)
         self.model = Qwen3ASRModel.from_pretrained(
-            str(self.model_path), dtype=torch.bfloat16, device_map="cuda:0",
+            str(self.model_path), dtype=dtype, device_map=device,
             attn_implementation="sdpa", local_files_only=True, trust_remote_code=False,
             use_safetensors=True, max_inference_batch_size=1, max_new_tokens=256)
 

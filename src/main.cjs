@@ -1,9 +1,12 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage:nativeSafeStorage, clipboard, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, Tray, Menu, nativeImage, dialog, session, safeStorage:nativeSafeStorage, clipboard, shell, nativeTheme, protocol, screen } = require('electron');
 const safeStorage=require('./core/application-credential-vault.cjs').applicationCredentialVault({app,nativeVault:nativeSafeStorage});
 require('./core/app-identity.cjs').configureAppIdentity(app);
+const {PetWindows, enabledPets, validatePetToggle, registerScheme:registerPetScheme}=require('./pets/windows.cjs');
+if(process.platform==='darwin')registerPetScheme(protocol);
 const appVersion = require('../package.json').version;
 const {qqGuide}=require('./bot/qq-setup.cjs');
+const {createMacQQSetup}=require('./bot/mac-qq-setup.cjs');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -14,6 +17,8 @@ const { Store } = require('./core/store.cjs');
 const { NotificationGate, coalesceChanges } = require('./core/notify.cjs');
 const { Bus } = require('./core/bus.cjs');
 const { SourceRegistry } = require('./sources/registry.cjs');
+const { publishSourceEvent, publishGroupCalendarEvent, subscribeGroupFeedEvents, subscribeGroupCalendarEvents,
+  subscribeGroupFolderEvents, subscribeGroupPageEvents } = require('./sources/group-feed-events.cjs');
 const { loadSources } = require('./sources/config.cjs');
 const { atomicJSON, readJSON, drainInbox } = require('./core/files.cjs');
 const integration = require('./core/integration.cjs');
@@ -30,6 +35,7 @@ const {DesktopConversations}=require('./bot/desktop-conversations.cjs');
 const {localMemoryResult}=require('./bot/local-companion.cjs');
 const {AccountManager}=require('./bot/account-manager.cjs');
 const {QQConsole,validateDirectoryRequest,validateOrphanRequest,orphanErrorCode,orphanCleanupReceipt}=require('./bot/qq-console.cjs');
+const {QQDirectoryReader}=require('./bot/qq-directory.cjs');
 const {createQQCompanionLaunch}=require('./bot/qq-companion-launch-context.cjs');
 const {qqCompanionLaunchResult}=require('./bot/qq-companion-launch.cjs');
 const {QQRuntimeManager}=require('./bot/qq-runtime.cjs');
@@ -94,9 +100,10 @@ const {VoiceConversation}=require('./voice/conversation.cjs');
 const {createVoiceRuntime,voiceCapabilities,voiceRenderAvailability,createVoiceRenderRuntime,voiceRenderRevision}=require('./voice/runtime.cjs');
 const {QQVoiceRenderer}=require('./voice/qq-render.cjs');
 const {AsrGate}=require('./voice/asr-gate.cjs');
-const {fileAsrAvailability}=require('./voice/file-asr-runtime.cjs');
 const {createWarmFileAsrProvider}=require('./voice/warm-file-asr-runtime.cjs');
 const {OwnerRecordReader,OwnerVoicePipeline}=require('./bot/qq-inbound-voice.cjs');
+const {GroupRecordReader}=require('./bot/qq-group-voice.cjs');
+const {GroupVoicePipeline}=require('./bot/group-voice-pipeline.cjs');
 const QRCode = require('qrcode');
 const {discoverNative,createNativeLaunch}=require('./bot/native-launch.cjs');
 const {NativeProcess}=require('./bot/native-process.cjs');
@@ -122,11 +129,13 @@ const LAYOUTS=['immersive','messenger','minimal'],WORKSPACES=['companion','work'
 if(!LAYOUTS.includes(config.layout))config.layout='immersive';if(!validAccent(config.accent))config.accent='auto';if(!WORKSPACES.includes(config.workspace))config.workspace='companion';
 config.appearance=normalizeAppearance(config.appearance);
 config.sendShortcut=normalizeSendShortcut(config.sendShortcut);
+config.desktopPets=enabledPets(config.desktopPets);
 if(!['default','sprout'].includes(config.character))config.character='default';
 if(typeof config.personaVoice!=='boolean')config.personaVoice=true;
 const live = new Store(readJSON(path.join(root, 'state.json')));
 let demo = process.argv.includes('--demo'), sample = demoStore(), win, tray, quitting = false, problem = '', quitProblem = '', timer, restartEventPoll = () => {};
 let lastPublishedSnapshot = '';
+let pets=null;
 let appearanceController=null;
 let applicationMenuLanguage=null;
 // macOS only: without an Edit menu, Command+C/V/X/A do nothing in text fields.
@@ -194,7 +203,9 @@ const bus = new Bus();
 // User-added data sources (calendar, folder, feed). None exist by default and
 // demo mode never loads them. Their content is data: it is shown, never run.
 const sourcesFile = path.join(root,'sources.json');
-const sources = new SourceRegistry({file:sourcesFile,publish:(event,source)=>{bus.publish({...event,notify:source.notify,sourceName:source.name});}});
+const sources = new SourceRegistry({file:sourcesFile,
+  publish:(event,source,identity,occurrence)=>publishSourceEvent(bus,event,source,identity,occurrence),
+  publishCalendar:(occurrence,source,identity,at)=>publishGroupCalendarEvent(bus,source,identity,occurrence,at)});
 let sourceNotice = null;
 bus.subscribe(event=>typeof event.title==='string'&&['desktop','both'].includes(event.notify),event=>{
   if(demo||quitting||!win||win.isDestroyed()||!Notification.isSupported())return;
@@ -208,6 +219,11 @@ bus.subscribe(event=>typeof event.title==='string',()=>publish());
 // The selected profile's companion may mention a source event in its own words.
 // It stores the notice and applies its own hours, daily cap and quiet rules.
 bus.subscribe(event=>typeof event.title==='string'&&['companion','both'].includes(event.notify),event=>{if(!demo)bot?.companionNotice?.(event);});
+const groupSourceBusOptions={registry:sources,services:()=>accounts?.services?.values()||[],active:()=>!demo&&!quitting};
+subscribeGroupFeedEvents(bus,groupSourceBusOptions);
+subscribeGroupCalendarEvents(bus,groupSourceBusOptions);
+subscribeGroupFolderEvents(bus,groupSourceBusOptions);
+subscribeGroupPageEvents(bus,groupSourceBusOptions);
 function sourceConfig(){const loaded=loadSources(sourcesFile);if(loaded.problem)throw Error('The saved source list could not be read.');return loaded.sources;}
 // Imported character cards (PNG/JSON). Card text is data; nothing in a card is run.
 const characterLibrary = new CharacterLibrary({root:path.join(root,'characters')});
@@ -371,7 +387,7 @@ function initializeQQStopTrace(){
   if(process.env.AGENT_ARCADE_QQ_STOP_TRACE!=='1')return;
   try{qqStopTrace=createQQStopTrace({directory:path.resolve(root,'diagnostics'),filename:`qq-stop-trace-${process.pid}-${Date.now()}.jsonl`});}catch{/* Diagnostics must not prevent ordinary app operation. */}
 }
-function snapshot() { const tasks=store().snapshot(),botState=bot?.snapshot();let persona=personaForBackend(({native:'claude-native',claude:'claude-native',api:'claude-api',codex:'codex',deepseek:'deepseek',gpt:'gpt',gemini:'gemini',doubao:'doubao'})[bot?.config.mode]||'claude-api',config.character);if(botState?.social?.config.enabled&&botState.social.supported){const settings=botState.social.config;persona=publicCatalog().find(p=>p.id===settings.characterId)||persona;persona.name={zh:settings.name,en:settings.name};}return { tasks:!demo&&workbench?workbench.reconcile(tasks):tasks, demo, config, appearance:appearanceSnapshot(config.appearance,nativeTheme?.shouldUseDarkColors), installed: integration.installed(settingsFile), lastEventAt: live.lastEventAt, problem, bot:botState,persona,personas:publicCatalog(),work:workbench?.snapshot(), theme: themes.get(config.theme) || themes.get('workshop'), themes: [...themes].map(([id,t])=>({id,name:t.name})) }; }
+function snapshot() { const tasks=store().snapshot(),botState=bot?.snapshot();let persona=personaForBackend(({native:'claude-native',claude:'claude-native',api:'claude-api',codex:'codex',deepseek:'deepseek',gpt:'gpt',gemini:'gemini',doubao:'doubao'})[bot?.config.mode]||'claude-api',config.character);if(botState?.social?.config.enabled&&botState.social.supported){const settings=botState.social.config;persona=publicCatalog().find(p=>p.id===settings.characterId)||persona;persona.name={zh:settings.name,en:settings.name};}return { tasks:!demo&&workbench?workbench.reconcile(tasks):tasks, demo, config,desktopPets:pets?.snapshot(true), appearance:appearanceSnapshot(config.appearance,nativeTheme?.shouldUseDarkColors), installed: integration.installed(settingsFile), lastEventAt: live.lastEventAt, problem, bot:botState,persona,personas:publicCatalog(),work:workbench?.snapshot(), theme: themes.get(config.theme) || themes.get('workshop'), themes: [...themes].map(([id,t])=>({id,name:t.name})) }; }
 function voiceSnapshot(){
   if(voice&&voiceAccount===accounts?.selectedId)return {...voice.snapshot(),...voiceSourceFields(voice.source),accountId:voiceAccount,panelId:voicePanel,diagnosticsAvailable:true};
   const last=voiceReceipts.get(accounts?.selectedId);
@@ -1138,35 +1154,111 @@ function registerRemoteHandlers(){
     register('qqSupervisor'+suffix,value=>supervisorResult(value,method,()=>supervisorPanel[method](value)));
   }
 }
+const macQQSetupError=code=>Object.assign(Error('Mac QQ preparation is unavailable.'),{code});
+function macQQScope({disconnected=false}={}){
+  if(hostGate?.platform!=='darwin'||process.arch!=='arm64')throw macQQSetupError('unsupported_platform');
+  if(quitting||!win?.isVisible()||win.isMinimized()||!accounts?.selectedId||!bot||
+     (disconnected&&bot.status!=='disconnected')||bot.config.channel!=='qq'||accounts.get(accounts.selectedId)!==bot)throw macQQSetupError('changed');
+  return {profileId:accounts.selectedId,service:bot,generation:bot.generation,mode:bot.config.mode};
+}
+const macQQSetup=createMacQQSetup({
+  getScope:()=>macQQScope({disconnected:true}),
+  getLaunchScope:macQQScope,
+  getConfiguredPorts:profileId=>accounts.configuredQQPorts(profileId),
+  openDialog:kind=>dialog.showOpenDialog(win,kind==='node'?{
+    title:config.language==='zh'?'选择已签名的 Node 24+':'Choose a signed Node 24+ binary',properties:['openFile'],
+  }:{
+    title:kind==='prepared'?(config.language==='zh'?'选择此搭档原有的 LLBot 准备目录':'Choose this companion’s prepared LLBot folder'):
+      (config.language==='zh'?'选择解包后的 LLBot 目录':'Choose the extracted LLBot folder'),properties:['openDirectory'],
+  }),
+  saveDialog:()=>dialog.showSaveDialog(win,{
+    title:config.language==='zh'?'选择新的 QQ 桥接配置目录':'Choose a new QQ bridge configuration folder',
+    buttonLabel:config.language==='zh'?'创建准备目录':'Create preparation folder',
+    defaultPath:'Agent Arcade QQ Bridge',
+  }),
+  openRelease:url=>shell.openExternal(url),
+  reveal:file=>shell.showItemInFolder(file),
+  copy:command=>clipboard.writeText(command),
+});
 function imageError(code){return Object.assign(Error('QQ image operation did not complete.'),{code});}
+const QQ_IMAGE_SCOPE=['service','generation','scopeId','client','socket','clientGeneration','qqAccountId','ownerId',
+  'role','roleId','route','groupRevision'];
+const qqImageTarget=({groupId})=>groupId===undefined?{}:{groupId};
+const qqImageEnvelope=panel=>({accountId:panel.accountId,panelId:panel.panelId,...qqImageTarget(panel)});
+const ownsImagePanel=(value,panel=imagePanel)=>panel?.accountId===value.accountId&&panel.panelId===value.panelId&&panel.groupId===value.groupId;
 function imageRequest(value,withTicket=false){
-  const allowed=withTicket?['accountId','panelId','ticketId']:['accountId','panelId'];
-  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==allowed.length||Object.keys(value).some(key=>!allowed.includes(key))||typeof value.accountId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.accountId)||typeof value.panelId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.panelId)||(withTicket&&(typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId))))throw imageError('invalid_request');
-  return value;
+  const allowed=['accountId','panelId','groupId',...(withTicket?['ticketId']:[])];
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!allowed.includes(key))||
+     !Object.hasOwn(value,'accountId')||!Object.hasOwn(value,'panelId')||
+     typeof value.accountId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.accountId)||
+     typeof value.panelId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.panelId)||
+     (Object.hasOwn(value,'groupId')&&(typeof value.groupId!=='string'||!/^[1-9]\d{4,14}$/.test(value.groupId)))||
+     (withTicket&&(!Object.hasOwn(value,'ticketId')||typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId)))){
+    throw imageError('invalid_request');
+  }
 }
 function captureImage(value){
-  if(accounts?.selectedId!==value.accountId||!win?.isVisible()||win.isMinimized())throw imageError('changed');
-  const service=accounts.get(value.accountId);if(service!==bot||typeof service.imageBinding!=='function')throw imageError('disconnected');
-  const binding=service.imageBinding();if(binding.status!=='connected'||binding.channel!=='qq')throw imageError('disconnected');
-  return {accountId:value.accountId,panelId:value.panelId,service,generation:binding.generation,scopeId:binding.scopeId,client:binding.client,qqAccountId:binding.accountId,ownerId:binding.ownerId};
+  if(quitting||accounts?.selectedId!==value.accountId||!win?.isVisible()||win.isMinimized())throw imageError('changed');
+  if(hostGate.platform==='darwin'&&value.groupId===undefined)throw imageError('group_unavailable');
+  const service=accounts.get(value.accountId);
+  if(service!==bot||typeof service.imageTargetBinding!=='function')throw imageError('disconnected');
+  const binding=service.imageTargetBinding(value.groupId);
+  if(binding.status!=='connected'||binding.channel!=='qq'||binding.groupId!==value.groupId)throw imageError('disconnected');
+  return {...qqImageEnvelope(value),service,generation:binding.generation,scopeId:binding.scopeId,
+    client:binding.client,socket:binding.client?.socket,clientGeneration:binding.client?.generation,
+    qqAccountId:binding.accountId,ownerId:binding.ownerId,role:binding.role,roleId:binding.roleId,
+    route:binding.route,groupRevision:binding.groupRevision};
 }
 function assertImage(panel){
   if(imagePanel!==panel||panel.controller.signal.aborted)throw imageError('changed');
   const current=captureImage(panel);
-  if(['service','generation','scopeId','client','qqAccountId','ownerId'].some(key=>current[key]!==panel[key]))throw imageError('changed');
+  if(QQ_IMAGE_SCOPE.some(key=>current[key]!==panel[key]))throw imageError('changed');
 }
 async function closeImages(){
   const previous=imagePanel;imagePanel=null;if(!previous)return {closed:true};
   previous.controller.abort();try{await previous.service.resetImages();}finally{publish();}return {closed:true};
 }
 async function closeOwnedImage(value){
-  imageRequest(value);if(!imagePanel||value.accountId!==imagePanel.accountId||value.panelId!==imagePanel.panelId)return {closed:true};
+  imageRequest(value);
+  if(!ownsImagePanel(value))return {closed:true};
   return closeImages();
 }
 function observeImageBinding(){if(imagePanel){try{assertImage(imagePanel);}catch{void closeImages().catch(()=>{});}}}
 function publicImageDraft(value,panel){
-  if(!value||typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId)||value.kind!=='image'||!Number.isSafeInteger(value.width)||value.width<1||value.width>2048||!Number.isSafeInteger(value.height)||value.height<1||value.height>2048||!Number.isSafeInteger(value.bytes)||value.bytes<1||value.bytes>4*1024*1024||!Number.isSafeInteger(value.expiresAt)||typeof value.preview!=='string'||value.preview.length>710000||!/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(value.preview)||value.recipient?.accountId!==panel.qqAccountId||value.recipient?.ownerId!==panel.ownerId||typeof value.recipient?.role!=='string'||value.recipient.role.length>64)throw imageError('invalid_response');
-  return {ticketId:value.ticketId,kind:'image',width:value.width,height:value.height,bytes:value.bytes,expiresAt:value.expiresAt,preview:value.preview,recipient:{accountId:value.recipient.accountId,ownerId:value.recipient.ownerId,role:value.recipient.role}};
+  const recipient=value?.recipient;
+  if(!value||typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId)||value.kind!=='image'||
+     !Number.isSafeInteger(value.width)||value.width<1||value.width>2048||
+     !Number.isSafeInteger(value.height)||value.height<1||value.height>2048||
+     !Number.isSafeInteger(value.bytes)||value.bytes<1||value.bytes>4*1024*1024||
+     !Number.isSafeInteger(value.expiresAt)||typeof value.preview!=='string'||value.preview.length>710000||
+     !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(value.preview)||
+     recipient?.accountId!==panel.qqAccountId||typeof recipient?.role!=='string'||recipient.role.length>64){
+    throw imageError('invalid_response');
+  }
+  const target={accountId:recipient.accountId,role:recipient.role};
+  if(panel.groupId===undefined){
+    if(recipient.ownerId!==panel.ownerId||recipient.groupId!==undefined)throw imageError('invalid_response');
+    target.ownerId=panel.ownerId;
+  }else{
+    if(recipient.groupId!==panel.groupId||recipient.roleId!==panel.roleId||recipient.role!==panel.role||
+       recipient.ownerId!==undefined)throw imageError('invalid_response');
+    Object.assign(target,{groupId:panel.groupId,roleId:panel.roleId,...(panel.groupName?{groupName:panel.groupName}:{})});
+  }
+  return {ticketId:value.ticketId,kind:'image',width:value.width,height:value.height,bytes:value.bytes,
+    expiresAt:value.expiresAt,preview:value.preview,recipient:target};
+}
+async function verifyQQImageGroup(panel){
+  if(panel.groupId===undefined)return;
+  if(typeof panel.client?.verifyGroupImageTarget!=='function')throw imageError('group_unavailable');
+  const result=await panel.client.verifyGroupImageTarget(panel.groupId,panel.controller.signal,{
+    assertCurrent:()=>assertImage(panel),
+  });
+  assertImage(panel);
+  if(result?.accountId!==panel.qqAccountId||result.groupId!==panel.groupId||result.revision!==panel.groupRevision){
+    throw imageError('group_unavailable');
+  }
+  if(typeof result.groupName==='string'&&result.groupName&&result.groupName.length<=80&&
+     !/[\p{Cc}\p{Cf}]/u.test(result.groupName))panel.groupName=result.groupName;
 }
 async function pickQQImage(value){
   imageRequest(value);if(pluginPackagePickerBusy||avatarPickerBusy||imagePickerBusy||voiceFilePickerBusy)throw imageError('operation_in_progress');
@@ -1174,85 +1266,154 @@ async function pickQQImage(value){
   let panel;
   try{
     await Promise.all([closeImages(),closeQQVoices()]);const current=captureImage(value);
-    if(['service','generation','scopeId','client','qqAccountId','ownerId'].some(key=>current[key]!==captured[key]))throw imageError('changed');
+    if(QQ_IMAGE_SCOPE.some(key=>current[key]!==captured[key]))throw imageError('changed');
     panel={...captured,controller:new AbortController()};imagePanel=panel;
-    const picked=await dialog.showOpenDialog(win,{title:config.language==='zh'?'选择要发给主人 QQ 的图片':'Choose an image to send to the owner on QQ',properties:['openFile'],filters:[{name:'PNG / JPEG',extensions:['png','jpg','jpeg']}]});
-    assertImage(panel);if(picked.canceled)return {cancelled:true};
+    await verifyQQImageGroup(panel);
+    assertImage(panel);
+    const title=panel.groupId===undefined?
+      (config.language==='zh'?'选择要发给主人 QQ 的图片':'Choose an image to send to the owner on QQ'):
+      (config.language==='zh'?`选择要发到 QQ 群 ${panel.groupId} 的图片`:`Choose an image for QQ group ${panel.groupId}`);
+    const picked=await dialog.showOpenDialog(win,{title,properties:['openFile'],filters:[{name:'PNG / JPEG',extensions:['png','jpg','jpeg']}]});
+    assertImage(panel);
+    if(picked.canceled){await closeImages();return {cancelled:true,...qqImageEnvelope(panel)};}
     if(!Array.isArray(picked.filePaths)||picked.filePaths.length!==1||typeof picked.filePaths[0]!=='string')throw imageError('invalid_request');
-    const draft=await panel.service.selectImage(picked.filePaths[0],{signal:panel.controller.signal});assertImage(panel);
-    return {accountId:panel.accountId,panelId:panel.panelId,draft:publicImageDraft(draft,panel)};
+    const draft=await panel.service.selectImage(picked.filePaths[0],{
+      signal:panel.controller.signal,...qqImageTarget(panel),groupName:panel.groupName,
+    });
+    assertImage(panel);
+    return {...qqImageEnvelope(panel),draft:publicImageDraft(draft,panel)};
   }catch(error){if(panel&&imagePanel===panel)await closeImages().catch(()=>{});throw error;}
   finally{imagePickerBusy=false;}
 }
 async function sendQQImage(value){
-  imageRequest(value,true);const panel=imagePanel;if(!panel||value.accountId!==panel.accountId||value.panelId!==panel.panelId)throw imageError('stale_ticket');assertImage(panel);
-  // The ticket is single-use. A late accepted/unknown result belongs to this
-  // captured panel, never to whichever companion is selected afterward.
-  const result=await panel.service.sendImage({ticketId:value.ticketId},{signal:panel.controller.signal});
-  const base={accountId:panel.accountId,panelId:panel.panelId,ticketId:value.ticketId,kind:'image'};
+  imageRequest(value,true);
+  if(!ownsImagePanel(value))throw imageError('stale_ticket');
+  const panel=imagePanel;
+  assertImage(panel);
+  // A late receipt belongs to this captured panel, even if the current role changes.
+  const result=await panel.service.sendImage({ticketId:value.ticketId,...qqImageTarget(panel)},{signal:panel.controller.signal});
+  const base={...qqImageEnvelope(panel),ticketId:value.ticketId,kind:'image'};
   if(result?.ticketId===value.ticketId&&result.outcome==='accepted'&&typeof result.messageId==='string'&&/^-?\d{1,20}$/.test(result.messageId))return {...base,outcome:'accepted',messageId:result.messageId};
   if(result?.ticketId===value.ticketId&&result.outcome==='not_sent'&&typeof result.code==='string'&&/^[a-z_]{1,48}$/.test(result.code))return {...base,outcome:'not_sent',code:result.code};
   return {...base,outcome:'unknown',code:'send_unknown'};
 }
-function discardQQImage(value){imageRequest(value,true);const panel=imagePanel;if(!panel||value.accountId!==panel.accountId||value.panelId!==panel.panelId)throw imageError('stale_ticket');assertImage(panel);return panel.service.discardImage({ticketId:value.ticketId});}
-const QQ_VOICE_CODES=new Set(['invalid_request','invalid_owner','voice_too_large','voice_invalid','voice_format','voice_duration','voice_not_canonical','unsafe_file','file_changed','file_unavailable','media_unavailable','stale_ticket','expired_ticket','changed','disconnected','account_mismatch','account_changed','account_offline','status_unverified','bridge_unhealthy','cancelled','operation_in_progress','closed','send_unknown','voice_failed','invalid_response','voice_render_unavailable','voice_render_busy','voice_render_limit','voice_render_timeout','voice_render_failed','voice_render_exit_unconfirmed']);
+function discardQQImage(value){
+  imageRequest(value,true);
+  if(!ownsImagePanel(value))throw imageError('stale_ticket');
+  const panel=imagePanel;
+  assertImage(panel);
+  return panel.service.discardImage({ticketId:value.ticketId,...qqImageTarget(panel)});
+}
+const QQ_VOICE_CODES=new Set(['invalid_request','invalid_owner','voice_too_large','voice_invalid','voice_format','voice_duration','voice_not_canonical','unsafe_file','file_changed','file_unavailable','media_unavailable','stale_ticket','expired_ticket','changed','disconnected','account_mismatch','account_changed','account_offline','status_unverified','bridge_unhealthy','cancelled','operation_in_progress','closed','send_unknown','voice_failed','invalid_response','group_unavailable','voice_render_unavailable','voice_render_busy','voice_render_limit','voice_render_timeout','voice_render_failed','voice_render_exit_unconfirmed']);
 const qqVoiceError=code=>Object.assign(Error('QQ voice operation did not complete.'),{code:QQ_VOICE_CODES.has(code)?code:'voice_failed'});
 const qqVoiceResult=async operation=>{try{return {ok:true,...await operation()};}catch(error){return {ok:false,code:QQ_VOICE_CODES.has(error?.code)?error.code:'voice_failed'};}};
+const QQ_VOICE_SCOPE=['service','generation','scopeId','client','socket','clientGeneration','qqAccountId','ownerId',
+  'role','roleId','route','groupRevision'];
+const qqVoiceTarget=({groupId})=>groupId===undefined?{}:{groupId};
+const qqVoicePanel=(panel,value)=>panel?.accountId===value.accountId&&panel.panelId===value.panelId&&panel.groupId===value.groupId;
+const qqVoiceEnvelope=panel=>({accountId:panel.accountId,panelId:panel.panelId,...qqVoiceTarget(panel)});
 function qqVoiceRequest(value,withTicket=false){
-  const allowed=withTicket?['accountId','panelId','ticketId']:['accountId','panelId'];
-  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==allowed.length||Object.keys(value).some(key=>!allowed.includes(key))||typeof value.accountId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.accountId)||typeof value.panelId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.panelId)||(withTicket&&(typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId))))throw qqVoiceError('invalid_request');
+  const allowed=['accountId','panelId','groupId',...(withTicket?['ticketId']:[])];
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!allowed.includes(key))||
+     !Object.hasOwn(value,'accountId')||!Object.hasOwn(value,'panelId')||
+     typeof value.accountId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.accountId)||
+     typeof value.panelId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.panelId)||
+     (Object.hasOwn(value,'groupId')&&(typeof value.groupId!=='string'||!/^[1-9]\d{4,14}$/.test(value.groupId)))||
+     (withTicket&&(typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId)))){
+    throw qqVoiceError('invalid_request');
+  }
   return value;
 }
 function captureQQVoice(value){
   if(quitting||accounts?.selectedId!==value.accountId||!win?.isVisible()||win.isMinimized())throw qqVoiceError('changed');
-  const service=accounts.get(value.accountId);if(service!==bot||typeof service.voiceBinding!=='function')throw qqVoiceError('disconnected');
-  const binding=service.voiceBinding();if(binding.status!=='connected'||binding.channel!=='qq')throw qqVoiceError('disconnected');
-  return {accountId:value.accountId,panelId:value.panelId,service,generation:binding.generation,scopeId:binding.scopeId,client:binding.client,socket:binding.client?.socket,clientGeneration:binding.client?.generation,qqAccountId:binding.accountId,ownerId:binding.ownerId,role:binding.role};
+  if(hostGate?.platform==='darwin'&&value.groupId===undefined)throw qqVoiceError('group_unavailable');
+  const service=accounts.get(value.accountId);
+  if(service!==bot||typeof service.voiceBinding!=='function')throw qqVoiceError('disconnected');
+  const binding=service.voiceBinding(value.groupId);
+  if(binding.status!=='connected'||binding.channel!=='qq'||binding.groupId!==value.groupId)throw qqVoiceError('disconnected');
+  return {...qqVoiceEnvelope(value),service,generation:binding.generation,scopeId:binding.scopeId,
+    client:binding.client,socket:binding.client?.socket,clientGeneration:binding.client?.generation,
+    qqAccountId:binding.accountId,ownerId:binding.ownerId,role:binding.role,roleId:binding.roleId,
+    route:binding.route,groupRevision:binding.groupRevision};
 }
 function assertQQVoice(panel){
   if(voiceMediaPanel!==panel||panel.controller.signal.aborted)throw qqVoiceError('changed');
-  const current=captureQQVoice(panel);if(['service','generation','scopeId','client','socket','clientGeneration','qqAccountId','ownerId','role'].some(key=>current[key]!==panel[key]))throw qqVoiceError('changed');
+  const current=captureQQVoice(panel);
+  if(QQ_VOICE_SCOPE.some(key=>current[key]!==panel[key]))throw qqVoiceError('changed');
+}
+async function verifyQQVoiceGroup(panel){
+  if(panel.groupId===undefined)return;
+  assertQQVoice(panel);
+  if(typeof panel.client?.verifyGroupVoiceTarget!=='function')throw qqVoiceError('group_unavailable');
+  const result=await panel.client.verifyGroupVoiceTarget(panel.groupId,panel.controller.signal,{
+    assertCurrent:()=>assertQQVoice(panel),
+  });
+  assertQQVoice(panel);
+  if(result?.accountId!==panel.qqAccountId||result.groupId!==panel.groupId||result.revision!==panel.groupRevision){
+    throw qqVoiceError('group_unavailable');
+  }
+  if(typeof result.groupName==='string'&&result.groupName&&result.groupName.length<=80&&
+     !/[\p{Cc}\p{Cf}]/u.test(result.groupName))panel.groupName=result.groupName;
 }
 async function closeQQVoices(){
   const previous=voiceMediaPanel;voiceMediaPanel=null;const closing=previous||voiceMediaClosingPanel;if(closing)voiceMediaClosingPanel=closing;
   previous?.controller.abort();
   try{await Promise.all([closing?.service.resetVoices(),qqVoiceRenderer.cancel()]);if(voiceMediaClosingPanel===closing)voiceMediaClosingPanel=null;}finally{publish();}return {closed:true};
 }
-async function closeOwnedQQVoice(value){qqVoiceRequest(value);const panel=voiceMediaPanel||(qqVoiceRenderer.busy?voiceMediaClosingPanel:null);if(!panel||value.accountId!==panel.accountId||value.panelId!==panel.panelId)return {closed:true};return closeQQVoices();}
+async function closeOwnedQQVoice(value){qqVoiceRequest(value);const panel=voiceMediaPanel||(qqVoiceRenderer.busy?voiceMediaClosingPanel:null);if(!qqVoicePanel(panel,value))return {closed:true};return closeQQVoices();}
 function observeQQVoiceBinding(){qqVoiceRenderer.observe?.();if(voiceMediaPanel){try{assertQQVoice(voiceMediaPanel);}catch{void closeQQVoices().catch(()=>{});}}}
 function publicQQVoiceDraft(value,panel){
-  if(!value||typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId)||value.kind!=='voice'||![16000,24000,32000,44100,48000].includes(value.sampleRate)||value.channels!==1||value.bits!==16||!Number.isFinite(value.durationSeconds)||value.durationSeconds<0.2||value.durationSeconds>30||!Number.isSafeInteger(value.bytes)||value.bytes<44||value.bytes>4*1024*1024||!Number.isSafeInteger(value.expiresAt)||typeof value.preview!=='string'||value.preview.length>5592500||!/^data:audio\/wav;base64,[A-Za-z0-9+/]+={0,2}$/.test(value.preview)||value.recipient?.accountId!==panel.qqAccountId||value.recipient?.ownerId!==panel.ownerId||typeof value.recipient?.role!=='string'||value.recipient.role.length>64)throw qqVoiceError('invalid_response');
-  return {ticketId:value.ticketId,kind:'voice',sampleRate:value.sampleRate,channels:1,bits:16,durationSeconds:value.durationSeconds,bytes:value.bytes,expiresAt:value.expiresAt,preview:value.preview,recipient:{accountId:value.recipient.accountId,ownerId:value.recipient.ownerId,role:value.recipient.role}};
+  const recipient=value?.recipient;
+  if(!value||typeof value.ticketId!=='string'||!/^[a-f0-9-]{36}$/.test(value.ticketId)||value.kind!=='voice'||
+     ![16000,24000,32000,44100,48000].includes(value.sampleRate)||value.channels!==1||value.bits!==16||
+     !Number.isFinite(value.durationSeconds)||value.durationSeconds<0.2||value.durationSeconds>30||
+     !Number.isSafeInteger(value.bytes)||value.bytes<44||value.bytes>4*1024*1024||!Number.isSafeInteger(value.expiresAt)||
+     typeof value.preview!=='string'||value.preview.length>5592500||!/^data:audio\/wav;base64,[A-Za-z0-9+/]+={0,2}$/.test(value.preview)||
+     recipient?.accountId!==panel.qqAccountId||typeof recipient?.role!=='string'||recipient.role.length>64){
+    throw qqVoiceError('invalid_response');
+  }
+  const base={accountId:recipient.accountId,role:recipient.role};
+  if(panel.groupId===undefined){
+    if(recipient.ownerId!==panel.ownerId||recipient.groupId!==undefined)throw qqVoiceError('invalid_response');
+    base.ownerId=recipient.ownerId;
+  }else{
+    if(recipient.groupId!==panel.groupId||recipient.roleId!==panel.roleId||recipient.role!==panel.role||
+       recipient.ownerId!==undefined)throw qqVoiceError('invalid_response');
+    Object.assign(base,{groupId:panel.groupId,roleId:panel.roleId,...(panel.groupName?{groupName:panel.groupName}:{})});
+  }
+  return {ticketId:value.ticketId,kind:'voice',sampleRate:value.sampleRate,channels:1,bits:16,
+    durationSeconds:value.durationSeconds,bytes:value.bytes,expiresAt:value.expiresAt,preview:value.preview,recipient:base};
 }
 function qqRenderRequest(value){
-  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==3||Object.keys(value).some(key=>!['accountId','panelId','text'].includes(key)))throw qqVoiceError('invalid_request');
-  qqVoiceRequest({accountId:value.accountId,panelId:value.panelId});
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!['accountId','panelId','groupId','text'].includes(key)))throw qqVoiceError('invalid_request');
+  qqVoiceRequest({accountId:value.accountId,panelId:value.panelId,...(Object.hasOwn(value,'groupId')?{groupId:value.groupId}:{})});
   if(typeof value.text!=='string'||!value.text.trim()||value.text.length>240||[...value.text].length>120||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\ud800-\udfff]/u.test(value.text))throw qqVoiceError('voice_render_limit');
 }
 function qqVoiceAvailability(value){
-  qqVoiceRequest(value);captureQQVoice(value);const availability=voiceRenderAvailability({root});
+  qqVoiceRequest(value);captureQQVoice(value);
+  const available=voiceRenderAvailability({root,platform:hostGate?.platform}).available===true;
   let progress={stage:'idle'};const panel=voiceMediaPanel;
-  if(panel?.accountId===value.accountId&&panel.panelId===value.panelId){assertQQVoice(panel);progress=qqVoiceRenderer.progress();}
-  return {accountId:value.accountId,panelId:value.panelId,available:availability.available===true,...(availability.available?{}:{reason:'voice_render_unavailable'}),progress};
+  if(qqVoicePanel(panel,value)){assertQQVoice(panel);progress=qqVoiceRenderer.progress();}
+  return {...qqVoiceEnvelope(value),available,...(available?{}:{reason:'voice_render_unavailable'}),progress};
 }
 async function renderQQVoice(value){
   qqRenderRequest(value);if(pluginPackagePickerBusy||avatarPickerBusy||voiceFilePickerBusy||imagePickerBusy||qqVoiceRenderPending||qqVoiceRenderer.busy)throw qqVoiceError('operation_in_progress');
   const captured=captureQQVoice(value);if(captured.service.voiceSnapshot().busy)throw qqVoiceError('operation_in_progress');
-  if(!voiceRenderAvailability({root}).available)throw qqVoiceError('voice_render_unavailable');
+  if(!voiceRenderAvailability({root,platform:hostGate?.platform}).available)throw qqVoiceError('voice_render_unavailable');
   let panel,bytes;qqVoiceRenderPending=true;
   try{
     // Admit before any asynchronous cleanup so a second same-panel request
     // cannot inherit this controller and cancel the first in its error path.
-    const previous=voiceMediaPanel,reuse=previous&&!previous.controller.signal.aborted&&['accountId','panelId','service','generation','scopeId','client','socket','clientGeneration','qqAccountId','ownerId','role'].every(key=>previous[key]===captured[key]);
+    const previous=voiceMediaPanel,reuse=qqVoicePanel(previous,captured)&&!previous.controller.signal.aborted&&QQ_VOICE_SCOPE.every(key=>previous[key]===captured[key]);
     const closing=reuse?previous.service.resetVoices():closeQQVoices();panel=reuse?previous:{...captured,controller:new AbortController()};voiceMediaPanel=panel;
-    await Promise.all([closing,closeImages(),closeVoice('media-preview')]);assertQQVoice(panel);
+    await Promise.all([closing,closeImages(),closeVoice('media-preview')]);assertQQVoice(panel);await verifyQQVoiceGroup(panel);
     bytes=await qqVoiceRenderer.render(value.text,{signal:panel.controller.signal,scope:captured,assertCurrent:()=>assertQQVoice(panel)});assertQQVoice(panel);
-    const draft=await panel.service.prepareVoice(bytes,{signal:panel.controller.signal});assertQQVoice(panel);
-    return {accountId:panel.accountId,panelId:panel.panelId,draft:publicQQVoiceDraft(draft,panel)};
+    const draft=await panel.service.prepareVoice(bytes,{signal:panel.controller.signal,...qqVoiceTarget(panel)});assertQQVoice(panel);
+    return {...qqVoiceEnvelope(panel),draft:publicQQVoiceDraft(draft,panel)};
   }catch(error){if(voiceMediaPanel===panel){try{await closeQQVoices();}catch(cleanup){throw qqVoiceError(cleanup?.code);}}throw qqVoiceError(error?.code);}
   finally{bytes?.fill(0);qqVoiceRenderPending=false;}
 }
-async function cancelQQVoiceRender(value){qqVoiceRequest(value);const panel=voiceMediaPanel||(qqVoiceRenderer.busy?voiceMediaClosingPanel:null);if(!panel||panel.accountId!==value.accountId||panel.panelId!==value.panelId)return {cancelled:true};await closeQQVoices();return {cancelled:true};}
+async function cancelQQVoiceRender(value){qqVoiceRequest(value);const panel=voiceMediaPanel||(qqVoiceRenderer.busy?voiceMediaClosingPanel:null);if(!qqVoicePanel(panel,value))return {cancelled:true};await closeQQVoices();return {cancelled:true};}
 async function pickQQVoice(value){
   qqVoiceRequest(value);if(pluginPackagePickerBusy||avatarPickerBusy||voiceFilePickerBusy||imagePickerBusy||qqVoiceRenderer.busy)throw qqVoiceError('operation_in_progress');
   const captured=captureQQVoice(value);if(captured.service.voiceSnapshot().busy)throw qqVoiceError('operation_in_progress');voiceFilePickerBusy=true;
@@ -1261,24 +1422,27 @@ async function pickQQVoice(value){
     const closing=closeQQVoices();panel={...captured,controller:new AbortController()};voiceMediaPanel=panel;
     // Own this intent before awaiting old playback/requests, so closing the
     // drawer during cleanup cannot reopen a file picker or publish a late WAV.
-    await Promise.all([closing,closeImages(),closeVoice('media-preview')]);assertQQVoice(panel);
-    const picked=await dialog.showOpenDialog(win,{title:config.language==='zh'?'选择要发给主人 QQ 的语音':'Choose a voice file to send to the owner on QQ',properties:['openFile'],filters:[{name:'Mono PCM16 WAV',extensions:['wav']}]});
+    await Promise.all([closing,closeImages(),closeVoice('media-preview')]);assertQQVoice(panel);await verifyQQVoiceGroup(panel);
+    const title=panel.groupId===undefined
+      ?(config.language==='zh'?'选择要发给主人 QQ 的语音':'Choose a voice file to send to the owner on QQ')
+      :(config.language==='zh'?`选择要发到群 ${panel.groupId} 的语音`:`Choose a voice file for QQ group ${panel.groupId}`);
+    const picked=await dialog.showOpenDialog(win,{title,properties:['openFile'],filters:[{name:'Mono PCM16 WAV',extensions:['wav']}]});
     assertQQVoice(panel);if(picked.canceled){await closeQQVoices();return {cancelled:true};}
     if(!Array.isArray(picked.filePaths)||picked.filePaths.length!==1||typeof picked.filePaths[0]!=='string')throw qqVoiceError('invalid_request');
-    const draft=await panel.service.selectVoice(picked.filePaths[0],{signal:panel.controller.signal});assertQQVoice(panel);
-    return {accountId:panel.accountId,panelId:panel.panelId,draft:publicQQVoiceDraft(draft,panel)};
+    const draft=await panel.service.selectVoice(picked.filePaths[0],{signal:panel.controller.signal,...qqVoiceTarget(panel)});assertQQVoice(panel);
+    return {...qqVoiceEnvelope(panel),draft:publicQQVoiceDraft(draft,panel)};
   }catch(error){if(panel&&voiceMediaPanel===panel)await closeQQVoices().catch(()=>{});throw qqVoiceError(error?.code);}
   finally{voiceFilePickerBusy=false;}
 }
 async function sendQQVoice(value){
-  qqVoiceRequest(value,true);const panel=voiceMediaPanel;if(!panel||value.accountId!==panel.accountId||value.panelId!==panel.panelId)throw qqVoiceError('stale_ticket');assertQQVoice(panel);
-  const result=await panel.service.sendVoice({ticketId:value.ticketId},{signal:panel.controller.signal});
-  const base={accountId:panel.accountId,panelId:panel.panelId,ticketId:value.ticketId,kind:'voice'};
+  qqVoiceRequest(value,true);const panel=voiceMediaPanel;if(!qqVoicePanel(panel,value))throw qqVoiceError('stale_ticket');assertQQVoice(panel);
+  const result=await panel.service.sendVoice({ticketId:value.ticketId},{signal:panel.controller.signal,...qqVoiceTarget(panel)});
+  const base={...qqVoiceEnvelope(panel),ticketId:value.ticketId,kind:'voice'};
   if(result?.ticketId===value.ticketId&&result.kind==='voice'&&result.outcome==='accepted'&&typeof result.messageId==='string'&&/^-?\d{1,20}$/.test(result.messageId))return {...base,outcome:'accepted',messageId:result.messageId};
   if(result?.ticketId===value.ticketId&&result.kind==='voice'&&result.outcome==='not_sent')return {...base,outcome:'not_sent',code:QQ_VOICE_CODES.has(result.code)?result.code:'voice_failed'};
   return {...base,outcome:'unknown',code:'send_unknown'};
 }
-function discardQQVoice(value){qqVoiceRequest(value,true);const panel=voiceMediaPanel;if(!panel||value.accountId!==panel.accountId||value.panelId!==panel.panelId)throw qqVoiceError('stale_ticket');assertQQVoice(panel);const result=panel.service.discardVoice({ticketId:value.ticketId});return {discarded:result?.discarded===true};}
+function discardQQVoice(value){qqVoiceRequest(value,true);const panel=voiceMediaPanel;if(!qqVoicePanel(panel,value))throw qqVoiceError('stale_ticket');assertQQVoice(panel);const result=panel.service.discardVoice({ticketId:value.ticketId},qqVoiceTarget(panel));return {discarded:result?.discarded===true};}
 function voiceBinding(value){
   if(!value||typeof value!=='object'||Array.isArray(value)||typeof value.accountId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.accountId)||typeof value.panelId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(value.panelId))throw Error('Choose the current voice conversation.');
   return value.accountId===voiceAccount&&value.panelId===voicePanel&&matchesVoiceOwner(value,voice?.source||voiceOwnerSource);
@@ -1524,7 +1688,25 @@ function notifyDesktopReply(reply){
     notice.show();
   }catch{closeDesktopReplyNotification();}
 }
-bus.subscribe({source:'app-chat',kind:'chat.reply'},event=>notifyDesktopReply(event.reply));
+bus.subscribe({source:'app-chat',kind:'chat.reply'},event=>{
+  const reply=event.reply;
+  notifyDesktopReply(reply);
+  if(demo||quitting||reply.sourceKind!=='local'||!pets)return;
+  const service=accounts?.services.get(reply.accountId),run=service?.localCompanion?.run;
+  if(run&&!run.stCard&&!run.stGroup&&run.binding.character===reply.character){
+    pets.reply(run.binding.mode,reply.character,reply.accountId);
+  }
+});
+function publishOrdinaryGroupReply({service,mode,character}){
+  if(demo||quitting||!pets||service.status!=='connected'||service.config.channel!=='qq'||service.config.mode!==mode)return;
+  const owner=[...(accounts?.services||[])].find(([,candidate])=>candidate===service);
+  if(owner)bus.publish({source:'qq-group',kind:'chat.reply',accountId:owner[0],mode,character});
+}
+bus.subscribe({source:'qq-group',kind:'chat.reply'},({accountId,mode,character})=>{
+  if(demo||quitting||!pets||config.quiet)return;
+  pets.observe(accounts?.services,accounts?.selectedId);
+  pets.reply(mode,character,accountId,{requireBinding:true});
+});
 const desktopChat=new DesktopChat({getContext:desktopChatContext,chooseImage:chooseDesktopImage,onReply:reply=>{bus.publish({source:'app-chat',kind:'chat.reply',reply});},onChange:()=>publish(),prepare:async(context,signal)=>{
   if(signal.aborted||bot!==context.service||accounts.selectedId!==context.accountId)throw Error('Changed local conversation.');
   // Retire only this account's already-owned speech; never start a speech host.
@@ -1601,6 +1783,8 @@ function publish() {
   if (!win || win.isDestroyed()) return;
   // Still evaluate derived stale status each poll, but do not clone/send the
   // same histories, replies and theme to the renderer every idle second.
+  pets?.sync({enabled:config.desktopPets,language:config.language,quiet:config.quiet});
+  if(!demo)pets?.observe(accounts?.services,accounts?.selectedId);
   const next = fullSnapshot(), fingerprint = JSON.stringify(next);
   if (fingerprint === lastPublishedSnapshot) return;
   win.webContents.send('arcade:snapshot', next);
@@ -1621,13 +1805,24 @@ const qqLaunchConflicts=new Set(['accountSelect','accountCreate','accountImport'
 let hostGate=null;
 // A Windows-only channel answers with one fixed result on other platforms and
 // never reaches its handler; the interface does not offer those features there.
-function unsupportedChannel(channel){return hostGate!==null&&(hostGate.features.managedQQ.available!==true&&/^qq[A-Z]/.test(channel)||hostGate.features.windowsSpeech.available!==true&&/^voice[A-Z]/.test(channel));}
+const macQQMediaChannels=new Set(['qqImagePick','qqImageSend','qqImageDiscard','qqImageClose',
+  'qqVoicePick','qqVoiceAvailability','qqVoiceRender','qqVoiceCancelRender',
+  'qqVoiceSend','qqVoiceDiscard','qqVoiceClose']);
+function unsupportedChannel(channel){
+  if(hostGate===null)return false;
+  if(hostGate.platform==='darwin'&&macQQMediaChannels.has(channel))return false;
+  return hostGate.features.managedQQ.available!==true&&/^qq[A-Z]/.test(channel)||
+    hostGate.features.windowsSpeech.available!==true&&/^voice[A-Z]/.test(channel);
+}
 function register(channel, fn) {
   ipcMain.handle(`arcade:${channel}`, async (event, value) => {
     if (event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || event.senderFrame.url !== indexURL) throw Error('Untrusted sender');
     if(unsupportedChannel(channel))return {ok:false,code:'unsupported_platform'};
     if(['accountSelect','accountCreate','accountImport','accountRemove','accountConnect','accountDisconnect','accountMigrateCredentials','accountRetryCredentials','accountResetCredentials','botConnect','botDisconnect','botConfigure','botForget','socialConfigure','characterApply','voiceStart'].includes(channel))desktopConversations.invalidate();
-    if(['accountSelect','accountCreate','accountImport','accountRemove'].includes(channel))qqConsole?.retireOrphanPreviews?.();
+    if(['accountSelect','accountCreate','accountImport','accountRemove'].includes(channel)){
+      qqConsole?.retireOrphanPreviews?.();
+      if(hostGate?.platform==='darwin'){macQQSetup.invalidate();qqSetupGroupRead?.abort();}
+    }
     if(qqCompanionLaunch?.snapshot()&&(qqLaunchConflicts.has(channel)||channel==='qqComponents'&&!['status','inspect','preparation-list','pending-list','node-repair-status'].includes(value?.action))&&(channel!=='qqRuntimeOrphanCleanup'||qqConsole?.orphanCleanupChangesRuntime?.(value)===true))await qqCompanionLaunch.closeCurrent();
     return fn(value);
   });
@@ -1638,7 +1833,7 @@ function credentialRequest(value,{forget=false}={}) {
   const reject=()=>{throw Object.assign(Error('The selected companion changed. Reopen its connection settings before changing credentials. (credential_scope_changed)'),{code:'credential_scope_changed'});};
   if(!value||Object.prototype.toString.call(value)!=='[object Object]'||quitting)reject();
   const own=key=>Object.hasOwn(value,key),keyChange=own('key');
-  const channelChange=['qqToken','feishuAppSecret','xAccessToken','messengerPageAccessToken','messengerRelayToken'].some(own);
+  const channelChange=['qqToken','qqOfficialSecret','feishuAppSecret','xAccessToken','messengerPageAccessToken','messengerRelayToken'].some(own);
   if(forget&&(Object.keys(value).length!==1||!own('profileId')))reject();
   const scoped=forget||keyChange||channelChange||['profileId','expectedMode','expectedChannel'].some(own);
   const service=bot;
@@ -1654,11 +1849,145 @@ function credentialRequest(value,{forget=false}={}) {
   const {profileId,expectedMode,expectedChannel,...patch}=value;
   return {service,patch};
 }
-function configureBot(value){const {service,patch}=credentialRequest(value);service.configure(patch);return service.snapshot();}
+function configureBot(value){
+  const {service,patch}=credentialRequest(value);
+  if(Object.hasOwn(patch,'qqGroupDirectoryCheck')){
+    const {qqGroupDirectoryCheck:check}=patch;
+    delete patch.qqGroupDirectoryCheck;
+    if(!Object.hasOwn(patch,'qqGroups')||Object.keys(patch).length!==1||!value.profileId||
+      typeof value.expectedMode!=='string'||value.expectedChannel!=='qq')throw qqSetupGroupError('invalid_config');
+    const identity=checkedQQSetupGroupIdentity(service,check?.accountId);
+    if(identity.checkedAt!==check?.checkedAt)throw qqSetupGroupError('changed');
+  }
+  service.configure(patch);
+  return service.snapshot();
+}
 async function forgetBotCredentials(value){const {service}=credentialRequest(value,{forget:true});await service.forget();return service.snapshot();}
 function recoveryRequest(value,allowed){
   if(!value||Object.prototype.toString.call(value)!=='[object Object]'||!['profileId','expectedMode','expectedChannel'].every(key=>Object.hasOwn(value,key)&&typeof value[key]==='string')||Object.keys(value).some(key=>!allowed.includes(key)))throw Object.assign(Error('The selected companion changed. Reopen its connection settings. (credential_scope_changed)'),{code:'credential_scope_changed'});
   return credentialRequest(value);
+}
+let qqSetupGroupRead=null;
+const qqSetupGroupError=code=>Object.assign(Error('The verified QQ group directory is unavailable.'),{code});
+function checkedQQSetupGroupIdentity(service,accountId){
+  const check=service.qqCheck;
+  if(hostGate?.platform!=='darwin'||service.status!=='disconnected'||service.config.channel!=='qq'||
+    typeof accountId!=='string'||!/^[1-9]\d{4,14}$/.test(accountId)||service.config.qqAccountId!==accountId||
+    service.config.qqOwnerId===accountId||check?.state!=='checked'||check.accountId!==accountId||
+    check.online!==true||!Number.isSafeInteger(check.checkedAt))throw qqSetupGroupError('identity_unverified');
+  service.assertCredentialsAvailable();
+  return check;
+}
+async function readQQSetupGroups(value){
+  const {service,patch}=recoveryRequest(value,['profileId','expectedMode','expectedChannel','expectedAccountId','checkedAt']);
+  const {expectedAccountId:accountId,checkedAt}=patch;
+  const check=checkedQQSetupGroupIdentity(service,accountId);
+  if(check.checkedAt!==checkedAt)throw qqSetupGroupError('changed');
+  const url=service.config.qqUrl,token=service.secret.qqToken;
+  qqSetupGroupRead?.abort();
+  const controller=new AbortController();
+  qqSetupGroupRead=controller;
+  try{
+    const result=await new QQDirectoryReader().read({kind:'groups',url,token,expectedAccountId:accountId,signal:controller.signal,fresh:true});
+    if(controller.signal.aborted||credentialRequest(value).service!==service||
+      service.config.qqUrl!==url||service.secret.qqToken!==token||checkedQQSetupGroupIdentity(service,accountId)!==check||
+      result.accountId!==accountId)throw qqSetupGroupError('changed');
+    return {accountId,checkedAt,items:result.items.map(({id,name})=>({id,name}))};
+  }finally{if(qqSetupGroupRead===controller)qqSetupGroupRead=null;}
+}
+function groupRoleRequest(value,save){
+  const fields=['profileId','expectedMode','expectedChannel','expectedAccountId','groupId','cardId'];
+  if(save)fields.push('approval');
+  const {service,patch}=recoveryRequest(value,fields);
+  if(!fields.every(field=>Object.hasOwn(value,field))||typeof patch.expectedAccountId!=='string')throw Error('Invalid group role request.');
+  if(!save)return service.groupRolePreview(patch);
+  service.groupRoleSet(patch);
+  return service.snapshot();
+}
+function groupLorebookRequest(value,save){
+  const fields=['profileId','expectedMode','expectedChannel','expectedAccountId','groupId','bookId'];
+  if(save)fields.push('roleId','approval');
+  const {service,patch}=recoveryRequest(value,save?fields:[...fields,'page']);
+  if(!fields.every(field=>Object.hasOwn(value,field))||typeof patch.expectedAccountId!=='string'){
+    throw Error('Invalid group world book request.');
+  }
+  if(!save)return service.groupLorebookPreview(patch);
+  service.groupLorebookSet(patch);
+  return service.snapshot();
+}
+async function groupKnowledgeRequest(value,feature,actions,method){
+  const fields=['profileId','expectedMode','expectedChannel','expectedAccountId','groupId','roleId','action'];
+  const prefix='group_'+feature+'_';
+  const extra=typeof value?.action==='string'&&Object.hasOwn(actions,value.action)?actions[value.action]:null;
+  if(!extra)return {ok:false,code:prefix+'invalid'};
+  const allowed=[...fields,...extra];
+  const optional=feature==='wiki'&&value.action==='propose'?['quote']:feature==='reflection'&&value.action==='approve'?['text']:
+    feature==='output_format'&&value.action==='configure'?['scriptId','approval']:[];
+  const accepted=[...allowed,...optional];
+  try{
+    const {service,patch}=recoveryRequest(value,accepted);
+    if(value.expectedChannel!=='qq'||!allowed.every(field=>Object.hasOwn(value,field))||
+       typeof patch.expectedAccountId!=='string'||typeof patch.groupId!=='string'||typeof patch.roleId!=='string'){
+      return {ok:false,code:prefix+'invalid'};
+    }
+    const assertCurrent=()=>{
+      if(recoveryRequest(value,accepted).service!==service)throw Object.assign(Error('The companion changed.'),{code:prefix+'changed'});
+    };
+    return {ok:true,...await service[method](patch,assertCurrent)};
+  }catch(error){
+    const code=error?.code;
+    if(typeof code==='string'&&code.startsWith(prefix)&&/^[a-z_]{1,32}$/.test(code.slice(prefix.length)))return {ok:false,code};
+    if(code==='credential_scope_changed')return {ok:false,code:prefix+'changed'};
+    if(feature==='reflection'&&code==='reflection_rule_cap')return {ok:false,code:prefix+'limit'};
+    return {ok:false,code:prefix+'unavailable'};
+  }
+}
+const groupWikiActions=Object.freeze({
+  view:[],configure:['revision','read','propose'],propose:['revision','sourceId','title'],ask:['revision','sourceId'],
+  approve:['revision','id'],reject:['revision','id'],revoke:['revision','id'],
+});
+const groupReflectionActions=Object.freeze({
+  view:[],configure:['revision','scheduled','hour'],run:['revision'],
+  approve:['revision','id'],reject:['revision','id'],rule:['revision','id','enabled'],
+});
+const groupOutputFormatActions=Object.freeze({
+  view:[],preview:['scriptId'],configure:['revision','enabled'],remove:['revision','scriptId'],reorder:['revision','scriptIds'],
+});
+async function groupSpeakerDispatchRequest(value){
+  const actions={view:[],configure:['revision','endpoint','model','keySlot'],probe:['revision'],enable:['revision'],disable:['revision']};
+  const action=value?.action;
+  if(typeof action!=='string'||!Object.hasOwn(actions,action))return {ok:false,code:'group_dispatch_invalid'};
+  const fields=['profileId','expectedMode','expectedChannel','expectedAccountId','groupId','action',...actions[action]];
+  try{
+    const {patch}=recoveryRequest(value,fields);
+    if(value.expectedChannel!=='qq'||!fields.every(field=>Object.hasOwn(value,field))||
+       typeof patch.expectedAccountId!=='string'||typeof patch.groupId!=='string'){
+      return {ok:false,code:'group_dispatch_invalid'};
+    }
+    return {ok:true,...await accounts.groupSpeakerDispatch(value.profileId,patch)};
+  }catch(error){
+    const code=error?.code;
+    if(typeof code==='string'&&/^group_dispatch_[a-z_]{1,27}$/.test(code))return {ok:false,code};
+    return {ok:false,code:code==='credential_scope_changed'?'group_dispatch_changed':'group_dispatch_unavailable'};
+  }
+}
+function groupGenerationRequest(value,save){
+  const fields=['profileId','expectedMode','expectedChannel','expectedAccountId','groupId','roleId'];
+  if(save)fields.push('sampling');
+  const {service,patch}=recoveryRequest(value,fields);
+  if(!fields.every(field=>Object.hasOwn(value,field))||typeof patch.expectedAccountId!=='string'){
+    throw Error('Invalid group generation request.');
+  }
+  if(!save)return service.groupGenerationPreset(patch);
+  service.groupGenerationSet(patch);
+  return service.snapshot();
+}
+function groupSourceRequest(value,setter){
+  const fields=['profileId','expectedMode','expectedChannel','expectedAccountId','groupId','roleId','sourceId','identity','enabled'];
+  const {service,patch}=recoveryRequest(value,fields);
+  if(value.expectedChannel!=='qq'||!fields.every(field=>Object.hasOwn(value,field))||typeof patch.expectedAccountId!=='string')throw Error('Invalid group source request.');
+  service[setter](patch);
+  return service.snapshot();
 }
 async function retryBotCredentials(value){
   const {service}=recoveryRequest(value,['profileId','expectedMode','expectedChannel']),id=value.profileId,mode=service.config.mode,channel=service.config.channel;
@@ -1701,9 +2030,10 @@ else {
     const custom = readJSON(path.join(root, 'theme.json'), null);
     try { if (custom) themes.set('custom', validateTheme(custom)); } catch { problem = 'Saved theme is invalid; using Workshop.'; }
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
-    accounts = new AccountManager({root,vault:safeStorage,onChange:publish,characterLibrary,lorebookLibrary,regexLibrary,groupLibrary,imageFactory:options=>new QQOwnerImage({...options,nativeImage}),voiceFactory:options=>new QQOwnerVoice(options),
+    accounts = new AccountManager({root,vault:safeStorage,onChange:publish,onGroupReply:publishOrdinaryGroupReply,groupFeedSources:sources,characterLibrary,lorebookLibrary,regexLibrary,groupLibrary,groupOnlyImages:hostGate.platform==='darwin',imageFactory:options=>new QQOwnerImage({...options,nativeImage}),voiceFactory:options=>new QQOwnerVoice(options),
       inboundImagePrepare:(bytes,extension)=>require('./bot/qq-media.cjs').canonicalImage(bytes,extension,nativeImage),
-      inboundVoiceAvailability:()=>fileAsrAvailability({root}),inboundVoiceFactory:options=>new OwnerVoicePipeline({...options,...warmFileAsr.pipelineOptions(),reader:new OwnerRecordReader()}),
+      inboundVoiceAvailability:()=>warmFileAsr.availability(),inboundVoiceFactory:options=>new OwnerVoicePipeline({...options,...warmFileAsr.pipelineOptions(),reader:new OwnerRecordReader()}),
+      groupVoiceFactory:options=>new GroupVoicePipeline({...options,...warmFileAsr.pipelineOptions(),reader:new GroupRecordReader()}),
       personaOptions:()=>({enabled:config.personaVoice,selection:config.character}),qrEncoder:text=>QRCode.toDataURL(text,{width:280,margin:3,errorCorrectionLevel:'M'}),nativeFactory:async options=>createNativeLaunch({...options,...await discoverNative(),sourceDir:path.join(__dirname,'bot')}),nativeProcessFactory:options=>new NativeProcess(options)});
     bot=accounts.current();
     initializeQQStopTrace();
@@ -1721,6 +2051,24 @@ else {
     if(hostLifecycle.dockIcon&&app.isPackaged===false)try{app.dock?.setIcon(createBrandIcon(nativeImage,512));}catch{/* Decorative only. */}
     win = new BrowserWindow({ width:1200, height:830, minWidth:900, minHeight:640, backgroundColor:appearanceBackground(appearanceSnapshot(config.appearance,nativeTheme?.shouldUseDarkColors).colorScheme), title:'Agent Arcade', autoHideMenuBar:true, icon,
       webPreferences:{ additionalArguments:[`--arcade-appearance=${config.appearance}`,`--arcade-color-scheme=${appearanceSnapshot(config.appearance,nativeTheme?.shouldUseDarkColors).colorScheme}`,`--arcade-platform=${hostGate.platform}`], preload:path.join(__dirname,'preload.cjs'), contextIsolation:true, nodeIntegration:false, sandbox:true, webSecurity:true } });
+    if(hostGate.platform==='darwin')pets=new PetWindows({
+      electron:require('electron'),onChange:publish,
+      workArea:saved=>{
+        const bounds=saved??(win&&!win.isDestroyed()?win.getBounds():null);
+        return (bounds?screen.getDisplayMatching(bounds):screen.getPrimaryDisplay()).workArea;
+      },
+      onClose:id=>{
+        if(quitting||!config.desktopPets.includes(id))return;
+        const old=config.desktopPets;
+        config.desktopPets=old.filter(value=>value!==id);
+        try{saveConfig();}catch{
+          config.desktopPets=old;
+          pets.failures.add(id);
+          problem=config.language==='zh'?'桌宠关闭状态未能保存。':'The desktop pet preference could not be saved.';
+        }
+        publish();
+      },
+    });
     if(managedQQ)initializeRemoteManagement();
     installApplicationMenu();
     win.webContents.setWindowOpenHandler(() => ({ action:'deny' }));
@@ -1753,9 +2101,9 @@ else {
     for(const event of ['hide','minimize'])win.on(event,()=>void dismissNodeRepair().catch(()=>{}));
     register('snapshot', fullSnapshot);
     registerDesktopChatHandlers();
-    register('accountSelect', async id => {accounts.get(id);qqConsole?.retireOrphanPreviews?.();clearQQDiagnosticCache();const closing=Promise.all([closeVoice('account-switch'),closeImages(),closeQQVoices(),ownerRemarkPanel.closeCurrent(),ownerHistorySession.closeCurrent(),friendRequestsPanel.close(),firstSetupPanel.close(),selfProfilePanel.closeCurrent(),avatarPanel.closeCurrent(),groupProfileSession.closeCurrent(),groupAdminSession.closeCurrent(),contactAdminSession.closeCurrent(),closePluginPanels(),dismissPendingUpdate()]);bot=accounts.select(id);publish();await closing;return fullSnapshot();});
+    register('accountSelect', async id => {accounts.get(id);if(id!==accounts.selectedId){bot?.stopGroupWikiProposal?.();bot?.stopGroupReflection?.(undefined,{manualOnly:true});}qqConsole?.retireOrphanPreviews?.();clearQQDiagnosticCache();const closing=Promise.all([closeVoice('account-switch'),closeImages(),closeQQVoices(),ownerRemarkPanel.closeCurrent(),ownerHistorySession.closeCurrent(),friendRequestsPanel.close(),firstSetupPanel.close(),selfProfilePanel.closeCurrent(),avatarPanel.closeCurrent(),groupProfileSession.closeCurrent(),groupAdminSession.closeCurrent(),contactAdminSession.closeCurrent(),closePluginPanels(),dismissPendingUpdate()]);bot=accounts.select(id);publish();await closing;return fullSnapshot();});
     register('accountRename', value => {accounts.rename(value?.id,value?.name);publish();});
-    register('accountCreate', async name => {qqConsole?.retireOrphanPreviews?.();await Promise.all([closeVoice('account-switch'),closeQQVoices(),ownerRemarkPanel.closeCurrent(),ownerHistorySession.closeCurrent(),friendRequestsPanel.close(),firstSetupPanel.close(),selfProfilePanel.closeCurrent(),avatarPanel.closeCurrent(),groupProfileSession.closeCurrent(),groupAdminSession.closeCurrent(),contactAdminSession.closeCurrent(),closePluginPanels()]);bot=accounts.add({name});publish();return accounts.snapshot();});
+    register('accountCreate', async name => {bot?.stopGroupWikiProposal?.();bot?.stopGroupReflection?.(undefined,{manualOnly:true});qqConsole?.retireOrphanPreviews?.();await Promise.all([closeVoice('account-switch'),closeQQVoices(),ownerRemarkPanel.closeCurrent(),ownerHistorySession.closeCurrent(),friendRequestsPanel.close(),firstSetupPanel.close(),selfProfilePanel.closeCurrent(),avatarPanel.closeCurrent(),groupProfileSession.closeCurrent(),groupAdminSession.closeCurrent(),contactAdminSession.closeCurrent(),closePluginPanels()]);bot=accounts.add({name});publish();return accounts.snapshot();});
     register('accountImport', async () => {
       qqConsole?.retireOrphanPreviews?.();
       const picked=await dialog.showOpenDialog(win,{title:config.language==='zh'?'选择已有角色的数据文件夹（包含 bot-config.json）':'Choose an existing companion data folder',properties:['openDirectory']});
@@ -1906,6 +2254,20 @@ else {
       await shell.openExternal(links[provider]);return {opened:true};
     });
     register('botConfigure', configureBot);
+    register('groupRolePreview',value=>groupRoleRequest(value,false));
+    register('groupRoleSet',value=>groupRoleRequest(value,true));
+    register('groupLorebookPreview',value=>groupLorebookRequest(value,false));
+    register('groupLorebookSet',value=>groupLorebookRequest(value,true));
+    register('groupWiki',value=>groupKnowledgeRequest(value,'wiki',groupWikiActions,'groupWikiRequest'));
+    register('groupReflection',value=>groupKnowledgeRequest(value,'reflection',groupReflectionActions,'groupReflectionRequest'));
+    register('groupOutputFormat',value=>groupKnowledgeRequest(value,'output_format',groupOutputFormatActions,'groupOutputFormatRequest'));
+    register('groupSpeakerDispatch',groupSpeakerDispatchRequest);
+    register('groupGenerationPreset',value=>groupGenerationRequest(value,false));
+    register('groupGenerationSet',value=>groupGenerationRequest(value,true));
+    register('groupFeedSet',value=>groupSourceRequest(value,'groupFeedSet'));
+    register('groupCalendarSet',value=>groupSourceRequest(value,'groupCalendarSet'));
+    register('groupFolderSet',value=>groupSourceRequest(value,'groupFolderSet'));
+    register('groupPageSet',value=>groupSourceRequest(value,'groupPageSet'));
     register('socialConfigure', value => bot.socialConfigure(value));
     register('socialPause', () => bot.socialPause());
     register('socialConsider', () => bot.socialConsider());
@@ -1937,9 +2299,28 @@ else {
       atomicJSON(picked.filePath,{...evidence,recordingRetained:false,microphoneAcceptance:'requires human speech and playback observation'});return {saved:true};
     });
     register('botQQPrepare', () => bot.prepareQQ());
-    register('botQQCopyConfig', async () => {await clipboard.writeText(bot.qqSetupConfig());return {copied:true};});
-    register('botQQCopyToken', async () => {await clipboard.writeText(bot.qqSetupToken());return {copied:true};});
+    register('botQQMacInspect',value=>macQQSetup.inspect(value));
+    register('botQQMacPrepare',value=>macQQSetup.prepare(value));
+    register('botQQMacUsePrepared',value=>hostGate.platform==='darwin'&&process.arch==='arm64'
+      ?macQQSetup.usePrepared(value):{ok:false,code:'unsupported_platform'});
+    for(const [suffix,action] of [['Status','launchStatus'],['Reveal','launchReveal'],['Copy','launchCopy'],['Relink','launchRelink'],['Auth','launchAuth']]){
+      register('botQQMacLaunch'+suffix,value=>hostGate.platform==='darwin'&&process.arch==='arm64'
+        ?macQQSetup[action](value):{ok:false,code:'unsupported_platform'});
+    }
+    register('botQQMacOpenRelease',()=>{
+      if(hostGate.platform!=='darwin')return {ok:false,code:'unsupported_platform'};
+      return qqResult(()=>macQQSetup.guide());
+    });
+    register('botQQCopyConfig', async () => {
+      if(hostGate.platform==='darwin')throw macQQSetupError('unsupported_platform');
+      await clipboard.writeText(bot.qqSetupConfig());return {copied:true};
+    });
+    register('botQQCopyToken', async () => {
+      if(hostGate.platform==='darwin')throw macQQSetupError('unsupported_platform');
+      await clipboard.writeText(bot.qqSetupToken());return {copied:true};
+    });
     register('botQQTest', () => bot.testQQ());
+    register('botQQSetupGroups',value=>qqResult(()=>readQQSetupGroups(value)));
     register('botQQOpenGuide', async kind => {await shell.openExternal(qqGuide(kind));});
     register('botProject', async () => {
       const picked=await dialog.showOpenDialog(win,{properties:['openDirectory']});
@@ -1980,6 +2361,13 @@ else {
     register('demo', value => { demo = value === true; if (demo) sample = demoStore(); publish(); return snapshot(); });
     register('acknowledge', id => { if (typeof id === 'string') store().acknowledge(id); if (!demo) atomicJSON(path.join(root,'state.json'),live.export()); publish(); });
     register('clear', () => { store().clearFinished(); if (!demo) atomicJSON(path.join(root,'state.json'),live.export()); publish(); });
+    register('desktopPetSet',value=>{
+      if(!pets||quitting)throw Error('Desktop pets are unavailable.');
+      const {id,enabled}=validatePetToggle(value),old=config.desktopPets;
+      config.desktopPets=enabled?enabledPets([...old,id]):old.filter(item=>item!==id);
+      try{saveConfig();}catch(error){config.desktopPets=old;throw error;}
+      publish();return snapshot();
+    });
     register('config', patch => {
       if (!patch || typeof patch !== 'object') throw Error('Invalid settings');
       if((Object.hasOwn(patch,'character')||Object.hasOwn(patch,'personaVoice'))&&bot.status!=='disconnected')throw Error('Disconnect before changing the character or conversation style.');
@@ -2039,13 +2427,32 @@ else {
       const n = new Notification({title:`Agent Arcade · ${c.task.project}`,body:labels[c.task.state],silent:true});
       n.on('click',show); n.show();
     });
+    let lastGroupReflectionCheck=0;
     const pollEvents = () => {
       // The macOS menu follows the interface language (no-op elsewhere).
       if(applicationMenuLanguage!==null&&applicationMenuLanguage!==config.language)installApplicationMenu();
       workbench.tick();
       taskBoard?.tick();
       if (!demo) bot?.reflectionTick?.(Date.now());
-      if (!demo) { sources.tick(); bot?.companionNoticeTick?.({sourceEnabled:id=>sources.snapshot().some(source=>source.id===id&&source.enabled&&['companion','both'].includes(source.notify)),onAppMessage:info=>{desktopChat.localNotice(info.service);publish();}}); }
+      if (!demo) {
+        sources.tick();
+        bot?.companionNoticeTick?.({
+          sourceEnabled:id=>sources.snapshot().some(source=>source.id===id&&source.enabled&&['companion','both'].includes(source.notify)),
+          noticeCurrent:row=>row.kind!=='calendar.upcoming'||sources.ownerCalendarCurrent(row.source,row.id),
+          onAppMessage:info=>{desktopChat.localNotice(info.service);publish();},
+        });
+        for(const service of accounts?.services?.values()||[])void service.groupFeedTick?.();
+        const now=Date.now();
+        if(!quitting&&(now<lastGroupReflectionCheck||now-lastGroupReflectionCheck>=60000)){
+          lastGroupReflectionCheck=now;
+          const services=[...(accounts?.services??[])];
+          if(!services.some(([,service])=>service.groupReflectionRun)){
+            for(const [id,service] of services){
+              if(service.groupReflectionTick?.(now,()=>accounts?.services.get(id)===service&&!quitting))break;
+            }
+          }
+        }
+      }
       try {
         const changes = drainInbox(root,live,{captureResults:config.captureResults}); problem = quitProblem;
         for (const change of coalesceChanges(changes)) bus.publish({source:'claude-code',kind:'session.'+change.task.state,change});
@@ -2060,6 +2467,7 @@ else {
 }
 app.on('before-quit', event => {
   closeDesktopReplyNotification();
+  pets?.close();
   clearQQDiagnosticCache();
   quitting = true; quitProblem = ''; clearInterval(timer);sources.close();desktopConversations.close();desktopChat.closeCurrent();
   if(cleanedUp)return;
@@ -2103,6 +2511,7 @@ app.on('before-quit', event => {
     cleanedUp=true;app.quit();
   })().catch(error=>{
     quitting=false;
+    pets?.reopen();
     problem=error?.code==='qq_launch_cleanup_unconfirmed'
       ?(config.language==='zh'?'QQ 启动操作尚未结束。请再次选择“退出”重试。':'The QQ startup operation has not settled. Choose Quit again to retry.')
       :error?.code==='local_cleanup_unconfirmed'

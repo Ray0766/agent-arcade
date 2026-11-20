@@ -71,8 +71,8 @@ function optionsFor({workspace,key,configDir,budget=1,resume,signal,request,onUp
     },
   };
 }
-function createRunner({workspace,key,configDir,budget=1,queryImpl,persona={enabled:true,selection:'default'},conversationOnly=false,agentSdk=queryImpl?true:agentSdkInstalled(),clientFactory}) {
-  if (!agentSdk && conversationOnly) return createClaudeDirectRunner({key,clientFactory});
+function createRunner({workspace,key,configDir,budget=1,queryImpl,persona={enabled:true,selection:'default'},conversationOnly=false,agentSdk=queryImpl?true:agentSdkInstalled(),clientFactory,maxRetries}) {
+  if (!agentSdk && conversationOnly) return createClaudeDirectRunner({key,clientFactory,maxRetries});
   if (!agentSdk) return async ({resume}) => ({sessionId:resume||'',outcome:'error',text:SDK_MISSING});
   return async ({prompt,image,resume,signal,request,onUpdate}) => {
     let imageBytes;try{if(image!==undefined&&(typeof prompt!=='string'||!prompt.trim()||prompt.length>6000))throw Error();imageBytes=imageInput.validate(image,{conversationOnly,resume});}catch{return {sessionId:'',outcome:'error',text:'This image is not supported in the current conversation.'};}

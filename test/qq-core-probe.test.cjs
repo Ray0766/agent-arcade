@@ -6,6 +6,7 @@ const os=require('node:os');
 const path=require('node:path');
 const {spawn}=require('node:child_process');
 const {PassThrough}=require('node:stream');
+const {finished}=require('node:stream/promises');
 const asar=require('@electron/asar');
 const {probeInstallation,inspectPe}=require('../scripts/qq-install-probe.cjs');
 const {PROTOCOL,BASELINE,createProbeSession,evaluateFingerprint,serve}=require('../scripts/qq-core-probe-host.cjs');
@@ -21,7 +22,7 @@ async function fixture(t){
   const root=temp(t),app=path.join(root,'versions',BASELINE.version,'resources','app'),content=path.join(root,'archive-fixture');fs.mkdirSync(app,{recursive:true});fs.mkdirSync(path.join(content,'app_launcher'),{recursive:true});
   const marker=path.join(root,'MUST_NOT_EXIST');
   fs.writeFileSync(path.join(content,'app_launcher','index.js'),`require('node:fs').writeFileSync(${JSON.stringify(marker)},'executed');`);
-  await asar.createPackage(content,path.join(app,'application.asar'));
+  await finished(await asar.createPackage(content,path.join(app,'application.asar')));
   fs.writeFileSync(path.join(app,'package.json'),JSON.stringify({name:'qq-chat',version:BASELINE.version,main:'./application.asar/app_launcher/index.js'}));
   fs.writeFileSync(path.join(root,'QQ.exe'),pe());fs.writeFileSync(path.join(app,'wrapper.node'),pe());return {root,app,marker};
 }

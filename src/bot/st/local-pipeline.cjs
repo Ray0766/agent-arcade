@@ -215,10 +215,8 @@ function composeLocalPrompt({card, settings, history, facts = [], incoming = nul
   prompt += tail;
   if (prompt.length > generation.CHAT_PROMPT_CHARS) throw Object.assign(Error('Companion context is too large.'), {code: 'prompt_too_large'});
 
-  const merged = {};
-  for (const source of [settings.preset?.sampling, settings.sampling]) for (const [key, value] of Object.entries(source || {})) if (value !== null && value !== undefined) merged[key] = value;
   return {
-    prompt, sampling: generation.sampling(merged), state: nextState,
+    prompt, sampling: generation.presetSampling(settings), state: nextState,
     warnings: warnings.slice(0, 10).map(message => message.slice(0, 200)),
     used: {...built.used, prompt: prompt.length, contextChars: limit, droppedHistory: built.dropped.historyMessages, droppedExamples: built.dropped.examples},
     activated: (worldInfo?.activated || []).slice(0, 20).map(entry => ({id: entry.id, comment: oneLine(entry.comment, 80)})),

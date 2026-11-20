@@ -16,10 +16,15 @@ function artifactType(file){if(/\.zip$/i.test(file))return 'zip';if(/\.dmg$/i.te
 function parseArgs(argv){
  const options={artifacts:[]};
  for(let i=0;i<argv.length;i++){
-  const key=argv[i];if(!['--artifact','--output','--modules','--seed-app'].includes(key)||!argv[i+1]||argv[i+1].startsWith('--'))throw Error('Usage: node scripts/integrated-mac-package-smoke.cjs --artifact FINAL.zip [--artifact FINAL.dmg] [--seed-app OLD.app] [--modules NODE_MODULES] [--output DIRECTORY]');
+  const key=argv[i];if(key==='--group-roles-only'){options.groupRolesOnly=true;continue;}
+  if(key==='--group-images-only'){options.groupImagesOnly=true;continue;}
+  if(key==='--group-voice-only'){options.groupVoiceOnly=true;continue;}
+  if(key==='--group-worldbooks-only'){options.groupWorldbooksOnly=true;continue;}
+  if(!['--artifact','--output','--modules','--seed-app'].includes(key)||!argv[i+1]||argv[i+1].startsWith('--'))throw Error('Usage: node scripts/integrated-mac-package-smoke.cjs --artifact FINAL.zip [--artifact FINAL.dmg] [--seed-app OLD.app] [--modules NODE_MODULES] [--output DIRECTORY] [--group-roles-only | --group-images-only | --group-voice-only | --group-worldbooks-only]');
   const value=path.resolve(argv[++i]);if(key==='--artifact'){artifactType(value);options.artifacts.push(value);}else options[key.slice(2).replace(/-([a-z])/g,(_match,letter)=>letter.toUpperCase())]=value;
  }
  if(options.artifacts.length<1||options.artifacts.length>2||new Set(options.artifacts).size!==options.artifacts.length)throw Error('Provide one or two distinct final archives.');
+ if([options.groupRolesOnly,options.groupImagesOnly,options.groupVoiceOnly,options.groupWorldbooksOnly].filter(Boolean).length>1)throw Error('Choose one group-only fixture.');
  return options;
 }
 function findApp(root,depth=0){
@@ -67,7 +72,7 @@ function restoreSyntheticBackup({temporaryRoot,dataRoot,backupFolder,manifest}){
 }
 // Test-only envelope: accepts no credential except this harness's literal fake
 // key. Determinism is intentional for fixtures and is not a security design.
-function createSyntheticVault(namespace,crypto,Bytes){
+function createSyntheticVault(namespace,crypto,Bytes,groupVoiceOnly=false){
  if(!/^[a-z0-9-]{1,64}$/.test(namespace))throw Error('Invalid synthetic vault namespace.');
  const stats={availability:0,encrypt:0,decrypt:0,rejected:0};
  const magic=Bytes.from('AA-SYNTHETIC-NO-OS-1\0'),key=crypto.createHash('sha256').update('fixture-only:'+namespace).digest();
@@ -75,7 +80,8 @@ function createSyntheticVault(namespace,crypto,Bytes){
  function canonical(text){
   if(typeof text!=='string'||text.length>4096)return invalid();let value;try{value=JSON.parse(text);}catch{return invalid();}
   if(!value||typeof value!=='object'||Array.isArray(value))return invalid();
-  const keys=Object.keys(value);if(keys.some(name=>name!=='deepseekKey')||keys.length>1||keys.length===1&&value.deepseekKey!=='fixture-integrated-mac-api-key')return invalid();
+  const expected={deepseekKey:'fixture-integrated-mac-api-key',...(groupVoiceOnly?{qqToken:'fixture-group-voice-loopback-token'}:{})};
+  if(Object.keys(value).some(name=>!Object.hasOwn(expected,name)||value[name]!==expected[name]))return invalid();
   return JSON.stringify(value);
  }
  function encryptString(text){
@@ -99,7 +105,7 @@ function createSyntheticVault(namespace,crypto,Bytes){
 }
 // Executed only on the paused production bootstrap call frame. Do not require
 // main or bootstrap here: the packaged entry must continue through both itself.
-function fixturePrelude(config,createVault){
+function fixturePrelude(config,createVault,installGroupVoice){
  // This runs on the first arbitrary JS pause, which can precede bootstrap's
  // CommonJS wrapper. Do not depend on a frame-local require or Electron being
  // initialized yet. Failure leaves the child paused; the host kills it first.
@@ -109,13 +115,40 @@ function fixturePrelude(config,createVault){
  if(process.platform!=='darwin'||!process.env.AGENT_ARCADE_HOME?.startsWith(config.root+'/'))throw Error('Unsafe fixture process.');
  const src=path.join(process.resourcesPath,'app.asar','src');
  const probe=globalThis.__integratedMacSmoke={earlyInstalled:false,identityCalls:0,requests:0,blockedNetwork:0,blockedChildren:0,guard:null,app:null};
- const {vault,stats}=createVault(config.namespace,crypto,Bytes),electronProxies=new WeakMap(),load=modules._load;
+ const {vault,stats}=createVault(config.namespace,crypto,Bytes,config.groupVoiceOnly===true),electronProxies=new WeakMap(),load=modules._load;
  probe.syntheticVaultStats=stats;probe.syntheticStorageReads=0;
+ // Only an explicitly labelled, keyless verification artifact may use these
+ // inspector shims. Production/fixed-helper builds retain their startup policy
+ // and must not be turned into programmable credential clients by this test.
+ if(config.verificationOnly===true){
+  const metadata=require(process.resourcesPath+'/app.asar/package.json');
+  if(metadata.verificationOnly!==true||metadata.macCredentialBroker)throw Error('Not a keyless verification artifact.');
+  const startup=require(path.join(src,'core/credential-startup-policy.cjs'));
+  if(startup.credentialStartupAllowed(process.argv)!==false)throw Error('Expected debug-only fixture arguments.');
+  startup.credentialStartupAllowed=argv=>argv===process.argv;
+  const policy=require(path.join(src,'core/application-credential-vault.cjs'));
+  policy.applicationCredentialVault=()=>vault;
+  probe.verificationPoliciesInjected=true;
+ }
+ const groupVoice=config.groupVoiceOnly===true?installGroupVoice(config,require,probe):null;
  // Install before any production safeStorage consumer can load. Do not read
  // the native property even once: Electron exposes it as a lazy getter.
  modules._load=function(request,parent,isMain){
+  if(groupVoice&&request==='ws'){
+   if(parent?.filename!==path.join(src,'bot/qq.cjs'))throw Error('Non-QQ WebSocket is disabled in the synthetic voice fixture.');
+   return groupVoice.Socket;
+  }
   const exported=Reflect.apply(load,this,[request,parent,isMain]);if(request!=='electron')return exported;
-  let proxy=electronProxies.get(exported);if(!proxy){proxy=new Proxy(exported,{get(target,property){if(property==='safeStorage'){probe.syntheticStorageReads++;return vault;}return Reflect.get(target,property,target);}});electronProxies.set(exported,proxy);}return proxy;
+  let proxy=electronProxies.get(exported);
+  if(!proxy){
+   proxy=new Proxy(exported,{get(target,property){
+    if(property==='safeStorage'){probe.syntheticStorageReads++;return vault;}
+    const result=Reflect.get(target,property,target);
+    return groupVoice&&property==='dialog'?groupVoice.dialog(result):result;
+   }});
+   electronProxies.set(exported,proxy);
+  }
+  return proxy;
  };
  const identity=require(path.join(src,'core/app-identity.cjs')),configure=identity.configureAppIdentity;
  const single=require(path.join(src,'core/single-instance.cjs')),acquire=single.acquireSingleInstance;
@@ -153,7 +186,58 @@ function fixturePrelude(config,createVault){
  probe.earlyInstalled=true;
  return {installed:true,earlyIsolation:true,fixtureHash:crypto.createHash('sha256').update(config.namespace).digest('hex')};
 }
-function preludeExpression(config){return `(${fixturePrelude.toString()})(${JSON.stringify({...config,vaultMode:'synthetic-no-os'})},(${createSyntheticVault.toString()}))`;}
+function installGroupVoiceFixture(config,require,probe){
+ if(config.verificationOnly!==true)throw Error('Group voice isolation requires a keyless verification artifact.');
+ const fs=require('node:fs'),path=require('node:path'),{EventEmitter}=require('node:events'),{createHash}=require('node:crypto');
+ const file=path.join(config.root,'synthetic-group-recording.wav'),stat=fs.lstatSync(file);
+ if(stat.size!==8044||!stat.isFile()||fs.realpathSync(file)!==file)throw Error('Invalid owned WAV fixture.');
+ const bytes=fs.readFileSync(file),digest=buffer=>createHash('sha256').update(buffer).digest('hex');
+ const evidence=probe.groupVoice={admissions:0,memberChecks:[],nameChecks:[],sends:[],pickers:0,unexpected:0};
+ const refuse=()=>{evidence.unexpected++;throw Error('The synthetic voice bridge refused an unexpected action.');};
+ const groups=[500001,500002],account=600001,owner=600002;
+ const frame=(socket,echo,data)=>socket.emit('message',JSON.stringify({status:'ok',retcode:0,echo,data}),false);
+ class Socket extends EventEmitter{
+  constructor(url,options){
+   super();this.readyState=0;
+   if(String(url)!=='ws://127.0.0.1:41434/'||options?.headers?.Authorization!=='Bearer fixture-group-voice-loopback-token')refuse();
+   evidence.admissions++;
+   queueMicrotask(()=>{if(this.readyState===0){this.readyState=1;this.emit('open');}});
+  }
+  send(raw,callback){
+   if(typeof raw!=='string'||raw.length>32000||this.readyState!==1)refuse();
+   const row=JSON.parse(raw);let data;
+   if(row.action==='get_login_info')data={user_id:account,nickname:'Synthetic QQ bridge'};
+   else if(row.action==='get_status')data={online:true,good:true};
+   else if(row.action==='get_friend_list')data=[{user_id:owner}];
+   else if(row.action==='get_group_member_info'){
+    if(!groups.includes(row.params?.group_id)||row.params?.user_id!==account||row.params?.no_cache!==true)refuse();
+    evidence.memberChecks.push(row.params.group_id);
+    data={group_id:row.params.group_id,user_id:account};
+   }else if(row.action==='get_group_info'){
+    if(!groups.includes(row.params?.group_id)||row.params?.no_cache!==true)refuse();
+    evidence.nameChecks.push(row.params.group_id);
+    data={group_id:row.params.group_id,group_name:row.params.group_id===groups[1]?'合成试用群':'合成备选群'};
+   }else if(row.action==='send_group_msg'){
+    const segment=row.params?.message?.[0];
+    if(row.params?.group_id!==groups[1]||Object.keys(row.params).length!==2||row.params?.message?.length!==1||
+       segment?.type!=='record'||segment?.data?.file!=='base64://'+bytes.toString('base64')||evidence.sends.length)refuse();
+    evidence.sends.push({groupId:row.params.group_id,bytes:bytes.length,sha256:digest(bytes)});
+    data={message_id:8301};
+   }else refuse();
+   callback?.();setImmediate(()=>{if(this.readyState===1)frame(this,row.echo,data);});
+  }
+  ping(){this.emit('pong');}
+  terminate(){if(this.readyState!==3){this.readyState=3;this.emit('close');}}
+ }
+ return {Socket,dialog:actual=>new Proxy(actual,{get(target,property){
+  if(property==='showOpenDialog')return async (_window,options)=>{
+   if(options?.properties?.length!==1||options.properties[0]!=='openFile'||options.filters?.[0]?.extensions?.[0]!=='wav')refuse();
+   evidence.pickers++;return {canceled:false,filePaths:[file]};
+  };
+  return Reflect.get(target,property,target);
+ }})};
+}
+function preludeExpression(config){return `(${fixturePrelude.toString()})(${JSON.stringify({...config,vaultMode:'synthetic-no-os'})},(${createSyntheticVault.toString()}),(${installGroupVoiceFixture.toString()}))`;}
 class Inspector {
  constructor(socket){
   this.socket=socket;this.sequence=0;this.pending=new Map();this.pauses=[];this.scripts=new Map();
@@ -203,7 +287,9 @@ async function providerServer(){
    fixture.calls.push({stream:body.stream===true,keyMatched:request.headers.authorization==='Bearer '+FAKE_KEY,noTools:!body.tools?.length,messages:body.messages});
    if(fixture.mode==='network'){response.destroy();return;}
    if(typeof fixture.mode==='number'){response.writeHead(fixture.mode,{'content-type':'application/json'}).end('{}');return;}
-   const text=`合成服务商回复 ${++fixture.serial}：这是隔离产物测试。`;
+   const serial=++fixture.serial;
+   const gate=body.messages?.at(-1)?.content?.includes('Decide whether this character should answer');
+   const text=gate?'{"action":"message","text":"synthetic group admission"}':`合成服务商回复 ${serial}：这是隔离产物测试。`;
    if(!body.stream){response.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({choices:[{message:{role:'assistant',content:text},finish_reason:'stop'}]}));return;}
    response.writeHead(200,{'content-type':'text/event-stream'});let index=0,ended=false;
    const timer=setInterval(()=>{
@@ -223,7 +309,7 @@ function isolatedEnvironment(root,home,source=process.env){
  Object.assign(env,{AGENT_ARCADE_HOME:home,AGENT_ARCADE_CLAUDE_SETTINGS:path.join(root,'tool-config','claude-settings.json'),LOCALAPPDATA:path.join(root,'local-appdata')});
  return env;
 }
-async function launchBundle({bundle,root,home,profile,identity,provider,chromium,fuses,output,round}){
+async function launchBundle({bundle,root,home,profile,identity,provider,chromium,fuses,output,round,verificationOnly=false,groupVoiceOnly=false}){
  // If Electron ignores --inspect-brk it could hit the owner's global guard.
  // Prove support statically before the process can execute a single App line.
  const wire=await fuses.getCurrentFuseWire(bundle);assert.equal(wire[fuses.FuseV1Options.EnableNodeCliInspectArguments],49,'Inspector CLI fuse must be enabled before launching an isolated test copy.');assert.equal(wire[fuses.FuseV1Options.EnableCookieEncryption],48,'Cookie encryption must be disabled before a no-OS-vault fixture can launch.');
@@ -243,10 +329,11 @@ async function launchBundle({bundle,root,home,profile,identity,provider,chromium
   if(!exited){try{process.kill(-child.pid,'SIGTERM');}catch{}await Promise.race([exit,delay(3000)]);}
   if(!exited){try{process.kill(-child.pid,'SIGKILL');}catch{}await Promise.race([exit,delay(3000)]);}
   if(browser)await browser.close().catch(()=>{});log.end();if(!exited)throw Error('Disposable App process exit was not confirmed.');
+  return exitCode;
  };
  try{
   const endpoint=await until(()=>/Debugger listening on (ws:\/\/127\.0\.0\.1:\d+\/[^\s]+)/.exec(buffer)?.[1]);
-  inspector=await Inspector.connect(endpoint);const breakpoint=await inspector.inject({...identity,root,profile,provider});
+  inspector=await Inspector.connect(endpoint);const breakpoint=await inspector.inject({...identity,root,profile,provider,verificationOnly,groupVoiceOnly});
   const browserEndpoint=await until(()=>/DevTools listening on (ws:\/\/127\.0\.0\.1:\d+\/[^\s]+)/.exec(buffer)?.[1]);
   browser=await chromium.connectOverCDP(browserEndpoint);page=await until(()=>browser.contexts().flatMap(context=>context.pages()).find(candidate=>candidate.url().includes('app.asar')));page.setDefaultTimeout(15000);
   await page.waitForFunction(()=>!!window.arcade?.snapshot);
@@ -293,7 +380,7 @@ async function run(options){
   for(const [index,artifact] of options.artifacts.entries()){
    const extracted=extractApp(artifact,root,index),file=path.join(extracted.bundle,'Contents/Resources/app.asar'),metadata=JSON.parse(asar.extractFile(file,'package.json').toString());
    assert.equal(metadata.main,'src/bootstrap.cjs','Final package must use the production bootstrap.');
-   receipt.artifacts.push({format:extracted.format,artifactSha256:extracted.artifactSha256,asarSha256:sha(file),packageVersion:metadata.version,main:metadata.main,bundle:extracted.bundle});
+   receipt.artifacts.push({format:extracted.format,artifactSha256:extracted.artifactSha256,asarSha256:sha(file),packageVersion:metadata.version,main:metadata.main,verificationOnly:metadata.verificationOnly===true,bundle:extracted.bundle});
   }
   assert(receipt.artifacts.every(row=>row.asarSha256===receipt.artifacts[0].asarSha256),'Final archives must contain the same production ASAR.');
   const bundle=path.join(root,'isolated-test.app');command('/usr/bin/ditto',[receipt.artifacts[0].bundle,bundle]);
@@ -301,7 +388,342 @@ async function run(options){
   command('/usr/bin/codesign',['--force','--deep','--sign','-',bundle]);command('/usr/bin/codesign',['--verify','--deep','--strict',bundle]);
   const archive=path.join(bundle,'Contents/Resources/app.asar');assert.equal(sha(archive),receipt.artifacts[0].asarSha256);
   provider=await providerServer();
-  const launch=async round=>{live=await launchBundle({bundle,root,home,profile,identity,provider:provider.url,chromium,fuses,output,round});live.page.on('pageerror',error=>receipt.errors.push(error.message));receipt[round]={scope:live.scope,bootstrapBreakpoint:live.breakpoint};return live;};
+  if(receipt.artifacts[0].verificationOnly)receipt.limits.push('Explicit keyless verification artifact: no fixed-helper pins; startup-policy and vault facade are instrumented only in this disposable process. This is not an owner update or real credential acceptance.');
+  const launch=async round=>{live=await launchBundle({bundle,root,home,profile,identity,provider:provider.url,chromium,fuses,output,round,verificationOnly:receipt.artifacts[0].verificationOnly,groupVoiceOnly:options.groupVoiceOnly===true});live.page.on('pageerror',error=>receipt.errors.push(error.message));receipt[round]={scope:live.scope,bootstrapBreakpoint:live.breakpoint};return live;};
+  const openGroupForm=async()=>{
+   await live.page.evaluate(()=>switchView('connections'));
+   const optional=live.page.locator('#onboarding-optional-toggle');
+   if(await optional.isVisible()&&await optional.getAttribute('aria-expanded')==='false')await optional.click();
+   await live.page.locator('#onboarding-qq-groups').click();
+  };
+  if(options.groupRolesOnly){
+   assert.equal(receipt.artifacts[0].verificationOnly,true,'Use a keyless verification artifact for the group role fixture.');
+   const openRoleForm=async()=>{
+    await openGroupForm();
+    await live.page.locator('#bot-qq-group-roles > summary').click();
+   };
+   await launch('group-role-first');
+   assert.equal(await live.page.evaluate(()=>arcade.platform.os),'darwin');
+   const sample={name:'合成角色阿青',description:'观察海岸潮汐。',mes_example:'<START>\n{{char}}: 海边风轻。',creatorcomment:'不公开的合成校验记号'};
+   const card=await live.page.evaluate(async sample=>{
+    const card=await arcade.charactersAddExample(sample);
+    const state=await arcade.snapshot();
+    await arcade.botConfigure({profileId:state.accounts.selectedId,expectedMode:state.bot.mode,expectedChannel:state.bot.channel,channel:'qq',qqAccountId:'600001',qqOwnerId:'600002',qqGroups:{enabled:true,groupIds:['500001'],proactive:false}});
+    return card;
+   },sample);
+   assert.equal((await snapshot()).bot.status,'disconnected');
+   await openRoleForm();
+   const cardPicker=live.page.locator('#bot-qq-group-role-card');
+   assert.match(card.id,/^[a-f0-9]{16}$/);
+   await cardPicker.locator('option').filter({hasText:sample.name}).waitFor({state:'attached'});
+   await cardPicker.selectOption(card.id);
+   await live.page.locator('#bot-qq-group-role-review').click();
+   const preview=live.page.locator('#bot-qq-group-role-preview');
+   await preview.waitFor();
+   assert.match(await preview.innerText(),/600001 · 群 500001/);
+   assert.equal(await live.page.locator('#bot-qq-group-role-preview-description').innerText(),sample.description);
+   assert.equal(await live.page.locator('#bot-qq-group-role-preview-examples').innerText(),sample.mes_example);
+   assert(!((await preview.innerText()).includes(sample.creatorcomment)));
+   assert.deepEqual((await snapshot()).bot.qq.groups.roles,[]);
+   await preview.scrollIntoViewIfNeeded();
+   await shot('group-role-preview');
+   await live.page.locator('#bot-qq-group-role-approve').click();
+   await live.page.locator('#bot-qq-group-role-current').filter({hasText:'已批准'}).waitFor();
+   const binding={groupId:'500001',cardId:card.id,name:sample.name};
+   assert.deepEqual((await snapshot()).bot.qq.groups.roles,[binding]);
+   pass('A real packaged window uses its preload and main IPC to review public fields and explicitly approve the chosen library card.');
+   assert.deepEqual(await live.close(),{code:0,signal:null});live=null;
+   await launch('group-role-reopen');
+   assert.deepEqual((await snapshot()).bot.qq.groups.roles,[binding]);
+   await openRoleForm();
+   await live.page.locator('#bot-qq-group-role-current').filter({hasText:'已批准'}).waitFor();
+   await live.page.locator('#bot-qq-group-role-clear').click();
+   await live.page.locator('#bot-qq-group-role-current').filter({hasText:'此群使用默认搭档人设'}).waitFor();
+   assert.deepEqual((await snapshot()).bot.qq.groups.roles,[]);
+   assert.equal((await snapshot()).bot.status,'disconnected');
+   assert.equal(provider.fixture.calls.length,0);
+   await shot('group-role-default-restored');
+   assert.deepEqual(await live.close(),{code:0,signal:null});live=null;
+   assert.deepEqual(receipt.errors,[]);
+   assert.equal(sha(archive),receipt.artifacts[0].asarSha256);
+   receipt.groupRole={actualPackagedRenderer:true,actualPreloadIPC:true,coldReadback:true,cleared:true,providerRequests:0,realQQ:false,isolatedQuit:true};
+   pass('Cold start retains the approved role; the owner restores the default from the same window without starting QQ or a provider.');
+   receipt.passed=true;
+   console.log(JSON.stringify({passed:true,checks:receipt.checks.length,screenshots:receipt.screenshots.length,output}));
+   return;
+  }
+  if(options.groupImagesOnly){
+   assert.equal(receipt.artifacts[0].verificationOnly,true,'Use a keyless verification artifact for the group image fixture.');
+   const modules=['src/main.cjs','src/bot/service.cjs','src/bot/group-companion-route.cjs','src/bot/qq-group-image.cjs'];
+   const archiveEntries=asar.listPackage(archive);
+   assert(modules.every(file=>archiveEntries.includes('/'+file)),'Use a verification archive containing the ordinary QQ image implementation.');
+   const groupIds=['500001','500002'],accountId='600001',ownerId='600002',permitted=groupIds.slice(0,1);
+   const permissionBox=()=>live.page.locator('#bot-qq-group-images');
+   const readBack=async imageGroupIds=>{
+    const {bot}=await snapshot();
+    assert.equal(bot.channel,'qq');assert.equal(bot.status,'disconnected');assert.equal(bot.hasKey,false);
+    assert.equal(bot.qq.expectedAccountId,accountId);assert.equal(bot.qq.ownerId,ownerId);assert.equal(bot.qq.hasToken,false);
+    assert.equal(bot.qq.groups.enabled,true);assert.deepEqual(bot.qq.groups.groupIds,groupIds);
+    assert.deepEqual(bot.qq.groups.imageGroupIds||[],imageGroupIds);
+    assert.equal(Object.hasOwn(bot.qq.groups,'imageGroupIds'),imageGroupIds.length>0);
+    return bot.qq.groups.imageGroupIds||[];
+   };
+   const verifyCheckboxes=async imageGroupIds=>{
+    await permissionBox().waitFor();
+    const fields=permissionBox().locator('input[type="checkbox"]');
+    await fields.first().waitFor();
+    assert.equal(await fields.count(),groupIds.length);
+    assert.deepEqual(await fields.evaluateAll(nodes=>nodes.map(node=>node.value)),groupIds);
+    assert.deepEqual(await fields.evaluateAll(nodes=>nodes.filter(node=>node.checked).map(node=>node.value)),imageGroupIds);
+    assert.equal(await fields.first().isEnabled(),true);
+   };
+   const savePermissions=async()=>{
+    await live.page.locator('#bot-qq-groups-save').click();
+    await live.page.locator('#bot-qq-groups-feedback').filter({hasText:'群聊设置已保存'}).waitFor();
+   };
+   const processes=[];
+   const stop=async()=>{
+    const stats=await live.inspector.evaluate('({requests:__integratedMacSmoke.requests,blockedNetwork:__integratedMacSmoke.blockedNetwork,blockedChildren:__integratedMacSmoke.blockedChildren,vaultWrites:__integratedMacSmoke.syntheticVaultStats.encrypt})');
+    assert.deepEqual(stats,{requests:0,blockedNetwork:0,blockedChildren:0,vaultWrites:0});
+    const exit=await live.close();live=null;
+    assert.deepEqual(exit,{code:0,signal:null});processes.push({exit,...stats});
+   };
+   await launch('group-images-first');
+   assert.equal(await live.page.evaluate(()=>arcade.platform.os),'darwin');
+   const loadedModules=await live.inspector.evaluate(`(()=>{
+    const root=process.resourcesPath+'/app.asar/';
+    const require=process.getBuiltinModule('module').createRequire(root+'package.json');
+    return ${JSON.stringify(modules)}.filter(file=>require.cache[root+file]?.loaded===true);
+   })()`);
+   assert.deepEqual(loadedModules,modules);
+   await live.page.evaluate(async({accountId,ownerId,groupIds})=>{
+    const state=await arcade.snapshot();
+    await arcade.botConfigure({profileId:state.accounts.selectedId,expectedMode:state.bot.mode,expectedChannel:state.bot.channel,
+     channel:'qq',qqAccountId:accountId,qqOwnerId:ownerId,qqGroups:{enabled:true,groupIds,proactive:false}});
+   },{accountId,ownerId,groupIds});
+   const defaults=await readBack([]);
+   await openGroupForm();await verifyCheckboxes([]);
+   await permissionBox().locator('input').first().check();await verifyCheckboxes(permitted);
+   await readBack([]);
+   await savePermissions();const saved=await readBack(permitted);
+   await permissionBox().scrollIntoViewIfNeeded();await shot('group-images-one-opt-in');
+   pass('Actual packaged preload and main IPC save image consent for one of two ordinary QQ groups after explicit Save. Defaults stay off and changing a checkbox alone does not persist.');
+   await stop();
+   await launch('group-images-reopen');
+   const reopened=await readBack(permitted);await openGroupForm();await verifyCheckboxes(permitted);
+   await permissionBox().scrollIntoViewIfNeeded();await shot('group-images-cold-readback');
+   pass('A clean Quit and cold start retain exactly the approved QQ group in main state and the visible checkbox list.');
+   await permissionBox().locator('input').first().uncheck();await savePermissions();const cleared=await readBack([]);
+   await verifyCheckboxes([]);await stop();
+   await launch('group-images-cleared-reopen');
+   const clearedAfterRestart=await readBack([]);await openGroupForm();await verifyCheckboxes([]);
+   await permissionBox().scrollIntoViewIfNeeded();await shot('group-images-cleared');
+   await stop();
+   assert.equal(provider.fixture.calls.length,0);assert.deepEqual(receipt.errors,[]);
+   assert.equal(sha(archive),receipt.artifacts[0].asarSha256);
+   receipt.groupImages={actualPackagedRenderer:true,actualPreloadIPC:true,loadedModules,groupIds,defaults,saved,reopened,cleared,clearedAfterRestart,processes,providerRequests:0,realQQ:false};
+   pass('Turning image consent off clears the persisted optional setting, and a second cold start shows both groups off. No key, QQ bridge traffic or model call is used.');
+   receipt.passed=true;
+   console.log(JSON.stringify({passed:true,checks:receipt.checks.length,screenshots:receipt.screenshots.length,output}));
+   return;
+  }
+  if(options.groupVoiceOnly){
+   assert.equal(receipt.artifacts[0].verificationOnly,true,'Use a keyless verification artifact for the group voice fixture.');
+   const required=['/src/bot/group-voice-pipeline.cjs','/src/voice/posix-python-process-proof.cjs','/src/ui/qq-voice.js'];
+   const entries=asar.listPackage(archive);assert(required.every(file=>entries.includes(file)),'Group voice verification requires the complete packaged source.');
+   const wavPath=path.join(root,'synthetic-group-recording.wav'),wav=Buffer.alloc(8044);
+   wav.write('RIFF');wav.writeUInt32LE(8036,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);
+   wav.writeUInt32LE(16000,24);wav.writeUInt32LE(32000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);
+   wav.write('data',36);wav.writeUInt32LE(8000,40);wav.writeInt16LE(112,44);fs.writeFileSync(wavPath,wav,{mode:0o600});
+   const wavHash=sha(wavPath),groupIds=['500001','500002'],accountId='600001',ownerId='600002';
+   const groupVoicePicker=()=>live.page.locator('#bot-qq-group-voice');
+   const asrStatus=()=>groupVoicePicker().locator('#bot-qq-group-voice-asr');
+   const voiceCheck=groupId=>groupVoicePicker().locator(`input[value="${groupId}"]`);
+   const bridge=()=>live.inspector.evaluate('structuredClone(__integratedMacSmoke.groupVoice)');
+   const assertIsolation=async()=>{
+    const stats=await live.inspector.evaluate('({requests:__integratedMacSmoke.requests,blockedNetwork:__integratedMacSmoke.blockedNetwork,blockedChildren:__integratedMacSmoke.blockedChildren})');
+    assert.deepEqual(stats,{requests:0,blockedNetwork:0,blockedChildren:0});
+    assert.equal(provider.fixture.calls.length,0);
+    return stats;
+   };
+   await launch('group-voice-first');
+   assert.equal(await live.page.evaluate(()=>arcade.platform.os),'darwin');
+   const card=await live.page.evaluate(async({accountId,ownerId,groupIds,key})=>{
+    const read=()=>arcade.snapshot();
+    const context=({accounts,bot})=>({profileId:accounts.selectedId,expectedMode:bot.mode,expectedChannel:bot.channel});
+    await arcade.botConfigure({...context(await read()),channel:'qq',mode:'deepseek',qqUrl:'ws://127.0.0.1:41434/',
+     qqAccountId:accountId,qqOwnerId:ownerId,qqToken:'fixture-group-voice-loopback-token',qqGroups:{enabled:true,groupIds,proactive:false}});
+    await arcade.botConfigure({...context(await read()),key});
+    await arcade.socialConfigure({enabled:true,proactiveMessages:false,qzonePosts:false});
+    const card=await arcade.charactersAddExample({name:'合成群语音角色',description:'只用于隔离安装包测试。'});
+    const scope={...context(await read()),expectedAccountId:accountId,groupId:groupIds[1],cardId:card.id};
+    const {approval}=await arcade.groupRolePreview(scope);await arcade.groupRoleSet({...scope,approval});
+    return {id:card.id,name:card.name};
+   },{accountId,ownerId,groupIds,key:FAKE_KEY});
+   assert.match(card.id,/^[a-f0-9]{16}$/);
+   assert.deepEqual((await snapshot()).bot.qq.groups.asrAvailability,{available:false,reason:'asr_unavailable'});
+   await openGroupForm();await asrStatus().filter({hasText:'本机语音识别尚未配置'}).waitFor();
+   assert.equal(await voiceCheck(groupIds[0]).isChecked(),false);assert.equal(await voiceCheck(groupIds[1]).isChecked(),false);
+   await voiceCheck(groupIds[0]).check();await live.page.locator('#bot-qq-groups-save').click();
+   await live.page.locator('#bot-qq-groups-feedback').filter({hasText:'群聊设置已保存'}).waitFor();
+   assert.deepEqual((await snapshot()).bot.qq.groups.voiceGroupIds,[groupIds[0]]);
+   await groupVoicePicker().scrollIntoViewIfNeeded();await shot('group-voice-asr-missing');
+   assert.deepEqual(await bridge(),{admissions:0,memberChecks:[],nameChecks:[],sends:[],pickers:0,unexpected:0});
+   await assertIsolation();assert.deepEqual(await live.close(),{code:0,signal:null});live=null;
+   const pythonPath=path.join(root,'configuration-only-python'),modelPath=path.join(root,'configuration-only-model');
+   fs.writeFileSync(pythonPath,'synthetic path marker, never executed\n',{mode:0o600});fs.mkdirSync(modelPath,{mode:0o700});
+   fs.writeFileSync(path.join(home,'local-voice.json'),JSON.stringify({version:1,asrPython:pythonPath,asrModel:modelPath}),{mode:0o600});
+   await launch('group-voice-reopen');
+   const reopened=(await snapshot()).bot.qq.groups;
+   assert.deepEqual(reopened.voiceGroupIds,[groupIds[0]]);
+   assert.deepEqual(reopened.asrAvailability,{configured:true,available:false,reason:'asr_unverified'});
+   await openGroupForm();await asrStatus().filter({hasText:'等待一次成功转写'}).waitFor();
+   assert(await voiceCheck(groupIds[0]).isChecked());assert.equal(await voiceCheck(groupIds[1]).isChecked(),false);
+   await groupVoicePicker().scrollIntoViewIfNeeded();await shot('group-voice-asr-unverified');
+   pass('Packaged preload/main persist consent for only the selected group. Cold start reports configured ASR paths as unverified, with no worker launch or live transcription.');
+   await live.page.evaluate(async()=>{await arcade.botConnect();switchView('bot');});
+   await live.page.waitForFunction(async()=>{const s=await arcade.snapshot();return s.bot.status==='connected'&&s.bot.voiceMedia.groupTargets?.length===2;});
+   const {bot,accounts}=await snapshot(),target=bot.voiceMedia.groupTargets.find(row=>row.groupId===groupIds[1]);
+   assert.equal(target.role,card.name);assert.match(target.roleId,new RegExp('^card-'+card.id+'(?:-|$)'));
+   assert.equal((await bridge()).admissions,1);
+   const privateCode=await live.page.evaluate(async accountId=>(await arcade.qqVoiceAvailability({accountId,panelId:'fixture-refuse-owner'})).code,accounts.selectedId);
+   assert.equal(privateCode,'group_unavailable');
+   await live.page.evaluate(()=>{
+    const state=window.syntheticGroupPlayback={starts:0};
+    window.Audio=class{constructor(){this.muted=true;}play(){state.starts++;return Promise.resolve();}pause(){}removeAttribute(name){if(name==='src')this.src='';}load(){}};
+   });
+   const drawer=live.page.locator('#qq-voice'),entry=live.page.locator('#qq-voice-open'),select=drawer.locator('#qq-voice-target');
+   const send=drawer.locator('#qq-voice-send'),player=drawer.locator('.qq-voice-player');
+   await entry.click();await drawer.waitFor();assert.equal(await select.inputValue(),'');assert(await send.isDisabled());
+   assert.deepEqual((await bridge()).memberChecks,[]);
+   await select.selectOption(groupIds[1]);
+   await drawer.getByText(/语音生成尚未配置|此平台暂不能生成语音/).waitFor();
+   assert.equal(await drawer.locator('#qq-voice-generate').count(),0);
+   const recipient=drawer.locator('.qq-voice-recipient');assert.match(await recipient.innerText(),/合成群语音角色[\s\S]*600001[\s\S]*500002/);
+   await drawer.locator('#qq-voice-choose').click();await player.waitFor();assert(await send.isEnabled());
+   assert.equal(await live.page.evaluate(()=>syntheticGroupPlayback.starts),0);
+   assert.match(await recipient.innerText(),/500002 · 合成试用群/);
+   // The group name belongs to the direct picker response, not periodic snapshots.
+   assert.deepEqual((await snapshot()).bot.voiceMedia.draft.recipient,{accountId,...target});
+   const beforeSend=await bridge();assert.deepEqual(beforeSend.memberChecks,[500002]);assert.deepEqual(beforeSend.nameChecks,[500002]);
+   assert.deepEqual(beforeSend.sends,[]);assert.equal(beforeSend.pickers,1);
+   await player.scrollIntoViewIfNeeded();await shot('group-voice-preview');
+   await send.click();await drawer.locator('#qq-voice-status').filter({hasText:'QQ 已接受'}).waitFor();
+   const details=drawer.locator('#qq-voice-receipt');await details.locator('summary').click();
+   assert.match(await details.innerText(),/8301[\s\S]*600001[\s\S]*500002 · 合成试用群[\s\S]*合成群语音角色/);
+   assert.equal(await details.locator('[data-field="ownerId"]').count(),0);assert(await send.isDisabled());assert.equal(await player.count(),0);
+   const submitted=await bridge();
+   assert(submitted.nameChecks.length>0&&submitted.nameChecks.every(id=>id===500002));
+   assert.deepEqual(submitted,{admissions:1,memberChecks:[500002,500002],nameChecks:submitted.nameChecks,sends:[{groupId:500002,bytes:8044,sha256:wavHash}],pickers:1,unexpected:0});
+   assert.equal(await live.page.evaluate(()=>syntheticGroupPlayback.starts),0);
+   await shot('group-voice-accepted-receipt');await drawer.locator('#qq-voice-close').click();
+   await assertIsolation();assert.deepEqual(await live.close(),{code:0,signal:null});live=null;
+   assert.equal(sha(wavPath),wavHash);assert.equal(sha(archive),receipt.artifacts[0].asarSha256);assert.deepEqual(receipt.errors,[]);
+   pass('Actual packaged main/preload picker and send verify the exact group and role. An unplayed clip yields one canonical WAV submission only after explicit Send. The verified group name and numeric ID match the synthetic OneBot receipt.');
+   receipt.groupVoice={actualPackagedRenderer:true,actualPreloadIPC:true,syntheticOneBot:true,syntheticPicker:true,listeningOptional:true,playbackStarts:0,macOwnerRefused:true,macGenerationConfiguredInFixture:false,
+    optedInForTranscription:[groupIds[0]],asrReadback:reopened.asrAvailability,realAsr:false,groupVoiceTransport:submitted,providerRequests:0,realQQ:false,isolatedQuit:true};
+   receipt.passed=true;
+   console.log(JSON.stringify({passed:true,checks:receipt.checks.length,screenshots:receipt.screenshots.length,output}));
+   return;
+  }
+  if(options.groupWorldbooksOnly){
+   assert.equal(receipt.artifacts[0].verificationOnly,true,'Use a keyless verification artifact for the group world-book fixture.');
+   const required=['/src/bot/st/lorebooks.cjs','/src/bot/group-public-lorebook.cjs'];
+   assert(required.every(file=>asar.listPackage(archive).includes(file)),'Group world books must be present in the packaged source.');
+   const accountId='600001',ownerId='600002',groupIds=['500001','500002'],groupId=groupIds[1];
+   const library=()=>live.page.evaluate(()=>arcade.lorebooksList());
+   const roleDisclosure=()=>live.page.locator('#bot-qq-group-roles');
+   const bookDisclosure=()=>live.page.locator('#bot-qq-group-lorebooks');
+   const approved=()=>bookDisclosure().locator('#bot-qq-group-lorebook-approved');
+   const preview=()=>bookDisclosure().locator('#bot-qq-group-lorebook-preview');
+   const chooser=()=>bookDisclosure().locator('#bot-qq-group-lorebook-book');
+   const openBooks=async id=>{
+    await openGroupForm();
+    await roleDisclosure().locator(':scope > summary').click();
+    await roleDisclosure().locator('#bot-qq-group-role-group').selectOption(id);
+    await bookDisclosure().locator(':scope > summary').click();
+   };
+   const review=async book=>{
+    await chooser().locator(`option[value="${book.id}"]`).waitFor({state:'attached'});
+    await chooser().selectOption(book.id);
+    await bookDisclosure().locator('#bot-qq-group-lorebook-review').click();
+    await preview().waitFor();
+   };
+   const approve=async book=>{
+    await bookDisclosure().locator('#bot-qq-group-lorebook-approve').click();
+    await approved().getByText(book.name,{exact:true}).waitFor();
+   };
+   const quit=async()=>{
+    const stats=await live.inspector.evaluate('({requests:__integratedMacSmoke.requests,blockedNetwork:__integratedMacSmoke.blockedNetwork,blockedChildren:__integratedMacSmoke.blockedChildren,credentialWrites:__integratedMacSmoke.syntheticVaultStats.encrypt})');
+    assert.deepEqual(stats,{requests:0,blockedNetwork:0,blockedChildren:0,credentialWrites:0});
+    const stop=await live.close();live=null;assert.deepEqual(stop,{code:0,signal:null});
+    return stop;
+   };
+   await launch('world-books-first');
+   assert.equal(await live.page.evaluate(()=>arcade.platform.os),'darwin');
+   const [large,small]=await live.inspector.evaluate(`(${seedPackagedGroupWorldbooks.toString()})(${JSON.stringify(home)})`);
+   assert.equal(large.entries,500);assert.equal(small.entries,2);assert.notEqual(large.id,small.id);
+   for(const book of [large,small])assert.match(book.id,/^[0-9a-f]{16}$/);
+   assert.deepEqual((await library()).map(({id,name,entries})=>({id,name,entries})).sort((a,b)=>a.id.localeCompare(b.id)),
+    [large,small].sort((a,b)=>a.id.localeCompare(b.id)));
+   const role=await live.page.evaluate(async({accountId,ownerId,groupIds,groupId})=>{
+    const context=({accounts,bot})=>({profileId:accounts.selectedId,expectedMode:bot.mode,expectedChannel:bot.channel});
+    await arcade.botConfigure({...context(await arcade.snapshot()),channel:'qq',qqAccountId:accountId,qqOwnerId:ownerId,qqGroups:{enabled:true,groupIds,proactive:false}});
+    const card=await arcade.charactersAddExample({name:'合成世界书角色',description:'只用于隔离的双世界书安装包测试。'});
+    const scope={...context(await arcade.snapshot()),expectedAccountId:accountId,groupId,cardId:card.id};
+    const {approval}=await arcade.groupRolePreview(scope);
+    await arcade.groupRoleSet({...scope,approval});
+    return {cardId:card.id,name:card.name,roleId:'card-'+card.id};
+   },{accountId,ownerId,groupIds,groupId});
+   const roles=[{groupId,cardId:role.cardId,name:role.name}],bindings=[large,small].map(book=>({groupId,roleId:role.roleId,bookId:book.id,name:book.name}));
+   const readBack=async expected=>{
+    const {bot}=await snapshot();
+    assert.equal(bot.channel,'qq');assert.equal(bot.status,'disconnected');assert.equal(bot.hasKey,false);assert.equal(bot.qq.hasToken,false);
+    assert.equal(bot.qq.expectedAccountId,accountId);assert.deepEqual(bot.qq.groups.groupIds,groupIds);
+    assert.deepEqual(bot.qq.groups.roles,roles);assert.deepEqual(bot.qq.groups.lorebooks,expected);
+   };
+   await readBack([]);await openBooks(groupId);await review(large);
+   const pageState=()=>preview().locator('#bot-qq-group-lorebook-page-state'),entries=()=>preview().locator('#bot-qq-group-lorebook-entries');
+   assert.match(await pageState().innerText(),/第 1 \/ 50 页 · 共 500 条启用条目/);
+   assert.match(await preview().innerText(),/600001 · 群 500002[\s\S]*合成世界书角色/);
+   assert.equal(await entries().locator('section').count(),10);
+   await bookDisclosure().locator('#bot-qq-group-lorebook-page').selectOption({value:'49'});
+   await pageState().filter({hasText:'第 50 / 50 页 · 共 500 条启用条目'}).waitFor();
+   assert.equal(await entries().locator('section').count(),10);
+   const finalEntry=entries().getByText('合成末页正文字面 <b>第 500 条</b>',{exact:true});
+   await finalEntry.waitFor();
+   assert.equal(await entries().locator('b').count(),0);
+   await pageState().scrollIntoViewIfNeeded();await shot('world-book-page-50');
+   await finalEntry.scrollIntoViewIfNeeded();await shot('world-book-entry-500');
+   await readBack([]);await approve(large);await readBack([bindings[0]]);
+   await review(small);await approve(small);await readBack(bindings);
+   assert.equal(await approved().locator('li').count(),2);await approved().scrollIntoViewIfNeeded();await shot('world-books-two-approved');
+   pass('Unmodified packaged main/preload/renderer read a 500-entry real library book by page and one separate smaller book. Explicit approval creates two independent rows for exactly one saved group role.');
+   const exits=[await quit()];
+   await launch('world-books-reopen');await readBack(bindings);await openBooks(groupIds[0]);
+   await bookDisclosure().locator('#bot-qq-group-lorebook-current').filter({hasText:'此群尚未批准世界书'}).waitFor();
+   await roleDisclosure().locator('#bot-qq-group-role-group').selectOption(groupId);
+   for(const book of [large,small])await approved().getByText(book.name,{exact:true}).waitFor();
+   await approved().scrollIntoViewIfNeeded();await shot('world-books-cold-readback');
+   pass('A cold launch retains both approvals only on the same QQ account, group and role; the second group reads back no approvals.');
+   const revoke=approved().locator(`button[data-book-id="${large.id}"][data-role-id="${role.roleId}"]`);
+   await revoke.click();await revoke.waitFor({state:'detached'});await readBack([bindings[1]]);
+   assert.equal((await library()).length,2);exits.push(await quit());
+   await launch('world-books-revoke-reopen');await readBack([bindings[1]]);await openBooks(groupId);
+   await approved().getByText(small.name,{exact:true}).waitFor();assert.equal(await approved().locator('li').count(),1);
+   assert.deepEqual((await library()).map(book=>book.id).sort(),[large.id,small.id].sort());
+   await approved().scrollIntoViewIfNeeded();await shot('world-books-single-revoke-cold');
+   exits.push(await quit());
+   assert.equal(provider.fixture.calls.length,0);assert.deepEqual(receipt.errors,[]);
+   assert.equal(sha(archive),receipt.artifacts[0].asarSha256);
+   receipt.groupWorldbooks={actualPackagedRenderer:true,actualPreloadIPC:true,actualPackagedLibrary:true,seededEntries:[500,2],sampledPages:[1,50],
+    scopedApprovals:bindings,coldReadback:bindings,revokeColdReadback:[bindings[1]],libraryBooksRetained:2,isolatedQuits:exits,
+    realQQ:false,providerRequests:0,credentialWrites:0,nativeDialogs:false};
+   pass('Revoking the exact book preserves the second approval and both library files. A further cold launch retains the one remaining approval without starting a bridge or model.');
+   receipt.passed=true;
+   console.log(JSON.stringify({passed:true,checks:receipt.checks.length,screenshots:receipt.screenshots.length,output}));
+   return;
+  }
   await launch('first');assert.equal(await live.page.evaluate(()=>arcade.platform.os),'darwin');await live.page.locator('#first-run-card').waitFor();await shot('first-run');
   pass('Actual final archives unpack; test copy preserves production ASAR/main and acquires an independent real bootstrap guard before main.');
   await live.page.locator('#first-run-card [data-provider="deepseek"]').click();await live.page.locator('#first-run-key').fill(FAKE_KEY);await live.page.locator('#first-run-save').click();await live.page.locator('#desktop-chat-input').waitFor();
@@ -335,8 +757,24 @@ async function run(options){
   await launch('restart');const reopened=await snapshot();assert.equal(reopened.bot.credentialState,'ready');assert.deepEqual(reopened.bot.local.history.map(row=>row.text),before);assert.equal(sha(vault),vaultBefore);
   assert.equal(fs.readdirSync(path.join(home,'update-backups')).filter(name=>!name.startsWith('.')).length,beforeBackups);
   await ensureChatReady();await send('SYNTHETIC_AFTER_RESTART');assert(provider.fixture.calls.at(-1).keyMatched);await shot('restarted');pass('Same-build cold restart retains the synthetic credential envelope and SQLite history without creating another update snapshot.');
+  if(receipt.artifacts[0].verificationOnly){
+   const before=provider.fixture.calls.length;
+   const result=await live.inspector.evaluate(`(${packagedGroupFlow.toString()})()`);
+   const calls=provider.fixture.calls.slice(before),reply=calls.at(-1)?.messages?.at(-1)?.content||'';
+   assert.equal(result.sent,2);assert.equal(result.members,2);assert.equal(calls.length,4);
+   assert(reply.includes('SYNTHETIC_PUBLIC_BEACH_PLAN')&&reply.includes('SYNTHETIC_PUBLIC_RAIN_QUESTION'));
+   assert(reply.includes(result.firstReply),'The packaged reply must include its own confirmed earlier group response.');
+   assert(calls.every(call=>call.keyMatched&&call.noTools));
+   receipt.publicGroup={synthetic:true,actualPackagedModules:true,realQQ:false,requests:calls.length,members:result.members,sent:result.sent,humanTopicInFinalRequest:true,confirmedCharacterReplyInFinalRequest:true};
+   pass('Actual packaged group modules and DeepSeek runner carry two synthetic members plus the confirmed AI reply into the next HTTP stand-in request; no QQ message is sent.');
+  }
+  if(asar.listPackage(archive).includes('/src/pets/index.html')){
+   receipt.desktopPets=await checkDesktopPets({live,output,provider,send,completeReply,ensureChatReady,pass,shot});
+  }
   const stats=await live.inspector.evaluate('({identityCalls:__integratedMacSmoke.identityCalls,blockedNetwork:__integratedMacSmoke.blockedNetwork,blockedChildren:__integratedMacSmoke.blockedChildren,requests:__integratedMacSmoke.requests,vaultMode:"synthetic-no-os",syntheticStorageReads:__integratedMacSmoke.syntheticStorageReads,syntheticVaultStats:__integratedMacSmoke.syntheticVaultStats})');receipt.processProbe=stats;assert.equal(stats.blockedNetwork,0);assert.equal(stats.blockedChildren,0);assert.deepEqual(receipt.errors,[]);
-  await live.close();live=null;assert.equal(sha(archive),receipt.artifacts[0].asarSha256);for(const row of receipt.artifacts)assert.equal(sha(path.join(row.bundle,'Contents/Resources/app.asar')),row.asarSha256);
+  const exitStatus=await live.close();live=null;
+  if(receipt.desktopPets){assert.deepEqual(exitStatus,{code:0,signal:null});receipt.desktopPets.quit=exitStatus;}
+  assert.equal(sha(archive),receipt.artifacts[0].asarSha256);for(const row of receipt.artifacts)assert.equal(sha(path.join(row.bundle,'Contents/Resources/app.asar')),row.asarSha256);
   if(options.seedApp){
    // This older App is seed input only. Never launch or modify its original path.
    const oldSource=fs.realpathSync(options.seedApp),oldAsar=path.join(oldSource,'Contents/Resources/app.asar'),oldHash=sha(oldAsar),oldMetadata=JSON.parse(asar.extractFile(oldAsar,'package.json').toString());
@@ -373,6 +811,169 @@ async function run(options){
  }catch(error){receipt.failure=error.message;receipt.failureStack=error.stack;if(live)await shot('failure').catch(()=>{});throw error;}
  finally{if(live)await live.close().catch(error=>{receipt.shutdownFailure=error.message;});if(provider)await provider.close();fs.writeFileSync(path.join(output,'receipt.json'),JSON.stringify(receipt,null,2)+'\n');}
  console.log(JSON.stringify({passed:receipt.passed,checks:receipt.checks.length,screenshots:receipt.screenshots.length,output}));
+}
+async function checkDesktopPets({live,output,provider,send,completeReply,ensureChatReady,pass,shot}){
+ const ids=['claude','gpt','codex','deepseek','gemini','doubao','sprout'];
+ const entry=action=>live.inspector.evaluate(`(${petWindowAction.toString()})(${JSON.stringify(action)})`);
+ const wait=async predicate=>{
+  const deadline=Date.now()+25000;
+  let rows;
+  while(Date.now()<deadline){
+   rows=await entry({kind:'read'});
+   if(predicate(rows))return rows;
+   await delay(60);
+  }
+  throw Error('Unexpected desktop pet windows: '+JSON.stringify(rows));
+ };
+ const settings=async()=>live.page.evaluate(()=>switchView('settings'));
+ const toggle=id=>live.page.locator('#desktop-pet-'+id);
+ const initialAccount=await live.page.evaluate(async()=>{
+  const {accounts}=await arcade.snapshot();
+  await arcade.stConfigure({profileId:accounts.selectedId,builtinPersonaId:null,characterId:null,groupId:null});
+  return accounts.selectedId;
+ });
+ await settings();
+ for(const id of ids)assert.equal(await toggle(id).isChecked(),false);
+ assert.deepEqual(await entry({kind:'read'}),[]);
+ const idleMetrics=await entry({kind:'metrics'});
+ for(const id of ids)await toggle(id).check();
+ const loaded=await wait(rows=>rows.length===ids.length&&rows.every(row=>row.meshes>0&&row.mode==='idle'));
+ assert(loaded.every(row=>row.draggable==='drag'&&row.visible&&row.movable&&row.sandboxed));
+ assert.equal(new Set(loaded.map(row=>JSON.stringify(row.bounds))).size,ids.length);
+ assert.equal(new Set(loaded.map(row=>row.asset)).size,6);
+ await shot('desktop-pet-settings');
+ for(const id of ids)await entry({kind:'capture',id,file:path.join(output,'pet-'+id+'.png')});
+ pass('The installed-code Settings toggles default off. Seven independent native windows load six real offline meshes in sandboxed renderers.');
+ const beforeMove=loaded.find(row=>row.id==='gpt').bounds;
+ await entry({kind:'move',id:'gpt'});
+ const moved=await wait(rows=>rows.some(row=>row.id==='gpt'&&JSON.stringify(row.bounds)!==JSON.stringify(beforeMove)));
+ assert.deepEqual(moved.find(row=>row.id==='codex').bounds,loaded.find(row=>row.id==='codex').bounds);
+ await entry({kind:'turn',id:'gpt'});
+ await delay(300);
+ await entry({kind:'capture',id:'gpt',file:path.join(output,'pet-gpt-turned.png')});
+ assert.notEqual(sha(path.join(output,'pet-gpt.png')),sha(path.join(output,'pet-gpt-turned.png')));
+ await live.page.evaluate(async()=>{
+  await arcade.accountCreate('Synthetic GPT pet profile');
+  await arcade.botConfigure({mode:'gpt'});
+  const {accounts}=await arcade.snapshot();
+  await arcade.stConfigure({profileId:accounts.selectedId,builtinPersonaId:'deepseek-whale',characterId:null,groupId:null});
+ });
+ const rebound=await wait(rows=>rows.some(row=>row.id==='gpt'&&row.asset.endsWith('/deepseek-whale.glb')&&row.meshes>0&&row.mode==='idle'));
+ assert.equal(rebound.find(row=>row.id==='codex').asset,'/models/codex-dragon.glb');
+ await entry({kind:'capture',id:'gpt',file:path.join(output,'pet-gpt-selected-whale.png')});
+ await live.page.evaluate(async()=>{
+  const {accounts}=await arcade.snapshot();
+  await arcade.stConfigure({profileId:accounts.selectedId,builtinPersonaId:null,characterId:null,groupId:null});
+ });
+ await wait(rows=>rows.some(row=>row.id==='gpt'&&row.asset.endsWith('/codex-dragon.glb')&&row.meshes>0&&row.mode==='idle'));
+ pass('Model orbit and window positioning are independent. Selecting Whale for GPT hot-swaps its packaged mesh and restoring default returns Dragon, while Codex keeps its own Dragon window.');
+ await live.page.evaluate(async id=>{
+  await arcade.accountSelect(id);
+  switchView('bot');
+ },initialAccount);
+ await ensureChatReady();
+ provider.fixture.mode='hold';
+ await send('SYNTHETIC_PET_REPLY',{finish:false});
+ const busy=await wait(rows=>rows.some(row=>row.id==='deepseek'&&row.mode==='busy'));
+ assert(busy.filter(row=>row.id!=='deepseek').every(row=>row.mode==='idle'));
+ provider.fixture.mode='reply';
+ await completeReply(provider.fixture.serial);
+ const replied=await wait(rows=>rows.some(row=>row.id==='deepseek'&&row.mode==='reply'));
+ assert(replied.filter(row=>row.id!=='deepseek').every(row=>row.mode==='idle'));
+ await entry({kind:'capture',id:'deepseek',file:path.join(output,'pet-deepseek-reply.png')});
+ await wait(rows=>rows.every(row=>row.mode==='idle'));
+ await entry({kind:'metrics'});
+ await delay(1200);
+ const sevenWindowMetrics=await entry({kind:'metrics'});
+ await entry({kind:'close',id:'codex'});
+ await wait(rows=>rows.length===6&&!rows.some(row=>row.id==='codex'));
+ await settings();
+ assert.equal(await toggle('codex').isChecked(),false);
+ assert.equal(await toggle('gpt').isChecked(),true);
+ pass('A real App IPC conversation using the loopback model drives only the bound provider pet from busy to reply to idle. Closing one pet updates its persisted toggle and leaves other pets visible.');
+ return {synthetic:true,windows:loaded,profilesWithActualKeys:0,roleChange:true,scopedReply:true,independentClose:true,idleMetrics,sevenWindowMetrics};
+}
+
+// Main-process inspector wrapper, only in the disposable package test copy.
+async function petWindowAction(action){
+ const require=process.getBuiltinModule('module').createRequire(process.resourcesPath+'/app.asar/package.json');
+ const {app,BrowserWindow}=require('electron');
+ const windows=BrowserWindow.getAllWindows().filter(win=>win.webContents.getURL()==='arcade-pet://local/index.html');
+ const read=window=>window.webContents.executeJavaScript(`({
+  id:document.body.dataset.pet,mode:document.body.dataset.mode,asset:document.body.dataset.model,
+  meshes:Number(document.body.dataset.meshes||0),
+  draggable:getComputedStyle(document.querySelector('header')).webkitAppRegion
+ })`);
+ if(action.kind==='read'){
+  const rows=await Promise.all(windows.map(async window=>({
+   ...await read(window),visible:window.isVisible(),movable:window.isMovable(),bounds:window.getBounds(),
+   sandboxed:window.webContents.getLastWebPreferences().sandbox===true,
+  })));
+  return rows.filter(row=>row.id);
+ }
+ if(action.kind==='metrics')return app.getAppMetrics().map(value=>({type:value.type,cpu:value.cpu?.percentCPUUsage,workingSetKB:value.memory?.workingSetSize}));
+ for(const window of windows){
+  if((await read(window)).id!==action.id)continue;
+  if(action.kind==='capture'){
+   const image=await window.webContents.capturePage();
+   require('node:fs').writeFileSync(action.file,image.toPNG());
+   return true;
+  }
+  if(action.kind==='move'){
+   const [x,y]=window.getPosition();window.setPosition(x-18,y-12);return true;
+  }
+  if(action.kind==='turn')return window.webContents.executeJavaScript(`for(let i=0;i<4;i++)document.getElementById('model').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight'}));true;`);
+  if(action.kind==='close'){
+   window.webContents.executeJavaScript("document.getElementById('close').click();true").catch(()=>{});
+   return true;
+  }
+ }
+ throw Error('The fixture pet window is unavailable.');
+}
+
+// With file import intentionally skipped, seed the actual packaged library
+// under the exact disposable app root, then exercise normal read/review IPC.
+function seedPackagedGroupWorldbooks(home){
+ const require=process.getBuiltinModule('module').createRequire(process.resourcesPath+'/app.asar/package.json');
+ const fs=require('node:fs'),path=require('node:path');
+ if(!globalThis.__integratedMacSmoke?.verificationPoliciesInjected||!__integratedMacSmoke.app.isPackaged||
+    process.env.AGENT_ARCADE_HOME!==home||fs.realpathSync(home)!==home||path.basename(home)!=='data'||
+    !path.basename(path.dirname(home)).startsWith('arcade-integrated-mac-'))throw Error('Expected the exact disposable group world-book profile.');
+ const root=path.join(home,'lorebooks');
+ if(fs.existsSync(root)&&(!fs.lstatSync(root).isDirectory()||fs.realpathSync(root)!==root))throw Error('Invalid fixture library path.');
+ const {LorebookLibrary,importWorldInfoFile}=require('./src/bot/st/lorebooks.cjs');
+ const library=new LorebookLibrary({root});
+ if(library.list().length!==0)throw Error('Expected an empty disposable group world-book library.');
+ const entry=(id,content)=>({id,keys:['潮汐'],secondary_keys:['港口'],content,enabled:true});
+ const rows=[['合成潮汐档案',Array.from({length:500},(_,index)=>entry(index+1,index===499?'合成末页正文字面 <b>第 500 条</b>':'合成潮汐条目 '+(index+1)))],
+  ['合成港口值班录',[entry(1,'合成值班说明一'),entry(2,'合成值班说明二')]]];
+ return rows.map(([name,entries])=>{
+  const saved=library.add({name,book:importWorldInfoFile({name,entries}).book});
+  return {id:saved.id,name:saved.name,entries:saved.book.entries.length};
+ });
+}
+
+// Executed only in the already isolated verification App. Both the route and
+// API runner come from its unchanged ASAR; sends are local receipt stand-ins.
+async function packagedGroupFlow(){
+ const require=process.getBuiltinModule('module').createRequire(process.resourcesPath+'/app.asar/package.json');
+ const path=require('node:path'),fs=require('node:fs');
+ const src=path.join(process.resourcesPath,'app.asar','src','bot');
+ const {GroupCompanionRoute}=require(path.join(src,'group-companion-route.cjs'));
+ const {createDeepSeekRunner}=require(path.join(src,'deepseek-runner.cjs'));
+ const root=path.join(process.env.AGENT_ARCADE_HOME,'synthetic-packaged-group');fs.mkdirSync(root,{recursive:true});
+ const sent=[];
+ const route=new GroupCompanionRoute({root,platform:'qq-onebot',accountId:'100001',mode:'deepseek',
+  configuration:{enabled:true,groupIds:['500001'],proactive:false},persona:{characterId:'deepseek-whale',name:'Synthetic whale',description:'Synthetic public character'},
+  createExecute:memberRoot=>{const workspace=path.join(memberRoot,'workspace');fs.mkdirSync(workspace,{recursive:true});return createDeepSeekRunner({workspace,key:'fixture-integrated-mac-api-key',model:'deepseek-flash',conversationOnly:true,persona:{enabled:false,selection:'default'}});},
+  send:async(binding,text)=>{sent.push({sender:binding.senderId,text});return {id:'synthetic-group-receipt-'+sent.length};},flow:{debounceMs:0,bubbleDelayMs:0}});
+ try{
+  for(const [id,from,text]of [['package-a','200001','SYNTHETIC_PUBLIC_BEACH_PLAN'],['package-b','200002','SYNTHETIC_PUBLIC_RAIN_QUESTION']]){
+   await route.receive({id,from,text,route:'group',accountId:'100001',groupId:'500001',contextToken:'synthetic-'+id});
+   await Promise.all([...route.actors.values()].map(actor=>actor.engine.whenIdle()));
+  }
+  return {sent:sent.length,members:route.actors.size,firstReply:sent[0]?.text};
+ }finally{await route.stop();}
 }
 module.exports={artifactType,parseArgs,contained,preludeExpression,fixturePrelude,isolatedEnvironment,Inspector,restoreSyntheticBackup,createSyntheticVault};
 if(require.main===module)run(parseArgs(process.argv.slice(2))).catch(error=>{console.error(error.message);process.exitCode=1;});

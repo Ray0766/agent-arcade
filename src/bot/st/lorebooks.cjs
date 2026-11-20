@@ -80,6 +80,8 @@ function importWorldInfoFile(json) {
 }
 
 class LorebookLibrary {
+  #reviewRecords = new Map();
+
   constructor({root, now = Date.now, maxBooks = 50} = {}) {
     if (typeof root !== 'string' || !path.isAbsolute(root)) throw fail('The lorebook library needs an absolute directory.', 'lorebook_library_invalid');
     if (!Number.isInteger(maxBooks) || maxBooks < 1 || maxBooks > MAX_BOOKS) throw fail('Invalid lorebook limit.', 'lorebook_library_invalid');
@@ -130,6 +132,27 @@ class LorebookLibrary {
 
   /** Full stored record `{id, name, book, addedAt, updatedAt}`, or null. Throws for a corrupt file. */
   get(id) { return this.#read(id); }
+
+  revision(id) {
+    const stat = isFile(this.#file(id));
+    return stat ? [stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs].join(':') : null;
+  }
+
+  // Read-only, normalized book data shared across group approvals. A file
+  // replaced between metadata and content reads never enters the cache.
+  reviewRecord(id) {
+    const revision = this.revision(id);
+    const cached = this.#reviewRecords.get(id);
+    if (revision && cached?.revision === revision) return cached.record;
+    this.#reviewRecords.delete(id);
+    if (!revision) return null;
+    const record = this.get(id);
+    if (!record || this.revision(id) !== revision) return null;
+    if (this.#reviewRecords.size >= this.maxBooks) this.#reviewRecords.delete(this.#reviewRecords.keys().next().value);
+    Object.freeze(record);
+    this.#reviewRecords.set(id, {revision, record});
+    return record;
+  }
 
   add({name, book} = {}) {
     const checked = revalidateBook(book);

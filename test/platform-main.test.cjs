@@ -12,6 +12,9 @@ test('macOS start: no Windows QQ machinery is built, its channels refuse, and th
   const h = await boot(t, {platform: 'darwin'});
   const state = h.api.state();
   assert.equal(state.hostGate.platform, 'darwin');
+  assert.deepEqual(h.calls.privilegedSchemes, [[{
+    scheme: 'arcade-pet', privileges: {standard: true, secure: true, supportFetchAPI: true},
+  }]]);
   // Nothing from the Windows management layer exists.
   assert.deepEqual(h.calls.constructed, []);
   for (const name of ['qqConsole', 'qqComponents', 'qqCompanionLaunch', 'remotePanel', 'transferPanel', 'supervisorPanel', 'transferLocal', 'qceScheduleTimer']) assert(state[name] === undefined || state[name] === null, name);
@@ -32,12 +35,31 @@ test('macOS start: no Windows QQ machinery is built, its channels refuse, and th
   // Snapshot: the App conversation side is present; the QQ runtime is absent.
   const snapshot = await h.invoke('snapshot');
   assert.equal(snapshot.qqRuntime, undefined); assert.equal(snapshot.qqComponents, undefined); assert.equal(snapshot.qqCompanionLaunch, null);
+  assert.equal(snapshot.desktopPets.supported, true);
+  assert(snapshot.desktopPets.pets.every(row => !row.enabled));
+  assert.equal(h.calls.windows.length, 1);
   assert.equal(typeof snapshot.config.language, 'string'); assert(snapshot.accounts); assert(snapshot.bot); assert(Array.isArray(snapshot.personas));
   // Every Windows-only channel answers with the same fixed refusal and never reaches its handler.
-  const gated = [...h.handlers.keys()].map(name => name.slice('arcade:'.length)).filter(name => /^qq[A-Z]/.test(name) || /^voice[A-Z]/.test(name));
+  const macMedia=new Set(['qqImagePick','qqImageSend','qqImageDiscard','qqImageClose','qqVoicePick','qqVoiceAvailability','qqVoiceRender','qqVoiceCancelRender',
+    'qqVoiceSend','qqVoiceDiscard','qqVoiceClose']);
+  const registered=[...h.handlers.keys()].map(name=>name.slice('arcade:'.length));
+  const gated=registered.filter(name=>!macMedia.has(name)&&/^(?:qq|voice)[A-Z]/.test(name));
+  for(const name of macMedia)assert(registered.includes(name),name);
   assert(gated.length > 100, String(gated.length));
   // (Copied with a spread: the result object is created inside the vm realm.)
   for (const name of gated) assert.deepEqual({...await h.invoke(name, {accountId: '12345678', panelId: 'x'})}, {ok: false, code: 'unsupported_platform'}, name);
+  for(const operation of ['botQQMacInspect','botQQMacPrepare','botQQMacOpenRelease']){
+    assert.equal(typeof h.handlers.get('arcade:'+operation),'function',operation);
+  }
+  await assert.rejects(h.invoke('botQQCopyConfig'),{code:'unsupported_platform'});
+  const wrongRuntime=await h.invoke('botQQMacInspect',{withNode:false,runtimeRoot:'/renderer-path-not-allowed'});
+  assert.deepEqual({...wrongRuntime},{ok:false,code:'invalid_request'});
+  const noGroup={accountId:snapshot.accounts.selectedId,panelId:'x'};
+  for(const operation of ['qqImagePick','qqVoicePick']){
+    const denied=await h.invoke(operation,noGroup);
+    assert.equal(denied.ok,false);
+    assert(['changed','group_unavailable'].includes(denied.code),denied.code);
+  }
   // The sender check still comes first.
   await assert.rejects(h.handlers.get('arcade:qqRuntimeRefresh')({sender: {}, senderFrame: h.event.senderFrame}), /Untrusted sender/);
   await assert.rejects(h.handlers.get('arcade:snapshot')({sender: h.window.webContents, senderFrame: {url: 'file:///other.html'}}), /Untrusted sender/);
@@ -84,6 +106,7 @@ test('Windows start is unchanged: the QQ layer is built, nothing is gated, and t
   const h = await boot(t, {platform: 'win32'});
   const state = h.api.state();
   assert.equal(state.hostGate.platform, 'win32');
+  assert.deepEqual(h.calls.privilegedSchemes, []);
   for (const name of ['QQConsole', 'QQComponents', 'QQRemotePanel', 'QQTransferPanel', 'QQTransferLocal', 'QQSupervisorPanel']) assert(h.calls.constructed.includes(name), name);
   assert(state.qqConsole); assert(state.qqComponents); assert(state.qqCompanionLaunch); assert(state.remotePanel); assert(state.supervisorPanel);
   assert(h.window.options.webPreferences.additionalArguments.includes('--arcade-platform=win32'));
@@ -110,7 +133,45 @@ test('Windows without a tray: the close button closes, as before', async t => {
 
 test('Linux start: same gating as macOS, same window lifecycle as Windows', async t => {
   const h = await boot(t, {platform: 'linux'});
+  assert.deepEqual(h.calls.privilegedSchemes, []);
   assert.deepEqual(h.calls.constructed, []); assert.deepEqual(h.calls.menus, []); assert.deepEqual(h.calls.appUserModelIds, []);
   assert.deepEqual({...await h.invoke('qqRuntimeRefresh')}, {ok: false, code: 'unsupported_platform'});
   h.appEvents.get('window-all-closed')(); assert.equal(h.calls.quits, 1);
+});
+
+test('ordinary group reply uses the existing silent pet action for the exact enabled profile and role',async t=>{
+  const h=await boot(t,{platform:'darwin'});
+  const {accounts,pets,bus}=h.api.state(),primary=accounts.current();
+  const secondary=accounts.add({name:'Synthetic other profile'});
+  accounts.select('primary');
+  for(const service of [primary,secondary]){
+    service.configure({mode:'api',channel:'qq'});
+    service.socialConfigure({characterId:'claude-ju'});
+    service.status='connected';
+  }
+  const messages=[],events=[];
+  bus.subscribe({source:'qq-group',kind:'chat.reply'},event=>events.push({...event}));
+  const pet={id:'claude',model:'claude-ju',provider:'Claude'},window={
+    isDestroyed:()=>false,setTitle(){},destroy(){},
+    webContents:{isDestroyed:()=>false,send:(...args)=>messages.push(args)},
+  };
+  pets.settings=['claude'];pets.windows.set('claude',{pet,window});
+  const reply=(service,character='claude-ju',mode='api')=>service.onGroupReply({service,mode,character});
+  reply({...primary});                         // not the registered service object
+  reply(secondary);                           // same provider/role, different selected binding
+  reply(primary,'card-0123456789abcdef');      // distinct group role
+  reply(primary,'claude-ju','gpt');             // replaced backend
+  assert.deepEqual(messages.filter(([kind])=>kind==='arcade-pet:reply'),[]);
+  const before=events.length;
+  reply(primary);
+  assert.deepEqual(events.slice(before),[{source:'qq-group',kind:'chat.reply',accountId:'primary',mode:'api',character:'claude-ju'}]);
+  assert.deepEqual(messages.filter(([kind])=>kind==='arcade-pet:reply'),[['arcade-pet:reply',null]]);
+  pets.quiet=true;
+  reply(primary);
+  pets.quiet=false; pets.settings=[];
+  reply(primary);
+  pets.settings=['claude']; pets.bindings.clear();
+  pets.reply('api','claude-ju','primary',{requireBinding:true});
+  assert.deepEqual(messages.filter(([kind])=>kind==='arcade-pet:reply'),[['arcade-pet:reply',null]]);
+  assert.equal(bus.recent().some(event=>event.source==='qq-group'),false);
 });

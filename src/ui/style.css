@@ -93,6 +93,11 @@ main>header .header-actions{gap:6px}
 .partner-choice[aria-pressed=true]{background:var(--action-soft);border-color:var(--action);border-radius:8px 8px 0 0}
 .social-avatar,.persona-active>img,.portrait-choice>img{background:#f4eee6}
 .qq-check{background:var(--surface);border-color:#c3b5a5}
+#bot-qq-mac-launch h4{margin:0;font-size:13px;line-height:1.6;color:var(--text)}
+#bot-qq-mac-launch ol{margin:8px 0;padding-inline-start:1.2em;font-size:11px;line-height:1.8}
+#bot-qq-mac-launch li+li{margin-top:3px}
+#bot-qq-mac-launch-feedback:empty{display:none}
+.bot-setup .qq-group-toggle{display:flex;align-items:flex-start;gap:8px;line-height:1.7;margin:12px 0 6px}.bot-setup .qq-group-toggle input{width:16px;height:16px;flex:none;margin:3px 0 0}.qq-group-toggle span{min-width:0}#bot-qq-group-ids{width:100%;resize:vertical;min-height:70px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-sm,6px);color:var(--text);background:var(--surface)}#bot-qq-group-ids[aria-invalid=true]{border-color:var(--warning)}#bot-qq-groups-feedback:empty{display:none}#bot-qq-groups-feedback{font-weight:600}
 .bot-inbox .voice-panel{flex:none;max-width:680px;border-radius:10px;background:#faf7f2;border-color:var(--line);padding:15px 18px;margin:14px auto 20px;color:var(--text)}
 .bot-inbox .voice-panel .voice-intro,.bot-inbox .voice-panel .voice-hint,.bot-inbox .voice-panel .voice-state{color:var(--muted)}
 .bot-inbox .voice-panel .primary,.bot-inbox .voice-review button{background:var(--action);border-color:var(--action);color:white}
@@ -102,3 +107,12 @@ main>header .header-actions{gap:6px}
 @media(max-width:600px){:root{--header-height:50px}.sidebar{display:none}main{margin-left:0}main>header{padding:0 12px}.view{padding:22px 18px}#bot-view{height:calc(100vh - 126px);border-left:0;border-radius:0}.chat-heading{padding:16px;min-height:84px}.chat-identity h1{font-size:18px}.bot-inbox{padding:0 16px}.bot-thread-scroll{padding:20px 2px;flex-basis:200px;min-height:200px}.bot-heading-actions{flex-wrap:wrap}.bot-heading-actions #bot-stop{max-width:none}.bot-inbox .voice-panel{padding:14px;margin:12px auto 16px}.bot-message pre,.message-body{font-size:14px}.bot-heading-actions .secondary{font-size:12px}.portrait-choices{gap:12px}}
 .compact main{margin-left:0}.compact #bot-view{height:calc(100vh - 126px);border-radius:0}.compact .bot-heading-actions{flex-wrap:wrap}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+#bot-qq-group-roles select{display:block;max-width:100%;width:100%}
+#bot-qq-group-role-preview{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:7px}
+#bot-qq-group-role-preview h4{margin:10px 0 0;font-size:inherit}
+#bot-qq-group-role-preview p{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.qq-group-media{min-inline-size:0;margin:14px 0;padding:8px 12px 10px;border:1px solid var(--line);border-radius:7px}
+.qq-group-media legend{padding:0 4px}
+.qq-group-voice-source{margin-inline-start:24px;overflow-wrap:anywhere}

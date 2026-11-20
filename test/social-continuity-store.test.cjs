@@ -131,6 +131,32 @@ test('follow-up claims recheck revisions, scope, due time and expiry; cancellati
   assert.equal(store.claimFollowup(scope,'expire'),null);assert.equal(store.followups(scope).find(row=>row.id==='expire').state,'missed');
 });
 
+test('explicit local time is an atomic annotation on the due instant, including legacy tables',t=>{
+  const {store,root,now}=fixture(t),scope='s';
+  const legacy=store.scheduleFollowup(scope,{id:'legacy',text:'UTC appointment',dueAt:now()+1000,timeZone:'UTC'});
+  store.withDb(db=>db.exec('ALTER TABLE followups DROP COLUMN local_time'));
+  const reopened=new SocialStore({root,now});
+  assert.equal(reopened.withDb(db=>db.prepare('PRAGMA user_version').get()).user_version,4);
+  assert.deepEqual(reopened.followups(scope),[legacy]);
+
+  const localTime='2026-12-02T00:15+11:00',dueAt=Date.parse(localTime);
+  const offset=reopened.scheduleFollowup(scope,{id:'offset',text:'Local appointment',dueAt,localTime,timeZone:'UTC'});
+  const replacement='2026-12-03T23:20:00.123-09:30',replacementDue=Date.parse(replacement);
+  assert.throws(()=>reopened.updateFollowup(scope,'offset',{localTime:replacement}),/match its due instant/);
+  assert.deepEqual(reopened.followups(scope).find(row=>row.id==='offset'),offset);
+  const changed=reopened.updateFollowup(scope,'offset',{localTime:replacement,dueAt:replacementDue,revision:offset.revision});
+  assert.equal(changed.localTime,replacement);
+  assert.equal(changed.dueAt,replacementDue);
+  assert.equal(new SocialStore({root,now}).followups(scope).find(row=>row.id==='offset').localTime,replacement);
+
+  // The previous release writes the named due/expiry columns only.
+  reopened.withDb(db=>db.prepare('UPDATE followups SET due_at=?,expires_at=? WHERE id=?').run(dueAt,dueAt+60000,'offset'));
+  assert.equal(reopened.followups(scope).find(row=>row.id==='offset').localTime,undefined);
+  reopened.updateFollowup(scope,'offset',{dueAt:replacementDue,localTime:replacement});
+  reopened.clear(scope);
+  assert.equal(reopened.withDb(db=>db.prepare("SELECT local_time FROM followups WHERE id='offset'").get()).local_time,null);
+});
+
 test('completed follow-up receipt persists and source scope, time zone, capacity and malformed input are enforced',t=>{
   const {store,root,now}=fixture(t),scope='s';
   store.scheduleFollowup(scope,{id:'done',text:'A real appointment',dueAt:now(),timeZone:'Australia/Sydney'});store.claimFollowup(scope,'done');

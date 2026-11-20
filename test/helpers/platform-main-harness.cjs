@@ -20,7 +20,7 @@ class FakeImage {
 async function boot(t, {platform, tray = true} = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'arcade-platform-main-'));
   const handlers = new Map(), appEvents = new Map(), intervals = [];
-  const calls = {menus: [], appUserModelIds: [], dockIcons: [], quits: 0, trays: [], windows: [], shows: 0, hides: 0, focuses: 0, errors: [], constructed: []};
+  const calls = {menus: [], appUserModelIds: [], dockIcons: [], quits: 0, trays: [], windows: [], shows: 0, hides: 0, focuses: 0, errors: [], constructed: [], privilegedSchemes: []};
   const vault = {isEncryptionAvailable: () => true, encryptString: text => Buffer.from(text).map(byte => byte ^ 0x5a), decryptString: bytes => Buffer.from(bytes).map(byte => byte ^ 0x5a).toString()};
   const indexUrl = pathToFileURL(path.join(path.dirname(MAIN), 'ui', 'index.html')).href;
   class FakeWindow extends EventEmitter {
@@ -35,14 +35,19 @@ async function boot(t, {platform, tray = true} = {}) {
   class FakeTray { constructor(image) { if (!tray) throw Error('No tray on this desktop'); this.image = image; calls.trays.push(this); } setToolTip() {} on() {} setContextMenu(menu) { this.menu = menu; } }
   class FakeNotification extends EventEmitter { static isSupported() { return false; } show() {} close() {} }
   const nativeTheme = Object.assign(new EventEmitter(), {shouldUseDarkColors: false, themeSource: 'system'});
+  let readyRequested = false;
   const app = {
-    requestSingleInstanceLock: () => true, on: (name, fn) => { appEvents.set(name, fn); }, whenReady: () => Promise.resolve(),
+    requestSingleInstanceLock: () => true, on: (name, fn) => { appEvents.set(name, fn); }, whenReady: () => { readyRequested = true; return Promise.resolve(); },
     getLocale: () => 'en-US', getName: () => 'Agent Arcade', getPath: () => path.join(root, 'userData'), getAppPath: () => path.dirname(path.dirname(MAIN)),
     isPackaged: false, setAppUserModelId: id => { calls.appUserModelIds.push(id); }, quit: () => { calls.quits++; },
     ...(platform === 'darwin' ? {dock: {setIcon: image => { calls.dockIcons.push(image); }}} : {}),
   };
   const electron = {
     app, BrowserWindow: FakeWindow, Tray: FakeTray, Notification: FakeNotification, nativeTheme, safeStorage: vault,
+    protocol: {registerSchemesAsPrivileged(schemes) {
+      if (readyRequested) throw Error('Privileged schemes must register before app ready.');
+      calls.privilegedSchemes.push(structuredClone(schemes));
+    }},
     ipcMain: {handle: (name, fn) => { handlers.set(name, fn); }},
     Menu: {buildFromTemplate: template => ({template}), setApplicationMenu: menu => { calls.menus.push(menu); }},
     nativeImage: {createFromBuffer: () => new FakeImage(16), createFromPath: () => new FakeImage(16), createFromBitmap: (_bytes, options) => new FakeImage(options.width)},
@@ -71,7 +76,7 @@ async function boot(t, {platform, tray = true} = {}) {
     setTimeout, clearTimeout, setImmediate, queueMicrotask, Buffer, URL, AbortController, AbortSignal, structuredClone, TextEncoder, TextDecoder,
     require: id => id === 'electron' ? electron : replaced.has(id) ? replaced.get(id)() : fromMain(id),
   };
-  vm.runInNewContext(fs.readFileSync(MAIN, 'utf8') + '\nmodule.exports={state:()=>({hostGate,qqConsole,qqComponents,qqCompanionLaunch,remotePanel,transferPanel,supervisorPanel,transferLocal,qceScheduleTimer,tray,cleanedUp,problem}),publish};', context, {filename: MAIN});
+  vm.runInNewContext(fs.readFileSync(MAIN, 'utf8') + '\nmodule.exports={state:()=>({hostGate,qqConsole,qqComponents,qqCompanionLaunch,remotePanel,transferPanel,supervisorPanel,transferLocal,qceScheduleTimer,tray,cleanedUp,problem,accounts,pets,bus}),publish};', context, {filename: MAIN});
   // whenReady resolved already; its callback runs on the next microtasks.
   for (let turn = 0; turn < 20 && !calls.windows.length && !calls.errors.length; turn++) await new Promise(resolve => setImmediate(resolve));
   if (calls.errors.length) throw Error(`Startup failed: ${calls.errors.join('; ')}`);

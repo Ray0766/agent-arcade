@@ -3,8 +3,15 @@
   const words={en:{nav:'WeChat tasks',title:'Send a message. Give your agent a job.',subtitle:'WeChat is the conversation. This workshop runs the work.',preview:'Experimental connection · live WeChat acceptance pending.',setup:'Connect your workshop',scope:'One WeChat owner, one local project, one Claude agent. Your computer must stay on.',project:'Project folder',choose:'Choose folder',save:'Save key',budget:'Maximum cost per task (USD)',privacy:'Messages and task output pass through Tencent and Anthropic. Credentials use OS encryption; local chat history stays in memory. The SDK also keeps local session files.',pair:'Pair WeChat',start:'Start receiving tasks',stop:'Disconnect & cancel',scan:'Scan in WeChat and confirm. Codes expire after three minutes.',forget:'Forget credentials',inbox:'Task inbox',inboxNote:'Task acknowledgements, requests for input and final replies go back to WeChat.',empty:'After connecting, send your bot a message in WeChat. Tasks and replies will appear here.',commands:'Chat commands & permissions',help:'Send a task in plain language. /status checks progress; /cancel stops the task and clears the queue; /new starts fresh. Tool actions ask for a one-time /allow code or /deny code. Questions accept /answer code text.',risk:'An approved command can affect your computer beyond the selected folder. A reply ending does not prove the work succeeded. Disconnection cancels active work; tasks are never resumed automatically.',keySet:'Key saved with OS encryption. It is never sent to this view.',keyEmpty:'API billing required. Claude subscription login is not used.',noProject:'Choose a project before connecting.',disconnected:'Disconnected',connecting:'Connecting…',connected:'Receiving tasks',pairing:'Waiting for WeChat scan',paired:'WeChat paired',you:'You',agent:'Sprout Bot',notDesktop:'Open the desktop app to connect WeChat.',saved:'Key saved',confirmForget:'Forget API key and WeChat credentials? Active tasks will be cancelled.'},zh:{nav:'微信派活',title:'发条微信，让 Agent 开工。',subtitle:'微信里说清任务，小工坊在电脑上执行。',preview:'实验接入 · 尚未完成真实微信全链路验收。',setup:'连接你的工坊',scope:'一个微信主人、一个本机项目、一个 Claude Agent。运行时电脑需要保持开机。',project:'项目目录',choose:'选择文件夹',save:'保存密钥',budget:'每条任务的费用上限（美元）',privacy:'消息与任务输出会经过腾讯和 Anthropic。凭证使用系统加密；本页聊天仅保留在内存。SDK 另在本机保留会话文件。',pair:'连接微信',start:'开始接收任务',stop:'断开并取消任务',scan:'用微信扫码并确认，二维码三分钟后失效。',forget:'忘记凭证',inbox:'任务收件箱',inboxNote:'微信只收到接收确认、需要你介入的问题和最终回复。',empty:'连接后，在微信向 Bot 发一条任务。任务与回复会出现在这里。',commands:'聊天命令与操作权限',help:'直接用自然语言派活。/status 查看进度；/cancel 停止任务并清空队列；/new 开启新会话。工具操作需回复一次性的 /allow 验证码 或 /deny 验证码；问题可用 /answer 验证码 回答。',risk:'批准的命令可能影响所选文件夹以外的本机内容。回复结束不代表任务已成功。断开会取消执行，重启不会自动续跑。',keySet:'已使用系统加密保存。密钥不会回传到本页面。',keyEmpty:'需要 API 计费，不使用 Claude 订阅登录。',noProject:'先选择一个项目。',disconnected:'未连接',connecting:'正在连接…',connected:'正在接收任务',pairing:'等待微信扫码',paired:'微信已配对',you:'你',agent:'Sprout Bot',notDesktop:'请在桌面应用中连接微信。',saved:'密钥已保存',confirmForget:'忘记 API 密钥和微信凭证？当前任务会被取消。'}};
   Object.assign(words.en,{geminiNote:'Use a Google AI Studio API key. API billing is separate from a Gemini app subscription. Approved project file tools are available; shell commands are not.',doubaoNote:'Use a Volcengine Ark API key, not a Doubao app login. Approved project file tools are available; shell commands are not.'});
   Object.assign(words.zh,{geminiNote:'使用 Google AI Studio API key，按 API 用量计费，与 Gemini 应用订阅分开。项目文件操作需批准，不执行终端命令。',doubaoNote:'使用火山方舟 API key，不使用豆包应用登录。项目文件操作需批准，不执行终端命令。'});
+  const macQQ=window.arcade?.platform?.os==='darwin';
   let lastCredentialScope='',credentialContext={profileId:'',expectedMode:'api',expectedChannel:'wechat'};
-  const connectionDrafts=new Set(),connectionDraftIds=['bot-feishu-app-id','bot-feishu-owner','bot-x-account','bot-x-owner','bot-messenger-app','bot-messenger-page','bot-messenger-owner','bot-messenger-relay'];
+  const connectionDrafts=new Set(),connectionDraftIds=['bot-qq-expected-account','bot-feishu-app-id','bot-feishu-owner','bot-x-account','bot-x-owner','bot-messenger-app','bot-messenger-page','bot-messenger-owner','bot-messenger-relay'];
+  if(macQQ)connectionDraftIds.push('bot-qq-owner');
+  let qqGroupsDirty=false,qqGroupsSaving=false,qqGroupsFeedback='',qqGroupDirectory=null;
+  const qqGroupMedia=[
+    {id:'bot-qq-group-images',key:'imageGroupIds',selected:new Set()},
+    {id:'bot-qq-group-voice',key:'voiceGroupIds',selected:new Set()},
+  ];
   function sameCredentialOwner(scope){try{return JSON.stringify(JSON.parse(scope).slice(0,3))===JSON.stringify(JSON.parse(lastCredentialScope).slice(0,3));}catch{return false;}}
   function acceptConnectionDraft(scope,values){if(scope!==lastCredentialScope)return;for(const [id,value] of Object.entries(values))if($(id).value===value)connectionDrafts.delete(id);}
   Object.assign(words.en,{feishuChannel:'Feishu app bot',feishuSetup:'Use a Feishu internal app bot with the official long connection. No public callback URL is required. Only the configured owner’s private messages are accepted.',feishuOwner:'Your open_id in this app',feishuOwnerHint:'Use the owner’s open_id for this Feishu app. The first message never chooses the owner automatically.',feishuSave:'Save Feishu connection',feishuLimit:'App bot, not a personal account. No group chat or autonomous companion activity.'});
@@ -145,6 +152,36 @@
   });
   Object.assign(words.en,{setup:'Conversation settings',closeSettings:'Close conversation settings',advancedGroup:'Channels and tasks (advanced)',projectStep:'AI',aiService:'AI service',localControls:'The App conversation replies only in this window and is stored separately on this computer.',characterSettings:'Preset, lorebook and sampling for this character are in the character library'});
   Object.assign(words.zh,{setup:'对话设置',closeSettings:'收起对话设置',advancedGroup:'渠道与派活（高级）',projectStep:'AI',aiService:'AI 服务',localControls:'App 对话只在这个窗口里回复，聊天记录单独保存在这台电脑上。',characterSettings:'这位角色的预设、世界书和采样，在角色库里设置'});
+  Object.assign(words.en,{qqSetup:'Use your AI’s separate QQ account with an existing OneBot bridge. Private chat accepts the configured owner; group chat must be enabled separately below. This experimental bridge is not an official Tencent integration.',qqLoginNote:'Use a bridge you already have and sign in with the AI’s QQ account. NapCat’s upstream stopped publishing on 2026-11-12; downloads are unavailable here. Native macOS bridge sign-in is unverified.',qqDownload:'NapCat download unavailable',qqOwnerNote:'Enter your own QQ number, not the AI’s. This owner restriction applies to private chat; group settings are separate.',qqGroupsTitle:'QQ group chat',qqGroupsNote:'Choose up to five groups for this companion. Private chat keeps its own owner restriction. Choosing groups does not connect the account.',qqGroupsEnabled:'Enable replies in selected groups',qqGroupIds:'Group numbers (one per line)',qqGroupsRule:'Use numeric group IDs, not names. Existing reply decisions apply; every message need not receive a reply.',qqGroupsProactive:'Allow proactive messages in these groups',qqGroupsProactiveNote:'Off by default. Also turn on “Let her start conversations” in Companion settings. Small talk waits until the whole group has been quiet for 15 minutes and follows your contact hours and check interval. Follow-ups take priority. They wait for the group to be free, within contact hours and under the daily limit. They expire 5 minutes after their due time. Both share one daily limit per group, including unconfirmed sends. Replies do not use it. Members can send 暂停主动 to pause contact for themselves.',qqGroupsSave:'Save group settings',qqGroupsBridge:'Requires an existing OneBot bridge reachable on this computer. Native macOS QQ bridge sign-in is unverified. Saving does not verify live group chat.',qqGroupsSaved:'Group settings saved. The account has not been connected by this action; live group chat remains unverified.',qqGroupsInvalid:'Enter up to five distinct numeric group IDs (5–15 digits), separated by newlines or commas. Enabling replies requires at least one group.',qqGroupsLocked:'Disconnect before changing group settings.',qqGroupsPending:'Saving group settings…',qqGroupsDisabled:'Group chat is off. The private-chat settings are unchanged.'});
+  Object.assign(words.zh,{qqSetup:'使用 AI 的独立 QQ 账号和已有 OneBot 桥接。私聊只接指定主人；群聊需在下方单独启用。此实验接入非腾讯官方提供。',qqLoginNote:'使用你已有的桥接，登录 AI 的 QQ 账号。NapCat 上游已于 2026-11-12 停止发布，此处无法下载；原生 macOS 桥接登录尚未核实。',qqDownload:'NapCat 下载已不可用',qqOwnerNote:'填你自己的 QQ，不是 AI 的 QQ。这里限制私聊主人；群聊范围在下方单独设置。',qqGroupsTitle:'QQ 群聊',qqGroupsNote:'为这位搭档选择最多 5 个群。私聊仍只接指定主人；选择群不会自动连接账号。',qqGroupsEnabled:'在选定群内启用回复',qqGroupIds:'群号（每行一个）',qqGroupsRule:'填写数字群号，不用群名。沿用现有机制判断是否接话，并非每条消息都会回复。',qqGroupsProactive:'允许在这些群主动发消息',qqGroupsProactiveNote:'默认关闭，还需在「相处方式」开启「让她主动找我聊天」。闲聊等全群安静 15 分钟，遵守联系时段和判断间隔。回访优先，到点后最多等 5 分钟，群聊空闲且符合时段和额度即可发出，过期不补发。两类消息共用每群每日额度，发送未确认也计入，普通回复不占用。群成员可发「暂停主动」，暂停发给自己的主动联系。',qqGroupsSave:'保存群聊设置',qqGroupsBridge:'需要本机可访问的已有 OneBot 桥接。原生 macOS QQ 桥接登录尚未核实；保存设置不代表真实群聊已验收。',qqGroupsSaved:'群聊设置已保存；此次操作没有连接账号，真实群聊仍待验收。',qqGroupsInvalid:'请填写最多 5 个不重复的数字群号（5–15 位），用换行或逗号分隔；启用回复时至少填写一个群号。',qqGroupsLocked:'请先断开连接，再修改群聊设置。',qqGroupsPending:'正在保存群聊设置…',qqGroupsDisabled:'群聊已关闭；私聊设置保持不变。'});
+  words.en.qqGroupsCompanionSettings='Open companion settings';
+  words.zh.qqGroupsCompanionSettings='打开相处方式';
+  Object.assign(words.en,{
+    qqGroupDirectoryLoad:'Read joined groups',qqGroupDirectorySelect:'Group name and number',qqGroupDirectoryAdd:'Add to pending groups',
+    qqGroupDirectoryVerify:'Test the saved connection above to verify the companion’s QQ number and online status. You can also enter group numbers below.',
+    qqGroupDirectoryReading:'Reading joined groups from the bridge…',qqGroupDirectoryChoose:'Choose a group…',qqGroupDirectoryUnnamed:'Unnamed group',
+    qqGroupDirectoryEmpty:'The bridge returned no groups. You can enter a group number below.',
+    qqGroupDirectoryFailed:'Could not read joined groups. Check the connection or enter group numbers below.',
+    qqGroupDirectoryAvailable:'Read the list for the verified account, or enter group numbers below.',
+    qqGroupDirectoryReady:'Groups shown come from the bridge. Match the group number, then add and save.',
+    qqGroupDirectoryAdded:'Group number added below. Save group settings to apply it.',
+    qqGroupDirectoryFull:'You can save up to five groups. Check the group numbers entered below.',
+  });
+  Object.assign(words.zh,{
+    qqGroupDirectoryLoad:'读取已加入的群',qqGroupDirectorySelect:'群名和群号',qqGroupDirectoryAdd:'加入待保存列表',
+    qqGroupDirectoryVerify:'先在上方测试已保存的连接，核对搭档 QQ 号和在线状态。也可以在下方手填群号。',
+    qqGroupDirectoryReading:'正在从桥接读取已加入的群…',qqGroupDirectoryChoose:'请选择群…',qqGroupDirectoryUnnamed:'未命名群',
+    qqGroupDirectoryEmpty:'桥接没有返回群。你仍可在下方手填群号。',
+    qqGroupDirectoryFailed:'读取群列表失败。可检查连接后再试，或在下方手填群号。',
+    qqGroupDirectoryAvailable:'可以读取已核对账号的群列表，也可以在下方手填群号。',
+    qqGroupDirectoryReady:'名单来自桥接。请核对数字群号，再添加并保存。',
+    qqGroupDirectoryAdded:'群号已加入下方列表。保存群聊设置后生效。',
+    qqGroupDirectoryFull:'最多可保存五个群。请先核对下方已填写的群号。',
+  });
+  words.en.qqGroupsLimits='Enable companion mode in Companion settings with a supported API or local Claude connection before connecting groups. Group chat supports text, isolated member memories and reply decisions. Voice replies and task tools are not available in groups. Private memories stay separate.';
+  words.zh.qqGroupsLimits='连接群聊前，先在「相处方式」开启陪伴，并选用支持陪伴的 API 或本机 Claude。群聊支持文字、按群成员隔离的记忆和自主接话判断。群聊语音回复和派活工具尚未接入。私聊记忆保持隔离。';
+  Object.assign(words.en,{qqGroupImages:'Let selected groups share images with the AI',qqGroupImagesNote:'Off by default. In selected groups, one supported still image may be sent to your AI provider, from a new message or an exact quote of an image message already seen in the same group. The model must support images and may still choose to stay silent. This setting affects group chat only.',qqGroupMediaEmpty:'Enter valid group numbers above to choose which groups can share images or voice.',qqGroupMediaGroup:'Group',qqGroupVoice:'Transcribe voice messages in selected groups',qqGroupVoiceNote:'Off by default. Configure local speech recognition first. The bridge must supply a verified inline WAV or QQ PTT link tied to the exact group message. PTT recordings are size-limited and decoded locally from SILK. A filename alone cannot locate a recording.',qqGroupVoicePrivacy:'Speech is transcribed on this computer. The transcript may go to your AI provider for chat and cannot execute commands. Private voice and voice sending use separate settings.',qqGroupVoiceUnverified:'Voice source unverified.',qqGroupVoiceWAV:'Verified this connection: inline WAV.',qqGroupVoicePTT:'Verified this connection: QQ PTT decoded locally.',qqGroupVoiceUnavailable:'Voice unavailable. Check the recording and local speech recognition, or ask the sender to use text.'});
+  Object.assign(words.zh,{qqGroupImages:'允许选定群分享图片给 AI',qqGroupImagesNote:'默认关闭。开启后，新消息中的单张受支持静态图片，或精确引用本群已接收的图片消息，可能会发送给你选择的 AI 提供商。模型需支持看图，也可选择不回复。此设置仅影响群聊。',qqGroupMediaEmpty:'请先在上方填写有效群号，再为各群选择图片或语音许可。',qqGroupMediaGroup:'群',qqGroupVoice:'转写选定群的语音消息',qqGroupVoiceNote:'默认关闭。请先配置本机语音识别。桥接须提供与原群消息核对一致的内嵌 WAV 或 QQ PTT 链接。PTT 音频有大小限制，并在本机解码 SILK。仅凭文件名无法定位录音。',qqGroupVoicePrivacy:'语音在本机转写。转写文字可能发给你选择的 AI 提供商用于聊天，不能用来执行指令。私聊语音和语音发送使用各自的设置。',qqGroupVoiceUnverified:'语音来源尚未核实。',qqGroupVoiceWAV:'本次连接已核实：内嵌 WAV。',qqGroupVoicePTT:'本次连接已核实：QQ PTT 已在本机解码。',qqGroupVoiceUnavailable:'语音暂不可用。请检查桥接发来的录音和本机语音识别，或请发送者改用文字。'});
   // Conversation settings panel. The App conversation needs only the AI service, its model and
   // key; channel pairing, the project folder, the SDK threshold, connection start, diagnostics and
   // chat commands sit in one disclosure below. Every control keeps its id, handler and value.
@@ -168,51 +205,1042 @@
     const options=$('bot-qq-options'),manual=el('details','bot-help');manual.id='bot-qq-manual';
     const summary=el('summary');summary.dataset.bot='qqManual';manual.append(summary);
     // Move the original controls once: keep their IDs, handlers and saved values.
-    for(const section of [...options.children])if(section.classList.contains('qq-setup-part'))manual.append(section);
+    for(const section of [...options.children])if(section.classList.contains('qq-setup-part')&&section.id!=='bot-qq-groups')manual.append(section);
     const managed=el('div','qq-setup-part');managed.id='bot-qq-managed';
     const heading=el('h3'),note=el('p'),button=el('button','primary');
     heading.dataset.bot='qqManageTitle';note.dataset.bot='qqManageNote';button.dataset.bot='qqManage';
     button.id='bot-qq-manage';button.type='button';button.onclick=()=>{setSetupOpen(false);const current=data?.accounts?.accounts?.find(row=>row.id===data.accounts.selectedId);window.openQQRuntime?.({accountId:current?.expectedQQAccountId||current?.accountId||current?.qqBinding?.accountId});};
-    managed.append(heading,note,button);options.append(managed,manual);
+    managed.append(heading,note,button);options.append(managed,$('bot-qq-groups'),manual);
     const runtime=el('button','plain');runtime.id='bot-problem-qq-runtime';runtime.hidden=true;runtime.onclick=button.onclick;$('bot-problem').after(runtime);
   }
-  function renderQQCheck(qqState,status){
+  function renderQQCheck(qqState,status,macStatus){
     const check=qqState?.check,zh=language==='zh',node=$('bot-qq-check');
+    const bridge=macQQ?(zh?'OneBot 桥接':'your OneBot bridge'):'NapCat';
+    const signIn=zh?`请在 ${bridge} 登录后重新检查。`:`Sign in through ${bridge} and test again.`;
     node.dataset.state=check?.state||'empty';
     let title=word('qqCheckEmpty'),detail=word('qqCheckEmptyNote');
     if(status==='checking'||check?.state==='checking'){
       title=word('qqTesting');detail=zh?'正在读取登录账号、在线状态和好友关系。不会发送消息或启动 AI。':'Reading the login identity, online status and friendship. No message or AI request is sent.';
+    }else if(macStatus?.issue){
+      title=macStatus.label;detail=macStatus.detail;
+      node.dataset.state=macStatus.tone==='waiting'?'attention':macStatus.tone==='unknown'?'unknown':'failed';
     }else if(check?.state==='checked'){
       const name=[check.nickname,check.accountId?`(${check.accountId})`:''].filter(Boolean).join(' ');
       title=(zh?'已识别 QQ：':'QQ identified: ')+name;
-      const online=check.online===true?(zh?'账号在线。':'The account is online.'):check.online===false?(managedQQ?(zh?'账号当前离线。请打开“管理 QQ 账号”核对登录后重新检查。':'The account is offline. Open Manage QQ accounts, check sign-in, then test again.'):(zh?'账号当前离线。请在 NapCat 登录后重新检查。':'The account is offline. Sign in through NapCat and test again.')):(managedQQ?(zh?'在线状态尚未核实。请打开“管理 QQ 账号”核对对应账号。':'Online status is unknown. Inspect the account in Manage QQ accounts.'):(zh?'在线状态尚未核实。请在 NapCat 确认已登录。':'Online status is unknown. Confirm the login in NapCat.'));
+      const online=check.online===true?(zh?'账号在线。':'The account is online.'):check.online===false?(managedQQ?(zh?'账号当前离线。请打开“管理 QQ 账号”核对登录后重新检查。':'The account is offline. Open Manage QQ accounts, check sign-in, then test again.'):(zh?'账号当前离线。':'The account is offline. ')+signIn):(managedQQ?(zh?'在线状态尚未核实。请打开“管理 QQ 账号”核对对应账号。':'Online status is unknown. Inspect the account in Manage QQ accounts.'):(zh?`在线状态尚未核实。请在 ${bridge} 确认已登录。`:`Online status is unknown. Confirm the login in ${bridge}.`));
       const friend=check.ownerIsFriend===true?(zh?'已核对：你的 QQ 在此账号的好友列表中。':'Your QQ is in this account’s friend list.'):check.ownerIsFriend===false?(zh?'尚未找到你的 QQ 好友关系。请互加好友，在 AI 账号通过申请后重新检查。':'Your QQ was not found as a friend. Add the accounts as friends, accept in the AI account, then test again.'):(zh?'好友关系尚未核实。请确认已互加好友。':'Friendship is unverified. Confirm the accounts are friends.');
-      detail=[online,friend,word('qqCheckOnly')].join(' ');
+      detail=[macStatus&&status!=='connected'&&check.online!==true?macStatus.detail:online,friend,word('qqCheckOnly')].join(' ');
       if(check.online===false||check.ownerIsFriend===false)node.dataset.state='attention';
       else if(check.online!==true||check.ownerIsFriend!==true)node.dataset.state='unknown';
     }else if(check?.state==='failed'){
       title=word('qqCheckFailed');
       const reasons={
-        unauthorized:zh?'令牌未通过验证。请核对 NapCat 的 OneBot token，不要使用 WebUI 密码。':'Authentication failed. Match the NapCat OneBot token; do not use the WebUI password.',
-        invalid_token:zh?'请生成连接令牌，或保存有效的 OneBot token。':'Generate a connection token or save a valid OneBot token.',
+        unauthorized:macQQ?(zh?'令牌未通过验证。请核对 OneBot 桥接中的 Token。':'Authentication failed. Check the token in your OneBot bridge.'):(zh?'令牌未通过验证。请核对 NapCat 的 OneBot token，不要使用 WebUI 密码。':'Authentication failed. Match the NapCat OneBot token; do not use the WebUI password.'),
+        invalid_token:macQQ?(zh?'请保存已准备的连接，或在手动连接字段填入有效的 OneBot Token。':'Save the prepared connection, or enter a valid OneBot token in the manual connection fields.'):(zh?'请生成连接令牌，或保存有效的 OneBot token。':'Generate a connection token or save a valid OneBot token.'),
         invalid_owner:zh?'请填写你自己的有效 QQ 号，再保存设置。':'Enter your valid QQ number and save the settings.',
         invalid_bridge_url:zh?'请使用本机 WebSocket 地址，例如 ws://127.0.0.1:3001/。':'Use a local WebSocket address such as ws://127.0.0.1:3001/.',
         owner_is_agent_account:zh?'你填写的是 AI 自己的 QQ。请改为你用来发消息的 QQ 号。':'The allowed sender is the AI account itself. Enter the QQ number you will message from.',
-        account_changed:zh?'桥接登录账号已变化。请核对 NapCat 账号后重新检查。':'The bridge account changed. Check the NapCat account and test again.',
+        account_changed:zh?`桥接登录账号已变化。请核对 ${bridge} 的账号后重新检查。`:`The bridge account changed. Check the account in ${bridge} and test again.`,
         invalid_login_info:zh?'桥接未返回有效的登录账号。请确认 QQ 已登录，并使用 WS 正向 Universal 连接。':'The bridge did not return a valid account. Confirm QQ is signed in and use a forward Universal WebSocket connection.',
-        account_offline:managedQQ?(zh?'QQ 当前离线。请打开“管理 QQ 账号”核对状态，按需登录后重新检查。':'QQ is offline. Inspect Manage QQ accounts, sign in if needed, then test again.'):(zh?'QQ 当前离线。请在 NapCat 登录后重新检查。':'QQ is offline. Sign in through NapCat and test again.'),
+        account_offline:managedQQ?(zh?'QQ 当前离线。请打开“管理 QQ 账号”核对状态，按需登录后重新检查。':'QQ is offline. Inspect Manage QQ accounts, sign in if needed, then test again.'):(zh?'QQ 当前离线。':'QQ is offline. ')+signIn,
         connect_timeout:zh?'检查超时。请确认 QQ 已登录、连接已启用并保存，且端口与令牌一致。':'The check timed out. Confirm QQ is signed in, the connection is enabled and saved, and the port and token match.',
         timeout:zh?'检查超时。请确认 QQ 已登录、连接已启用并保存，且端口与令牌一致。':'The check timed out. Confirm QQ is signed in, the connection is enabled and saved, and the port and token match.'
       };
-      detail=reasons[check.code]||(zh?'无法连接本机 QQ。请确认 NapCat 正在运行、WS 正向连接已启用并保存，地址和令牌一致。':'Could not reach the local QQ bridge. Confirm NapCat is running and the forward WebSocket connection is enabled, saved, and uses the same address and token.');
+      detail=reasons[check.code]||(zh?`无法连接本机 QQ。请确认 ${bridge} 正在运行、WS 正向连接已启用并保存，地址和令牌一致。`:`Could not reach the local QQ bridge. Confirm ${bridge} is running and the forward WebSocket connection is enabled, saved, and uses the same address and token.`);
     }
     $('bot-qq-check-title').textContent=title;$('bot-qq-check-detail').textContent=detail;
   }
   async function saveQQSettings(requireOwner=true){
     const context=credentialContext,scope=lastCredentialScope,token=$('bot-qq-token').value;$('bot-qq-token').value='';
-    const owner=$('bot-qq-owner').value;
-    await window.arcade.botConfigure({...context,qqUrl:$('bot-qq-url').value,...(requireOwner||owner?{qqOwnerId:owner}:{}),...(token?{qqToken:token}:{})});
+    const owner=$('bot-qq-owner').value,expected=$('bot-qq-expected-account').value,qqAccountId=expected.trim();
+    const changeAccount=qqAccountId&&qqAccountId!==state?.qq?.expectedAccountId;
+    const saved=await window.arcade.botConfigure({...context,qqUrl:$('bot-qq-url').value,...(requireOwner||owner?{qqOwnerId:owner}:{}),...(changeAccount?{qqAccountId}:{}),...(token?{qqToken:token}:{})});
+    acceptConnectionDraft(scope,{'bot-qq-expected-account':expected,'bot-qq-owner':owner});
+    if(scope===lastCredentialScope&&!connectionDrafts.has('bot-qq-expected-account')){
+      $('bot-qq-expected-account').value=saved?.qq?.expectedAccountId??state?.qq?.expectedAccountId??'';
+      renderQQGroupRoles();
+    }
     if(!sameCredentialOwner(scope))throw Object.assign(Error('(credential_scope_changed)'),{code:'credential_scope_changed'});
+  }
+  if(macQQ)window.applyPreparedQQConnection=({endpoint,accountId,ownerDraft})=>{
+    const qq=state?.qq;
+    if(state?.channel!=='qq'||!qq?.hasToken||qq.url!==endpoint||qq.expectedAccountId!==accountId)return;
+    $('bot-qq-url').value=endpoint;
+    $('bot-qq-token').value='';
+    $('bot-qq-expected-account').value=accountId;
+    connectionDrafts.delete('bot-qq-expected-account');
+    $('bot-qq-owner').value=ownerDraft;
+    if(ownerDraft===(qq.ownerId||''))connectionDrafts.delete('bot-qq-owner');
+    else connectionDrafts.add('bot-qq-owner');
+    renderQQGroupRoles();
+    renderQQGroupSources(qq.groups||{});
+  };
+  const qqGroupRoleWords={
+    en:{qqExpectedAccount:'Companion’s QQ number',qqExpectedAccountNote:'Required for group character cards. Leave blank to keep the saved number or leave it unset.',
+      qqGroupRoles:'Character cards for QQ groups',qqGroupRolesNote:'Review the name, description and example dialogue the chosen AI will receive for this group. App memories and private card fields stay separate.',
+      qqGroupRoleGroup:'Group',qqGroupRoleCard:'Card from Characters',qqGroupRoleReview:'Review public fields',qqGroupRoleClear:'Use default group role',qqGroupRolePreview:'Content to share with the group’s AI',
+      qqGroupRoleName:'Name',qqGroupRoleDescription:'Description',qqGroupRoleExamples:'Example dialogue',qqGroupRoleApprove:'Approve and save for this group',
+      qqGroupRoleAccountNeeded:'Save the companion’s QQ number under the manual connection settings first.',qqGroupRoleSaveSettings:'Save the group numbers and companion’s QQ connection before assigning a card.',
+      qqGroupRoleGroupNeeded:'Save at least one group number above.',qqGroupRoleChooseGroup:'Choose a group',qqGroupRoleChooseCard:'Choose a card',qqGroupRoleDefault:'This group uses the default companion role.',qqGroupRoleEmpty:'No cards found. Import one in Characters.',
+      qqGroupRoleLoading:'Loading character cards…',qqGroupRoleReading:'Reading public fields…',qqGroupRoleSaving:'Saving the group role…',qqGroupRoleSaved:'Role approved for this group.',qqGroupRoleCleared:'This group now uses the default role.',
+      qqGroupRoleLoadFailed:'Could not load character cards. Close and reopen this section to try again.',qqGroupRoleReviewFailed:'Could not review this card. Check that the card and group still exist, then try again.',
+      qqGroupRoleSaveFailed:'The role was not saved. Check the account and group, then review the current card again.',qqGroupRoleNoText:'(Empty)'},
+    zh:{qqExpectedAccount:'搭档的 QQ 号',qqExpectedAccountNote:'为群添加角色卡时需要此号码。留空保留已保存的号码，未保存时保持未设置。',
+      qqGroupRoles:'QQ 群角色卡',qqGroupRolesNote:'先核对本群的 AI 会收到的名称、描述和对白范例。App 私人记忆和角色卡私有字段继续隔离。',
+      qqGroupRoleGroup:'群号',qqGroupRoleCard:'从角色库选卡',qqGroupRoleReview:'查看可公开字段',qqGroupRoleClear:'恢复群默认人设',qqGroupRolePreview:'将交给本群 AI 的内容',
+      qqGroupRoleName:'名称',qqGroupRoleDescription:'描述',qqGroupRoleExamples:'对白范例',qqGroupRoleApprove:'批准并保存到此群',
+      qqGroupRoleAccountNeeded:'请先在手动连接设置中保存搭档的 QQ 号。',qqGroupRoleSaveSettings:'请先保存群号及搭档的 QQ 连接设置，再分配角色卡。',
+      qqGroupRoleGroupNeeded:'请先在上方保存至少一个群号。',qqGroupRoleChooseGroup:'选择群号',qqGroupRoleChooseCard:'选择角色卡',qqGroupRoleDefault:'此群使用默认搭档人设。',qqGroupRoleEmpty:'角色库为空。请先到「角色」页导入卡片。',
+      qqGroupRoleLoading:'正在读取角色库…',qqGroupRoleReading:'正在读取可公开字段…',qqGroupRoleSaving:'正在保存群人设…',qqGroupRoleSaved:'已批准此群使用该人设。',qqGroupRoleCleared:'此群已恢复默认人设。',
+      qqGroupRoleLoadFailed:'暂时无法读取角色库。请收起并重新展开此处重试。',qqGroupRoleReviewFailed:'暂时无法查看这张卡。请检查角色卡和群是否还存在，再重试。',
+      qqGroupRoleSaveFailed:'本次人设未保存。请核对账号、群号，再预览当前角色卡。',qqGroupRoleNoText:'（空）'}
+  };
+  for(const lang of ['en','zh'])Object.assign(words[lang],qqGroupRoleWords[lang]);
+  const roleId=/^[a-f0-9]{16}$/,qqNumber=/^[1-9]\d{4,14}$/;
+  const groupRoles=$('bot-qq-group-roles'),roleGroup=$('bot-qq-group-role-group'),roleCard=$('bot-qq-group-role-card');
+  let roleView=null;
+  function roleOptions(select,placeholder,items,value){
+    const key=JSON.stringify([placeholder,items]);
+    if(select.dataset.optionsKey!==key){
+      select.replaceChildren(...[['',placeholder],...items].map(([id,name])=>{const item=el('option','',name);item.value=id;return item;}));
+      select.dataset.optionsKey=key;
+    }
+    if(select.value!==value)select.value=value;
+  }
+  function namedOptions(rows){
+    const names=new Map();
+    for(const {name} of rows)names.set(name,(names.get(name)||0)+1);
+    return rows.map(({id,name})=>[id,names.get(name)>1?`${name} · ${id}`:name]);
+  }
+  Object.assign(words.en,{
+    qqGroupLorebooks:'World book for this group',qqGroupLorebookNote:'Approve up to 10 library world books for the saved group role, one at a time. Review every entry that the group’s AI may receive.',
+    qqGroupLorebookSelect:'World book from Characters',qqGroupLorebookChoose:'Choose a world book',qqGroupLorebookReview:'Review entries',qqGroupLorebookClear:'Remove approval',qqGroupLorebookCurrentSaved:'Approved world books',qqGroupLorebookPreviousRole:'Approved for an earlier role',
+    qqGroupLorebookReviewTitle:'Entries to share with the group’s AI',qqGroupLorebookApprove:'Approve the whole world book for the group role',qqGroupLorebookPrevious:'Previous page',qqGroupLorebookJump:'Page',qqGroupLorebookNext:'Next page',qqGroupLorebookReviewChanged:'The world book changed or could not be read. Start a new review before approving.',qqGroupLorebookKeys:'Primary keys',qqGroupLorebookNoKeys:'No primary keys',qqGroupLorebookSecondary:'Secondary keys',qqGroupLorebookAlways:'Always eligible',
+    qqGroupLorebookCurrentNone:'No world book approved for this group.',qqGroupLorebookSelectedBook:'World book',qqGroupLorebookSelectedRole:'Saved role',qqGroupLorebookRoleNeeded:'Save the group role before reviewing a world book.',
+    qqGroupLorebookLoading:'Loading world books…',qqGroupLorebookReading:'Reading entries for review…',qqGroupLorebookSaving:'Saving permission…',qqGroupLorebookSaved:'World book approved for the group role.',qqGroupLorebookCleared:'World book approval removed.',
+    qqGroupLorebookListFailed:'Could not load world books. Close and reopen this section to try again.',qqGroupLorebookReviewFailed:'Could not review this book for the current group role. Check the book and role, then try again.',
+    qqGroupLorebookSaveFailed:'The approval was not saved. Reopen the world book review and check the current role.',qqGroupLorebookClearFailed:'The approval could not be removed. Check the saved group and try again.',qqGroupLorebookEmpty:'No standalone world books found. Import one in Characters.',qqGroupLorebookNoEnabled:'This world book has no enabled entries.',
+  });
+  Object.assign(words.zh,{
+    qqGroupLorebooks:'此群的世界书',qqGroupLorebookNote:'可为本群已保存的角色逐本批准最多 10 本独立世界书。请核对本群 AI 可能收到的每条内容。',
+    qqGroupLorebookSelect:'从角色库选择世界书',qqGroupLorebookChoose:'选择世界书',qqGroupLorebookReview:'查看条目',qqGroupLorebookClear:'撤销批准',qqGroupLorebookCurrentSaved:'已批准的世界书',qqGroupLorebookPreviousRole:'为旧角色批准',
+    qqGroupLorebookReviewTitle:'将交给本群 AI 的世界书条目',qqGroupLorebookApprove:'批准此群角色使用整本世界书',qqGroupLorebookPrevious:'上一页',qqGroupLorebookJump:'页码',qqGroupLorebookNext:'下一页',qqGroupLorebookReviewChanged:'世界书已变化或无法读取。请重新查看条目后再批准。',qqGroupLorebookKeys:'主关键词',qqGroupLorebookNoKeys:'没有主关键词',qqGroupLorebookSecondary:'次关键词',qqGroupLorebookAlways:'始终可参与匹配',
+    qqGroupLorebookCurrentNone:'此群尚未批准世界书。',qqGroupLorebookSelectedBook:'世界书',qqGroupLorebookSelectedRole:'已保存的角色',qqGroupLorebookRoleNeeded:'请先保存本群角色，再查看世界书。',
+    qqGroupLorebookLoading:'正在读取世界书列表…',qqGroupLorebookReading:'正在读取待核对条目…',qqGroupLorebookSaving:'正在保存权限…',qqGroupLorebookSaved:'已批准此群角色使用该世界书。',qqGroupLorebookCleared:'已撤销本群的世界书批准。',
+    qqGroupLorebookListFailed:'暂时无法读取世界书。请收起并重新展开此处重试。',qqGroupLorebookReviewFailed:'无法为当前群角色查看这本书。请核对后重试。',
+    qqGroupLorebookSaveFailed:'批准未保存。请重新打开世界书预览，核对当前角色。',qqGroupLorebookClearFailed:'未能撤销批准。请核对已保存的群，再重试。',qqGroupLorebookEmpty:'还没有独立世界书。请先到「角色」页导入。',qqGroupLorebookNoEnabled:'这本世界书没有启用的条目。',
+  });
+  const bookForm=$('bot-qq-group-lorebooks'),bookSelect=$('bot-qq-group-lorebook-book'),bookPage=$('bot-qq-group-lorebook-page');
+  let bookView=null,shownBookPreview=null,shownBookLanguage='';
+  function groupLorebookSupported(){
+    const api=window.arcade;
+    return state?.channel==='qq'&&['lorebooksList','groupLorebookPreview','groupLorebookSet'].every(method=>typeof api?.[method]==='function');
+  }
+  function effectiveGroupRole(groups,groupId){
+    const binding=(groups.roles||[]).find(row=>row.groupId===groupId);
+    return {id:binding?`card-${binding.cardId}`:state?.social?.config?.characterId||'',name:binding?.name||''};
+  }
+  function showBookPreview(preview,locked=false){
+    $('bot-qq-group-lorebook-preview').hidden=!preview;
+    $('bot-qq-group-lorebook-pages').hidden=!preview||preview.pageCount<2;
+    $('bot-qq-group-lorebook-prev').disabled=locked||!preview||preview.page===0;
+    $('bot-qq-group-lorebook-next').disabled=locked||!preview||preview.page+1>=preview.pageCount;
+    bookPage.disabled=locked;
+    const pageCount=preview?.pageCount||0;
+    if(bookPage.options.length!==pageCount){
+      bookPage.replaceChildren(...Array.from({length:pageCount},(_,index)=>{
+        const option=el('option','',String(index+1));option.value=String(index);return option;
+      }));
+    }
+    if(preview&&bookPage.value!==String(preview.page))bookPage.value=String(preview.page);
+    if(shownBookPreview===preview&&shownBookLanguage===language)return;
+    shownBookPreview=preview;shownBookLanguage=language;
+    const zh=language==='zh';
+    $('bot-qq-group-lorebook-page-state').textContent=preview?
+      (zh?`第 ${preview.page+1} / ${preview.pageCount} 页 · 共 ${preview.enabledEntries} 条启用条目`:`Page ${preview.page+1} of ${preview.pageCount} · ${preview.enabledEntries} enabled entries`):'';
+    $('bot-qq-group-lorebook-preview-scope').textContent=preview?(zh?`搭档 QQ ${state.qq.expectedAccountId} · 群 ${preview.groupId}`:`Companion QQ ${state.qq.expectedAccountId} · group ${preview.groupId}`):'';
+    $('bot-qq-group-lorebook-preview-book').textContent=preview?`${word('qqGroupLorebookSelectedBook')} · ${preview.name}`:'';
+    $('bot-qq-group-lorebook-preview-role').textContent=preview?`${word('qqGroupLorebookSelectedRole')} · ${preview.roleName}`:'';
+    const rows=(preview?.review||[]).map(entry=>{
+      const row=el('section'),label=el('h4','',entry.keys.length?word('qqGroupLorebookKeys'):word('qqGroupLorebookNoKeys'));
+      const content=el('p','',entry.content||word('qqGroupRoleNoText'));content.style.whiteSpace='pre-wrap';
+      row.append(label);
+      if(entry.keys.length)row.append(el('p','',entry.keys.join(zh?'、':', ')));
+      if(entry.secondaryKeys.length)row.append(el('h4','',word('qqGroupLorebookSecondary')),el('p','',entry.secondaryKeys.join(zh?'、':', ')));
+      if(entry.constant)row.append(el('small','',word('qqGroupLorebookAlways')));
+      row.append(content);
+      return row;
+    });
+    $('bot-qq-group-lorebook-entries').replaceChildren(...(preview&&!rows.length?[el('p','',word('qqGroupLorebookNoEnabled'))]:rows));
+  }
+  function showApprovedBooks(rows,role,locked){
+    const list=$('bot-qq-group-lorebook-approved'),status=$('bot-qq-group-lorebook-current');
+    status.textContent=word(rows.length?'qqGroupLorebookCurrentSaved':'qqGroupLorebookCurrentNone');
+    list.hidden=rows.length===0;
+    const key=JSON.stringify([language,rows,role.id,locked]);
+    if(list.dataset.rowsKey===key)return;
+    list.dataset.rowsKey=key;
+    const labels=namedOptions(rows.map(row=>({id:row.bookId,name:row.name})));
+    list.replaceChildren(...rows.map((row,index)=>{
+      const item=el('li'),label=labels[index][1],actions=el('div','qq-actions');
+      item.append(el('span','',label));
+      if(row.roleId!==role.id)item.append(el('small','',`${word('qqGroupLorebookPreviousRole')} · ${row.roleId}`));
+      const remove=el('button','secondary',word('qqGroupLorebookClear'));
+      remove.type='button';remove.disabled=locked;remove.dataset.bookId=row.bookId;remove.dataset.roleId=row.roleId;
+      remove.setAttribute('aria-label',`${word('qqGroupLorebookClear')} · ${label}`);
+      remove.onclick=()=>requestBook('save',row);
+      actions.append(remove);item.append(actions);
+      return item;
+    }));
+  }
+  function renderQQGroupLorebook(config=state?.qq?.groups||{}){
+    const groupId=roleView?.groupId,enabled=groupLorebookSupported()&&!!groupId&&(config.groupIds||[]).includes(groupId)&&!$('bot-qq-group-role-controls').hidden;
+    bookForm.hidden=!enabled;
+    if(!enabled||!bookForm.open){bookView=null;showBookPreview(null);return;}
+    const role=effectiveGroupRole(config,groupId);
+    const scope=JSON.stringify([roleView.scope,groupId,role.id,role.name]);
+    if(bookView?.scope!==scope)bookView={scope,groupId,role,bookId:'',books:null,preview:null,operation:null,feedback:''};
+    const view=bookView,pending=view.operation?.action,locked=state.status!=='disconnected'||roleView.operation?.action==='save'||generationSaving();
+    const saved=(config.lorebooks||[]).filter(row=>row.groupId===groupId);
+    const books=view.books||[];
+    roleOptions(bookSelect,word('qqGroupLorebookChoose'),namedOptions(books),view.bookId);
+    bookSelect.disabled=locked||!role.id||!books.length||pending==='save';
+    $('bot-qq-group-lorebook-review').disabled=bookSelect.disabled||!view.bookId||!!pending;
+    $('bot-qq-group-lorebook-approve').disabled=locked||!!pending||!view.preview;
+    showApprovedBooks(saved,role,locked||pending==='save');
+    showBookPreview(view.preview,locked||!!pending);
+    const feedback=pending==='list'?'qqGroupLorebookLoading':pending==='preview'||pending==='page'?'qqGroupLorebookReading':pending==='save'?'qqGroupLorebookSaving':view.feedback||(!role.id?'qqGroupLorebookRoleNeeded':!locked&&view.books&&!books.length?'qqGroupLorebookEmpty':'');
+    $('bot-qq-group-lorebook-feedback').textContent=feedback?word(feedback):'';
+    if(!locked&&role.id&&!view.books&&!pending&&!view.feedback)void requestBook('list');
+  }
+  function validBookPreview(book,input,role,page){
+    return book?.groupId===input.groupId&&book.bookId===input.bookId&&book.roleId===role.id&&
+      typeof book.roleName==='string'&&!!book.roleName&&(!role.name||book.roleName===role.name)&&
+      typeof book.name==='string'&&typeof book.approval==='string'&&!!book.approval&&book.page===page&&
+      Number.isSafeInteger(book.enabledEntries)&&book.enabledEntries>=0&&book.enabledEntries<=500&&
+      book.pageCount===Math.max(1,Math.ceil(book.enabledEntries/10))&&book.pageCount>page&&
+      Array.isArray(book.review)&&book.review.length===Math.min(10,book.enabledEntries-page*10)&&
+      book.review.every(row=>row&&[row.keys,row.secondaryKeys].every(keys=>Array.isArray(keys)&&keys.every(key=>typeof key==='string'))&&
+        typeof row.constant==='boolean'&&typeof row.content==='string');
+  }
+  async function requestBook(action,revoke=null,page=0){
+    const view=bookView;
+    if(!view||state?.status!=='disconnected'||!groupRoles.open||!bookForm.open||roleView?.operation?.action==='save'||view.operation?.action==='save'||generationSaving())return;
+    if(!revoke&&(!view.role.id||(action==='save'&&!view.preview)))return;
+    if(revoke&&revoke.groupId!==view.groupId)return;
+    const input={...credentialContext,expectedAccountId:state.qq.expectedAccountId,groupId:view.groupId,bookId:revoke?.bookId||view.bookId};
+    const oldPreview=view.preview;
+    if(action==='page'&&(!oldPreview||page<0||page>=oldPreview.pageCount||page===oldPreview.page))return;
+    const approval=revoke?null:oldPreview?.approval,bindingRole=revoke?.roleId||view.role.id;
+    const op={action};view.operation=op;view.feedback='';
+    if(action!=='page')view.preview=null;
+    const current=()=>groupRoles.open&&bookForm.open&&bookView===view&&view.operation===op;
+    renderQQGroupRoles();
+    try{
+      if(action==='list'){
+        const books=await window.arcade.lorebooksList();
+        if(current())view.books=books.filter(book=>book&&roleId.test(book.id)&&typeof book.name==='string').map(({id,name})=>({id,name}));
+      }else if(action==='preview'||action==='page'){
+        const book=await window.arcade.groupLorebookPreview({...input,page});
+        if(!current())return;
+        if(!validBookPreview(book,input,view.role,page)||(oldPreview&&action==='page'&&
+          (book.approval!==oldPreview.approval||book.pageCount!==oldPreview.pageCount||book.enabledEntries!==oldPreview.enabledEntries)))throw Error('World book review changed');
+        view.preview=book;
+      }else{
+        const result=await window.arcade.groupLorebookSet({...input,roleId:bindingRole,approval});
+        if(!current())return;
+        const rows=result?.qq?.groups?.lorebooks;
+        const saved=Array.isArray(rows)&&rows.some(row=>row.groupId===input.groupId&&row.bookId===input.bookId&&row.roleId===bindingRole);
+        if(!Array.isArray(rows)||result.qq.expectedAccountId!==input.expectedAccountId||saved===!!revoke)throw Error('World book save not confirmed');
+        view.feedback=revoke?'qqGroupLorebookCleared':'qqGroupLorebookSaved';
+      }
+    }catch{
+      if(current()){
+        if(action==='page')view.preview=null;
+        view.feedback=action==='list'?'qqGroupLorebookListFailed':action==='page'?'qqGroupLorebookReviewChanged':action==='preview'?'qqGroupLorebookReviewFailed':revoke?'qqGroupLorebookClearFailed':'qqGroupLorebookSaveFailed';
+      }
+    }finally{
+      if(current()){view.operation=null;renderQQGroupRoles();}
+    }
+  }
+  bookForm.addEventListener('toggle',renderQQGroupRoles);
+  bookSelect.addEventListener('change',()=>{
+    if(!bookView)return;
+    bookView.bookId=bookSelect.value;
+    if(['preview','page'].includes(bookView.operation?.action))bookView.operation=null;
+    bookView.preview=null;bookView.feedback='';renderQQGroupRoles();
+  });
+  $('bot-qq-group-lorebook-review').onclick=()=>requestBook('preview');
+  $('bot-qq-group-lorebook-approve').onclick=()=>requestBook('save');
+  $('bot-qq-group-lorebook-prev').onclick=()=>requestBook('page',null,bookView?.preview?.page-1);
+  $('bot-qq-group-lorebook-next').onclick=()=>requestBook('page',null,bookView?.preview?.page+1);
+  bookPage.onchange=()=>requestBook('page',null,Number(bookPage.value));
+  Object.assign(words.en,{
+    qqGroupGeneration:'Group reply generation',qqGroupGenerationTemperature:'Temperature (0–2)',qqGroupGenerationTopP:'Top-P (0–1)',qqGroupGenerationMaxTokens:'Reply token cap (64–8192)',
+    qqGroupGenerationDefault:'Leave a field blank to use its default. The changes apply only to replies by this group role.',
+    qqGroupGenerationCopy:'Copy App preset values to draft',qqGroupGenerationSave:'Save reply parameters',qqGroupGenerationReset:'Restore reply defaults',
+    qqGroupGenerationUnavailable:'Reply settings are unavailable for this saved group role.',qqGroupGenerationEffective:'Effective reply settings',qqGroupGenerationIgnored:'Ignored by the current backend',
+    qqGroupGenerationGate:'Separate decision gate token cap',qqGroupGenerationProviderDefault:'Provider default',qqGroupGenerationProviderGate:'Provider-managed',
+    qqGroupGenerationCopying:'Reading App preset values…',qqGroupGenerationCopied:'Preset numbers copied to the draft. Save to apply them to the group role.',
+    qqGroupGenerationSaving:'Saving reply settings…',qqGroupGenerationSaved:'Reply settings saved for this group role.',qqGroupGenerationRestored:'Reply defaults restored for this group role.',
+    qqGroupGenerationCopyFailed:'Could not copy preset numbers for this group role. Check the current group and try again.',
+    qqGroupGenerationSaveFailed:'Reply settings could not be saved. Check the current group and try again.',qqGroupGenerationInvalid:'Enter a value in the shown range or leave this field blank.',
+  });
+  Object.assign(words.zh,{
+    qqGroupGeneration:'群回复生成参数',qqGroupGenerationTemperature:'温度（0–2）',qqGroupGenerationTopP:'Top-P（0–1）',qqGroupGenerationMaxTokens:'回复 token 上限（64–8192）',
+    qqGroupGenerationDefault:'留空使用默认值。修改仅用于此群中该角色的回复。',
+    qqGroupGenerationCopy:'将 App 预设数值复制到草稿',qqGroupGenerationSave:'保存回复参数',qqGroupGenerationReset:'恢复回复默认值',
+    qqGroupGenerationUnavailable:'暂时无法读取此群角色的回复参数。',qqGroupGenerationEffective:'已生效的回复参数',qqGroupGenerationIgnored:'当前后端忽略的参数',
+    qqGroupGenerationGate:'独立接话判断的 token 上限',qqGroupGenerationProviderDefault:'服务默认',qqGroupGenerationProviderGate:'由服务决定',
+    qqGroupGenerationCopying:'正在读取 App 预设数值…',qqGroupGenerationCopied:'已将预设数值复制到草稿。点击保存后才会应用到此群角色。',
+    qqGroupGenerationSaving:'正在保存回复参数…',qqGroupGenerationSaved:'已保存此群角色的回复参数。',qqGroupGenerationRestored:'已恢复此群角色的回复默认值。',
+    qqGroupGenerationCopyFailed:'未能为此群角色复制预设数值。请核对当前群后重试。',
+    qqGroupGenerationSaveFailed:'未能保存回复参数。请核对当前群后重试。',qqGroupGenerationInvalid:'请输入标注范围内的数值，或将此项留空。',
+  });
+  const generationForm=$('bot-qq-group-generation'),generationControls=$('bot-qq-group-generation-controls');
+  const generationFields=[
+    {key:'temperature',label:'Temperature',zh:'温度'},
+    {key:'topP',label:'Top-P',zh:'Top-P'},
+    {key:'maxTokens',label:'Reply token cap',zh:'回复 token 上限'},
+  ].map(field=>({...field,input:$('bot-qq-group-generation-'+field.key)}));
+  const generationButton=action=>$('bot-qq-group-generation-'+action);
+  let generationView=null;
+  function groupGenerationRow(groups,groupId,roleId){
+    return groups?.generation?.find(row=>row.groupId===groupId&&row.roleId===roleId);
+  }
+  function generationValues(sampling){
+    return generationFields.map(({key})=>sampling?.[key]??null);
+  }
+  function fillGroupGeneration(sampling){
+    for(const {key,input} of generationFields){
+      input.value=sampling?.[key]??'';
+      input.removeAttribute('aria-invalid');
+    }
+  }
+  function generationSaving(){
+    return generationView?.operation?.action==='save'||generationView?.operation?.action==='reset';
+  }
+  function renderQQGroupGeneration(config){
+    const groupId=roleView?.groupId,enabled=!!groupId&&!$('bot-qq-group-role-controls').hidden&&
+      typeof window.arcade?.groupGenerationPreset==='function'&&typeof window.arcade?.groupGenerationSet==='function';
+    generationForm.hidden=!enabled;
+    if(!enabled||!generationForm.open){generationView=null;return;}
+    const role=effectiveGroupRole(config,groupId),row=groupGenerationRow(config,groupId,role.id);
+    const accountId=state.qq.expectedAccountId,zh=language==='zh';
+    const scope=zh?`搭档 QQ ${accountId} · 群 ${groupId}`:`Companion QQ ${accountId} · group ${groupId}`;
+    $('bot-qq-group-generation-scope').textContent=row?`${scope} · ${row.roleName}`:scope;
+    generationControls.hidden=!row;
+    const feedback=$('bot-qq-group-generation-feedback');
+    if(!row){generationView=null;feedback.textContent=word('qqGroupGenerationUnavailable');return;}
+    const nextScope=JSON.stringify([roleView.scope,groupId,role.id]),savedKey=JSON.stringify(generationValues(row.sampling));
+    if(generationView?.scope!==nextScope){
+      generationView={scope:nextScope,groupId,roleId:role.id,savedKey,dirty:false,operation:null,feedback:''};
+      fillGroupGeneration(row.sampling);
+    }
+    const view=generationView,pending=view.operation?.action;
+    if(!view.dirty&&savedKey!==view.savedKey){view.savedKey=savedKey;fillGroupGeneration(row.sampling);}
+    const locked=state.status!=='disconnected'||roleView.operation?.action==='save'||bookView?.operation?.action==='save'||!!pending;
+    for(const {input} of generationFields)input.disabled=locked;
+    for(const action of ['copy','save','reset'])generationButton(action).disabled=locked;
+    const label=field=>zh?field.zh:field.label;
+    const ignored=generationFields.filter(field=>row.unsupported?.includes(field.key));
+    const effective=generationFields.filter(field=>!row.unsupported?.includes(field.key))
+      .map(field=>`${label(field)} ${row.effective?.[field.key]??word('qqGroupGenerationProviderDefault')}`);
+    $('bot-qq-group-generation-effective').textContent=[word('qqGroupGenerationEffective'),...effective].join(' · ');
+    const unsupported=$('bot-qq-group-generation-unsupported');
+    unsupported.hidden=!ignored.length;
+    unsupported.textContent=ignored.length?[word('qqGroupGenerationIgnored'),...ignored.map(label)].join(' · '):'';
+    $('bot-qq-group-generation-gate').textContent=`${word('qqGroupGenerationGate')} · ${row.gateMaxTokens??word('qqGroupGenerationProviderGate')}`;
+    const message=pending?(pending==='copy'?'qqGroupGenerationCopying':'qqGroupGenerationSaving'):view.feedback;
+    feedback.textContent=message?word(message):'';
+  }
+  async function requestGroupGeneration(action){
+    const view=generationView;
+    if(!view||view.operation||state?.status!=='disconnected'||!groupRoles.open||!generationForm.open||
+      roleView?.operation?.action==='save'||bookView?.operation?.action==='save')return;
+    const input={...credentialContext,expectedAccountId:state.qq.expectedAccountId,groupId:view.groupId,roleId:view.roleId};
+    let sampling=null;
+    if(action==='save'){
+      sampling={};
+      for(const {key,input:field} of generationFields){
+        if(!field.validity.valid){
+          view.feedback='qqGroupGenerationInvalid';field.setAttribute('aria-invalid','true');field.focus();
+          renderQQGroupRoles();return;
+        }
+        if(field.value!=='')sampling[key]=field.valueAsNumber;
+      }
+    }
+    const operation={action};view.operation=operation;view.feedback='';
+    const current=()=>generationForm.open&&groupRoles.open&&generationView===view&&view.operation===operation;
+    renderQQGroupRoles();
+    try{
+      if(action==='copy'){
+        const result=await window.arcade.groupGenerationPreset(input);
+        if(!current())return;
+        if(result?.groupId!==input.groupId||result.roleId!==input.roleId||!result.sampling)throw Error('Group preset scope changed');
+        fillGroupGeneration(result.sampling);view.dirty=true;view.feedback='qqGroupGenerationCopied';
+      }else{
+        const state=await window.arcade.groupGenerationSet({...input,sampling});
+        if(!current())return;
+        const saved=groupGenerationRow(state?.qq?.groups,input.groupId,input.roleId);
+        const values=JSON.stringify(generationValues(sampling));
+        if(!saved||state.qq.expectedAccountId!==input.expectedAccountId||JSON.stringify(generationValues(saved.sampling))!==values)throw Error('Group reply settings save not confirmed');
+        fillGroupGeneration(saved.sampling);view.savedKey=values;view.dirty=false;
+        view.feedback=action==='reset'?'qqGroupGenerationRestored':'qqGroupGenerationSaved';
+      }
+    }catch{
+      if(current())view.feedback=action==='copy'?'qqGroupGenerationCopyFailed':'qqGroupGenerationSaveFailed';
+    }finally{
+      if(current()){view.operation=null;renderQQGroupRoles();}
+    }
+  }
+  generationForm.addEventListener('toggle',renderQQGroupRoles);
+  for(const {input} of generationFields)input.addEventListener('input',()=>{
+    if(!generationView)return;
+    generationView.dirty=true;generationView.feedback='';
+    input.removeAttribute('aria-invalid');renderQQGroupRoles();
+  });
+  for(const action of ['copy','save','reset'])generationButton(action).onclick=()=>requestGroupGeneration(action);
+  function renderQQGroupRoles(){
+    const api=window.arcade,config=state?.qq?.groups||{},accountId=state?.qq?.expectedAccountId||'',groupIds=(config.groupIds||[]).filter(id=>qqNumber.test(id));
+    const enabled=state?.channel==='qq'&&typeof api?.groupRolePreview==='function'&&typeof api?.groupRoleSet==='function'&&typeof api?.charactersList==='function';
+    const zh=language==='zh',alert=$('bot-qq-group-role-alert');
+    const needingReview=(enabled?config.reviewRequiredGroupIds||[]:[]).filter(id=>groupIds.includes(id)).join(zh?'、':', ');
+    const warning=needingReview?(zh?`以下群的角色卡需要重新批准，当前未启用这些群的回复：${needingReview}。请先断开连接。`:`Replies are paused for groups whose cards need review: ${needingReview}. Disconnect to review.`):'';
+    alert.hidden=!warning;
+    if(alert.textContent!==warning)alert.textContent=warning;
+    const bookAlert=$('bot-qq-group-lorebook-alert');
+    const reviewBooks=(groupLorebookSupported()?config.lorebookReviewRequiredGroupIds||[]:[]).filter(id=>groupIds.includes(id)).join(zh?'、':', ');
+    const bookReviewNote=state?.status==='disconnected'?(zh?'请打开此群的世界书设置核对。':'Open the group’s world book settings to review.'):(zh?'请断开连接后核对。':'Disconnect to review.');
+    const bookWarning=reviewBooks?(zh?`以下群的世界书需要重新批准：${reviewBooks}。${bookReviewNote}`:`World books need review in these groups: ${reviewBooks}. ${bookReviewNote}`):'';
+    bookAlert.hidden=!bookWarning;
+    if(bookAlert.textContent!==bookWarning)bookAlert.textContent=bookWarning;
+    groupRoles.hidden=!enabled;
+    if(!enabled||!groupRoles.open){
+      roleView=null;renderQQGroupLorebook(config);renderQQGroupGeneration(config);
+      window.ArcadeGroupWiki?.render(null,language);window.ArcadeGroupReflection?.render(null,language);
+      window.ArcadeGroupOutputFormat?.render(null,language);window.ArcadeGroupSpeakerDispatch?.render(null,language);return;
+    }
+    const dirty=qqGroupsDirty||qqGroupsSaving||connectionDrafts.has('bot-qq-expected-account');
+    const locked=state.status!=='disconnected',available=qqNumber.test(accountId)&&groupIds.length>0&&!dirty;
+    const scope=JSON.stringify([lastCredentialScope,accountId,groupIds,locked,dirty]);
+    if(roleView?.scope!==scope)roleView={scope,groupId:groupIds.length===1?groupIds[0]:'',cardId:'',cards:null,preview:null,operation:null,feedback:''};
+    const view=roleView,pending=view.operation?.action;
+    const accountScope=zh?`搭档 QQ ${accountId}`:`Companion QQ ${accountId}`;
+    $('bot-qq-group-role-binding').textContent=dirty?word('qqGroupRoleSaveSettings'):!qqNumber.test(accountId)?word('qqGroupRoleAccountNeeded'):!groupIds.length?word('qqGroupRoleGroupNeeded'):
+      `${accountScope}`+(locked?(zh?'。':'. ')+word('qqGroupsLocked'):'');
+    $('bot-qq-group-role-controls').hidden=!available;
+    renderQQGroupLorebook(config);
+    renderQQGroupGeneration(config);
+    const groupRole=config.generation?.find(row=>row.groupId===view.groupId);
+    const groupContext=available&&view.groupId?{
+      ...credentialContext,expectedAccountId:accountId,groupId:view.groupId,
+      roleId:groupRole?.roleId||'',roleName:groupRole?.roleName||'',status:state.status,
+      roleUpdating:pending==='save',
+    }:null;
+    window.ArcadeGroupWiki?.render(groupContext,language);
+    window.ArcadeGroupReflection?.render(groupContext,language);
+    window.ArcadeGroupOutputFormat?.render(groupContext,language);
+    window.ArcadeGroupSpeakerDispatch?.render(groupContext,language);
+    if(!available)return;
+    const saved=(config.roles||[]).find(row=>row.groupId===view.groupId);
+    roleOptions(roleGroup,word('qqGroupRoleChooseGroup'),groupIds.map(id=>[id,id]),view.groupId);
+    const cards=view.cards||[],detailSaving=bookView?.operation?.action==='save'||generationSaving();
+    roleOptions(roleCard,word('qqGroupRoleChooseCard'),namedOptions(cards),view.cardId);
+    roleGroup.disabled=pending==='save'||detailSaving;
+    roleCard.disabled=locked||!view.groupId||!cards.length||pending==='save'||detailSaving;
+    $('bot-qq-group-role-review').disabled=roleCard.disabled||!view.cardId||!!pending;
+    $('bot-qq-group-role-clear').disabled=locked||!saved||pending==='save'||detailSaving;
+    $('bot-qq-group-role-current').textContent=!view.groupId?'':saved?(zh?`已批准：${saved.name}`:`Approved: ${saved.name}`):word('qqGroupRoleDefault');
+    const preview=view.preview;
+    $('bot-qq-group-role-preview').hidden=!preview;
+    if(preview){
+      $('bot-qq-group-role-preview-scope').textContent=zh?`${accountScope} · 群 ${view.groupId}`:`${accountScope} · group ${view.groupId}`;
+      for(const key of ['name','description','examples'])$('bot-qq-group-role-preview-'+key).textContent=preview[key]||word('qqGroupRoleNoText');
+    }else{
+      for(const key of ['scope','name','description','examples'])$('bot-qq-group-role-preview-'+key).textContent='';
+    }
+    $('bot-qq-group-role-approve').disabled=locked||!!pending||!preview||detailSaving;
+    const feedback=pending==='list'?'qqGroupRoleLoading':pending==='preview'?'qqGroupRoleReading':pending==='save'?'qqGroupRoleSaving':view.feedback||(!locked&&view.cards&&!cards.length?'qqGroupRoleEmpty':'');
+    $('bot-qq-group-role-feedback').textContent=feedback?word(feedback):'';
+    if(!locked&&!view.cards&&!pending&&!view.feedback)void requestRole('list');
+  }
+  async function requestRole(action,clear=false){
+    const view=roleView;
+    if(!view||state?.status!=='disconnected'||!groupRoles.open||bookView?.operation?.action==='save'||generationSaving())return;
+    const input={...credentialContext,expectedAccountId:state.qq.expectedAccountId,groupId:view.groupId,cardId:view.cardId};
+    const approval=view.preview?.approval;
+    const op={action};view.operation=op;view.preview=null;view.feedback='';
+    const current=()=>groupRoles.open&&roleView===view&&view.operation===op;
+    renderQQGroupRoles();
+    try{
+      if(action==='list'){
+        const cards=await window.arcade.charactersList();
+        if(current())view.cards=cards.filter(card=>roleId.test(card.id)&&typeof card.name==='string').map(({id,name})=>({id,name}));
+      }else if(action==='preview'){
+        const card=await window.arcade.groupRolePreview(input);
+        if(!current())return;
+        if(card?.cardId!==input.cardId||!['name','description','examples','approval'].every(key=>typeof card[key]==='string')||!card.approval)throw Error('Invalid group role preview');
+        view.preview=card;
+      }else{
+        const result=await window.arcade.groupRoleSet({...input,cardId:clear?null:input.cardId,approval:clear?null:approval});
+        if(!current())return;
+        const roles=result?.qq?.groups?.roles;
+        if(!Array.isArray(roles)||result.qq.expectedAccountId!==input.expectedAccountId||
+          (roles.find(role=>role.groupId===input.groupId)?.cardId??null)!==(clear?null:input.cardId))throw Error('Group role save not confirmed');
+        view.feedback=clear?'qqGroupRoleCleared':'qqGroupRoleSaved';
+      }
+    }catch{
+      if(current())view.feedback=action==='list'?'qqGroupRoleLoadFailed':action==='preview'?'qqGroupRoleReviewFailed':'qqGroupRoleSaveFailed';
+    }finally{
+      if(current()){view.operation=null;renderQQGroupRoles();}
+    }
+  }
+  groupRoles.addEventListener('toggle',renderQQGroupRoles);
+  document.addEventListener('arcade-library-changed',()=>{roleView=null;bookView=null;generationView=null;renderQQGroupRoles();});
+  for(const select of [roleGroup,roleCard])select.addEventListener('change',()=>{
+    const value=select.value;
+    if(!roleView)renderQQGroupRoles();
+    if(!roleView)return;
+    if(select===roleGroup){roleView.groupId=value;roleView.cardId='';}
+    else roleView.cardId=value;
+    if(roleView.operation?.action==='preview')roleView.operation=null;
+    roleView.preview=null;roleView.feedback='';renderQQGroupRoles();
+  });
+  $('bot-qq-group-role-review').onclick=()=>requestRole('preview');
+  $('bot-qq-group-role-approve').onclick=()=>requestRole('save');
+  $('bot-qq-group-role-clear').onclick=()=>requestRole('save',true);
+  function readQQGroupIds(){return $('bot-qq-group-ids').value.trim().split(/[\s,，]+/).filter(Boolean);}
+  function validQQGroupIds(groupIds){return groupIds.length<=5&&new Set(groupIds).size===groupIds.length&&groupIds.every(id=>qqNumber.test(id));}
+  function qqGroupDirectoryIdentity(){
+    const qq=state?.qq,check=qq?.check,accountId=qq?.expectedAccountId;
+    if(!macQQ||state?.channel!=='qq'||state.status!=='disconnected'||!credentialContext.profileId||!qqNumber.test(accountId||'')||
+      check?.state!=='checked'||check.online!==true||check.accountId!==accountId||!Number.isSafeInteger(check.checkedAt)||
+      $('bot-qq-expected-account').value.trim()!==accountId||$('bot-qq-url').value.trim()!==qq.url||
+      $('bot-qq-owner').value.trim()!==qq.ownerId||$('bot-qq-token').value)return null;
+    return {accountId,checkedAt:check.checkedAt};
+  }
+  function renderQQGroupDirectory(scopeChanged=false){
+    const panel=$('bot-qq-group-directory'),enabled=macQQ&&typeof window.arcade.botQQSetupGroups==='function'&&state?.channel==='qq';
+    panel.hidden=!enabled;
+    const check=enabled?qqGroupDirectoryIdentity():null;
+    const scope=check?JSON.stringify([lastCredentialScope,check,state.qq.url,state.social?.config?.characterId]):'';
+    if((qqGroupDirectory?.scope||'')!==scope){
+      // New bindings cannot carry over IDs staged from the old directory.
+      // Manual entries remain editable in the existing form.
+      const staged=qqGroupDirectory?.draftIds;
+      if(!scopeChanged&&qqGroupsDirty&&staged?.size)$('bot-qq-group-ids').value=readQQGroupIds().filter(id=>!staged.has(id)).join('\n');
+      qqGroupDirectory=check?{scope,check,items:[],selected:'',feedback:'',pending:false,draftIds:new Set()}:null;
+    }
+    if(!enabled)return;
+    const view=qqGroupDirectory;
+    $('bot-qq-group-directory-load').disabled=!view||view.pending||qqGroupsSaving;
+    $('bot-qq-group-directory-choice').hidden=!view?.items.length;
+    $('bot-qq-group-directory-add').disabled=!view?.selected||view.pending||qqGroupsSaving||readQQGroupIds().includes(view.selected);
+    const status=$('bot-qq-group-directory-status'),message=word(!view?'qqGroupDirectoryVerify':view.feedback||'qqGroupDirectoryAvailable');
+    if(status.textContent!==message)status.textContent=message;
+    const select=$('bot-qq-group-directory-select');
+    if(select.dataset.directoryScope!==scope||select.dataset.directoryLanguage!==language||select.dataset.directoryItems!==String(view?.items.length||0)){
+      const options=(view?.items||[]).map(({id,name})=>[id,`${name||word('qqGroupDirectoryUnnamed')} · ${id}`]);
+      roleOptions(select,word('qqGroupDirectoryChoose'),options,view?.selected||'');
+      select.dataset.directoryScope=scope;
+      select.dataset.directoryLanguage=language;
+      select.dataset.directoryItems=String(view?.items.length||0);
+    }
+  }
+  async function loadQQGroupDirectory(){
+    renderQQGroupDirectory();
+    const view=qqGroupDirectory;
+    if(!view||view.pending||qqGroupsSaving)return;
+    const {accountId,checkedAt}=view.check;
+    const input={...credentialContext,expectedAccountId:accountId,checkedAt};
+    view.pending=true;view.items=[];view.selected='';view.feedback='qqGroupDirectoryReading';renderQQGroupDirectory();
+    try{
+      const reply=await window.arcade.botQQSetupGroups(input);
+      if(reply?.ok!==true||reply.accountId!==accountId||reply.checkedAt!==checkedAt||!Array.isArray(reply.items))throw Error('Invalid group directory');
+      if(qqGroupDirectory===view){view.items=reply.items;view.feedback=reply.items.length?'qqGroupDirectoryReady':'qqGroupDirectoryEmpty';}
+    }catch{
+      if(qqGroupDirectory===view)view.feedback='qqGroupDirectoryFailed';
+    }finally{
+      view.pending=false;renderQQGroupDirectory();
+    }
+  }
+  function addQQGroupDirectoryChoice(){
+    renderQQGroupDirectory();
+    const view=qqGroupDirectory,groupIds=readQQGroupIds(),id=view?.selected;
+    if(!view||view.pending||qqGroupsSaving||!view.items.some(item=>item.id===id)||groupIds.includes(id))return;
+    if(!validQQGroupIds([...groupIds,id])){view.feedback='qqGroupDirectoryFull';renderQQGroupDirectory();return;}
+    view.draftIds.add(id);
+    $('bot-qq-group-ids').value=[...groupIds,id].join('\n');
+    view.feedback='qqGroupDirectoryAdded';
+    markQQGroupDraft();
+  }
+  function markQQGroupDraft(){
+    qqGroupsDirty=true;qqGroupsFeedback='';
+    $('bot-qq-group-ids').removeAttribute('aria-invalid');
+    renderQQGroups(false,state?.status!=='disconnected');
+  }
+  const voiceSourceWords=new Map([['inline-wav','qqGroupVoiceWAV'],['qq-ptt','qqGroupVoicePTT'],['unavailable','qqGroupVoiceUnavailable']]);
+  function renderQQGroupMedia(locked,voiceSources){
+    const groupIds=readQQGroupIds(),choices=validQQGroupIds(groupIds)?groupIds:[];
+    const disabled=locked||!$('bot-qq-groups-enabled').checked;
+    const optionsKey=JSON.stringify([language,choices]);
+    for(const {id,key,selected} of qqGroupMedia){
+      const isVoice=key==='voiceGroupIds';
+      for(const groupId of selected)if(!groupIds.includes(groupId))selected.delete(groupId);
+      const list=$(id+'-list');
+      if(list.dataset.optionsKey!==optionsKey){
+        list.replaceChildren(...choices.map(groupId=>{
+          const label=el('label','qq-group-toggle'),input=el('input');
+          input.type='checkbox';input.value=groupId;
+          input.addEventListener('change',()=>{
+            if(input.checked)selected.add(groupId);else selected.delete(groupId);
+            markQQGroupDraft();
+          });
+          label.append(input,el('span','',`${word('qqGroupMediaGroup')} ${groupId}`));
+          if(!isVoice)return label;
+          const row=el('div'),source=el('small','qq-group-voice-source');
+          source.id=`bot-qq-group-voice-source-${groupId}`;
+          source.setAttribute('role','status');source.hidden=true;
+          input.setAttribute('aria-describedby',source.id);
+          row.append(label,source);
+          return row;
+        }));
+        list.dataset.optionsKey=optionsKey;
+      }
+      $(id).disabled=disabled;
+      for(const input of list.querySelectorAll('input')){
+        input.checked=selected.has(input.value);
+        if(isVoice){
+          const source=$(`bot-qq-group-voice-source-${input.value}`);
+          source.hidden=!input.checked;
+          const text=input.checked?word(voiceSourceWords.get(voiceSources?.[input.value])||'qqGroupVoiceUnverified'):'';
+          if(source.textContent!==text)source.textContent=text;
+        }
+      }
+    }
+    $('bot-qq-group-media-empty').hidden=choices.length>0;
+  }
+  Object.assign(words.en,{
+    qqGroupAsrMissing:'Local speech recognition is not configured.',
+    qqGroupAsrConfigured:'Local speech recognition is configured.',
+    qqGroupAsrUnverified:'Local speech recognition is configured. Waiting for a successful transcription.',
+    qqGroupAsrVerified:'Local speech recognition verified with a successful transcription.',
+  });
+  Object.assign(words.zh,{
+    qqGroupAsrMissing:'本机语音识别尚未配置。',
+    qqGroupAsrConfigured:'本机语音识别已配置。',
+    qqGroupAsrUnverified:'本机语音识别已配置，等待一次成功转写。',
+    qqGroupAsrVerified:'本机语音识别已通过实际转写验证。',
+  });
+  function renderQQGroupAsr(availability){
+    const status=$('bot-qq-group-voice-asr');
+    const macConfiguration=window.arcade?.platform?.os==='darwin'&&availability?.configured===true;
+    const key=macConfiguration?(availability.available===true?'qqGroupAsrVerified':'qqGroupAsrUnverified'):
+      availability?.available===true?'qqGroupAsrConfigured':'qqGroupAsrMissing';
+    const text=availability?word(key):'';
+    status.hidden=!text;
+    if(status.textContent!==text)status.textContent=text;
+  }
+  const groupProviderMessages={
+    zh:{
+      gate:'群聊接话判断失败，本轮保持安静。',reply:'群聊正式回复生成失败，本轮没有发送回复。',
+      rate_limited:'AI 服务返回 429。请查看额度、账单或限流状态，恢复后发送新消息。',
+      billing:'请核对 AI 服务商的余额、额度或计费设置。',
+      credentials:'请检查当前搭档的 API key 和 AI 服务权限。',
+      invalid_response:'AI 服务返回的内容无法处理。请检查所选模型和服务状态。',
+      unavailable:'AI 服务暂不可用。请检查网络和服务状态后再试。',
+    },
+    en:{
+      gate:'The group reply decision failed. The companion stayed quiet for this turn.',
+      reply:'Group reply generation failed. No reply was sent for this turn.',
+      rate_limited:'The AI provider returned 429. Check quota, billing or rate limits, then send a new message when service resumes.',
+      billing:'Check your AI provider balance, limits or billing settings.',
+      credentials:'Check this companion’s API key and AI provider permissions.',
+      invalid_response:'The AI provider returned an unusable response. Check the selected model and service status.',
+      unavailable:'The AI provider is temporarily unavailable. Check the connection and service status before trying again.',
+    },
+  };
+  function groupRuntimeWarning(config,zh,providerOnly=false){
+    const copy=groupProviderMessages[zh?'zh':'en'];
+    const configured=(config.groupIds||[]).filter(id=>typeof id==='string'&&qqNumber.test(id)).slice(0,5);
+    const affected=new Map(configured.map(id=>[id,new Map()]));
+    const phases=['gate','reply'],codes=['rate_limited','billing','credentials','invalid_response','unavailable'];
+    const issues=Array.isArray(config.providerIssues)?config.providerIssues:null;
+    for(const issue of issues?.slice(0,10)||[]){
+      if(!affected.has(issue?.groupId)||!phases.includes(issue.phase)||!codes.includes(issue.code))continue;
+      affected.get(issue.groupId).set(issue.phase,issue.code);
+    }
+    const other=providerOnly?'':typeof config.runtimeProblem==='string'?config.runtimeProblem:
+      !issues&&typeof config.problem==='string'?config.problem:'';
+    const warnings=other?[other]:[];
+    for(const [groupId,failures] of affected){
+      if(!failures.size)continue;
+      const descriptions=phases.filter(phase=>failures.has(phase)).map(phase=>copy[phase]);
+      const reasons=[...new Set(failures.values())].map(code=>copy[code]);
+      const label=zh?`QQ 群 ${groupId}。`:`QQ group ${groupId}.`;
+      warnings.push([label,...descriptions,...reasons].join(' '));
+    }
+    return warnings.join('\n');
+  }
+  const feedWords={
+    en:{qqGroupFeed:'Public feed notices',
+      qqGroupFeedNote:'Off by default. Allow one public RSS or Atom feed to notify one saved QQ group through its current role. This permission is separate from your App and private QQ notices.',
+      qqGroupFeedSavedTitle:'Saved permission',qqGroupFeedRevoke:'Turn off this permission',qqGroupFeedGroup:'Saved QQ group',
+      qqGroupFeedSource:'Public RSS or Atom feed',qqGroupFeedAllow:'Confirm public feed and allow notices',
+      qqGroupFeedEmpty:'No enabled RSS or Atom feed is available. Add or enable one in Notices.',qqGroupFeedSources:'Open data sources',
+      qqGroupFeedChooseGroup:'Choose a saved group',qqGroupFeedChooseSource:'Choose a feed',
+      qqGroupFeedSetup:'Save the companion’s QQ number, group settings and current group role first.',
+      qqGroupFeedDirty:'Save the pending group and account changes before allowing a feed.',qqGroupFeedPending:'Saving the feed permission…',
+      qqGroupFeedSaved:'This feed is allowed for the selected group.',qqGroupFeedRevoked:'Feed permission turned off.',
+      qqGroupFeedChanged:'The feed or role changed. Choose it again before confirming.',
+      qqGroupFeedFailed:'The permission could not be changed. Check the saved account, group and source, then try again.'},
+    zh:{qqGroupFeed:'公开订阅通知',
+      qqGroupFeedNote:'默认关闭。可允许一个公开 RSS 或 Atom 订阅，由当前角色向一个已保存的 QQ 群发送通知。此许可与 App 通知、QQ 私聊通知分开。',
+      qqGroupFeedSavedTitle:'已保存的许可',qqGroupFeedRevoke:'关闭此许可',qqGroupFeedGroup:'已保存的 QQ 群',
+      qqGroupFeedSource:'公开 RSS 或 Atom 订阅',qqGroupFeedAllow:'确认订阅公开并允许通知',
+      qqGroupFeedEmpty:'没有可用的 RSS 或 Atom 订阅。请在「提醒」添加或启用订阅。',qqGroupFeedSources:'打开数据源',
+      qqGroupFeedChooseGroup:'选择已保存的群',qqGroupFeedChooseSource:'选择订阅',
+      qqGroupFeedSetup:'请先保存搭档 QQ 号、群设置和该群当前角色。',
+      qqGroupFeedDirty:'请先保存群及账号改动，再允许订阅。',qqGroupFeedPending:'正在保存订阅通知许可…',
+      qqGroupFeedSaved:'已允许向此群发送该订阅的通知。',qqGroupFeedRevoked:'已关闭订阅通知许可。',
+      qqGroupFeedChanged:'订阅或角色已变化，请重新选择后确认。',
+      qqGroupFeedFailed:'未能更改许可。请核对已保存的账号、群和来源后重试。'},
+  };
+  const calendarWords={
+    en:{qqGroupCalendar:'Public calendar notices',
+      qqGroupCalendarNote:'Off by default. Only events explicitly marked CLASS:PUBLIC can be shared in the selected QQ group. Private and unmarked events follow your existing personal notification settings.',
+      qqGroupCalendarSavedTitle:'Saved permission',qqGroupCalendarRevoke:'Turn off this permission',qqGroupCalendarGroup:'Saved QQ group',
+      qqGroupCalendarSource:'Calendar source',qqGroupCalendarAllow:'Allow notices for explicitly public events',
+      qqGroupCalendarEmpty:'No enabled calendar is available. Add or enable one in Notices.',qqGroupCalendarSources:'Open data sources',
+      qqGroupCalendarChooseGroup:'Choose a saved group',qqGroupCalendarChooseSource:'Choose a calendar',
+      qqGroupCalendarSetup:'Save the companion’s QQ number, group settings and current group role first.',
+      qqGroupCalendarDirty:'Save the pending group and account changes before allowing a calendar.',
+      qqGroupCalendarPending:'Saving the calendar permission…',
+      qqGroupCalendarSaved:'Public events from this calendar are allowed for the selected group.',qqGroupCalendarRevoked:'Calendar permission turned off.',
+      qqGroupCalendarChanged:'The calendar or role changed. Choose it again before confirming.',
+      qqGroupCalendarFailed:'The permission could not be changed. Check the saved account, group and source, then try again.'},
+    zh:{qqGroupCalendar:'公开日历提醒',
+      qqGroupCalendarNote:'默认关闭。只有明确标记为 CLASS:PUBLIC 的日程才可发到选定的 QQ 群。私密及未标记的日程沿用个人通知设置。',
+      qqGroupCalendarSavedTitle:'已保存的许可',qqGroupCalendarRevoke:'关闭此许可',qqGroupCalendarGroup:'已保存的 QQ 群',
+      qqGroupCalendarSource:'日历来源',qqGroupCalendarAllow:'仅允许明确标记为公开的日程通知',
+      qqGroupCalendarEmpty:'没有可用的日历。请在「提醒」添加或启用日历。',qqGroupCalendarSources:'打开数据源',
+      qqGroupCalendarChooseGroup:'选择已保存的群',qqGroupCalendarChooseSource:'选择日历',
+      qqGroupCalendarSetup:'请先保存搭档 QQ 号、群设置和该群当前角色。',
+      qqGroupCalendarDirty:'请先保存群及账号改动，再允许日历提醒。',qqGroupCalendarPending:'正在保存日历提醒许可…',
+      qqGroupCalendarSaved:'已允许向此群发送该日历中的公开日程提醒。',qqGroupCalendarRevoked:'已关闭日历提醒许可。',
+      qqGroupCalendarChanged:'日历或角色已变化，请重新选择后确认。',
+      qqGroupCalendarFailed:'未能更改许可。请核对已保存的账号、群和来源后重试。'},
+  };
+  const folderWords={
+    en:{qqGroupFolder:'Public folder notices',
+      qqGroupFolderNote:'Off by default. Only filenames and the type of change for top-level files may be shared in the selected QQ group. Group notices exclude full paths, file contents and other file details. This does not scan subfolders or upload files.',
+      qqGroupFolderSavedTitle:'Saved permission',qqGroupFolderRevoke:'Turn off this permission',qqGroupFolderGroup:'Saved QQ group',
+      qqGroupFolderSource:'Folder source',qqGroupFolderAllow:'Confirm filenames can be public and allow notices',
+      qqGroupFolderEmpty:'No enabled folder is available. Add or enable one in Notices.',qqGroupFolderSources:'Open data sources',
+      qqGroupFolderChooseGroup:'Choose a saved group',qqGroupFolderChooseSource:'Choose a folder',
+      qqGroupFolderSetup:'Save the companion’s QQ number, group settings and current group role first.',
+      qqGroupFolderDirty:'Save the pending group and account changes before allowing a folder.',
+      qqGroupFolderPending:'Saving the folder permission…',
+      qqGroupFolderSaved:'File change notices are allowed from this folder to the selected group.',qqGroupFolderRevoked:'Folder permission turned off.',
+      qqGroupFolderChanged:'The folder or role changed. Choose it again before confirming.',
+      qqGroupFolderFailed:'The permission could not be changed. Check the saved account, group and source, then try again.'},
+    zh:{qqGroupFolder:'公开文件夹通知',
+      qqGroupFolderNote:'默认关闭。所选 QQ 群只会收到顶层文件的文件名及变动类型。群通知不包含完整路径、文件内容及其他文件信息。此许可不扫描子文件夹，也不上传文件。',
+      qqGroupFolderSavedTitle:'已保存的许可',qqGroupFolderRevoke:'关闭此许可',qqGroupFolderGroup:'已保存的 QQ 群',
+      qqGroupFolderSource:'文件夹来源',qqGroupFolderAllow:'确认文件名可公开并允许通知',
+      qqGroupFolderEmpty:'没有可用的文件夹。请在「提醒」添加或启用文件夹。',qqGroupFolderSources:'打开数据源',
+      qqGroupFolderChooseGroup:'选择已保存的群',qqGroupFolderChooseSource:'选择文件夹',
+      qqGroupFolderSetup:'请先保存搭档 QQ 号、群设置和该群当前角色。',
+      qqGroupFolderDirty:'请先保存群及账号改动，再允许文件夹通知。',qqGroupFolderPending:'正在保存文件夹通知许可…',
+      qqGroupFolderSaved:'已允许向此群发送该文件夹的文件变动通知。',qqGroupFolderRevoked:'已关闭文件夹通知许可。',
+      qqGroupFolderChanged:'文件夹或角色已变化，请重新选择后确认。',
+      qqGroupFolderFailed:'未能更改许可。请核对已保存的账号、群和来源后重试。'},
+  };
+  const pageWords={
+    en:{qqGroupPage:'Public page changes',
+      qqGroupPageNote:'Off by default. Choose a page you know is publicly viewable. The selected QQ group can receive the saved page name and a notice that it changed. Page contents, addresses and query parameters are excluded.',
+      qqGroupPageSavedTitle:'Saved permission',qqGroupPageRevoke:'Turn off this permission',qqGroupPageGroup:'Saved QQ group',
+      qqGroupPageSource:'Page source',qqGroupPageAllow:'Confirm the page is public and allow notices',
+      qqGroupPageEmpty:'No enabled web page is available. Add or enable one in Notices.',qqGroupPageSources:'Open data sources',
+      qqGroupPageChooseGroup:'Choose a saved group',qqGroupPageChooseSource:'Choose a web page',
+      qqGroupPageSetup:'Save the companion’s QQ number, group settings and current group role first.',
+      qqGroupPageDirty:'Save the pending group and account changes before allowing a web page.',
+      qqGroupPagePending:'Saving the web page permission…',
+      qqGroupPageSaved:'Page change notices are allowed for the selected group.',qqGroupPageRevoked:'Web page permission turned off.',
+      qqGroupPageChanged:'The web page or role changed. Choose it again before confirming.',
+      qqGroupPageFailed:'The permission could not be changed. Check the saved account, group and source, then try again.'},
+    zh:{qqGroupPage:'公开网页更新',
+      qqGroupPageNote:'默认关闭。请选择你确认可以公开访问的网页。所选 QQ 群只会收到你保存的网页名称和更新提示。群通知不包含页面内容、地址或查询参数。',
+      qqGroupPageSavedTitle:'已保存的许可',qqGroupPageRevoke:'关闭此许可',qqGroupPageGroup:'已保存的 QQ 群',
+      qqGroupPageSource:'网页来源',qqGroupPageAllow:'确认网页可公开访问并允许通知',
+      qqGroupPageEmpty:'没有可用的网页。请在「提醒」添加或启用网页。',qqGroupPageSources:'打开数据源',
+      qqGroupPageChooseGroup:'选择已保存的群',qqGroupPageChooseSource:'选择网页',
+      qqGroupPageSetup:'请先保存搭档 QQ 号、群设置和该群当前角色。',
+      qqGroupPageDirty:'请先保存群及账号改动，再允许网页更新通知。',qqGroupPagePending:'正在保存网页更新许可…',
+      qqGroupPageSaved:'已允许向此群发送该网页的更新通知。',qqGroupPageRevoked:'已关闭网页更新许可。',
+      qqGroupPageChanged:'网页或角色已变化，请重新选择后确认。',
+      qqGroupPageFailed:'未能更改许可。请核对已保存的账号、群和来源后重试。'},
+  };
+  for(const lang of ['en','zh'])Object.assign(words[lang],feedWords[lang],calendarWords[lang],folderWords[lang],pageWords[lang]);
+  const feedStates={
+    ready:['许可生效。后续更新仍遵守主动联系时段和群额度。','Permission is active. Future updates still follow contact hours and group limits.'],
+    waiting_connection:['许可已保存，等待连接此搭档的 QQ。','Permission is saved. Connect this companion’s QQ to use it.'],
+    source_changed:['订阅已变更。请关闭旧许可，再核对并允许当前订阅。','The feed changed. Turn off the old permission before reviewing the current feed.'],
+    source_disabled:['订阅已停用或移除。','The feed is disabled or removed.'],
+    target_changed:['已保存的群或角色已变更。请关闭旧许可，再核对当前群和角色。','The saved group or role changed. Turn off the old permission, then review the current group and role.'],
+    paused:['群订阅通知已暂停。请检查主动聊天和群设置。','Group feed notices are paused. Check proactive chat and group settings.'],
+  };
+  const feedOutcomes={
+    queued:['更新已排队，尚未提交给 QQ。','The update is queued. It has yet to be submitted to QQ.'],
+    accepted:['QQ 接口已受理上次请求。','QQ accepted the last request.'],
+    unknown:['上次发送结果未确认，请先在 QQ 查看。','The last send result is unconfirmed. Check QQ first.'],
+    not_submitted:['上次更新未提交给 QQ。','The last update was not submitted to QQ.'],
+    failed:['上次群订阅通知未完成。','The last group feed notice did not complete.'],
+  };
+  const calendarStates={...feedStates,
+    source_changed:['日历来源已变更。请关闭旧许可，再核对并允许当前日历。','The calendar source changed. Turn off the old permission before reviewing the current calendar.'],
+    source_disabled:['日历已停用或移除。','The calendar is disabled or removed.'],
+    paused:['群日历提醒已暂停。请检查主动聊天和群设置。','Group calendar notices are paused. Check proactive chat and group settings.'],
+  };
+  const calendarOutcomes={...feedOutcomes,
+    queued:['日程提醒已排队，尚未提交给 QQ。','The calendar notice is queued. It has yet to be submitted to QQ.'],
+    not_submitted:['上次日程提醒未提交给 QQ。','The last calendar notice was not submitted to QQ.'],
+    failed:['上次群日历提醒未完成。','The last group calendar notice did not complete.'],
+  };
+
+  const folderStates={...feedStates,
+    source_changed:['文件夹来源已变更。请关闭旧许可，再核对并允许当前文件夹。','The folder source changed. Turn off the old permission before reviewing the current folder.'],
+    source_disabled:['文件夹已停用或移除。','The folder is disabled or removed.'],
+    paused:['群文件夹通知已暂停。请检查主动聊天和群设置。','Group folder notices are paused. Check proactive chat and group settings.'],
+  };
+  const folderOutcomes={...feedOutcomes,
+    queued:['文件夹通知已排队，尚未提交给 QQ。','The folder notice is queued. It has yet to be submitted to QQ.'],
+    not_submitted:['上次文件夹通知未提交给 QQ。','The last folder notice was not submitted to QQ.'],
+    failed:['上次群文件夹通知未完成。','The last group folder notice did not complete.'],
+  };
+
+  const pageStates={...feedStates,
+    source_changed:['网页来源已变更。请关闭旧许可，再核对并允许当前网页。','The web page source changed. Turn off the old permission before reviewing the current page.'],
+    source_disabled:['网页已停用或移除。','The web page is disabled or removed.'],
+    paused:['群网页更新通知已暂停。请检查主动聊天和群设置。','Group page change notices are paused. Check proactive chat and group settings.'],
+  };
+  const pageOutcomes={...feedOutcomes,
+    queued:['网页更新通知已排队，尚未提交给 QQ。','The page change notice is queued. It has yet to be submitted to QQ.'],
+    not_submitted:['上次网页更新通知未提交给 QQ。','The last page change notice was not submitted to QQ.'],
+    failed:['上次群网页更新通知未完成。','The last group page change notice did not complete.'],
+  };
+
+  const validGroupSourceId=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(value);
+  const validGroupSourceRole=value=>typeof value==='string'&&/^[a-z0-9-]{1,64}$/.test(value);
+  const validGroupSourceIdentity=value=>typeof value==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value);
+  const groupSourceLabel=value=>typeof value==='string'?value.replace(/[\p{Cc}\p{Cf}]/gu,'').trim().slice(0,64):'';
+  function groupSourceTarget(target,kind){
+    if(typeof target!=='string'||!target)return '';
+    if(kind!=='folder'){
+      try{
+        const url=new URL(target);
+        return url.protocol==='https:'&&!url.username&&!url.password?url.origin+url.pathname:'';
+      }catch{/* Only calendars can fall back to a local basename. */}
+    }
+    const basename=target.length<=255&&target!=='.'&&target!=='..'&&!/[\\/:\p{Cc}\p{Cf}]/u.test(target);
+    return basename&&(kind==='folder'||kind==='calendar'&&!/[?#]/.test(target))?target:'';
+  }
+  function settledGroupSourceConnection(){return state?.status==='disconnected'||state?.status==='connected';}
+  function savedGroupSourceSettings(){return !qqGroupsDirty&&!qqGroupsSaving&&!connectionDrafts.has('bot-qq-expected-account');}
+  function groupNoticeLabel(groupId){return language==='zh'?`QQ 群 ${groupId}`:`QQ group ${groupId}`;}
+  const sameGroupSourceScope=(left,right)=>left&&right&&['groupId','roleId','sourceId','identity'].every(key=>left[key]===right[key]);
+
+  function groupSourceControl({kind,noticesKey,sourceListKey,method,words:prefix,states,outcomes}){
+    const node=suffix=>$(`bot-qq-group-${kind}${suffix?'-'+suffix:''}`);
+    const panel=node(),groupInput=node('group'),sourceInput=node('source');
+    const message=suffix=>word(prefix+suffix);
+    let currentView=null;
+
+    function scopedData(config){
+      const groupIds=(config.groupIds||[]).filter(id=>typeof id==='string'&&qqNumber.test(id));
+      const groups=(config.generation||[]).filter(row=>row&&groupIds.includes(row.groupId)&&
+        validGroupSourceRole(row.roleId)&&groupSourceLabel(row.roleName));
+      const notices=config[noticesKey];
+      const sources=(notices?.[sourceListKey]||[]).flatMap(row=>{
+        if(!row||!validGroupSourceId(row.id)||!validGroupSourceIdentity(row.identity))return [];
+        const name=groupSourceLabel(row.name);
+        // Page consent identifies the saved source without rendering any part of its address.
+        const target=kind==='page'?(row.target===row.id?row.id:''):groupSourceTarget(row.target,kind);
+        return name&&target?[{id:row.id,name,target,identity:row.identity}]:[];
+      });
+      const saved=notices?.binding;
+      const binding=saved&&typeof saved.groupId==='string'&&qqNumber.test(saved.groupId)&&validGroupSourceRole(saved.roleId)&&
+        validGroupSourceId(saved.sourceId)&&validGroupSourceIdentity(saved.identity)?saved:null;
+      return {groupIds,groups,sources,binding};
+    }
+
+    function render(config){
+      const supported=state?.channel==='qq'&&typeof window.arcade?.[method]==='function'&&!!config[noticesKey];
+      panel.hidden=!supported;
+      if(!supported||!panel.open){currentView=null;return;}
+      const {groupIds,groups,sources,binding}=scopedData(config),account=state.qq.expectedAccountId;
+      const scope=JSON.stringify([lastCredentialScope,account,groupIds]);
+      if(currentView?.scope!==scope)currentView={scope,groupId:'',roleId:'',sourceId:'',identity:'',operation:null,feedback:''};
+      const view=currentView,ready=qqNumber.test(account)&&!!credentialContext.profileId;
+      const saving=!!view.operation,draftReady=ready&&savedGroupSourceSettings(),locked=saving||!settledGroupSourceConnection();
+      const group=groups.find(row=>row.groupId===view.groupId&&row.roleId===view.roleId);
+      const source=sources.find(row=>row.id===view.sourceId&&row.identity===view.identity);
+      const changed=(view.groupId&&!group)||(view.sourceId&&!source);
+      if(changed){
+        if(!group){view.groupId='';view.roleId='';}
+        view.sourceId='';view.identity='';view.feedback='Changed';
+      }
+      const selection=group&&source&&!changed?`${groupNoticeLabel(group.groupId)} · ${groupSourceLabel(group.roleName)} · ${source.name} · ${source.target}`:'';
+      node('account').textContent=ready?(language==='zh'?`搭档 QQ ${account}`:`Companion QQ ${account}`):message('Setup');
+      node('binding').hidden=!binding;
+      node('choices').hidden=!!binding||!draftReady||!groups.length||!sources.length;
+      node('empty').hidden=!!binding||!draftReady||!groups.length||!!sources.length;
+      roleOptions(groupInput,message('ChooseGroup'),groups.map(row=>[row.groupId,groupNoticeLabel(row.groupId)]),view.groupId);
+      roleOptions(sourceInput,message('ChooseSource'),sources.map(row=>[row.id,`${row.name} · ${row.target}`]),view.sourceId);
+      groupInput.disabled=locked||!draftReady;
+      sourceInput.disabled=groupInput.disabled||!group;
+      node('selection').hidden=!selection;
+      node('selection').textContent=selection;
+      node('allow').disabled=sourceInput.disabled||!source||!!binding||!!changed;
+      node('revoke').disabled=locked||!ready||!binding;
+
+      const index=language==='zh'?0:1;
+      const currentRole=binding&&groups.find(row=>row.groupId===binding.groupId&&row.roleId===binding.roleId);
+      node('saved-details').textContent=binding?[groupNoticeLabel(binding.groupId),groupSourceLabel(currentRole?.roleName),
+        groupSourceLabel(binding.sourceName)].filter(Boolean).join(' · '):'';
+      node('state').textContent=binding&&Object.hasOwn(states,binding.status)?states[binding.status][index]:'';
+      const last=config[noticesKey].lastOutcome,outcome=node('outcome');
+      outcome.textContent=binding&&Object.hasOwn(outcomes,last)?outcomes[last][index]:'';
+      outcome.hidden=!outcome.textContent;
+      if(view.feedback==='Saved'&&binding&&!['ready','waiting_connection'].includes(binding.status))view.feedback='';
+      const feedback=saving?'Pending':view.feedback||(!binding&&ready&&!groups.length?'Setup':
+        !binding&&ready&&!savedGroupSourceSettings()?'Dirty':'');
+      node('feedback').textContent=feedback?message(feedback):'';
+    }
+
+    async function request(enabled){
+      const view=currentView;
+      if(!view||view.operation||!panel.open||!settledGroupSourceConnection())return;
+      const config=state.qq.groups,{groups,sources,binding}=scopedData(config),account=state.qq.expectedAccountId;
+      if(!qqNumber.test(account)||!credentialContext.profileId)return;
+      const group=groups.find(row=>row.groupId===view.groupId&&row.roleId===view.roleId);
+      const source=sources.find(row=>row.id===view.sourceId&&row.identity===view.identity);
+      if(enabled?(binding||!group||!source||!savedGroupSourceSettings()):!binding)return;
+      const {groupId,roleId,sourceId,identity}=enabled?{...group,sourceId:source.id,identity:source.identity}:binding;
+      const input={...credentialContext,expectedAccountId:account,groupId,roleId,sourceId,identity,enabled};
+      const operation={};
+      view.operation=operation;
+      view.feedback='';
+      const current=()=>panel.open&&currentView===view&&view.operation===operation;
+      render(config);
+      try{
+        const result=await window.arcade[method](input);
+        if(!current())return;
+        const saved=result?.qq?.groups?.[noticesKey];
+        if(result?.qq?.expectedAccountId!==account||!saved||
+          (enabled?!sameGroupSourceScope(input,saved.binding):saved.binding!==null))throw Error('Group source scope changed');
+        view.groupId='';view.roleId='';view.sourceId='';view.identity='';
+        view.feedback=enabled?'Saved':'Revoked';
+      }catch{if(current())view.feedback='Failed';}
+      finally{if(current()){view.operation=null;render(state.qq.groups);}}
+    }
+
+    panel.addEventListener('toggle',()=>render(state?.qq?.groups||{}));
+    groupInput.onchange=()=>{
+      if(!currentView||currentView.operation)return;
+      const row=scopedData(state.qq.groups).groups.find(row=>row.groupId===groupInput.value);
+      currentView.groupId=row?.groupId||'';
+      currentView.roleId=row?.roleId||'';
+      currentView.sourceId='';currentView.identity='';currentView.feedback='';
+      render(state.qq.groups);
+    };
+    sourceInput.onchange=()=>{
+      if(!currentView||currentView.operation)return;
+      const row=scopedData(state.qq.groups).sources.find(row=>row.id===sourceInput.value);
+      currentView.sourceId=row?.id||'';
+      currentView.identity=row?.identity||'';
+      currentView.feedback='';
+      render(state.qq.groups);
+    };
+    node('allow').onclick=()=>request(true);
+    node('revoke').onclick=()=>request(false);
+    node('sources').onclick=()=>{switchView('notices');$('source-kind')?.focus();};
+    return render;
+  }
+  const renderQQGroupFeed=groupSourceControl({kind:'feed',noticesKey:'feedNotices',sourceListKey:'feeds',
+    method:'groupFeedSet',words:'qqGroupFeed',states:feedStates,outcomes:feedOutcomes});
+  const renderQQGroupCalendar=groupSourceControl({kind:'calendar',noticesKey:'calendarNotices',sourceListKey:'calendars',
+    method:'groupCalendarSet',words:'qqGroupCalendar',states:calendarStates,outcomes:calendarOutcomes});
+  const renderQQGroupFolder=groupSourceControl({kind:'folder',noticesKey:'folderNotices',sourceListKey:'folders',
+    method:'groupFolderSet',words:'qqGroupFolder',states:folderStates,outcomes:folderOutcomes});
+  const renderQQGroupPage=groupSourceControl({kind:'page',noticesKey:'pageNotices',sourceListKey:'pages',
+    method:'groupPageSet',words:'qqGroupPage',states:pageStates,outcomes:pageOutcomes});
+  function renderQQGroupSources(config){
+    renderQQGroupFeed(config);
+    renderQQGroupCalendar(config);
+    renderQQGroupFolder(config);
+    renderQQGroupPage(config);
+  }
+  function renderQQGroups(scopeChanged,locked){
+    const config=state?.qq?.groups||{enabled:false,groupIds:[],proactive:false};
+    if(scopeChanged){qqGroupsDirty=false;qqGroupsFeedback='';}
+    if(!qqGroupsDirty){
+      $('bot-qq-groups-enabled').checked=config.enabled===true;
+      $('bot-qq-group-ids').value=(config.groupIds||[]).join('\n');
+      $('bot-qq-groups-proactive').checked=config.proactive===true;
+      for(const {key,selected} of qqGroupMedia){
+        selected.clear();
+        for(const groupId of config[key]||[])selected.add(groupId);
+      }
+    }
+    renderQQGroupDirectory(scopeChanged);
+    renderQQGroupMedia(locked||qqGroupsSaving,state?.status==='connected'?config.voiceSources:undefined);
+    renderQQGroupAsr(config.asrAvailability);
+    for(const id of ['bot-qq-groups-enabled','bot-qq-group-ids','bot-qq-groups-proactive','bot-qq-groups-save'])$(id).disabled=locked||qqGroupsSaving;
+    $('bot-qq-groups-proactive').disabled=locked||qqGroupsSaving||!$('bot-qq-groups-enabled').checked;
+    $('bot-qq-groups-feedback').textContent=qqGroupsFeedback?word(qqGroupsFeedback):'';
+    renderQQGroupRoles();
+    renderQQGroupSources(config);
+    const zh=language==='zh',groupCount=config.groupIds?.length||0;
+    const enabledForCompanion=state?.social?.config?.proactiveMessages===true;
+    let proactiveState=zh?'主动群消息已关闭。':'Proactive group messages are off.';
+    if(config.proactive){
+      if(enabledForCompanion)proactiveState=zh?'主动群消息已允许。':'Proactive group messages allowed.';
+      else if(config.active)proactiveState=zh?'「相处方式」中的主动聊天已关闭。':'Proactive chat is off in Companion settings.';
+      else proactiveState=zh?'主动群消息尚未开启，请在「相处方式」开启主动聊天。':'Turn on proactive chat in Companion settings to allow group messages.';
+    }
+    const savedState=zh?`已保存 ${groupCount} 个群。`:`${groupCount} ${groupCount===1?'group':'groups'} saved.`;
+    $('bot-qq-groups-state').textContent=locked
+      ? (config.active?`${word('qqGroupsLocked')} ${proactiveState}`:word('qqGroupsLocked'))
+      : qqGroupsSaving?word('qqGroupsPending'):config.enabled?`${savedState} ${proactiveState}`:word('qqGroupsDisabled');
+    const runtime=$('bot-qq-groups-runtime'),warning=groupRuntimeWarning(config,zh);
+    const counts=zh?`群接入运行中 · 已接收 ${Number(config.incoming)||0} · 已发送 ${Number(config.sent)||0} · 已略过 ${Number(config.skipped)||0}。这些计数不代表真人验收通过。`:
+      `Group connection active · received ${Number(config.incoming)||0} · sent ${Number(config.sent)||0} · skipped ${Number(config.skipped)||0}. Counts do not prove live acceptance.`;
+    runtime.hidden=!config.active&&!warning;
+    runtime.style.whiteSpace='pre-line';
+    const text=warning||(config.active?counts:'');
+    if(runtime.textContent!==text)runtime.textContent=text;
+  }
+  async function saveQQGroups(){
+    renderQQGroupDirectory();
+    const scope=lastCredentialScope,context={...credentialContext},groupIds=readQQGroupIds(),enabled=$('bot-qq-groups-enabled').checked,proactive=$('bot-qq-groups-proactive').checked;
+    if(!validQQGroupIds(groupIds)||(enabled&&!groupIds.length)){
+      qqGroupsFeedback='qqGroupsInvalid';$('bot-qq-groups-feedback').textContent=word(qqGroupsFeedback);$('bot-qq-group-ids').setAttribute('aria-invalid','true');$('bot-qq-group-ids').focus();return;
+    }
+    const directory=qqGroupDirectory,fromDirectory=directory&&groupIds.some(id=>directory.draftIds.has(id));
+    const qqGroups={enabled,groupIds,proactive};
+    for(const {key,selected} of qqGroupMedia){
+      const allowed=groupIds.filter(groupId=>selected.has(groupId));
+      if(allowed.length)qqGroups[key]=allowed;
+    }
+    $('bot-qq-group-ids').removeAttribute('aria-invalid');qqGroupsSaving=true;renderQQGroups(false,false);
+    try{
+      await window.arcade.botConfigure({...context,qqGroups,...(fromDirectory?{qqGroupDirectoryCheck:directory.check}:{})});
+      if(qqGroupDirectory===directory)directory?.draftIds.clear();
+      if(scope===lastCredentialScope){qqGroupsDirty=false;qqGroupsFeedback='qqGroupsSaved';}
+    }
+    finally{qqGroupsSaving=false;renderQQGroups(false,state?.status!=='disconnected');}
   }
   function setSetupOpen(open,focus=false){
     const panel=$('bot-setup-panel');
@@ -222,10 +1250,12 @@
     if(focus){if(open){if(innerWidth<=800||document.body.classList.contains('compact'))panel.scrollIntoView({block:'start',behavior:'auto'});$('bot-settings-close').focus();}else $('bot-settings-toggle').focus({preventScroll:true});}
     else if(!open&&inside)$('bot-settings-toggle').focus({preventScroll:true});
   }
+  $('bot-qq-provider-problem-details').onclick=()=>window.openConversationSetup({section:'qq-group-diagnostics'});
   window.openConversationSetup=({section,pair=false}={})=>{
     switchView('bot');setSetupOpen(true,true);
     if(section)advancedGroup.open=true;
-    const target=section==='channel'?$('bot-channel'):section==='project'?$('bot-pick'):section==='advanced'?advancedGroup.querySelector('summary'):null;
+    const target=section==='qq-group-diagnostics'?$('bot-qq-groups-runtime'):
+      section==='qqofficial'?$('bot-qqofficial-app'):section==='qq-groups'?$('bot-qq-groups-enabled'):section==='channel'?$('bot-channel'):section==='project'?$('bot-pick'):section==='advanced'?advancedGroup.querySelector('summary'):null;
     if(target){target.scrollIntoView({block:'center',behavior:'auto'});target.focus({preventScroll:true});}
     // A saved pairing is retained. Only an explicit, unpaired WeChat setup
     // starts a new QR flow; opening connection settings never resets a login.
@@ -289,16 +1319,16 @@
   window.renderBot=next=>{
     language=next.config.language;state=next.bot;
     const firstRunApi=window.ArcadeFirstRun,firstRun=firstRunApi?.needed(next)===true,hasChannel=firstRunApi?firstRunApi.hasChannel(next):true;
-    const qq=state?.channel==='qq',feishu=state?.channel==='feishu',x=state?.channel==='x',messenger=state?.channel==='messenger',mode=state?.mode||'api',deepseek=mode==='deepseek',gpt=mode==='gpt',gemini=mode==='gemini',doubao=mode==='doubao',codex=mode==='codex',claude=mode==='claude',zh=language==='zh';
-    const companion=qq&&state?.social?.config?.enabled&&state?.social?.supported;
-    const credentialScope=JSON.stringify([next.accounts?.selectedId||'',mode,state?.channel||'wechat',state?.x?.expectedAccountId||'',state?.feishu?.appId||'',state?.messenger?.appId||'',state?.messenger?.pageId||'',state?.messenger?.ownerId||'',state?.messenger?.relayOrigin||'']);
+    const official=state?.channel==='qqofficial',qq=state?.channel==='qq',feishu=state?.channel==='feishu',x=state?.channel==='x',messenger=state?.channel==='messenger',mode=state?.mode||'api',deepseek=mode==='deepseek',gpt=mode==='gpt',gemini=mode==='gemini',doubao=mode==='doubao',codex=mode==='codex',claude=mode==='claude',zh=language==='zh';
+    const companion=(qq||official)&&state?.social?.config?.enabled&&state?.social?.supported;
+    const credentialScope=JSON.stringify([next.accounts?.selectedId||'',mode,state?.channel||'wechat',state?.x?.expectedAccountId||'',state?.feishu?.appId||'',state?.messenger?.appId||'',state?.messenger?.pageId||'',state?.messenger?.ownerId||'',state?.messenger?.relayOrigin||'',qq?state?.qq?.expectedAccountId||'':'']);
     const credentialScopeChanged=lastCredentialScope!==credentialScope;
     credentialContext={profileId:next.accounts?.selectedId||'',expectedMode:mode,expectedChannel:state?.channel||'wechat'};
     if(credentialScopeChanged){$('bot-key').value='';$('bot-qq-token').value='';$('bot-feishu-secret').value='';$('bot-x-token').value='';$('bot-messenger-page-token').value='';$('bot-messenger-relay-token').value='';connectionDrafts.clear();lastCredentialScope=credentialScope;}
     if(lastMode!==mode){$('bot-key').value='';lastMode=mode;}
-    const channelName=qq?'QQ':feishu?(zh?'飞书':'Feishu'):x?'X':messenger?'Messenger Page':zh?'微信':'WeChat',backendName=({native:'Claude Channels',claude:'Claude Code',api:'Claude API',codex:'Codex',gpt:'GPT API',deepseek:'DeepSeek API',gemini:'Gemini API',doubao:'Doubao API'})[mode];
-    words[language].connected=zh?`${channelName}已连接`:`${channelName} connected`;
-    words[language].paired=messenger?(zh?'Messenger 配置已保存':'Messenger settings saved'):x?(zh?'X 配置已保存':'X settings saved'):feishu?(zh?'飞书配置已保存':'Feishu settings saved'):qq?(zh?'QQ 配置已保存':'QQ settings saved'):(zh?'微信已配对':'WeChat paired');
+    const channelName=official?(zh?'QQ 官方机器人':'QQ official bot'):qq?'QQ':feishu?(zh?'飞书':'Feishu'):x?'X':messenger?'Messenger Page':zh?'微信':'WeChat',backendName=({native:'Claude Channels',claude:'Claude Code',api:'Claude API',codex:'Codex',gpt:'GPT API',deepseek:'DeepSeek API',gemini:'Gemini API',doubao:'Doubao API'})[mode];
+    words[language].connected=official?(zh?'已连接':'Connected'):zh?`${channelName}已连接`:`${channelName} connected`;
+    words[language].paired=official?(zh?'配置已保存':'Settings saved'):messenger?(zh?'Messenger 配置已保存':'Messenger settings saved'):x?(zh?'X 配置已保存':'X settings saved'):feishu?(zh?'飞书配置已保存':'Feishu settings saved'):qq?(zh?'QQ 配置已保存':'QQ settings saved'):(zh?'微信已配对':'WeChat paired');
     words[language].nativeStart=zh?`连接${channelName}`:`Connect ${channelName}`;
     words[language].nativeStop=zh?`断开${channelName}`:`Disconnect ${channelName}`;
     persona=(next.desktopChat?.kind==='local'?(next.personas||[]).find(p=>p.id===state?.local?.characterId):null)||next.persona||{id:'sprout',name:{en:'Sprout',zh:'小芽'},portrait:'portraits/sprout-anime.png'};
@@ -311,22 +1341,24 @@
     document.querySelector('.breadcrumb>span:last-child').textContent=view==='bot'?word('nav'):view==='connections'?(language==='zh'?'AI 与渠道':'AI and channels'):t({scene:'workshop',activity:'activity',settings:'settings'}[view]);
     const incoming=Number(state?.incomingCount)||0,outgoing=Number(state?.outgoingAccepted)||0;
     const status=state?.status||'disconnected',native=state?.mode==='native',process=state?.native?.process||{};
+    const macStatus=window.ArcadeQQStartConnect?.macOneBotStatus(state,language);
     const processRunning=process.owned&&process.status==='running',processStopped=['stopped','exited'].includes(process.status),processBusy=!!process.busy||process.status==='starting';
     const nativeStep=processStopped?'nativeStoppedMain':state?.native?.paused?'nativePausedMain':state?.tasks?.pending?.length?'nativeNeedsApproval':!state?.native?.attached?(processRunning?'nativeAwaitingChannel':'nativeOpenClaude'):incoming>0?'received':'connected';
     const statusWord=native&&status==='connected'?nativeStep:native&&status==='disconnecting'?'nativeDisconnecting':status==='connected'?(incoming>0?'received':'connected'):status==='disconnected'&&state?.paired?'paired':status;
     // No channel and no App conversation yet: plain words instead of "Disconnected".
-    const appOnlyIdle=next.desktopChat?.kind!=='local'&&!hasChannel,statusText=appOnlyIdle?(firstRun?(zh?'还没有 AI':'No AI yet'):(zh?'还没开始':'Not started')):word(statusWord);
+    const appOnlyIdle=next.desktopChat?.kind!=='local'&&!hasChannel,statusText=appOnlyIdle?(firstRun?(zh?'还没有 AI':'No AI yet'):(zh?'还没开始':'Not started')):macStatus?.label||word(statusWord);
     if($('bot-status').textContent!==statusText)$('bot-status').textContent=statusText;
     $('bot-project').textContent=state?.workspace||word('noProject');
     $('bot-key-status').textContent=state?.hasKey?word('keySet'):gpt?(zh?'需要 OpenAI API key，按 API 用量计费。':'Requires an OpenAI API key; API usage is billed.'):deepseek?(zh?'需要 DeepSeek API key，按调用计费。':'Requires a DeepSeek API key; usage is billed by DeepSeek.'):gemini?(zh?'需要 Google AI Studio API key，按 API 用量计费。':'Requires a Google AI Studio API key; API usage is billed.'):doubao?(zh?'需要火山方舟 API key，按 API 用量计费。':'Requires a Volcengine Ark API key; API usage is billed.'):word('keyEmpty');
     $('bot-pair').textContent=word(state?.paired?'repair':'pair');
-    $('bot-mode').value=mode;$('bot-channel').value=messenger?'messenger':x?'x':feishu?'feishu':qq?'qq':'wechat';
-    $('bot-wechat-options').hidden=qq||feishu||x||messenger;$('bot-messenger-options').hidden=!messenger;$('bot-qq-options').hidden=!qq;$('bot-feishu-options').hidden=!feishu;$('bot-x-options').hidden=!x;
+    $('bot-mode').value=mode;$('bot-channel').value=official?'qqofficial':messenger?'messenger':x?'x':feishu?'feishu':qq?'qq':'wechat';
+    $('bot-wechat-options').hidden=official||qq||feishu||x||messenger;$('bot-messenger-options').hidden=!messenger;$('bot-qq-options').hidden=!qq;$('bot-feishu-options').hidden=!feishu;$('bot-x-options').hidden=!x;
     $('bot-api-options').hidden=native||codex||claude;$('bot-native-options').hidden=!native;
     $('bot-claude-options').hidden=!claude;$('bot-codex-options').hidden=!codex;$('bot-deepseek-options').hidden=!deepseek;$('bot-gpt-options').hidden=!gpt;$('bot-claude-budget').hidden=mode!=='api';$('bot-gemini-options').hidden=!gemini;$('bot-doubao-options').hidden=!doubao;
     $('bot-key-label').textContent=gpt?'OpenAI API key':deepseek?'DeepSeek API key':gemini?'Google AI Studio API key':doubao?'Volcengine Ark API key':'Anthropic API key';$('bot-key').placeholder=state?.hasKey?(zh?'已保存，无需重复填写':'Saved; no need to re-enter'):gemini?'Google AI Studio key':doubao?'Volcengine Ark key':deepseek||gpt?'sk-…':'sk-ant-…';
     for(const [id,value] of [['bot-feishu-app-id',state?.feishu?.appId||''],['bot-feishu-owner',state?.feishu?.ownerId||''],['bot-qq-url',state?.qq?.url||'ws://127.0.0.1:3001'],['bot-qq-owner',state?.qq?.ownerId||''],['bot-deepseek-model',state?.deepseekModel||'deepseek-flash'],['bot-gpt-model',state?.gptModel||'gpt-6.1-sol'],['bot-gemini-model',state?.geminiModel||'gemini-3.6-flash'],['bot-doubao-model',state?.doubaoModel||'doubao-seed-2-0-lite-260428']])if(credentialScopeChanged||!connectionDrafts.has(id)&&document.activeElement!==$(id))$(id).value=value;
     $('bot-feishu-secret-status').textContent=state?.feishu?.hasSecret?(zh?'App Secret 已加密保存；留空保留，更换 App ID 时请填写新 Secret。保存配置不代表已连接。':'App Secret saved with OS encryption; leave blank to keep. A different App ID needs its own Secret. Saved settings do not mean connected.'):(zh?'填写应用的 App Secret；不会显示或回传已保存值。':'Enter the app’s App Secret; saved values are never displayed or returned.');
+    if(credentialScopeChanged||!connectionDrafts.has('bot-qq-expected-account'))$('bot-qq-expected-account').value=state?.qq?.expectedAccountId||'';
     for(const [id,value] of [['bot-x-account',state?.x?.expectedAccountId||''],['bot-x-owner',state?.x?.ownerId||'']])if(credentialScopeChanged||!connectionDrafts.has(id)&&document.activeElement!==$(id))$(id).value=value;
     $('bot-x-token-status').textContent=state?.x?.hasToken?(zh?'用户令牌已加密保存，留空保留。保存不代表账号、私信权限或平台批准已核实。':'User token saved with OS encryption; leave blank to keep. Saving does not verify identity, DM access or platform approval.'):(zh?'填写用户授权得到的令牌；不会显示或回传已保存值。':'Enter a user-authorized token; saved values are never displayed or returned.');
     for(const [id,value] of [['bot-messenger-app',state?.messenger?.appId||''],['bot-messenger-page',state?.messenger?.pageId||''],['bot-messenger-owner',state?.messenger?.ownerId||''],['bot-messenger-relay',state?.messenger?.relayOrigin||'']])if(credentialScopeChanged||!connectionDrafts.has(id)&&document.activeElement!==$(id))$(id).value=value;
@@ -341,7 +1373,7 @@
     $('bot-x-check').textContent=xCheck.state==='failed'&&xCheck.code==='rate_limited'?(zh?`X 连接受限，${Number.isFinite(xRateAt)&&xRateAt>0?new Date(xRateAt).toLocaleTimeString('zh-CN')+' 后':'稍后'}请手动重新连接。当前没有自动等待。`:`X connection was rate limited. ${Number.isFinite(xRateAt)&&xRateAt>0?'Try connecting after '+new Date(xRateAt).toLocaleTimeString('en')+'.':'Try connecting later.'} No automatic wait is running.`):xCheck.state==='rate_limited'?(zh?`X 请求已限流，${Number.isFinite(xRateAt)&&xRateAt>0?new Date(xRateAt).toLocaleTimeString('zh-CN')+' 后':'稍后'}重试。等待期间可断开。`:`X requests are rate limited. ${Number.isFinite(xRateAt)&&xRateAt>0?'Retry after '+new Date(xRateAt).toLocaleTimeString('en')+'.':'Waiting before retrying.'} You can disconnect while waiting.`):xCheck.state==='verified'?(zh?'账号身份已核实；尚不能证明私信已送达或任务成功。':'Account identity verified; this does not prove DM delivery or task success.'):'';
     $('bot-qq-token-state').textContent=state?.qq?.hasToken?(zh?'Token 已加密保存。留空保留原值。':'Token saved with OS encryption. Leave blank to keep it.'):(zh?'填写 OneBot token，不是 WebUI 密码。':'Use the OneBot token, not the WebUI password.');
     $('bot-qq-prepare').textContent=word(state?.qq?.hasToken?'qqPrepared':'qqPrepare');
-    renderQQCheck(state?.qq,status);
+    renderQQCheck(state?.qq,status,macStatus);
     $('bot-native-key-retained').hidden=!state?.hasKey;
     $('bot-privacy').textContent=claude||codex||deepseek||gpt||gemini||doubao||qq||feishu?(zh?`消息经过腾讯及所选 AI 服务${gpt?' OpenAI':deepseek?' DeepSeek':''}${qq?'；QQ 桥接也会处理消息':''}。API key 与连接令牌使用系统加密。本页聊天在内存中，本机 AI 可能另存会话。`:`Messages pass through Tencent and the selected AI service${gpt?' (OpenAI)':deepseek?' (DeepSeek)':''}${qq?'; a QQ bridge also processes QQ messages':''}. Keys and tokens use OS encryption. This view is in memory; local AI tools may retain sessions.`):word(native?'nativePrivacy':'privacy');
     if(feishu)$('bot-privacy').textContent=zh?'消息经过飞书与所选 AI 服务。App Secret 与模型密钥在本机使用系统加密保存。此接入仅指定主人的私聊，不开启群聊。':'Messages pass through Feishu and your selected AI service. App Secret and model keys use local OS encryption. Only the configured owner’s private chat is accepted, not groups.';
@@ -353,13 +1385,27 @@
     $('bot-stop').title=word(native?'nativeStopNote':'stop');
     const projectName=state?.workspace?.split(/[\\/]/).filter(Boolean).at(-1);
     document.querySelector('[data-bot="inboxNote"]').textContent=[channelName,backendName,companion?(zh?'陪伴聊天':'Companion chat'):projectName].filter(Boolean).join(' / ');
-    $('bot-problem').hidden=!state?.problem;$('bot-problem').textContent=qq&&managedQQ?window.qqConnectionGuidance?.(state?.problem,language)||state?.problem||'':state?.problem||'';
+    const problem=macStatus?.issue?macStatus.detail:qq&&managedQQ?window.qqConnectionGuidance?.(state?.problem,language)||state?.problem:state?.problem;
+    const groups=state?.qq?.groups;
+    const groupProviderProblem=qq&&status==='connected'&&next.desktopChat?.kind!=='local'&&
+      groups?.enabled===true&&!!groupRuntimeWarning(groups,zh,true);
+    $('bot-problem').hidden=!problem&&!groupProviderProblem;
+    if($('bot-problem-text').textContent!==(problem||''))$('bot-problem-text').textContent=problem||'';
+    const groupProblemText=groupProviderProblem?
+      (zh?'部分 QQ 群回复受 AI 服务故障影响。':'An AI provider issue affected replies in some QQ groups.'):'';
+    if($('bot-qq-provider-problem-text').textContent!==groupProblemText)$('bot-qq-provider-problem-text').textContent=groupProblemText;
+    $('bot-qq-provider-problem').hidden=!groupProviderProblem;
+    $('bot-qq-provider-problem-details').textContent=groupProviderProblem?(zh?'查看群聊诊断':'View group diagnostics'):'';
     if(managedQQ){const runtime=$('bot-problem-qq-runtime');runtime.hidden=!(qq&&state?.problem);runtime.textContent=zh?'QQ 登录与运行':'QQ sign-in & runtime';}
     const active=['connected','connecting','disconnecting'].includes(state?.status),pairing=state?.status==='pairing',checking=state?.status==='checking';
     const localConversation=next.desktopChat?.kind==='local',savedConnection=window.selectedSavedConnection?.(next),nextSetupPhase=JSON.stringify([next.accounts?.selectedId,active,!!savedConnection,localConversation]);
     // A profile without any channel is an App-conversation profile: its settings panel starts
     // closed and nothing about chat software is shown until the owner asks for it.
-    if(setupPhase!==nextSetupPhase&&(firstRunApi||setupPhase!==undefined)){setSetupOpen(!localConversation&&!active&&!savedConnection&&hasChannel);setupPhase=nextSetupPhase;}
+    if(setupPhase!==nextSetupPhase&&(firstRunApi||setupPhase!==undefined)){
+      const keepQQSetup=macQQ&&qq&&!credentialScopeChanged&&!localConversation&&!active&&$('bot-setup-panel').open;
+      setSetupOpen(keepQQSetup||!localConversation&&!active&&!savedConnection&&hasChannel);
+      setupPhase=nextSetupPhase;
+    }
     else if(setupPhase===undefined&&!firstRunApi)setSetupOpen(false);
     const nextAdvancedPhase=JSON.stringify([next.accounts?.selectedId,localConversation]);
     if(advancedPhase!==nextAdvancedPhase&&firstRunApi){advancedGroup.open=!localConversation&&hasChannel;advancedPhase=nextAdvancedPhase;}
@@ -370,6 +1416,7 @@
     characterSettings.hidden=!(localConversation&&(state?.local?.libraryCharacterId||state?.local?.libraryGroupId));
     savedConnectionHost.hidden=localConversation||!savedConnection||(active&&!window.ArcadeQQStartConnect?.isRunning());
     window.ArcadeQQStartConnect?.mount(savedConnectionHost,{id:'bot-saved-connection',settings:()=>setSetupOpen(true,true)});
+    if(macStatus?.issue&&!savedConnectionHost.hidden)$('bot-problem').hidden=true;
     $('bot-view').classList.toggle('bot-connected',active||localConversation);
     $('bot-setup-summary').textContent=[state?.workspace?.split(/[\\/]/).filter(Boolean).at(-1),backendName].filter(Boolean).join(' · ');
     $('bot-start-note').textContent=word(native?'nativeStartNote':'startNote');
@@ -385,7 +1432,10 @@
     // Lines about a chat channel (the WeChat entry, the preview note) belong to a channel conversation only.
     document.querySelector('[data-bot="preview"]').hidden=!!companion||localConversation||!hasChannel;
     document.querySelector('.bot-input-note').classList.toggle('bot-note-off',firstRun||!hasChannel);
-    if(qq&&state?.qq?.check?.state==='checked'&&(state.qq.check.online===false||state.qq.check.ownerIsFriend===false))$('bot-start-note').textContent=state.qq.check.online===false?(managedQQ?(zh?'QQ 当前离线。打开「管理 QQ 账号」登录，再从「管理搭档」连接。':'QQ is offline. Sign in under Manage QQ accounts, then connect from Manage companions.'):(zh?'QQ 当前离线。先在 NapCat 登录并重新检查，再开始接收任务。':'QQ is offline. Sign in through NapCat and test again before receiving tasks.')):(zh?'先加 AI 的 QQ 为好友，并在 AI 账号里通过申请，再重新检查。':'Add the AI’s QQ as a friend, accept in that account, then test again.');
+    if(qq&&!macStatus&&state?.qq?.check?.state==='checked'&&(state.qq.check.online===false||state.qq.check.ownerIsFriend===false)){
+      const signInBridge=zh?'QQ 当前离线。先在 NapCat 登录并重新检查，再开始接收任务。':'QQ is offline. Sign in through NapCat and test again before receiving tasks.';
+      $('bot-start-note').textContent=state.qq.check.online===false?(managedQQ?(zh?'QQ 当前离线。打开「管理 QQ 账号」登录，再从「管理搭档」连接。':'QQ is offline. Sign in under Manage QQ accounts, then connect from Manage companions.'):signInBridge):(zh?'先加 AI 的 QQ 为好友，并在 AI 账号里通过申请，再重新检查。':'Add the AI’s QQ as a friend, accept in that account, then test again.');
+    }
     if(deepseek||gpt||gemini||doubao||codex||claude)document.querySelector('[data-bot="help"]').textContent=zh?'直接聊天或派活。“状态”查看当前请求，“停止”中断当前任务，/new 开启新会话。需要确认时回复“同意 确认码”或“拒绝 确认码”；问题可直接回答。断开后不会自动恢复旧任务。':'Chat or give a task. /status shows requests; /cancel interrupts the current task; /new starts a fresh conversation. Approve only the reviewed /allow CODE or /deny CODE request. Disconnected work never replays automatically.';
     if(messenger){$('bot-start-note').textContent=zh?'连接后接收指定主人的新消息并回复；需先完成 Page 权限与 HTTPS 中转配置，普通回复窗口为 24 小时。':'Connect after Page permissions and HTTPS relay setup are ready. Receive new owner messages and reply within the ordinary 24-hour window.';document.querySelector('[data-bot="help"]').textContent+=zh?' 单独输入 /unsubscribe 会停止后续接收；重新启用需在本机明确操作。':' Send /unsubscribe as direct text to stop receiving; resuming requires an explicit local action.';}
     if(x){$('bot-start-note').textContent=zh?'连接会开始付费 API 检查并自动回复指定主人的新消息；确认账号和平台条件后再连接。':'Connecting starts API checks that may be billed and automatic replies to the configured owner’s new messages. Confirm account and platform prerequisites first.';document.querySelector('[data-bot="help"]').textContent+=zh?' 单独输入 /unsubscribe 会停止后续接收和回复；重新启用需回到此处操作。':' Send /unsubscribe as direct text to stop future receiving and replies. Re-enabling requires an action here.';}
@@ -398,13 +1448,17 @@
       document.querySelector('[data-bot="help"]').textContent=zh?'直接聊天；发“停止”可打断当前回复，发“暂停主动”可暂停主动联系。记忆、约定回访和日记可在「相处」查看与修改。':'Chat normally. Send /cancel to interrupt the current reply, or 暂停主动 to pause proactive contact. View and edit memories, agreed follow-ups and her journal in Together.';
       document.querySelector('[data-bot="risk"]').textContent=zh?'陪伴聊天不执行文件或命令。已发送的 QQ 消息不会因停止而撤回。':'Companion chat does not use file or command tools. Stopping does not recall QQ messages already sent.';
     }
-    for(const id of ['bot-mode','bot-channel','bot-pick','bot-key','bot-save','bot-budget','bot-pair','bot-qq-url','bot-qq-owner','bot-qq-token','bot-qq-save','bot-feishu-app-id','bot-feishu-owner','bot-feishu-secret','bot-feishu-save','bot-x-account','bot-x-owner','bot-x-token','bot-x-save','bot-x-resume','bot-messenger-app','bot-messenger-page','bot-messenger-owner','bot-messenger-relay','bot-messenger-page-token','bot-messenger-relay-token','bot-messenger-save','bot-messenger-resume','bot-deepseek-model','bot-gpt-model','bot-gemini-model','bot-doubao-model','bot-qq-download','bot-qq-guide'])$(id).disabled=active||pairing||checking;
+    if(qq&&state?.qq?.groups?.enabled){document.querySelector('[data-bot="messageEntry"]').textContent=zh?'可在已选 QQ 群里聊天，私聊仍只接指定主人。群内沿用现有接话机制。':'Chat in the selected QQ groups; private chat still accepts only the owner. Existing reply decisions apply in groups.';if(state?.qq?.check?.online!==false&&state?.qq?.check?.ownerIsFriend!==false)$('bot-start-note').textContent=zh?'连接后开始接收指定群的新消息及主人的私聊。主动群消息需要在这里和「相处方式」分别开启。':'Connecting starts receiving new messages in selected groups and the owner’s private chat. Proactive group messages need permission here and in Companion settings.';}
+    if(macStatus&&status!=='connected')$('bot-start-note').textContent=macStatus.detail;
+    for(const id of ['bot-mode','bot-channel','bot-pick','bot-key','bot-save','bot-budget','bot-pair','bot-qq-url','bot-qq-owner','bot-qq-expected-account','bot-qq-token','bot-qq-save','bot-feishu-app-id','bot-feishu-owner','bot-feishu-secret','bot-feishu-save','bot-x-account','bot-x-owner','bot-x-token','bot-x-save','bot-x-resume','bot-messenger-app','bot-messenger-page','bot-messenger-owner','bot-messenger-relay','bot-messenger-page-token','bot-messenger-relay-token','bot-messenger-save','bot-messenger-resume','bot-deepseek-model','bot-gpt-model','bot-gemini-model','bot-doubao-model','bot-qq-download','bot-qq-guide'])$(id).disabled=active||pairing||checking;
     const qqLocked=active||pairing||checking;
+    renderQQGroups(credentialScopeChanged,qqLocked);
+    $('bot-qq-download').disabled=true;
     $('bot-qq-prepare').disabled=qqLocked||!!state?.qq?.hasToken;
     for(const id of ['bot-qq-copy-config','bot-qq-copy-token'])$(id).disabled=qqLocked||!state?.qq?.hasToken;
     $('bot-qq-test').disabled=qqLocked||!state?.qq?.hasToken;
     $('bot-qq-test').textContent=word(checking?'qqTesting':'qqTest');
-    $('bot-mode').querySelector('[value="native"]').disabled=feishu||x||messenger;
+    $('bot-mode').querySelector('[value="native"]').disabled=official||feishu||x||messenger;
     $('bot-start').hidden=active||pairing;$('bot-start').disabled=((feishu||x||messenger)&&native)||(x&&!!state?.x?.optedOut)||(messenger&&!!state?.messenger?.optedOut)||checking||!((state?.workspace||(state?.social?.config.enabled&&state?.social?.supported))&&state?.paired&&(native||codex||claude||state?.hasKey));
     $('bot-forget').disabled=checking;
     $('bot-stop').hidden=!(active||pairing);
@@ -453,9 +1507,15 @@
     const mascot=native?(state?.tasks?.pending?.length?'waiting':'idle'):state?.tasks?.pending?.length?'waiting':state?.tasks?.currentTaskId?'running':messages.length?'done':'idle';
     const portrait=next.config.portrait||'anime';
     if(lastMascot!==`${mascot}:${next.config.theme}:${portrait}:${persona.id}`){lastMascot=`${mascot}:${next.config.theme}:${portrait}:${persona.id}`;$('bot-mascot').className=`scene ${mascot}`;if(portrait==='anime'){const img=el('img','portrait');img.src=persona.portrait;img.alt='';$('bot-mascot').replaceChildren(img);}else $('bot-mascot').replaceChildren(sprite(mascot));}
-    document.body.dataset.desktopConversation=localConversation?'local':'channel';$('bot-status').classList.toggle('waiting',localConversation&&['starting','stopping'].includes(state?.local?.state));$('bot-status').classList.toggle('unknown',localConversation&&!state?.local?.available&&!['starting','stopping'].includes(state?.local?.state));$('bot-status').classList.toggle('error',localConversation&&state?.local?.reason==='stop_failed');if(localConversation)document.querySelector('[data-bot="messageEntry"]').textContent=zh?'App 聊天与 QQ 分开保存。准备好后可在上方继续。':'App chat is saved separately from QQ. Continue above when you are ready.';if(localConversation){$('bot-status').textContent=state?.local?.state==='starting'?(zh?'正在准备聊天':'Preparing chat'):state?.local?.state==='stopping'?(zh?'正在暂停':'Pausing'):state?.local?.available?(zh?'可以聊天':'Ready to chat'):(zh?'App聊天已暂停':'App chat paused');$('bot-stop').hidden=true;$('bot-problem').hidden=true;document.querySelector('[data-bot="inboxNote"]').textContent=[zh?'App对话':'App conversation',backendName].filter(Boolean).join(' / ');$('bot-privacy').textContent=zh?'这段聊天与记忆独立保存在本机，相关内容会交给所选 AI。不会同步到 QQ，也不发布动态。可在聊天中查看、更正或忘记记忆。':'This conversation and its memory are stored separately on this device. Relevant context goes to the selected AI. It is not synced to QQ or used for social posts. Ask in chat to view, correct or forget memories.';}
+    document.body.dataset.desktopConversation=localConversation?'local':'channel';
+    const localPending=['starting','stopping'].includes(state?.local?.state);
+    $('bot-status').classList.toggle('waiting',localConversation?localPending:!appOnlyIdle&&macStatus?.tone==='waiting');
+    $('bot-status').classList.toggle('unknown',localConversation?!state?.local?.available&&!localPending:!appOnlyIdle&&macStatus?.tone==='unknown');
+    $('bot-status').classList.toggle('error',localConversation?state?.local?.reason==='stop_failed':!appOnlyIdle&&macStatus?.tone==='error');
+    if(localConversation)document.querySelector('[data-bot="messageEntry"]').textContent=zh?'App 聊天与 QQ 分开保存。准备好后可在上方继续。':'App chat is saved separately from QQ. Continue above when you are ready.';if(localConversation){$('bot-status').textContent=state?.local?.state==='starting'?(zh?'正在准备聊天':'Preparing chat'):state?.local?.state==='stopping'?(zh?'正在暂停':'Pausing'):state?.local?.available?(zh?'可以聊天':'Ready to chat'):(zh?'App聊天已暂停':'App chat paused');$('bot-stop').hidden=true;$('bot-problem').hidden=true;document.querySelector('[data-bot="inboxNote"]').textContent=[zh?'App对话':'App conversation',backendName].filter(Boolean).join(' / ');$('bot-privacy').textContent=zh?'这段聊天与记忆独立保存在本机，相关内容会交给所选 AI。不会同步到 QQ，也不发布动态。可在聊天中查看、更正或忘记记忆。':'This conversation and its memory are stored separately on this device. Relevant context goes to the selected AI. It is not synced to QQ or used for social posts. Ask in chat to view, correct or forget memories.';}
     // No channel and no App conversation yet: say so in plain words instead of "WeChat / … · Disconnected".
     if(appOnlyIdle)document.querySelector('[data-bot="inboxNote"]').textContent=firstRun?(zh?'先选一个 AI 并保存密钥':'Choose an AI and save its key first'):[zh?'App对话':'App conversation',backendName].filter(Boolean).join(' / ');
+    window.renderQQOfficial?.(next);
     document.body.dataset.firstRun=String(firstRun);
     document.body.dataset.portrait=portrait;
     if(threadNeedsBottom&&document.body.dataset.view==='bot')requestAnimationFrame(()=>{
@@ -464,7 +1524,11 @@
   };
   $('bot-settings-toggle').onclick=()=>setSetupOpen(!$('bot-setup-panel').open,true);
   $('bot-settings-close').onclick=()=>setSetupOpen(false,true);
-  $('bot-setup-panel').addEventListener('toggle',()=>$('bot-settings-toggle').setAttribute('aria-expanded',String($('bot-setup-panel').open)));
+  $('bot-setup-panel').addEventListener('toggle',()=>{
+    const open=$('bot-setup-panel').open;
+    $('bot-settings-toggle').setAttribute('aria-expanded',String(open));
+    if(!open){groupRoles.open=false;roleView=null;bookView=null;showBookPreview(null);}
+  });
   $('bot-setup-panel').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();setSetupOpen(false,true);}});
   $('bot-latest').onclick=showLatest;
   $('bot-thread-scroll').addEventListener('scroll',()=>{if(atBottom())$('bot-latest').hidden=true;},{passive:true});
@@ -476,12 +1540,46 @@
   $('bot-gemini-model').onchange=()=>run(()=>window.arcade.botConfigure({geminiModel:$('bot-gemini-model').value}));
   $('bot-doubao-model').onchange=()=>run(()=>window.arcade.botConfigure({doubaoModel:$('bot-doubao-model').value}));
   $('bot-qq-save').onclick=()=>run(async()=>{await saveQQSettings();toast(word('qqSaved'));});
+  const groupProactiveNote=document.querySelector('[data-bot="qqGroupsProactiveNote"]');
+  groupProactiveNote.id='bot-qq-groups-proactive-note';
+  $('bot-qq-groups-proactive').setAttribute('aria-describedby',groupProactiveNote.id);
+  const companionSettings=el('button','plain');
+  companionSettings.type='button';
+  companionSettings.id='bot-qq-groups-companion-settings';
+  companionSettings.dataset.bot='qqGroupsCompanionSettings';
+  companionSettings.onclick=()=>{
+    switchView('connections');
+    if(!$('social-panel')?.getClientRects().length)$('onboarding-saved-connection-settings')?.click();
+    const optional=$('onboarding-optional-toggle');
+    if(optional?.getAttribute('aria-expanded')==='false')optional.click();
+    const panel=$('social-panel');
+    if(!panel)return;
+    panel.open=true;
+    requestAnimationFrame(()=>{
+      const start=$('social-proactiveMessages'),pause=$('social-pause');
+      const target=start&&!start.matches(':disabled')?start:pause&&!pause.disabled?pause:panel.querySelector('summary');
+      target?.focus();
+    });
+  };
+  $('bot-qq-groups-save').after(companionSettings);
+  $('bot-qq-groups-save').onclick=()=>run(saveQQGroups);
+  $('bot-qq-group-directory-load').onclick=loadQQGroupDirectory;
+  $('bot-qq-group-directory-add').onclick=addQQGroupDirectoryChoice;
+  $('bot-qq-group-directory-select').onchange=event=>{
+    if(qqGroupDirectory)qqGroupDirectory.selected=event.target.value;
+    renderQQGroupDirectory();
+  };
+  if(macQQ)for(const id of ['bot-qq-expected-account','bot-qq-url','bot-qq-token','bot-qq-owner'])$(id).addEventListener('input',()=>{
+    renderQQGroups(false,state?.status!=='disconnected');
+  });
+  for(const id of ['bot-qq-groups-enabled','bot-qq-group-ids','bot-qq-groups-proactive'])$(id).addEventListener('input',markQQGroupDraft);
   $('bot-qq-prepare').onclick=()=>run(async()=>{if(!window.arcade.botQQPrepare)throw Error(word('notDesktop'));await saveQQSettings(false);await window.arcade.botQQPrepare();toast(word('qqTokenPrepared'));});
   $('bot-qq-copy-config').onclick=()=>run(async()=>{if(!window.arcade.botQQCopyConfig)throw Error(word('notDesktop'));await saveQQSettings(false);await window.arcade.botQQCopyConfig();toast(word('qqConfigCopied'));});
   $('bot-qq-copy-token').onclick=()=>run(async()=>{if(!window.arcade.botQQCopyToken)throw Error(word('notDesktop'));await window.arcade.botQQCopyToken();toast(word('qqTokenCopied'));});
   $('bot-qq-test').onclick=()=>run(async()=>{if(!window.arcade.botQQTest)throw Error(word('notDesktop'));await saveQQSettings();await window.arcade.botQQTest();});
   for(const [id,kind] of [['bot-qq-download','download'],['bot-qq-guide','connections']])$(id).onclick=()=>run(async()=>{if(!window.arcade.botQQOpenGuide)throw Error(word('notDesktop'));await window.arcade.botQQOpenGuide(kind);});
   for(const id of connectionDraftIds)$(id).addEventListener('input',()=>connectionDrafts.add(id));
+  $('bot-qq-expected-account').addEventListener('input',()=>{renderQQGroupRoles();renderQQGroupSources(state?.qq?.groups||{});});
   $('bot-feishu-save').onclick=()=>run(async()=>{const scope=lastCredentialScope,secret=$('bot-feishu-secret').value;$('bot-feishu-secret').value='';const patch={...credentialContext,channel:'feishu',feishuAppId:$('bot-feishu-app-id').value,feishuOwnerId:$('bot-feishu-owner').value};if(secret)patch.feishuAppSecret=secret;await window.arcade.botConfigure(patch);acceptConnectionDraft(scope,{'bot-feishu-app-id':patch.feishuAppId,'bot-feishu-owner':patch.feishuOwnerId});if(sameCredentialOwner(scope))toast(language==='zh'?'飞书配置已保存':'Feishu settings saved');});
   $('bot-x-save').onclick=()=>run(async()=>{const scope=lastCredentialScope,token=$('bot-x-token').value;$('bot-x-token').value='';const patch={...credentialContext,channel:'x',xAccountId:$('bot-x-account').value,xOwnerId:$('bot-x-owner').value};if(token)patch.xAccessToken=token;await window.arcade.botConfigure(patch);acceptConnectionDraft(scope,{'bot-x-account':patch.xAccountId,'bot-x-owner':patch.xOwnerId});if(sameCredentialOwner(scope))toast(language==='zh'?'X 配置已保存':'X settings saved');});
   $('bot-messenger-save').onclick=()=>run(async()=>{const scope=lastCredentialScope,pageToken=$('bot-messenger-page-token').value,relayToken=$('bot-messenger-relay-token').value;$('bot-messenger-page-token').value='';$('bot-messenger-relay-token').value='';const patch={...credentialContext,channel:'messenger',messengerAppId:$('bot-messenger-app').value,messengerPageId:$('bot-messenger-page').value,messengerOwnerId:$('bot-messenger-owner').value,messengerRelayOrigin:$('bot-messenger-relay').value};if(pageToken)patch.messengerPageAccessToken=pageToken;if(relayToken)patch.messengerRelayToken=relayToken;await window.arcade.botConfigure(patch);acceptConnectionDraft(scope,{'bot-messenger-app':patch.messengerAppId,'bot-messenger-page':patch.messengerPageId,'bot-messenger-owner':patch.messengerOwnerId,'bot-messenger-relay':patch.messengerRelayOrigin});if(sameCredentialOwner(scope))toast(language==='zh'?'Messenger 配置已保存':'Messenger settings saved');});

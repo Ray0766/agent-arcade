@@ -6,11 +6,14 @@ const {ApprovalCodes, SHORT_CODE_LIMIT_MESSAGE} = require('./approval-codes.cjs'
 const MAX_TEXT = 6000, MAX_MESSAGES = 60, MAX_QUEUE = 3, REQUEST_TTL = 5 * 60 * 1000;
 const outcomes = new Set(['reply_ended', 'error', 'limit', 'cancelled']);
 const terminal = task => outcomes.has(task.state);
-function clean(value, limit = MAX_TEXT) {
+function redactText(value) {
   const text = typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '') : '';
-  const redacted = text.replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, '[redacted]')
+  return text.replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, '[redacted]')
     .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]{8,}/gi, 'Bearer [redacted]')
     .replace(/((?:api[_-]?key|password|secret|token|authorization)["']?\s*[:=]\s*["']?)[^\s"'`,;}\]]+/gi, '$1[redacted]');
+}
+function clean(value, limit = MAX_TEXT) {
+  const redacted = redactText(value);
   return redacted.length <= limit ? redacted : `${redacted.slice(0, Math.max(0, limit - 40))}\n[内容超限，完整结果请在本机查看。]`;
 }
 function serializeRequest(request) {
@@ -287,4 +290,4 @@ class Dispatcher {
     }
   }
 }
-module.exports = { Dispatcher, clean };
+module.exports = { Dispatcher, clean, redactText };

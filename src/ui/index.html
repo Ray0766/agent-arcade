@@ -41,8 +41,15 @@
   <script src="preview-themes.js" defer></script>
   <script src="preview.js" defer></script>
   <script src="qq-start-connect.js" defer></script>
+  <script src="desktop-pets.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="group-wiki-ui.js" defer></script>
+  <script src="group-reflection-ui.js" defer></script>
+  <script src="group-output-format-ui.js" defer></script>
+  <script src="group-speaker-dispatch-ui.js" defer></script>
   <script src="bot.js" defer></script>
+  <script src="qq-mac-setup.js" defer></script>
+  <script src="qq-official.js" defer></script>
   <script src="qq-media.js" defer></script>
   <script src="qq-voice.js" defer></script>
   <script src="connections.js" defer></script>
@@ -101,7 +108,13 @@
     <header><div class="breadcrumb">Agent Arcade<span class="sr-only" aria-hidden="true"> / </span><span class="sr-only" data-i18n="workshop">Sessions</span></div><div class="header-actions"><select id="view-picker" class="compact-nav" aria-label="View"><option value="bot" data-bot="nav">WeChat</option><option value="scene" data-i18n="workshop">Sessions</option><option value="activity" data-i18n="activity">Activity</option><option value="notices" data-i18n="notices">Notices</option><option value="notes" data-i18n="notes">Notes</option><option value="tasks" data-i18n="taskBoard">Tasks</option><option value="settings" data-i18n="settings">Settings</option></select><button id="language" class="plain" aria-label="Switch language">中文</button><button id="compact" class="plain" data-i18n="compact">Compact</button><button id="quiet" class="quiet" aria-pressed="false" data-i18n="quiet">Quiet mode</button></div></header>
     <section id="bot-view" class="view" hidden>
       <div class="page-heading chat-heading"><div class="chat-identity"><div id="bot-mascot" aria-hidden="true"></div><div><h1 data-bot="title">WeChat</h1><p data-bot="inboxNote">Messages and replies from WeChat appear here.</p></div></div><div class="bot-heading-actions"><span id="bot-status" class="state-pill" role="status"></span><button id="bot-stop" class="plain" data-bot="stop" hidden>Disconnect & cancel</button><button id="bot-settings-toggle" class="secondary inspector-toggle" aria-controls="bot-setup-panel" aria-expanded="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="3" fill="currentColor" stroke="none"/></svg><span data-bot="setup">Connection settings</span></button></div></div>
-      <div id="bot-problem" class="problem" role="alert" hidden></div>
+      <div id="bot-problem" class="problem" hidden>
+        <span id="bot-problem-text" role="alert"></span>
+        <div id="bot-qq-provider-problem" hidden>
+          <span id="bot-qq-provider-problem-text" role="status"></span>
+          <button id="bot-qq-provider-problem-details" class="plain" type="button"></button>
+        </div>
+      </div>
       <div class="bot-layout">
         <div id="bot-inbox" class="bot-inbox" hidden>
           <h2 class="sr-only" data-bot="inbox">Conversation</h2>
@@ -117,7 +130,7 @@
           <summary><span data-bot="setup">Connection settings</span><span id="bot-setup-summary"></span></summary>
           <div class="bot-setup-content"><button id="bot-settings-close" class="icon-button inspector-close" aria-label="Close connection settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
             <fieldset class="setup-step"><legend data-bot="channel">Chat channel</legend>
-              <label for="bot-channel" data-bot="channel">Chat channel</label><select id="bot-channel"><option value="wechat">WeChat · ClawBot</option><option value="qq">QQ · OneBot</option><option value="feishu" data-bot="feishuChannel">Feishu app bot</option><option value="x" data-bot="xChannel">X standard DMs · experimental</option><option value="messenger" data-bot="messengerChannel">Messenger Page · experimental</option></select>
+              <label for="bot-channel" data-bot="channel">Chat channel</label><select id="bot-channel"><option value="wechat">WeChat · ClawBot</option><option value="qqofficial">QQ · Official bot</option><option value="qq">QQ · OneBot</option><option value="feishu" data-bot="feishuChannel">Feishu app bot</option><option value="x" data-bot="xChannel">X standard DMs · experimental</option><option value="messenger" data-bot="messengerChannel">Messenger Page · experimental</option></select>
               <div id="bot-wechat-options">
               <p data-bot="access">On your phone, enable WeChat → Me → Settings → Plugins → ClawBot, then scan below. Send messages in the ClawBot conversation. If the entry is missing, client or account availability is unverified.</p>
               <button id="bot-pair" class="secondary" data-bot="pair">Pair WeChat</button>
@@ -125,29 +138,447 @@
               </div>
               <div id="bot-qq-options" hidden>
                 <p data-bot="qqSetup">Use a separate QQ account signed into your local OneBot bridge. This unofficial integration currently accepts only the configured owner's private text messages.</p>
-                <div class="qq-setup-part">
+                <section id="bot-qq-mac-setup" aria-labelledby="bot-qq-mac-title" hidden>
+                  <h3 id="bot-qq-mac-title" tabindex="-1" data-qq-mac="title">Connect QQ group chat on Mac</h3>
+                  <p data-qq-mac="intro">Use an existing OneBot connection, or prepare LLBot on an Apple Silicon Mac.</p>
+                  <section id="bot-qq-mac-launch" class="qq-check" aria-labelledby="bot-qq-mac-launch-title" hidden>
+                    <h4 id="bot-qq-mac-launch-title" data-qq-mac="launchTitle">LLBot startup guide</h4>
+                    <p id="bot-qq-mac-launch-state" role="status"></p>
+                    <p><span data-qq-mac="account">Dedicated companion QQ number</span> · <code id="bot-qq-mac-launch-account"></code></p>
+                    <p id="bot-qq-mac-launch-location" hidden><span data-qq-mac="folder">Folder</span> · <code id="bot-qq-mac-launch-folder"></code></p>
+                    <div id="bot-qq-mac-launch-instructions" hidden>
+                      <ol>
+                        <li data-qq-mac="launchVerify">Verify the complete official LLBot archive and review macOS security prompts.</li>
+                        <li data-qq-mac="launchAuthorization">Save the signing-service authorization as data/auth_token.txt in this folder. Set it to read/write for your Mac user only (0600). Keep the OneBot token separate.</li>
+                        <li data-qq-mac="launchTerminal">Copy the startup command and run it yourself in Terminal. Follow LLBot’s prompts to sign in to the dedicated QQ account.</li>
+                        <li data-qq-mac="launchTest">Return to Agent Arcade and choose Test connection to verify the QQ number. Then check and save the numeric group ID.</li>
+                      </ol>
+                      <p id="bot-qq-mac-launch-authorization"></p>
+                    </div>
+                    <div class="qq-actions">
+                      <button id="bot-qq-mac-launch-reveal" type="button" class="secondary" data-qq-mac="launchReveal" hidden>Show in Finder</button>
+                      <button id="bot-qq-mac-launch-copy" type="button" class="secondary" data-qq-mac="launchCopy" hidden>Copy startup command</button>
+                      <button id="bot-qq-mac-launch-auth" type="button" class="plain" data-qq-mac="launchAuth" hidden>Open signing-service instructions</button>
+                      <button id="bot-qq-mac-launch-next" type="button" class="plain" hidden>Go to Test connection</button>
+                      <button id="bot-qq-mac-launch-relink" type="button" class="secondary" data-qq-mac="launchRelink" hidden>Choose existing preparation folder</button>
+                      <button id="bot-qq-mac-launch-refresh" type="button" class="plain" data-qq-mac="launchRefresh">Check files again</button>
+                    </div>
+                    <p id="bot-qq-mac-launch-feedback" role="status"></p>
+                  </section>
+                  <details id="bot-qq-mac-first" class="bot-help">
+                    <summary data-qq-mac="first">Prepare LLBot for the first time</summary>
+                    <p data-qq-mac="download">Download the LLBot v8.3.2 macOS arm64 CLI archive from its official release and extract it to a new folder. LLBot is installed separately.</p>
+                    <div class="qq-actions">
+                      <button id="bot-qq-mac-release" type="button" class="secondary" data-qq-mac="release">Open LLBot v8.3.2 release</button>
+                    </div>
+                    <label class="qq-group-toggle"><input id="bot-qq-mac-with-node" type="checkbox"><span data-qq-mac="withNode">Select a separate signed Apple Silicon Node.js 24 or later</span></label>
+                    <p data-qq-mac="node">Leave unchecked to use the bundled Node. If it cannot be verified or run, select a separate executable from the official Node.js distribution.</p>
+                    <div class="qq-actions">
+                      <button id="bot-qq-mac-inspect" type="button" class="secondary" data-qq-mac="inspect">Choose extracted LLBot folder and inspect</button>
+                    </div>
+                    <p id="bot-qq-mac-checked" hidden></p>
+                    <div id="bot-qq-mac-inputs" hidden>
+                      <label for="bot-qq-mac-account" data-qq-mac="account">Dedicated companion QQ number</label>
+                      <input id="bot-qq-mac-account" inputmode="numeric" maxlength="15" autocomplete="off" spellcheck="false" aria-describedby="bot-qq-mac-account-note">
+                      <p id="bot-qq-mac-account-note" data-qq-mac="accountNote">Use the account you intend to dedicate to the companion. Your own QQ number is the private-chat owner.</p>
+                      <label for="bot-qq-mac-port" data-qq-mac="port">Local OneBot port (1024–65535)</label>
+                      <input id="bot-qq-mac-port" type="number" min="1024" max="65535" step="1" aria-describedby="bot-qq-mac-port-suggestion">
+                      <small id="bot-qq-mac-port-suggestion" hidden></small>
+                      <div class="qq-actions">
+                        <button id="bot-qq-mac-prepare" type="button" class="secondary" data-qq-mac="prepare">Choose a new private folder and prepare</button>
+                        <button id="bot-qq-mac-use-port" type="button" class="plain" hidden></button>
+                      </div>
+                    </div>
+                    <p id="bot-qq-mac-status" role="status" aria-live="polite"></p>
+                    <div class="qq-actions">
+                      <button id="bot-qq-mac-inspect-with-node" type="button" class="secondary" data-qq-mac="retryWithNode" hidden>Retry with signed Node.js</button>
+                    </div>
+                    <div id="bot-qq-mac-result" class="qq-check" hidden>
+                      <strong id="bot-qq-mac-result-title">Private OneBot configuration prepared</strong>
+                      <p><span data-qq-mac="account">Dedicated companion QQ number</span> · <code id="bot-qq-mac-result-account"></code></p>
+                      <p><span data-qq-mac="folder">Folder</span> · <code id="bot-qq-mac-result-folder"></code></p>
+                      <p><span data-qq-mac="endpoint">OneBot address</span> · <code id="bot-qq-mac-result-endpoint"></code></p>
+                      <p><span data-qq-mac="config">Configuration file</span> · <code id="bot-qq-mac-result-config"></code></p>
+                      <p><span data-qq-mac="token">Private token file</span> · <code id="bot-qq-mac-result-token"></code></p>
+                      <p id="bot-qq-mac-save-note" data-qq-mac="saveNote" hidden>Save the address, companion QQ number and token for the current companion. The private-chat owner stays as configured.</p>
+                      <div class="qq-actions">
+                        <button id="bot-qq-mac-use-prepared" type="button" class="primary" data-qq-mac="usePrepared" hidden>Save this connection in Agent Arcade</button>
+                        <button id="bot-qq-mac-show-existing" type="button" class="secondary" data-qq-mac="showExisting">Show existing OneBot connection fields</button>
+                      </div>
+                    </div>
+                    <p data-qq-mac="limits">Preparation writes to the new folder. Start the bridge, sign in to QQ and authorize the signing service separately. Once the bridge is running, use Test connection before enabling group chat.</p>
+                  </details>
+                </section>
+                <div class="qq-setup-part" data-qq-windows>
                   <h3 data-bot="qqLoginTitle">Sign in to the AI's QQ</h3>
                   <p data-bot="qqLoginNote">Install NapCat separately and sign in with the AI's QQ account. Add it from your own QQ, then accept the friend request in that account.</p>
                   <div class="qq-actions"><button id="bot-qq-download" class="secondary" data-bot="qqDownload">Get NapCat</button><button id="bot-qq-guide" class="plain" data-bot="qqGuide">Connection guide</button></div>
                 </div>
-                <div class="qq-setup-part">
+                <div id="bot-qq-connection-fields" class="qq-setup-part">
                   <h3 data-bot="qqBridgeTitle">Connect on this computer</h3>
-                  <p data-bot="qqBridgeNote">In NapCat, add a forward WebSocket server: Universal (API + events), Array format, host 127.0.0.1, port 3001, path /. Turn off self-message reporting and keep the 30-second heartbeat.</p>
-                  <div class="qq-actions"><button id="bot-qq-prepare" class="secondary" data-bot="qqPrepare">Generate connection token</button><button id="bot-qq-copy-config" class="secondary" data-bot="qqCopyConfig">Copy NapCat configuration</button><button id="bot-qq-copy-token" class="plain" data-bot="qqCopyToken">Copy token only</button></div>
+                  <p data-qq-windows data-bot="qqBridgeNote">In NapCat, add a forward WebSocket server: Universal (API + events), Array format, host 127.0.0.1, port 3001, path /. Turn off self-message reporting and keep the 30-second heartbeat.</p>
+                  <div data-qq-windows class="qq-actions"><button id="bot-qq-prepare" class="secondary" data-bot="qqPrepare">Generate connection token</button><button id="bot-qq-copy-config" class="secondary" data-bot="qqCopyConfig">Copy NapCat configuration</button><button id="bot-qq-copy-token" class="plain" data-bot="qqCopyToken">Copy token only</button></div>
                   <small id="bot-qq-token-state"></small>
-                  <details class="bot-help qq-config-help"><summary data-bot="qqConfigHelp">Where to use the copied configuration</summary><p data-bot="qqConfigHelpNote">The configuration is one websocketServers entry, not a whole file. In NapCat Desktop, fill the fields above and paste the token. Save the connection, then save the Bot configuration; restart if prompted.</p></details>
+                  <details data-qq-windows class="bot-help qq-config-help"><summary data-bot="qqConfigHelp">Where to use the copied configuration</summary><p data-bot="qqConfigHelpNote">The configuration is one websocketServers entry, not a whole file. In NapCat Desktop, fill the fields above and paste the token. Save the connection, then save the Bot configuration; restart if prompted.</p></details>
                   <details id="bot-qq-advanced" class="bot-help qq-advanced"><summary data-bot="qqAdvanced">Use an existing connection or another port</summary>
                     <label for="bot-qq-url" data-bot="qqUrl">Local WebSocket address</label><input id="bot-qq-url" type="url" maxlength="256" value="ws://127.0.0.1:3001" autocomplete="off" spellcheck="false">
                     <label for="bot-qq-token">OneBot token</label><input id="bot-qq-token" type="password" maxlength="256" autocomplete="off" spellcheck="false"><small data-bot="qqTokenHint">Use the OneBot token, not the WebUI password. Leave blank to keep the saved token.</small>
                   </details>
                 </div>
-                <div class="qq-setup-part">
+                <div id="bot-qq-identity-fields" class="qq-setup-part">
                   <h3 data-bot="qqCheckTitle">Check which account is connected</h3>
                   <label for="bot-qq-owner" data-bot="qqOwner">Your QQ number (allowed sender)</label><input id="bot-qq-owner" type="text" inputmode="numeric" maxlength="15" autocomplete="off" spellcheck="false">
                   <small data-bot="qqOwnerNote">Enter your own QQ number, not the AI's. Only your friend-private messages are accepted.</small>
+                  <label for="bot-qq-expected-account" data-bot="qqExpectedAccount">Companion’s QQ number</label><input id="bot-qq-expected-account" type="text" inputmode="numeric" maxlength="15" autocomplete="off" spellcheck="false" aria-describedby="bot-qq-expected-account-note">
+                  <small id="bot-qq-expected-account-note" data-bot="qqExpectedAccountNote">Required for group character cards. Leave blank to keep the saved number or leave it unset.</small>
                   <div class="qq-actions"><button id="bot-qq-save" class="secondary" data-bot="qqSave">Save QQ connection</button><button id="bot-qq-test" class="secondary" data-bot="qqTest">Test connection</button></div>
                   <div id="bot-qq-check" class="qq-check" role="status" aria-live="polite"><strong id="bot-qq-check-title"></strong><p id="bot-qq-check-detail"></p></div>
                 </div>
+                <section id="bot-qq-groups" class="qq-setup-part" aria-labelledby="bot-qq-groups-title">
+                  <h3 id="bot-qq-groups-title" data-bot="qqGroupsTitle">QQ group chat</h3>
+                  <p data-bot="qqGroupsNote">Choose up to five groups for this companion. Private chat keeps its own owner restriction. Choosing groups does not connect the account.</p>
+                  <div id="bot-qq-group-directory" hidden>
+                    <div class="qq-actions"><button id="bot-qq-group-directory-load" type="button" class="secondary" data-bot="qqGroupDirectoryLoad">Read joined groups</button></div>
+                    <p id="bot-qq-group-directory-status" role="status" aria-live="polite"></p>
+                    <div id="bot-qq-group-directory-choice" hidden>
+                      <label for="bot-qq-group-directory-select" data-bot="qqGroupDirectorySelect">Group name and number</label>
+                      <select id="bot-qq-group-directory-select"></select>
+                      <div class="qq-actions"><button id="bot-qq-group-directory-add" type="button" class="secondary" data-bot="qqGroupDirectoryAdd">Add to pending groups</button></div>
+                    </div>
+                  </div>
+                  <label class="qq-group-toggle"><input id="bot-qq-groups-enabled" type="checkbox"><span data-bot="qqGroupsEnabled">Enable replies in selected groups</span></label>
+                  <label for="bot-qq-group-ids" data-bot="qqGroupIds">Group numbers (one per line)</label>
+                  <textarea id="bot-qq-group-ids" rows="3" maxlength="200" inputmode="numeric" autocomplete="off" spellcheck="false" aria-describedby="bot-qq-groups-rule bot-qq-groups-feedback"></textarea>
+                  <small id="bot-qq-groups-rule" data-bot="qqGroupsRule">Use numeric group IDs, not names. Existing reply decisions apply; every message need not receive a reply.</small>
+                  <fieldset id="bot-qq-group-images" class="qq-group-media" aria-describedby="bot-qq-group-images-note">
+                    <legend data-bot="qqGroupImages">Let selected groups share images with the AI</legend>
+                    <small id="bot-qq-group-images-note" data-bot="qqGroupImagesNote">Off by default. The AI provider can receive one supported still image, either in a new message or in an exact quote of a message already seen in the same group. A model must support images and may still choose to stay silent. This setting affects group chat only.</small>
+                    <div id="bot-qq-group-images-list"></div>
+                  </fieldset>
+                  <fieldset id="bot-qq-group-voice" class="qq-group-media" aria-describedby="bot-qq-group-voice-note bot-qq-group-voice-privacy bot-qq-group-voice-asr">
+                    <legend data-bot="qqGroupVoice">Transcribe voice messages in selected groups</legend>
+                    <small id="bot-qq-group-voice-note" data-bot="qqGroupVoiceNote">Off by default. Configure local speech recognition first. The bridge must supply a verified inline WAV or QQ PTT link tied to the exact group message. PTT recordings are size-limited and decoded locally from SILK. A filename alone cannot locate a recording.</small>
+                    <small id="bot-qq-group-voice-privacy" data-bot="qqGroupVoicePrivacy">Speech is transcribed on this computer. The transcript may go to your AI provider for chat and cannot execute commands. Private voice and voice sending use separate settings.</small>
+                    <small id="bot-qq-group-voice-asr" role="status" hidden></small>
+                    <div id="bot-qq-group-voice-list"></div>
+                  </fieldset>
+                  <small id="bot-qq-group-media-empty" data-bot="qqGroupMediaEmpty">Enter valid group numbers above to choose which groups can share images or voice.</small>
+                  <label class="qq-group-toggle"><input id="bot-qq-groups-proactive" type="checkbox"><span data-bot="qqGroupsProactive">Also allow proactive messages in these groups</span></label>
+                  <small data-bot="qqGroupsProactiveNote">Off by default. This is separate from replying to incoming group messages.</small>
+                  <div class="qq-actions"><button id="bot-qq-groups-save" class="secondary" data-bot="qqGroupsSave">Save group settings</button></div>
+                  <p id="bot-qq-groups-feedback" role="status" aria-live="polite"></p>
+                  <p id="bot-qq-groups-state" class="bot-fine"></p>
+                  <p id="bot-qq-groups-runtime" class="bot-fine" role="status" tabindex="-1"></p>
+                  <details id="bot-qq-group-feed" class="bot-help" hidden>
+                    <summary data-bot="qqGroupFeed">Public feed notices</summary>
+                    <p data-bot="qqGroupFeedNote">Off by default. Allow one public RSS or Atom feed to notify one saved QQ group through its current role. This permission is separate from your App and private QQ notices.</p>
+                    <p id="bot-qq-group-feed-account"></p>
+                    <div id="bot-qq-group-feed-binding" class="qq-check" hidden>
+                      <strong data-bot="qqGroupFeedSavedTitle">Saved permission</strong>
+                      <p id="bot-qq-group-feed-saved-details"></p>
+                      <p id="bot-qq-group-feed-state"></p>
+                      <p id="bot-qq-group-feed-outcome" role="status" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-feed-revoke" type="button" class="secondary" data-bot="qqGroupFeedRevoke">Turn off this permission</button></div>
+                    </div>
+                    <div id="bot-qq-group-feed-choices" hidden>
+                      <label for="bot-qq-group-feed-group" data-bot="qqGroupFeedGroup">Saved QQ group</label>
+                      <select id="bot-qq-group-feed-group"></select>
+                      <label for="bot-qq-group-feed-source" data-bot="qqGroupFeedSource">Public RSS or Atom feed</label>
+                      <select id="bot-qq-group-feed-source"></select>
+                      <p id="bot-qq-group-feed-selection" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-feed-allow" type="button" class="secondary" data-bot="qqGroupFeedAllow">Confirm public feed and allow notices</button></div>
+                    </div>
+                    <div id="bot-qq-group-feed-empty" hidden>
+                      <p data-bot="qqGroupFeedEmpty">No enabled RSS or Atom feed is available. Add or enable one in Notices.</p>
+                      <div class="qq-actions"><button id="bot-qq-group-feed-sources" type="button" class="plain" data-bot="qqGroupFeedSources">Open data sources</button></div>
+                    </div>
+                    <p id="bot-qq-group-feed-feedback" role="status" aria-live="polite"></p>
+                  </details>
+                  <details id="bot-qq-group-calendar" class="bot-help" hidden>
+                    <summary data-bot="qqGroupCalendar">Public calendar notices</summary>
+                    <p data-bot="qqGroupCalendarNote">Off by default. Only calendar events explicitly marked CLASS:PUBLIC can be shared in the selected QQ group. Private and unmarked events follow your existing personal notification settings.</p>
+                    <p id="bot-qq-group-calendar-account"></p>
+                    <div id="bot-qq-group-calendar-binding" class="qq-check" hidden>
+                      <strong data-bot="qqGroupCalendarSavedTitle">Saved permission</strong>
+                      <p id="bot-qq-group-calendar-saved-details"></p>
+                      <p id="bot-qq-group-calendar-state"></p>
+                      <p id="bot-qq-group-calendar-outcome" role="status" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-calendar-revoke" type="button" class="secondary" data-bot="qqGroupCalendarRevoke">Turn off this permission</button></div>
+                    </div>
+                    <div id="bot-qq-group-calendar-choices" hidden>
+                      <label for="bot-qq-group-calendar-group" data-bot="qqGroupCalendarGroup">Saved QQ group</label>
+                      <select id="bot-qq-group-calendar-group"></select>
+                      <label for="bot-qq-group-calendar-source" data-bot="qqGroupCalendarSource">Calendar source</label>
+                      <select id="bot-qq-group-calendar-source"></select>
+                      <p id="bot-qq-group-calendar-selection" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-calendar-allow" type="button" class="secondary" data-bot="qqGroupCalendarAllow">Allow notices for explicitly public events</button></div>
+                    </div>
+                    <div id="bot-qq-group-calendar-empty" hidden>
+                      <p data-bot="qqGroupCalendarEmpty">No enabled calendar is available. Add or enable one in Notices.</p>
+                      <div class="qq-actions"><button id="bot-qq-group-calendar-sources" type="button" class="plain" data-bot="qqGroupCalendarSources">Open data sources</button></div>
+                    </div>
+                    <p id="bot-qq-group-calendar-feedback" role="status" aria-live="polite"></p>
+                  </details>
+                  <details id="bot-qq-group-folder" class="bot-help" hidden>
+                    <summary data-bot="qqGroupFolder">Public folder notices</summary>
+                    <p data-bot="qqGroupFolderNote">Off by default. Only filenames and the type of change for top-level files may be shared in the selected QQ group. Group notices exclude full paths, file contents and other file details. This does not scan subfolders or upload files.</p>
+                    <p id="bot-qq-group-folder-account"></p>
+                    <div id="bot-qq-group-folder-binding" class="qq-check" hidden>
+                      <strong data-bot="qqGroupFolderSavedTitle">Saved permission</strong>
+                      <p id="bot-qq-group-folder-saved-details"></p>
+                      <p id="bot-qq-group-folder-state"></p>
+                      <p id="bot-qq-group-folder-outcome" role="status" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-folder-revoke" type="button" class="secondary" data-bot="qqGroupFolderRevoke">Turn off this permission</button></div>
+                    </div>
+                    <div id="bot-qq-group-folder-choices" hidden>
+                      <label for="bot-qq-group-folder-group" data-bot="qqGroupFolderGroup">Saved QQ group</label>
+                      <select id="bot-qq-group-folder-group"></select>
+                      <label for="bot-qq-group-folder-source" data-bot="qqGroupFolderSource">Folder source</label>
+                      <select id="bot-qq-group-folder-source"></select>
+                      <p id="bot-qq-group-folder-selection" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-folder-allow" type="button" class="secondary" data-bot="qqGroupFolderAllow">Confirm filenames can be public and allow notices</button></div>
+                    </div>
+                    <div id="bot-qq-group-folder-empty" hidden>
+                      <p data-bot="qqGroupFolderEmpty">No enabled folder is available. Add or enable one in Notices.</p>
+                      <div class="qq-actions"><button id="bot-qq-group-folder-sources" type="button" class="plain" data-bot="qqGroupFolderSources">Open data sources</button></div>
+                    </div>
+                    <p id="bot-qq-group-folder-feedback" role="status" aria-live="polite"></p>
+                  </details>
+                  <details id="bot-qq-group-page" class="bot-help" hidden>
+                    <summary data-bot="qqGroupPage">Public page changes</summary>
+                    <p data-bot="qqGroupPageNote">Off by default. Choose a page you know is publicly viewable. The selected QQ group can receive the saved page name and a notice that it changed. Page contents, addresses and query parameters are excluded.</p>
+                    <p id="bot-qq-group-page-account"></p>
+                    <div id="bot-qq-group-page-binding" class="qq-check" hidden>
+                      <strong data-bot="qqGroupPageSavedTitle">Saved permission</strong>
+                      <p id="bot-qq-group-page-saved-details"></p>
+                      <p id="bot-qq-group-page-state"></p>
+                      <p id="bot-qq-group-page-outcome" role="status" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-page-revoke" type="button" class="secondary" data-bot="qqGroupPageRevoke">Turn off this permission</button></div>
+                    </div>
+                    <div id="bot-qq-group-page-choices" hidden>
+                      <label for="bot-qq-group-page-group" data-bot="qqGroupPageGroup">Saved QQ group</label>
+                      <select id="bot-qq-group-page-group"></select>
+                      <label for="bot-qq-group-page-source" data-bot="qqGroupPageSource">Page source</label>
+                      <select id="bot-qq-group-page-source"></select>
+                      <p id="bot-qq-group-page-selection" hidden></p>
+                      <div class="qq-actions"><button id="bot-qq-group-page-allow" type="button" class="secondary" data-bot="qqGroupPageAllow">Confirm the page is public and allow notices</button></div>
+                    </div>
+                    <div id="bot-qq-group-page-empty" hidden>
+                      <p data-bot="qqGroupPageEmpty">No enabled web page is available. Add or enable one in Notices.</p>
+                      <div class="qq-actions"><button id="bot-qq-group-page-sources" type="button" class="plain" data-bot="qqGroupPageSources">Open data sources</button></div>
+                    </div>
+                    <p id="bot-qq-group-page-feedback" role="status" aria-live="polite"></p>
+                  </details>
+                  <p id="bot-qq-group-role-alert" class="bot-fine" role="status" hidden></p>
+                  <p id="bot-qq-group-lorebook-alert" class="bot-fine" role="status" hidden></p>
+                  <details id="bot-qq-group-roles" class="bot-help">
+                    <summary data-bot="qqGroupRoles">Character cards for QQ groups</summary>
+                    <p data-bot="qqGroupRolesNote">Review the name, description and example dialogue the chosen AI will receive for this group. App memories and private card fields stay separate.</p>
+                    <p id="bot-qq-group-role-binding" role="status"></p>
+                    <div id="bot-qq-group-role-controls" hidden>
+                      <label for="bot-qq-group-role-group" data-bot="qqGroupRoleGroup">Group</label>
+                      <select id="bot-qq-group-role-group"></select>
+                      <p id="bot-qq-group-role-current"></p>
+                      <label for="bot-qq-group-role-card" data-bot="qqGroupRoleCard">Card from Characters</label>
+                      <select id="bot-qq-group-role-card"></select>
+                      <div class="qq-actions">
+                        <button id="bot-qq-group-role-review" type="button" class="secondary" data-bot="qqGroupRoleReview">Review public fields</button>
+                        <button id="bot-qq-group-role-clear" type="button" class="secondary" data-bot="qqGroupRoleClear">Use default group role</button>
+                      </div>
+                      <section id="bot-qq-group-role-preview" aria-labelledby="bot-qq-group-role-preview-title" hidden>
+                        <h3 id="bot-qq-group-role-preview-title" data-bot="qqGroupRolePreview">Content to share with the group’s AI</h3>
+                        <p id="bot-qq-group-role-preview-scope"></p>
+                        <h4 data-bot="qqGroupRoleName">Name</h4>
+                        <p id="bot-qq-group-role-preview-name"></p>
+                        <h4 data-bot="qqGroupRoleDescription">Description</h4>
+                        <p id="bot-qq-group-role-preview-description"></p>
+                        <h4 data-bot="qqGroupRoleExamples">Example dialogue</h4>
+                        <p id="bot-qq-group-role-preview-examples"></p>
+                        <div class="qq-actions"><button id="bot-qq-group-role-approve" type="button" class="secondary" data-bot="qqGroupRoleApprove">Approve and save for this group</button></div>
+                      </section>
+                      <p id="bot-qq-group-role-feedback" role="status" aria-live="polite"></p>
+                      <details id="bot-qq-group-lorebooks" class="bot-help" hidden>
+                        <summary data-bot="qqGroupLorebooks">World book for this group</summary>
+                        <p data-bot="qqGroupLorebookNote">Approve up to 10 library world books for the saved group role, one at a time. Review every entry that the group's AI may receive.</p>
+                        <p id="bot-qq-group-lorebook-current"></p>
+                        <ul id="bot-qq-group-lorebook-approved"></ul>
+                        <label for="bot-qq-group-lorebook-book" data-bot="qqGroupLorebookSelect">World book from Characters</label>
+                        <select id="bot-qq-group-lorebook-book"></select>
+                        <div class="qq-actions">
+                          <button id="bot-qq-group-lorebook-review" type="button" class="secondary" data-bot="qqGroupLorebookReview">Review entries</button>
+                        </div>
+                        <section id="bot-qq-group-lorebook-preview" class="qq-check" aria-labelledby="bot-qq-group-lorebook-preview-title" hidden>
+                          <h3 id="bot-qq-group-lorebook-preview-title" data-bot="qqGroupLorebookReviewTitle">Entries to share with the group’s AI</h3>
+                          <p id="bot-qq-group-lorebook-preview-scope"></p>
+                          <p id="bot-qq-group-lorebook-preview-book"></p>
+                          <p id="bot-qq-group-lorebook-preview-role"></p>
+                          <p id="bot-qq-group-lorebook-page-state" role="status"></p>
+                          <div id="bot-qq-group-lorebook-pages" class="qq-actions" role="group" aria-labelledby="bot-qq-group-lorebook-page-state" hidden>
+                            <button id="bot-qq-group-lorebook-prev" type="button" class="secondary" data-bot="qqGroupLorebookPrevious">Previous page</button>
+                            <label for="bot-qq-group-lorebook-page" data-bot="qqGroupLorebookJump">Page</label>
+                            <select id="bot-qq-group-lorebook-page"></select>
+                            <button id="bot-qq-group-lorebook-next" type="button" class="secondary" data-bot="qqGroupLorebookNext">Next page</button>
+                          </div>
+                          <div id="bot-qq-group-lorebook-entries"></div>
+                          <div class="qq-actions"><button id="bot-qq-group-lorebook-approve" type="button" class="secondary" data-bot="qqGroupLorebookApprove">Approve the whole world book for the group role</button></div>
+                        </section>
+                        <p id="bot-qq-group-lorebook-feedback" role="status" aria-live="polite"></p>
+                      </details>
+                      <details id="bot-qq-group-speaker-dispatch" class="bot-help" hidden>
+                        <summary data-group-speaker="title">Choose among willing companions (optional)</summary>
+                        <p id="bot-qq-group-speaker-dispatch-scope"></p>
+                        <p data-group-speaker="intro"></p>
+                        <p id="bot-qq-group-speaker-dispatch-disclosure" data-group-speaker="disclosure"></p>
+                        <div class="qq-actions"><button id="bot-qq-group-speaker-dispatch-refresh" type="button" class="secondary" data-group-speaker="refresh">Reload</button></div>
+                        <p id="bot-qq-group-speaker-dispatch-status" role="status" aria-live="polite"></p>
+                        <div id="bot-qq-group-speaker-dispatch-controls" hidden>
+                          <p id="bot-qq-group-speaker-dispatch-owner"></p>
+                          <p id="bot-qq-group-speaker-dispatch-saved"></p>
+                          <p id="bot-qq-group-speaker-dispatch-read-only" hidden></p>
+                          <label for="bot-qq-group-speaker-dispatch-endpoint" data-group-speaker="endpoint">Endpoint address (OpenAI-compatible chat API)</label>
+                          <input id="bot-qq-group-speaker-dispatch-endpoint" type="url" maxlength="2048" autocomplete="off" spellcheck="false" aria-describedby="bot-qq-group-speaker-dispatch-disclosure">
+                          <label for="bot-qq-group-speaker-dispatch-model" data-group-speaker="model">Small model name</label>
+                          <input id="bot-qq-group-speaker-dispatch-model" type="text" maxlength="200" autocomplete="off" spellcheck="false">
+                          <label for="bot-qq-group-speaker-dispatch-slot" data-group-speaker="slot">Use this companion’s saved key</label>
+                          <select id="bot-qq-group-speaker-dispatch-slot" aria-describedby="bot-qq-group-speaker-dispatch-slot-hint"></select>
+                          <small id="bot-qq-group-speaker-dispatch-slot-hint"></small>
+                          <div class="qq-actions">
+                            <button id="bot-qq-group-speaker-dispatch-save" type="button" class="secondary" data-group-speaker="save">Save dispatcher</button>
+                            <button id="bot-qq-group-speaker-dispatch-probe" type="button" class="secondary" data-group-speaker="probe" aria-describedby="bot-qq-group-speaker-dispatch-disclosure">Test saved model</button>
+                            <button id="bot-qq-group-speaker-dispatch-toggle" type="button" class="primary">Enable for this group</button>
+                          </div>
+                        </div>
+                      </details>
+                      <details id="bot-qq-group-generation" class="bot-help" hidden>
+                        <summary data-bot="qqGroupGeneration">Group reply generation</summary>
+                        <p id="bot-qq-group-generation-scope"></p>
+                        <div id="bot-qq-group-generation-controls" hidden>
+                          <p id="bot-qq-group-generation-effective"></p>
+                          <p id="bot-qq-group-generation-unsupported" hidden></p>
+                          <p id="bot-qq-group-generation-gate"></p>
+                          <p id="bot-qq-group-generation-default" data-bot="qqGroupGenerationDefault">Leave a field blank to use its default. The changes apply only to replies by this group role.</p>
+                          <label for="bot-qq-group-generation-temperature" data-bot="qqGroupGenerationTemperature">Temperature (0–2)</label>
+                          <input id="bot-qq-group-generation-temperature" type="number" min="0" max="2" step="any" aria-describedby="bot-qq-group-generation-default">
+                          <label for="bot-qq-group-generation-topP" data-bot="qqGroupGenerationTopP">Top-P (0–1)</label>
+                          <input id="bot-qq-group-generation-topP" type="number" min="0" max="1" step="any" aria-describedby="bot-qq-group-generation-default">
+                          <label for="bot-qq-group-generation-maxTokens" data-bot="qqGroupGenerationMaxTokens">Reply token cap (64–8192)</label>
+                          <input id="bot-qq-group-generation-maxTokens" type="number" min="64" max="8192" step="1" aria-describedby="bot-qq-group-generation-default">
+                          <div class="qq-actions">
+                            <button id="bot-qq-group-generation-copy" type="button" class="secondary" data-bot="qqGroupGenerationCopy">Copy App preset values to draft</button>
+                            <button id="bot-qq-group-generation-save" type="button" class="secondary" data-bot="qqGroupGenerationSave">Save reply parameters</button>
+                            <button id="bot-qq-group-generation-reset" type="button" class="secondary" data-bot="qqGroupGenerationReset">Restore reply defaults</button>
+                          </div>
+                        </div>
+                        <p id="bot-qq-group-generation-feedback" role="status" aria-live="polite"></p>
+                      </details>
+                      <details id="bot-qq-group-wiki" class="bot-help" hidden>
+                        <summary data-group-wiki="title">Shared group Wiki</summary>
+                        <p id="bot-qq-group-wiki-scope"></p>
+                        <p data-group-wiki="intro">Use public messages from this group as evidence. With reading enabled, this role’s AI can use entries you approve.</p>
+                        <div class="qq-actions">
+                          <button id="bot-qq-group-wiki-refresh" type="button" class="secondary" data-group-wiki="refresh">Reload Wiki and recent messages</button>
+                        </div>
+                        <p id="bot-qq-group-wiki-status" role="status" aria-live="polite"></p>
+                        <div id="bot-qq-group-wiki-controls" hidden>
+                          <label class="qq-group-toggle"><input id="bot-qq-group-wiki-read" type="checkbox"><span data-group-wiki="read">May read approved entries</span></label>
+                          <label class="qq-group-toggle"><input id="bot-qq-group-wiki-propose" type="checkbox"><span data-group-wiki="propose">Allow proposals from public group messages</span></label>
+                          <div class="qq-actions">
+                            <button id="bot-qq-group-wiki-save" type="button" class="secondary" data-group-wiki="save">Save Wiki permissions</button>
+                          </div>
+                          <div id="bot-qq-group-wiki-draft" hidden>
+                            <h4 data-group-wiki="draft">Create a proposal</h4>
+                            <label for="bot-qq-group-wiki-source" data-group-wiki="source">Recent public message</label>
+                            <select id="bot-qq-group-wiki-source"></select>
+                            <p id="bot-qq-group-wiki-truncated" class="bot-fine" hidden></p>
+                            <blockquote id="bot-qq-group-wiki-quote" hidden></blockquote>
+                            <p id="bot-qq-group-wiki-ask-note" data-group-wiki="askNote">Asking the companion sends the complete selected public message to its AI provider. API charges may apply.</p>
+                            <div class="qq-actions">
+                              <button id="bot-qq-group-wiki-ask" type="button" class="secondary" data-group-wiki="ask" aria-describedby="bot-qq-group-wiki-ask-note">Ask companion to propose</button>
+                            </div>
+                            <label for="bot-qq-group-wiki-title" data-group-wiki="entryTitle">Entry title</label>
+                            <input id="bot-qq-group-wiki-title" type="text" maxlength="80" autocomplete="off">
+                            <label for="bot-qq-group-wiki-manual-quote" data-group-wiki="manualQuote">Exact quote (up to 120 characters)</label>
+                            <input id="bot-qq-group-wiki-manual-quote" type="text" maxlength="120" autocomplete="off" aria-describedby="bot-qq-group-wiki-manual-note">
+                            <small id="bot-qq-group-wiki-manual-note" data-group-wiki="manualNote">Copy one line directly from the selected message.</small>
+                            <div class="qq-actions">
+                              <button id="bot-qq-group-wiki-stage" type="button" class="secondary" data-group-wiki="stage">Create proposal for review</button>
+                            </div>
+                          </div>
+                          <h4 data-group-wiki="pending">Pending proposals</h4>
+                          <div id="bot-qq-group-wiki-pending"></div>
+                          <h4 data-group-wiki="approved">Approved entries</h4>
+                          <div id="bot-qq-group-wiki-approved"></div>
+                        </div>
+                      </details>
+                      <details id="bot-qq-group-reflection" class="bot-help" hidden>
+                        <summary data-group-reflection="title">Group reflection</summary>
+                        <p id="bot-qq-group-reflection-scope"></p>
+                        <p data-group-reflection="intro">Review public group messages for potential reply rules. You decide whether each candidate becomes a rule.</p>
+                        <div class="qq-actions">
+                          <button id="bot-qq-group-reflection-refresh" type="button" class="secondary" data-group-reflection="refresh">Reload reflection</button>
+                        </div>
+                        <p id="bot-qq-group-reflection-feedback" role="status" aria-live="polite"></p>
+                        <div id="bot-qq-group-reflection-controls" hidden>
+                          <p id="bot-qq-group-reflection-disclosure" data-group-reflection="disclosure">Each run sends eligible public group messages to the current role’s AI provider. API charges may apply.</p>
+                          <label class="qq-group-toggle"><input id="bot-qq-group-reflection-scheduled" type="checkbox" aria-describedby="bot-qq-group-reflection-disclosure"><span data-group-reflection="scheduled">Enable scheduled reflection</span></label>
+                          <p class="bot-fine" data-group-reflection="scheduleAvailability">Runs during the selected hour while the app is open and group chat is connected.</p>
+                          <label for="bot-qq-group-reflection-hour" data-group-reflection="hour">Daily hour (local time)</label>
+                          <select id="bot-qq-group-reflection-hour"></select>
+                          <div class="qq-actions">
+                            <button id="bot-qq-group-reflection-save" type="button" class="secondary" data-group-reflection="save">Save schedule</button>
+                            <button id="bot-qq-group-reflection-run" type="button" class="secondary" aria-describedby="bot-qq-group-reflection-disclosure" data-group-reflection="run">Run once now</button>
+                          </div>
+                          <p id="bot-qq-group-reflection-last"></p>
+                          <p id="bot-qq-group-reflection-missed" class="bot-fine" data-group-reflection="missed" hidden>A scheduled run was missed. You can run once now.</p>
+                          <h4 data-group-reflection="candidates">Rule candidates</h4>
+                          <p id="bot-qq-group-reflection-seen" class="bot-fine" hidden></p>
+                          <div id="bot-qq-group-reflection-candidates"></div>
+                          <h4 data-group-reflection="rules">Approved rules</h4>
+                          <div id="bot-qq-group-reflection-rules"></div>
+                        </div>
+                      </details>
+                      <details id="bot-qq-group-output-format" class="bot-help" hidden>
+                        <summary data-group-format="title">Group reply format</summary>
+                        <p id="bot-qq-group-output-format-scope"></p>
+                        <p data-group-format="intro">An approved rule formats this group role’s final AI replies. Member messages, commands and model prompts stay separate.</p>
+                        <p data-group-format="copy">Each group role keeps its own saved copy. Editing an App script does not change it.</p>
+                        <div class="qq-actions">
+                          <button id="bot-qq-group-output-format-refresh" type="button" class="secondary" data-group-format="refresh">Reload format settings</button>
+                        </div>
+                        <p id="bot-qq-group-output-format-status" role="status" aria-live="polite"></p>
+                        <div id="bot-qq-group-output-format-controls" hidden>
+                          <p id="bot-qq-group-output-format-saved"></p>
+                          <h4 id="bot-qq-group-output-format-list-title" data-group-format="savedList" hidden>Approved scripts in run order</h4>
+                          <ol id="bot-qq-group-output-format-list" hidden></ol>
+                          <div class="qq-actions">
+                            <button id="bot-qq-group-output-format-toggle" type="button" class="secondary" hidden></button>
+                          </div>
+                          <label for="bot-qq-group-output-format-choice" data-group-format="choice">Output script from the App library</label>
+                          <select id="bot-qq-group-output-format-choice"></select>
+                          <div class="qq-actions">
+                            <button id="bot-qq-group-output-format-review" type="button" class="secondary" data-group-format="review">Preview script</button>
+                          </div>
+                          <section id="bot-qq-group-output-format-preview" class="qq-check" aria-labelledby="bot-qq-group-output-format-preview-title" hidden>
+                            <h4 id="bot-qq-group-output-format-preview-title" data-group-format="preview">Review the exact script</h4>
+                            <p id="bot-qq-group-output-format-preview-scope"></p>
+                            <strong id="bot-qq-group-output-format-name"></strong>
+                            <h4 data-group-format="pattern">Find pattern</h4>
+                            <pre id="bot-qq-group-output-format-pattern"></pre>
+                            <h4 data-group-format="replacement">Replacement</h4>
+                            <pre id="bot-qq-group-output-format-replacement"></pre>
+                            <div id="bot-qq-group-output-format-options" hidden></div>
+                            <p id="bot-qq-group-output-format-preview-effect"></p>
+                            <div class="qq-actions">
+                              <button id="bot-qq-group-output-format-approve" type="button" class="primary" data-group-format="approve">Approve and enable</button>
+                            </div>
+                          </section>
+                        </div>
+                      </details>
+                    </div>
+                  </details>
+                  <p data-bot="qqGroupsLimits">Group chat supports text, isolated member memories and reply decisions. Voice replies and task tools are not available in groups. Private memories stay separate.</p>
+                  <p data-bot="qqGroupsBridge">Requires an existing OneBot bridge reachable on this computer. Native macOS QQ bridge sign-in is unverified. Saving does not verify live group chat.</p>
+                </section>
               </div>
               <div id="bot-feishu-options" hidden>
                 <p data-bot="feishuSetup">Use a Feishu internal app bot with the official long connection. No public callback URL is required. Only the configured owner's private messages are accepted.</p>
@@ -228,6 +659,10 @@
     <section id="settings-view" class="view" hidden><div class="page-heading"><h1 data-i18n="settings">Settings</h1></div><div class="settings-grid">
       <article class="settings-card appearance-card"><h2 id="appearance-title" data-i18n="appearanceTitle">Appearance</h2><p id="appearance-note" data-i18n="appearanceNote">Choose how this window looks. Scene themes stay separate.</p><fieldset class="appearance-options" aria-describedby="appearance-note"><legend class="sr-only" data-i18n="appearanceTitle">Appearance</legend><label class="appearance-option"><input type="radio" name="appearance" id="appearance-system" value="system"><span data-i18n="appearanceSystem">Follow system</span></label><label class="appearance-option"><input type="radio" name="appearance" id="appearance-light" value="light"><span data-i18n="appearanceLight">Day</span></label><label class="appearance-option"><input type="radio" name="appearance" id="appearance-dark" value="dark"><span data-i18n="appearanceDark">Night</span></label></fieldset><p class="fine" id="appearance-status" role="status" aria-live="polite"></p></article>
       <article class="settings-card"><h2 data-i18n="sendShortcutTitle">Chat</h2><p id="send-shortcut-note" data-i18n="sendShortcutNote">Choose the send key for App and connected conversations. Shift+Enter always starts a new line.</p><fieldset class="appearance-options" aria-describedby="send-shortcut-note"><legend class="sr-only" data-i18n="sendShortcutTitle">Chat</legend><label class="appearance-option"><input type="radio" name="sendShortcut" id="send-shortcut-enter" value="enter"><span data-i18n="sendShortcutEnter">Enter to send</span></label><label class="appearance-option"><input type="radio" name="sendShortcut" id="send-shortcut-ctrl-enter" value="ctrl-enter"><span data-i18n="sendShortcutCtrlEnter">Ctrl+Enter to send</span></label></fieldset><p class="fine" id="send-shortcut-status" role="status" aria-live="polite"></p></article>
+      <article class="settings-card" id="desktop-pets-card" hidden aria-labelledby="desktop-pets-title">
+        <h2 id="desktop-pets-title"></h2><p id="desktop-pets-help"></p>
+        <div id="desktop-pets-options"></div><p id="desktop-pets-status" class="fine" role="status"></p>
+      </article>
       <article class="settings-card" id="observer-card" tabindex="-1"><h2 data-i18n="integration">Claude Code observer</h2><p data-i18n="integrationNote">Install a local observer in your user settings. Existing hooks are preserved and backed up. Requires Node.js 22+. Restart Claude Code after changes.</p><div class="button-row"><button id="install" class="primary" data-i18n="install">Install hooks</button><button id="uninstall" class="secondary" data-i18n="uninstall">Remove hooks</button></div><div id="install-status" role="status"></div></article>
       <article class="settings-card"><h2 data-i18n="attention">Notifications</h2><label><span data-i18n="notifications">Silent desktop notifications</span><input type="checkbox" id="notifications"></label><p data-i18n="notifyNote">App replies and agent waiting, error and response-end transitions. No conversation text is shown. Suppressed while this window is focused; Quiet mode pauses all notifications.</p><label><span data-i18n="pin">Keep above other windows</span><input type="checkbox" id="alwaysOnTop"></label></article>
       <article class="settings-card"><h2 data-i18n="themeTitle">Scene theme</h2><p data-i18n="themeNote">Original pixel characters. Declarative themes, without scripts or remote assets.</p><label><span data-i18n="theme">Theme</span><select id="theme"></select></label><button id="import" class="secondary" data-i18n="import">Import a theme</button></article>

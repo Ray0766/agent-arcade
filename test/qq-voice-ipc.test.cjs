@@ -31,7 +31,7 @@ function harness({oneShot=false}={}){
       if(id==='./voice/runtime.cjs')return {createVoiceRuntime:()=>({speech:{},backend:'windows'}),voiceCapabilities:async()=>({}),voiceRenderAvailability:()=>({available:renderSettings.available}),voiceRenderRevision:()=>renderSettings.revision,createVoiceRenderRuntime:()=>{const host={async render(text,{signal}){calls.push(['render',text,signal]);await renderSettings.renderGate?.promise;const bytes=require('./helpers/fixture-wav.cjs').wav();return {cleaned:true,wav:bytes,sampleRate:32000,channels:1,bits:16,frames:8000,durationSeconds:.25};},async close(){calls.push(['render-close']);await renderSettings.closeGate?.promise;if(renderSettings.closeError)throw Object.assign(Error('private'),{code:'voice_exit_timeout'});this.closed=true;}};hosts.push(host);return host;}};
       return fromMain(id);
     }};
-  vm.runInNewContext(source+'\nmodule.exports={pickQQVoice,sendQQVoice,discardQQVoice,closeOwnedQQVoice,closeQQVoices,observeQQVoiceBinding,pickQQImage,startVoice,closeOwnedVoice,closeVoice,qqVoiceResult,qqVoiceAvailability,renderQQVoice,cancelQQVoiceRender,setup:(s,a,w)=>{bot=s;accounts=a;win=w;},panel:()=>voiceMediaPanel,desktop:()=>voice,quitting:()=>{quitting=true;}};',context,{filename:mainFile});const api=context.module.exports;api.setup(service,accounts,win);
+  vm.runInNewContext(source+'\nmodule.exports={pickQQVoice,sendQQVoice,discardQQVoice,closeOwnedQQVoice,closeQQVoices,observeQQVoiceBinding,pickQQImage,startVoice,closeOwnedVoice,closeVoice,qqVoiceResult,qqVoiceAvailability,renderQQVoice,cancelQQVoiceRender,setup:(s,a,w)=>{bot=s;accounts=a;win=w;},panel:()=>voiceMediaPanel,desktop:()=>voice,quitting:()=>{quitting=true;},setHost:p=>{hostGate=hostPlatform.capabilities({platform:p});},unsupportedChannel};',context,{filename:mainFile});const api=context.module.exports;api.setup(service,accounts,win);
   return {api,service,accounts,win,calls,pickers,instances,events,hosts,renderSettings,request:{accountId:'primary',panelId:'wave-1'},async pick(request=this.request){const pending=api.pickQQVoice(request);await tick();pickers.at(-1).resolve({canceled:false,filePaths:['C:\\Original\\fixture.wav']});return pending;}};
 }
 test('main voice picker exposes only the canonical bounded preview and fixed owner, without sending or recording',async()=>{
@@ -116,4 +116,43 @@ test('one-shot compatibility: unconfirmed render exit remains blocked and an old
 });
 test('an obsolete panel close cannot cancel a fresh renderer job',async()=>{
   const f=harness();f.renderSettings.renderGate=deferred();const request={...f.request,panelId:'fresh-panel'};const pending=f.api.renderQQVoice({...request,text:'你好'});await tick();await f.api.closeOwnedQQVoice(f.request);assert.equal(f.calls.find(row=>row[0]==='render')[2].aborted,false);f.renderSettings.renderGate.resolve();await pending;assert.equal(f.api.panel().panelId,'fresh-panel');await f.api.closeQQVoices();
+});
+
+test('Darwin group WAV IPC preflights the exact group and prevents stale or private sends',async()=>{
+  const f=harness(), groupId='543210', roleId='card-0123456789abcdef', group={...f.request,groupId};
+  f.api.setHost('darwin');
+  const owner=f.service.voiceBinding.bind(f.service), select=f.service.selectVoice.bind(f.service);
+  const route={}, client=owner().client;
+  let revision='first';
+  f.service.voiceBinding=id=>{
+    if(id!==groupId)throw Object.assign(Error('Not in the group list'),{code:'group_unavailable'});
+    return {...owner(),scopeId:'profile:group',groupId,route,role:'试用搭档',roleId,groupRevision:revision};
+  };
+  client.verifyGroupVoiceTarget=async(id,signal,{assertCurrent})=>{
+    assert.equal(id,groupId);assert.equal(signal.aborted,false);assertCurrent();f.calls.push(['verify-group',id]);
+    return {accountId:'100001',groupId,revision};
+  };
+  f.service.selectVoice=async(file,options)=>{
+    assert.equal(options.groupId,groupId);const draft=await select(file,options);
+    return {...draft,recipient:{accountId:'100001',groupId,role:'试用搭档',roleId}};
+  };
+  f.renderSettings.available=false;
+  const lookup=f.api.qqVoiceAvailability(group);
+  assert.equal(lookup.groupId,groupId);assert.equal(lookup.available,false);
+  assert.equal(lookup.reason,'voice_render_unavailable');
+  assert.equal(f.api.unsupportedChannel('qqVoicePick'),false);
+  assert.equal(f.api.unsupportedChannel('qqRuntimeRefresh'),true);
+  assert.equal(f.api.unsupportedChannel('voiceStart'),true);
+  await assert.rejects(f.api.pickQQVoice(f.request),{code:'group_unavailable'});
+  await assert.rejects(f.api.pickQQVoice({...group,groupId:'654321'}),{code:'group_unavailable'});
+  const picked=await f.pick(group);
+  assert.equal(picked.groupId,groupId);
+  assert.deepEqual(JSON.parse(JSON.stringify(picked.draft.recipient)),{accountId:'100001',groupId,role:'试用搭档',roleId});
+  assert(f.calls.findIndex(row=>row[0]==='verify-group')<f.calls.findIndex(row=>row[0]==='picker'));
+  await assert.rejects(f.api.sendQQVoice({...f.request,ticketId}),{code:'stale_ticket'});
+  await assert.rejects(f.api.sendQQVoice({...group,groupId:'654321',ticketId}),{code:'stale_ticket'});
+  revision='rejoined';
+  await assert.rejects(f.api.sendQQVoice({...group,ticketId}),{code:'changed'});
+  assert.equal(f.calls.filter(row=>row[0]==='send').length,0);
+  await f.api.closeQQVoices();
 });

@@ -173,7 +173,7 @@ test('voice: Windows speech is reported unavailable on macOS with a reason, befo
   assert.equal(runtime.backend, 'windows'); await runtime.speech.close();
 });
 
-test('preload bridge: macOS and Linux get no QQ-management or voice functions; the default and Windows bridges are complete', () => {
+test('preload keeps group image and WAV IPC on Mac and leaves Windows management and speech gated', () => {
   // Loaded as Electron's sandbox loads it: `process` is an argument, not a global (helpers/sandboxed-preload.cjs).
   const expose = argv => runSandboxedPreload({argv}).arcade;
   const full = expose([]), windows = expose(['--arcade-platform=win32']);
@@ -181,13 +181,19 @@ test('preload bridge: macOS and Linux get no QQ-management or voice functions; t
   assert.deepEqual({...full.platform}, {os: 'win32', modifier: 'Ctrl', managedQQ: true, voice: true});
   const managed = Object.keys(full).filter(key => /^(?:qq|onQQ)[A-Z]/.test(key)), speech = Object.keys(full).filter(key => /^voice[A-Z]/.test(key));
   assert(managed.length > 200); assert.equal(speech.length, 7);
+  const macSetup=['botQQMacInspect','botQQMacPrepare','botQQMacOpenRelease'];
+  const macMedia=['qqImagePick','qqImageSend','qqImageDiscard','qqImageClose','qqVoicePick','qqVoiceAvailability','qqVoiceRender','qqVoiceCancelRender',
+    'qqVoiceSend','qqVoiceDiscard','qqVoiceClose'];
   for (const [name, modifier] of [['darwin', '⌘'], ['linux', 'Ctrl']]) {
     const api = expose(['--arcade-appearance=dark', `--arcade-platform=${name}`]);
     assert.deepEqual({...api.platform}, {os: name, modifier, managedQQ: false, voice: false});
     assert.throws(() => { api.platform.managedQQ = true; }, TypeError);
-    assert.deepEqual(Object.keys(api).filter(key => /^(?:qq|onQQ|voice)[A-Z]/.test(key)), []);
+    const allowed=name==='darwin'?macMedia:[];
+    assert.deepEqual(Object.keys(api).filter(key => /^(?:qq|onQQ|voice)[A-Z]/.test(key)), allowed);
     // Everything else is untouched, including the plain OneBot connection.
-    assert.deepEqual(Object.keys(api), Object.keys(full).filter(key => !managed.includes(key) && !speech.includes(key)));
+    const existing=Object.keys(full).filter(key => allowed.includes(key) || (!managed.includes(key) && !speech.includes(key)));
+    assert.deepEqual(Object.keys(api).filter(key=>!macSetup.includes(key)), existing);
+    for(const key of macSetup)assert.equal(typeof api[key],name==='darwin'?'function':'undefined',key);
     for (const key of ['botQQPrepare', 'botQQTest', 'botQQCopyConfig', 'botQQCopyToken', 'botQQOpenGuide', 'botConfigure', 'botConnect', 'botLogin', 'desktopChatSend', 'charactersList', 'sourcesAdd', 'install', 'snapshot', 'subscribe', 'configure'])
       assert.equal(typeof api[key], 'function', key);
   }

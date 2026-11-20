@@ -51,6 +51,32 @@ test('disabling a source withholds queued and in-flight notices without blocking
   assert.equal(f.notifier.status().pending,2);
 });
 
+test('a private calendar reminder waits for current source evidence and drops stale in-flight output',async t=>{
+  const f=controller(t),source='book-club',current=new Set(),hold=deferred();
+  const options={noticeCurrent:row=>row.kind!=='calendar.upcoming'||current.has(row.id)};
+  const old=event({source,kind:'calendar.upcoming',title:'Before reschedule',data:{start:START+10*MINUTE}});
+  assert.equal(f.notifier.accept(old).accepted,true);
+  assert.equal(f.notifier.tick(options).action,'wait');
+  assert.equal(f.rows()[0].state,'pending');
+  assert.equal(f.appCalls.length,0);
+
+  current.add(old.id);f.state.app.hold=hold.promise;
+  f.clock.time+=LIMITS.WORK_INTERVAL;
+  const attempt=f.notifier.tick(options);
+  assert.equal(attempt.action,'deliver');
+  current.delete(old.id);hold.resolve();
+  assert.deepEqual(await attempt.promise,{app:'cancelled',qq:null});
+  assert(!f.rows().some(row=>row.state==='sent'));
+
+  const later=event({source,kind:'calendar.upcoming',title:'Private event at the actual time',data:{start:START+70*MINUTE}});
+  current.add(later.id);f.state.app.hold=null;
+  assert.equal(f.notifier.accept(later).accepted,true);
+  f.clock.time+=LIMITS.WORK_INTERVAL;
+  assert.deepEqual(await f.notifier.tick(options).promise,{app:'delivered',qq:null});
+  assert.deepEqual(f.appCalls.at(-1).items.map(row=>row.title),[later.title]);
+  assert.deepEqual(f.rows().filter(row=>row.state==='sent').map(row=>row.id),[later.id]);
+});
+
 test('accept takes only well-formed companion events, once, and keeps nothing when notices are off',async t=>{
   const f=controller(t),good=event({title:'Quarterly review',detail:'https://example.test/a',data:{link:'https://example.test/a'}});
   for(const bad of [null,[],'x',{...good,notify:'desktop'},{...good,notify:'none'},{...good,notify:undefined},{...good,id:''},{...good,id:'has space'},{...good,kind:'session.done'},{...good,source:'bad source'},

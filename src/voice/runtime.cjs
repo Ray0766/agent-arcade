@@ -27,17 +27,24 @@ function voiceRenderRevision({root}={}){
     return require('node:crypto').createHash('sha256').update(JSON.stringify([local,stamps])).digest('hex');
   }catch{throw renderUnavailable();}
 }
-function voiceRenderAvailability({root}={}){
+function voiceRenderAvailability({root,platform=hostPlatform()}={}){
   // This is a synchronous configuration check, not a model/device readiness
   // claim. Rendering does not depend on ASR or start a worker during discovery.
-  try{readRenderRuntime(root);return {available:true};}
+  try{
+    if(platform==='darwin')voiceRenderRevision({root});
+    else readRenderRuntime(root);
+    return {available:true};
+  }
   catch{return {available:false,reason:'voice_render_unavailable'};}
 }
-function createVoiceRenderRuntime({root}={}){
+function createVoiceRenderRuntime({root,platform=hostPlatform()}={}){
   try{
     const local=readRenderRuntime(root);
     const {GptSovitsSpeech}=require('./gpt-sovits.cjs');
-    return new GptSovitsSpeech({pythonPath:local.ttsPython,repoPath:local.ttsRepository,referencePath:local.referenceAudio});
+    return new GptSovitsSpeech({
+      pythonPath:local.ttsPython,repoPath:local.ttsRepository,referencePath:local.referenceAudio,
+      ...(platform==='darwin'?{renderOnly:true}:{}),
+    });
   }catch{throw renderUnavailable();}
 }
 function readRuntime(root){

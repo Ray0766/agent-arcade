@@ -1,11 +1,11 @@
 'use strict';
-// Original bounded image byte downloader. Fixed image origins; never inherits
-// OneBot, management, provider, browser cookie, or proxy credentials.
+// Bounded QQ media reads behind fixed image and group voice policies. The
+// transport carries no OneBot, management, provider, browser or proxy data.
 const dns=require('node:dns').promises,net=require('node:net'),tls=require('node:tls'),http=require('node:http');
 const {imageSource}=require('./qq-image-source.cjs');
 const {dimensions}=require('./qq-media.cjs');
-const MAX_BYTES=8*1024*1024,MAX_HEADERS=16*1024,MAX_TIME=15000;
-const CODES=new Set(['invalid_request','image_source_unsupported','closed','busy','cancelled','timeout','changed','dns_failed','address_rejected','tls_untrusted','connection_failed','redirect_rejected','http_error','response_too_large','invalid_response','image_invalid','image_format','image_animated','image_too_large']);
+const MAX_BYTES=8*1024*1024,MAX_VOICE_BYTES=512*1024,MAX_HEADERS=16*1024,MAX_TIME=15000;
+const CODES=new Set(['invalid_request','image_source_unsupported','voice_source_unsupported','closed','busy','cancelled','timeout','changed','dns_failed','address_rejected','tls_untrusted','connection_failed','redirect_rejected','http_error','response_too_large','invalid_response','image_invalid','image_format','image_animated','image_too_large']);
 class ImageDownloadError extends Error{constructor(code){const safe=CODES.has(code)?code:'connection_failed';super(`QQ image download failed (${safe}).`);this.code=safe;}}
 const fail=code=>{throw new ImageDownloadError(code);};
 const plain=v=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null);
@@ -22,16 +22,20 @@ function publicAddress(value){
 }
 function wait(promise,signal){return new Promise((resolve,reject)=>{let done=false;const end=(error,value)=>{if(done)return;done=true;signal.removeEventListener('abort',abort);error?reject(error):resolve(value);},abort=()=>end(signal.reason);signal.addEventListener('abort',abort,{once:true});Promise.resolve(promise).then(v=>end(null,v),e=>end(e));if(signal.aborted)abort();});}
 function secure(socket,signal){return new Promise((resolve,reject)=>{let done=false;const end=error=>{if(done)return;done=true;socket.removeListener('secureConnect',ready);socket.removeListener('error',failed);socket.removeListener('close',closed);signal.removeEventListener('abort',abort);error?reject(error):resolve();},ready=()=>end(),failed=()=>end(new ImageDownloadError('tls_untrusted')),closed=()=>end(new ImageDownloadError('connection_failed')),abort=()=>end(signal.reason);socket.once('secureConnect',ready);socket.once('error',failed);socket.once('close',closed);signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();});}
-class QQImageDownloader{
- constructor({lookup=(host,options)=>dns.lookup(host,options),connect=options=>tls.connect(options),timeoutMs=MAX_TIME,sourceParser=imageSource,onSocket=()=>{}}={}){if(typeof lookup!=='function'||typeof connect!=='function'||typeof sourceParser!=='function'||typeof onSocket!=='function'||!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>MAX_TIME)fail('invalid_request');this.lookup=lookup;this.connect=connect;this.sourceParser=sourceParser;this.onSocket=onSocket;this.timeoutMs=timeoutMs;this.active=null;this.closed=false;}
+class QQMediaDownloader{
+ constructor({lookup=(host,options)=>dns.lookup(host,options),connect=options=>tls.connect(options),timeoutMs=MAX_TIME,sourceParser=imageSource,onSocket=()=>{}}={},voice=false){if(typeof lookup!=='function'||typeof connect!=='function'||typeof sourceParser!=='function'||typeof onSocket!=='function'||!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>MAX_TIME)fail('invalid_request');this.lookup=lookup;this.connect=connect;this.sourceParser=sourceParser;this.onSocket=onSocket;this.timeoutMs=timeoutMs;this.active=null;this.closed=false;this.voice=voice;}
  async download(url,options={}){
   let socket,req,res,operation,timer,externalAbort,output;const chunks=[];
   try{
    if(this.closed)fail('closed');if(this.active)fail('busy');
-   if(!plain(options)||Object.keys(options).some(k=>!['signal','assertCurrent','expectedResourceDigest'].includes(k)))fail('invalid_request');
-   const {signal,assertCurrent,expectedResourceDigest}=options;
+   if(!plain(options)||Object.keys(options).some(k=>!['signal','assertCurrent','expectedResourceDigest'].includes(k)&&!(this.voice&&k==='expectedSourceBytes')))fail('invalid_request');
+   const {signal,assertCurrent,expectedResourceDigest,expectedSourceBytes}=options;
+   if(this.voice&&(!Number.isSafeInteger(expectedSourceBytes)||expectedSourceBytes<1||expectedSourceBytes>MAX_VOICE_BYTES))fail('invalid_request');
+   const limit=this.voice?expectedSourceBytes:MAX_BYTES;
+   const accept=this.voice?'application/octet-stream, audio/silk, audio/x-silk':'image/png, image/jpeg, application/octet-stream';
+   const validType=this.voice?/^(?:audio\/(?:silk|x-silk)|application\/octet-stream)(?:;|$)/i:/^(?:image\/(?:png|jpeg)|application\/octet-stream)(?:;|$)/i;
    if(typeof assertCurrent!=='function'||typeof expectedResourceDigest!=='string'||!/^[a-f0-9]{64}$/.test(expectedResourceDigest)||signal!=null&&(typeof signal.addEventListener!=='function'||typeof signal.removeEventListener!=='function'||typeof signal.aborted!=='boolean'))fail('invalid_request');
-   const source=this.sourceParser(url);if(source.resourceDigest!==expectedResourceDigest)fail('changed');const targetURL=new URL(source.url),controller=new AbortController();operation={controller};this.active=operation;
+   const source=this.sourceParser(url);if(source.resourceDigest!==expectedResourceDigest||this.voice&&source.sourceBytes!==expectedSourceBytes)fail('changed');const targetURL=new URL(source.url),controller=new AbortController();operation={controller};this.active=operation;
    externalAbort=()=>controller.abort(new ImageDownloadError('cancelled'));signal?.addEventListener('abort',externalAbort,{once:true});if(signal?.aborted)externalAbort();timer=setTimeout(()=>controller.abort(new ImageDownloadError('timeout')),this.timeoutMs);
    const check=()=>{if(controller.signal.aborted)throw controller.signal.reason;if(this.closed||this.active!==operation)fail('closed');const result=assertCurrent();if(result?.then){result.catch?.(()=>{});fail('invalid_request');}if(controller.signal.aborted)throw controller.signal.reason;if(this.closed||this.active!==operation)fail('closed');};
    check();let addresses;try{addresses=await wait(this.lookup(targetURL.hostname,{all:true,verbatim:true}),controller.signal);}catch{if(controller.signal.aborted)throw controller.signal.reason;fail('dns_failed');}check();
@@ -41,14 +45,15 @@ class QQImageDownloader{
    output=await new Promise((resolve,reject)=>{
     let done=false,length=0;const end=(error,value)=>{if(done){value?.bytes?.fill(0);return;}done=true;controller.signal.removeEventListener('abort',aborted);error?reject(error):resolve(value);},aborted=()=>{end(controller.signal.reason);req?.destroy();socket?.destroy();};controller.signal.addEventListener('abort',aborted,{once:true});
     try{
-     req=http.request({protocol:'http:',hostname:targetURL.hostname,port:443,path:targetURL.pathname+targetURL.search,method:'GET',createConnection:()=>socket,maxHeaderSize:MAX_HEADERS,setHost:false,headers:{host:targetURL.hostname,connection:'close',accept:'image/png, image/jpeg, application/octet-stream','accept-encoding':'identity'}},response=>{
+     req=http.request({protocol:'http:',hostname:targetURL.hostname,port:443,path:targetURL.pathname+targetURL.search,method:'GET',createConnection:()=>socket,maxHeaderSize:MAX_HEADERS,setHost:false,headers:{host:targetURL.hostname,connection:'close',accept,'accept-encoding':'identity'}},response=>{
       res=response;const stop=code=>{end(new ImageDownloadError(code));response.destroy();};
       if(response.statusCode>=300&&response.statusCode<400)return stop('redirect_rejected');if(response.statusCode!==200)return stop('http_error');
-      if(!/^(?:image\/(?:png|jpeg)|application\/octet-stream)(?:;|$)/i.test(response.headers['content-type']||'')||response.headers['content-encoding']&&response.headers['content-encoding']!=='identity')return stop('invalid_response');
-      const declared=response.headers['content-length'];if(declared!==undefined&&(!/^\d{1,12}$/.test(declared)||Number(declared)>MAX_BYTES))return stop('response_too_large');
+      if(!validType.test(response.headers['content-type']||'')||response.headers['content-encoding']&&response.headers['content-encoding']!=='identity')return stop('invalid_response');
+      const declared=response.headers['content-length'];if(declared!==undefined&&(!/^\d{1,12}$/.test(declared)||Number(declared)>limit))return stop('response_too_large');
+      if(this.voice&&declared!==undefined&&Number(declared)!==expectedSourceBytes)return stop('invalid_response');
       response.on('error',()=>end(new ImageDownloadError('connection_failed')));response.on('aborted',()=>end(new ImageDownloadError('connection_failed')));
-      response.on('data',chunk=>{if(done){chunk.fill(0);return;}try{check();length+=chunk.length;if(length>MAX_BYTES){chunk.fill(0);stop('response_too_large');}else chunks.push(chunk);}catch(error){chunk.fill(0);end(error);response.destroy();}});
-      response.on('end',()=>{if(done)return;let bytes;try{check();if(declared!==undefined&&Number(declared)!==length)fail('invalid_response');bytes=Buffer.concat(chunks,length);const extension=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))?'.png':bytes[0]===255&&bytes[1]===216?'.jpg':null;if(!extension)fail('image_format');const size=dimensions(bytes,extension);check();end(null,{bytes,extension,...size,resourceDigest:source.resourceDigest});bytes=null;}catch(error){bytes?.fill(0);end(error);}});
+      response.on('data',chunk=>{if(done){chunk.fill(0);return;}try{check();length+=chunk.length;if(length>limit){chunk.fill(0);stop('response_too_large');}else chunks.push(chunk);}catch(error){chunk.fill(0);end(error);response.destroy();}});
+      response.on('end',()=>{if(done)return;let bytes;try{check();if(declared!==undefined&&Number(declared)!==length||this.voice&&length!==expectedSourceBytes)fail('invalid_response');bytes=Buffer.concat(chunks,length);if(this.voice){end(null,{bytes,resourceDigest:source.resourceDigest});bytes=null;return;}const extension=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))?'.png':bytes[0]===255&&bytes[1]===216?'.jpg':null;if(!extension)fail('image_format');const size=dimensions(bytes,extension);check();end(null,{bytes,extension,...size,resourceDigest:source.resourceDigest});bytes=null;}catch(error){bytes?.fill(0);end(error);}});
      });req.on('error',error=>end(new ImageDownloadError(error?.code==='HPE_HEADER_OVERFLOW'?'response_too_large':'connection_failed')));check();if(socket.destroyed)fail('connection_failed');req.end();
     }catch(error){end(error);req?.destroy();}
    });check();return output;
@@ -57,4 +62,10 @@ class QQImageDownloader{
  }
  close(){this.closed=true;this.active?.controller.abort(new ImageDownloadError('closed'));}
 }
-module.exports={QQImageDownloader,ImageDownloadError,publicAddress,MAX_BYTES,MAX_HEADERS,MAX_TIME};
+class QQImageDownloader extends QQMediaDownloader{
+ constructor(options){super(options);}
+}
+class QQVoiceDownloader extends QQMediaDownloader{
+ constructor(options={}){super({...options,sourceParser:require('./qq-group-voice.cjs').groupVoiceSource},true);}
+}
+module.exports={QQImageDownloader,QQVoiceDownloader,ImageDownloadError,publicAddress,MAX_BYTES,MAX_VOICE_BYTES,MAX_HEADERS,MAX_TIME};

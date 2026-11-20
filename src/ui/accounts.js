@@ -20,7 +20,7 @@
   // One line about a companion in plain words: its AI, where it talks, and the connection state.
   // Whether another companion has a channel is only claimed when the list entry shows evidence of one.
   const aiName=mode=>({api:'Claude',claude:tr('Claude Code（本机登录）','Claude Code (local login)'),native:'Claude Channels',codex:tr('Codex（本机登录）','Codex (local login)'),gpt:'GPT',deepseek:'DeepSeek',gemini:'Gemini',doubao:tr('豆包','Doubao')})[mode]||tr('未选择 AI','No AI chosen');
-  const channelName=item=>item.channel==='qq'?'QQ':item.channel==='feishu'?tr('飞书','Feishu'):item.channel==='x'?'X':item.channel==='messenger'?'Messenger Page':tr('微信','WeChat');
+  const channelName=item=>item.channel==='qqofficial'?tr('QQ 官方机器人','QQ official bot'):item.channel==='qq'?'QQ':item.channel==='feishu'?tr('飞书','Feishu'):item.channel==='x'?'X':item.channel==='messenger'?'Messenger Page':tr('微信','WeChat');
   function describe(item){
     const selected=item.id===state?.accounts?.selectedId,evidence=item.status!=='disconnected'||!!item.accountId||!!item.expectedQQAccountId||!!item.qqBinding||Number(item.incomingCount)>0;
     const linked=evidence||selected&&window.ArcadeFirstRun?.hasChannel(state)===true,appOnly=!linked&&selected&&!!window.ArcadeFirstRun;

@@ -16,7 +16,7 @@ async function rejectStatus(response) {
   if(!response.ok) {
     await response.body?.cancel().catch(()=>{});
     const messages={401:'DeepSeek rejected the API key.',402:'DeepSeek account credit is insufficient.',429:'DeepSeek rate limit reached. Try again later.'};
-    throw new SafeError(messages[response.status]||'DeepSeek could not complete this request. Check its service and your connection.');
+    throw new SafeError(messages[response.status]||'DeepSeek could not complete this request. Check its service and your connection.','error',response.status);
   }
 }
 // Streamed conversation-only reply: the same {message,finish} as readResponse, or an error.
@@ -130,7 +130,7 @@ function createDeepSeekRunner({workspace,key,model=DEFAULT_MODEL,thinking=false,
       for(const call of pendingCalls)current.messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify({error:'This call was interrupted or not executed. Do not retry without a new user request; previous file changes may remain.'})});
       const outcome=timedOut?'limit':controller.signal.aborted?'cancelled':error instanceof SafeError?error.outcome:'error';
       const text=timedOut?'The turn time limit was reached. Existing file changes were not rolled back.':controller.signal.aborted?'Local processing was cancelled. Existing file changes remain; cancellation of the submitted model request is not confirmed.':error instanceof SafeError?error.message:'DeepSeek could not finish. Check the API key, credit and network; previous file changes may remain.';
-      onUpdate({text});return result(outcome,text);
+      onUpdate({text});return {...result(outcome,text),...(conversationOnly&&error instanceof SafeError&&error.httpStatus?{httpStatus:error.httpStatus}:{})};
     } finally {imageBytes=null;image=null;if(conversationOnly&&session===current)session=null;clearTimeout(timer);signal?.removeEventListener('abort',abort);if(active===controller){active=null;activeDone=null;}settle();}
   };
   execute.close=async()=>{closed=true;active?.abort();if(activeDone)await activeDone;session=null;};

@@ -9,7 +9,7 @@ const MAX_RESPONSE=1024*1024,MAX_HISTORY=256*1024,MAX_STEPS=16,MAX_TOOLS=24,MAX_
 const record=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const cancel=body=>{try{Promise.resolve(body?.cancel?.()).catch(()=>{});}catch{}};
 function rejectStatus(response,label){
-  if(!response?.ok){cancel(response?.body);const messages={400:`${label} rejected the request or selected model. Check model access.`,401:`${label} rejected the API key.`,403:`${label} access was denied. Check the key, model access and supported region.`,402:`${label} account credit is insufficient.`,404:`${label} model is unavailable for this account.`,429:`${label} rate or credit limit reached. Check the provider console before trying again.`};throw new SafeError(messages[response?.status]||`${label} could not complete this request. Check its service and your connection.`);}
+  if(!response?.ok){cancel(response?.body);const messages={400:`${label} rejected the request or selected model. Check model access.`,401:`${label} rejected the API key.`,403:`${label} access was denied. Check the key, model access and supported region.`,402:`${label} account credit is insufficient.`,404:`${label} model is unavailable for this account.`,429:`${label} rate or credit limit reached. Check the provider console before trying again.`};throw new SafeError(messages[response?.status]||`${label} could not complete this request. Check its service and your connection.`,'error',response?.status);}
 }
 // Streamed conversation-only reply: the adapter's collector rebuilds the body its parse() expects.
 async function readStreamResponse(response,signal,label,collector){
@@ -84,7 +84,7 @@ function createAPIFileRunner(adapter,{workspace,key,model=adapter.defaultModel,p
       // Complete interrupted protocol turns in memory without replaying a write.
       if(pending.length){for(const call of pending)outputs.push({call,output:{error:'This call was interrupted or not executed. Do not retry without a new user request; previous file changes may remain.'}});current.history.push(...adapter.results(outputs));}
       const outcome=timedOut?'limit':controller.signal.aborted?'cancelled':error instanceof SafeError?error.outcome:'error';
-      const text=timedOut?'The turn time limit was reached. Existing file changes were not rolled back.':controller.signal.aborted?'Local processing was cancelled. Existing file changes remain; cancellation of the submitted model request is not confirmed.':error instanceof SafeError?error.message:`${label} could not finish. Check the API key, model access, credit and network; previous file changes may remain.`;update({text});return result(outcome,text);
+      const text=timedOut?'The turn time limit was reached. Existing file changes were not rolled back.':controller.signal.aborted?'Local processing was cancelled. Existing file changes remain; cancellation of the submitted model request is not confirmed.':error instanceof SafeError?error.message:`${label} could not finish. Check the API key, model access, credit and network; previous file changes may remain.`;update({text});return {...result(outcome,text),...(conversationOnly&&error instanceof SafeError&&error.httpStatus?{httpStatus:error.httpStatus}:{})};
     }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);if(active===controller){active=null;activeDone=null;}settle();}
   };
   execute.close=async()=>{closed=true;active?.abort();if(activeDone)await activeDone;session=null;};return execute;
