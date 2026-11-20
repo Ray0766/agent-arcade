@@ -12,7 +12,7 @@
 | --- | --- |
 | 公开 Windows `0.3.0-preview.2` | [该版的微信派活／观察器说明](releases/0.3.0-preview.2.md)。没有下面的 App 首用卡片。 |
 | 开发源码 `main`，固定 `e7b5850…` | 使用下方完整提交与步骤。包版本 `0.4.0-preview.8`，尚未发布。 |
-| README 配图的本机候选 preview.34 | Apple Silicon 本机验证包；[候选身份与验收范围](CANDIDATE_STATUS.md#local-mac-candidate--2026-11-20)。目前没有公开下载。 |
+| README 配图的本机候选 preview.61 | Apple Silicon 本机验证包；[候选身份与验收范围](CANDIDATE_STATUS.md#local-apple-silicon-preview61)。目前没有公开下载。 |
 
 **没有公开可下载的 Mac 候选包。** [公开发布页](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)目前只有旧 Windows 版；本地包和 CI artifact 不等于公开下载。
 
@@ -44,7 +44,7 @@ Expected HEAD / 预期 HEAD：`e7b58508ffc79a108dc95f20685288ae3ca078d6`。
 
 ## English
 
-The next acceptance path is desktop text companionship for Chinese-speaking users who already have an API key. WeChat, QQ, a project, observer hooks and local Claude/Codex sign-in are optional. Follow the version table and shared commands above: the public Windows `0.3.0-preview.2` has its own older task/observer workflow, while the pinned `0.4.0-preview.8` source includes the integrated repairs and verification documentation. The README screenshots show the separate [preview.34 local Mac candidate](CANDIDATE_STATUS.md#local-mac-candidate--2026-11-20). **No public Mac candidate download is available.**
+The next acceptance path is desktop text companionship for Chinese-speaking users who already have an API key. WeChat, QQ, a project, observer hooks and local Claude/Codex sign-in are optional. Follow the version table and shared commands above: the public Windows `0.3.0-preview.2` has its own older task/observer workflow, while the pinned `0.4.0-preview.8` source includes the integrated repairs and verification documentation. The README screenshots show the separate [preview.61 local Mac candidate](CANDIDATE_STATUS.md#local-apple-silicon-preview61). **No public Mac candidate download is available.**
 
 Install Git and Node.js **24.18+ within 24.x** for the documented development/test route. The pinned package minimum is 22.13; that is not the complete-suite requirement. In a new folder, run the shared commands and verify the full HEAD. Open **Companion → Chat**, choose an AI, paste its API key and choose **Save and start chatting**, then send a message. The provider bills API use separately from consumer subscriptions.
 

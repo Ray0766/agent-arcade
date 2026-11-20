@@ -1,8 +1,27 @@
 # Candidate identity and evidence — 2026-11-15
 
+## Local Apple Silicon preview.61
+
+The bilingual README shows `0.4.0-preview.61`, build source
+`2c9de2dab7154820e86e5c3d03d3f196eb6a9395`. The screenshots use the renderer
+from the local verification ZIP with synthetic data. The personal DMG was
+signed for local use and is unnotarized. GitHub offers the pinned preview.8
+[source route](FIRST_RUN.md#exact-remote-source--精确远端源码) and the older Windows
+release. Neither preview.61 package is a public download.
+
+The preview.61 source regression reported 4,936 passes, 717 platform or
+opt-in skips, and zero failures. Packaged checks in an isolated Mac profile
+passed all 19 required companion cases. With simulated OneBot and model
+responses, the package also routed mentions and quotes in two companion
+connections. Corrections, reminder changes and cancellations stayed scoped
+to the sender and character, including when the bridges used the same
+message number. Live QQ login and group delivery, real model behavior on
+this build, first installation on another Mac, and external trial remain
+pending. [Capture and package hashes](README_MEDIA.md).
+
 ## Local Mac candidate — 2026-11-20
 
-The README displays the local Apple Silicon `0.4.0-preview.34` interface.
+The 2026-11-20 README originally showed the local Apple Silicon `0.4.0-preview.34` interface.
 The package was built from `19e7878deb3053cb22d048dca45a7a93cab54aba`. It
 adds Mac LLBot setup and distinct suggested ports for companions with saved
 local connections. Isolated package checks prepared and saved two connections

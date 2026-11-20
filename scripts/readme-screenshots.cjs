@@ -9,26 +9,43 @@ const {execFileSync} = require('node:child_process');
 const {chromium} = require('playwright');
 
 const root = path.resolve(__dirname, '..');
-const source = path.resolve(process.argv[2] || root);
-const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], {cwd: source, encoding: 'utf8'}).trim();
-const packageVersion = require(path.join(source, 'package.json')).version;
-const macPreview = fs.existsSync(path.join(source, 'src/ui/qq-mac-setup.js'));
+const [sourceArg, archiveArg] = process.argv.slice(2);
+const archive = sourceArg === '--asar' && archiveArg ? path.resolve(archiveArg) : null;
+assert(sourceArg !== '--asar' || archive, 'Usage: readme-screenshots.cjs --asar /path/to/app.asar');
+const source = archive ? root : path.resolve(sourceArg || root);
+const asar = archive ? require('@electron/asar') : null;
+const hasRendererFile = archive
+  ? file => {
+      try { return Number.isInteger(asar.statFile(archive, file).size); } catch { return false; }
+    }
+  : file => fs.existsSync(path.join(source, file)) && fs.statSync(path.join(source, file)).isFile();
+const readRendererFile = archive
+  ? file => asar.extractFile(archive, file)
+  : file => fs.readFileSync(path.join(source, file));
+const packageMetadata = JSON.parse(readRendererFile('package.json'));
+const {version: packageVersion, buildSourceCommit} = packageMetadata;
+const sourceCommit = archive
+  ? buildSourceCommit
+  : execFileSync('git', ['rev-parse', 'HEAD'], {cwd: source, encoding: 'utf8'}).trim();
+assert.match(sourceCommit, /^[0-9a-f]{40}$/);
+const macPreview = hasRendererFile('src/ui/qq-mac-setup.js');
 const preview = /-preview\.(\d+)$/.exec(packageVersion);
 assert(preview, 'Expected a preview source checkout');
 execFileSync('git', ['diff', '--quiet', 'HEAD', '--', 'src', 'package.json', 'scripts/companion-switcher-ui-smoke.cjs'], {cwd: source});
 const output = path.join(root, 'docs/images', 'preview' + preview[1]);
 const receiptPath = path.join(root, 'outputs/readme-media/receipt.json');
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const archiveSha256 = archive ? hash(fs.readFileSync(archive)) : null;
 const inputs = new Map();
-const read = file => {
-  const bytes = fs.readFileSync(file);
-  inputs.set(path.relative(source, file).split(path.sep).join('/'), hash(bytes));
+const read = (file, readFile = readRendererFile) => {
+  const bytes = readFile(file);
+  inputs.set(file, {sha256: hash(bytes), readFile});
   return bytes;
 };
 // Reuse the established isolated renderer fixture, rather than inventing a
 // second UI implementation or reading a running application's saved state.
-const fixtureFile = path.join(source, 'scripts/companion-switcher-ui-smoke.cjs');
-const raw = read(fixtureFile).toString();
+const fixtureFile = 'scripts/companion-switcher-ui-smoke.cjs';
+const raw = read(fixtureFile, file => fs.readFileSync(path.join(source, file))).toString();
 const marker = 'await page.addInitScript(({catalog,settings})=>{';
 const start = raw.indexOf(marker), end = raw.indexOf('  },{catalog,settings:', start);
 assert(start >= 0 && end > start, 'Renderer fixture boundaries changed');
@@ -43,7 +60,7 @@ async function main() {
   const executablePath = process.env.ARCADE_HEADLESS_BROWSER || (fs.existsSync(chrome) ? chrome : undefined);
   const browser = await chromium.launch({headless: true, executablePath});
   const receipt = {
-    schema: 'readme-media/2', sourceCommit, packageVersion,
+    schema: 'readme-media/2', sourceCommit, packageVersion, archiveSha256,
     productionRenderer: true, syntheticData: true, realModel: false, browser: browser.version(),
     ownerProfileRead: false, credentialStoreRead: false, passed: false,
     viewport: {width: 1160, height: 760}, macViewport: {width: 1160, height: 1080}, images: [], errors: [], externalRequests: [],
@@ -61,8 +78,8 @@ async function main() {
         }
         const relative = url.pathname === '/' ? 'src/ui/index.html' :
           url.pathname.startsWith('/assets/') ? 'src' + url.pathname : 'src/ui' + url.pathname;
-        const file = path.resolve(source, relative);
-        if (!file.startsWith(source + path.sep) || !fs.existsSync(file)) return route.abort();
+        if (path.posix.normalize(relative) !== relative || !hasRendererFile(relative)) return route.abort();
+        const file = relative;
         const contentType = file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' :
           file.endsWith('.html') ? 'text/html' : file.endsWith('.png') ? 'image/png' : undefined;
         return route.fulfill({body: read(file), contentType});
@@ -106,12 +123,12 @@ async function main() {
           s.bot.local.available = f.mediaView !== 'first-run';
           s.bot.local.state = s.bot.local.available ? 'active' : 'stopped';
           s.bot.local.history = f.mediaView === 'first-run' ? [] : [
-            {id: 'demo-question', role: 'user', text: zh ? '演示：周六想去散步，但天气预报说有雨。帮我想个室内备选？' : 'Demo: I planned a walk on Saturday, but rain is forecast. What could I do indoors instead?', at: 1795000000000},
-            {id: 'demo-answer', role: 'assistant', text: zh ? '演示回复：可以去图书馆。带一本最近没读完的书，挑个靠窗的位置。\n如果雨停了，回家前再绕公园走一圈。' : 'Demo reply: Try the library. Bring the book you’re halfway through and find a seat by the window.\nIf the rain clears, you can still walk through the park on your way home.', at: 1795000001000, swipeCount: 1, swipeIndex: 0},
+            {id: 'demo-question', role: 'user', text: zh ? '演示：周六想去看海，能按我喜欢的方式安排个半天吗？' : 'Demo: I’d like to go to the coast on Saturday. Can you plan a half day around the things I enjoy?', at: 1795000000000},
+            {id: 'demo-answer', role: 'assistant', text: zh ? '演示回复：早一点沿海边走走，顺路拍几张照片。中午找家安静的咖啡馆，带上你那本还没读完的书。' : 'Demo reply: Take an early walk by the water and stop for a few photos. Around noon, find a quiet café and bring the book you’re halfway through.', at: 1795000001000, swipeCount: 1, swipeIndex: 0},
           ];
           s.bot.local.memory = {id: 'demo-memory', memoryId: 'demo-memory', available: true, reason: null, facts: [
-            {id: 'demo-tea', revision: 1, text: zh ? '演示记忆：雨天喜欢去图书馆。' : 'Demo memory: likes going to the library on rainy days.', updatedAt: 1795000000000, sourceIds: []},
-            {id: 'demo-walk', revision: 1, text: zh ? '演示记忆：周末喜欢去公园散步。' : 'Demo memory: enjoys walking in the park at weekends.', updatedAt: 1795000000000, sourceIds: []},
+            {id: 'demo-cafe', revision: 1, text: zh ? '演示记忆：喜欢在安静的咖啡馆读书。' : 'Demo memory: likes reading in quiet cafés.', updatedAt: 1795000000000, sourceIds: []},
+            {id: 'demo-walk', revision: 1, text: zh ? '演示记忆：喜欢沿海散步和拍照。' : 'Demo memory: enjoys coastal walks and taking photos.', updatedAt: 1795000000000, sourceIds: []},
           ]};
           s.desktopChat = {kind: 'local', available: s.bot.local.available};
           f.snapshot = s;
@@ -149,7 +166,7 @@ async function main() {
       await page.locator('#imm-companion-toggle').click();
       await page.evaluate(() => {pickerFixture.mediaView = 'memory'; pickerFixture.publish(); switchView('relationship');});
       await page.waitForFunction(() => document.documentElement.dataset.layout === 'minimal');
-      await page.getByText(language === 'zh' ? '演示记忆：雨天喜欢去图书馆。' : 'Demo memory: likes going to the library on rainy days.', {exact: true}).waitFor();
+      await page.getByText(language === 'zh' ? '演示记忆：喜欢在安静的咖啡馆读书。' : 'Demo memory: likes reading in quiet cafés.', {exact: true}).waitFor();
       await capture('memory');
       await page.evaluate(() => {pickerFixture.mediaView = 'first-run'; pickerFixture.publish(); switchView('bot');});
       await page.waitForFunction(() => document.documentElement.dataset.layout === 'messenger');
@@ -178,8 +195,8 @@ async function main() {
     }
     assert.deepEqual(receipt.errors, []);
     assert.deepEqual(receipt.externalRequests, []);
-    assert([...inputs].every(([file, digest]) => hash(fs.readFileSync(path.join(source, file))) === digest));
-    receipt.inputs = [...inputs].map(([file, sha256]) => ({path: file, sha256}));
+    assert([...inputs].every(([file, {sha256, readFile}]) => hash(readFile(file)) === sha256));
+    receipt.inputs = [...inputs].map(([file, {sha256}]) => ({path: file, sha256}));
     receipt.passed = true;
   } finally {
     await browser.close();

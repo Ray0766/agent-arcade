@@ -1,0 +1,89 @@
+{
+  "schema": "readme-media-public/2",
+  "capturedOn": "2026-11-20",
+  "captureSource": "packaged verification renderer",
+  "buildSourceCommit": "2c9de2dab7154820e86e5c3d03d3f196eb6a9395",
+  "packageVersion": "0.4.0-preview.61",
+  "verificationZipSha256": "c347b0865933bc5c00a62bb0cd231ecb3ccd9f2cd39c158a5ef5022e3314292f",
+  "verificationAsarSha256": "67a81fea7fbbdfb77065f62e9b7e09384f5c3539eaffd61338f36a99a6ffbd9a",
+  "personalDmgSha256": "00d3f21cbbbbfadabe0189f354c66654cad2ce237cb982ece515096e376cb535",
+  "browser": "157.0.8103.79",
+  "productionRenderer": true,
+  "syntheticData": true,
+  "realModel": false,
+  "ownerProfileRead": false,
+  "credentialStoreRead": false,
+  "viewport": {
+    "width": 1160,
+    "height": 760
+  },
+  "macViewport": {
+    "width": 1160,
+    "height": 1080
+  },
+  "observedInputs": 115,
+  "errors": 0,
+  "externalRequests": 0,
+  "images": [
+    {
+      "path": "docs/images/preview61/companion-chat-zh.png",
+      "sha256": "1cb16d8245e43327ba76e01bea8415d2983495dae6f9a8736722ea5a30079f42",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview61/companion-switcher-zh.png",
+      "sha256": "6f8b7ecfcddff92b58a483b2ef099a3dacbb1b0ae759a7ed195d69e4b20277cd",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview61/memory-zh.png",
+      "sha256": "41aa24a11ec3ed1d2436fb925555a193edababb08fe7600141c1e818503e753c",
+      "layout": "minimal",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview61/first-run-zh.png",
+      "sha256": "3618ba0f68e89e0250db5025c925a03029ed8107050ba6f035833158533ef21a",
+      "layout": "messenger",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview61/mac-qq-zh.png",
+      "sha256": "95f9827dc9a9458af3128f27c4c76e8338256e50c0ac7a6f4b5ad12d40a8e14a",
+      "layout": "messenger",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview61/companion-chat-en.png",
+      "sha256": "c88612d7431c303f14590117ce0d6bea22ad7aaddeac16f89d92996d9001e69d",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview61/companion-switcher-en.png",
+      "sha256": "f6880864c335c9ea250e6b49d33baa91c783757d654ac1c51300d174f9a830a3",
+      "layout": "immersive",
+      "appearance": "dark"
+    },
+    {
+      "path": "docs/images/preview61/memory-en.png",
+      "sha256": "e7a04ae8f0024e56f28bb2feb9e667822e78c775e8c839529c9b537819b339f8",
+      "layout": "minimal",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview61/first-run-en.png",
+      "sha256": "d06f1c27ddd21d8f99210507d301a227bb57cf78df8ec7f34b34ae81a8fb50dd",
+      "layout": "messenger",
+      "appearance": "day"
+    },
+    {
+      "path": "docs/images/preview61/mac-qq-en.png",
+      "sha256": "a179204864a6d81fc54efd4af38aec9640ba69668f7ef92f8c18a00672f13d46",
+      "layout": "messenger",
+      "appearance": "day"
+    }
+  ]
+}
