@@ -765,7 +765,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..4231b6cad810afb1bc2b0851282639ee45f0a93e 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..305ba0e7f15c934332e7cc7ab586bba93c94e58a 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
@@ -966,12 +966,17 @@ index 0639a7b2e636be2963ca2599618308f12632025a..4231b6cad810afb1bc2b0851282639ee
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1151,3 @@ photoMode=new PhotoMode({renderer,
+@@ -1061,3 +1151,8 @@ photoMode=new PhotoMode({renderer,
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
-+    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');bothouseResidents.animate(0,walker.up.toArray() as Vec3,photo,false);residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
++    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
++      updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());
++      world.animate(elapsed,true,photo.position,walker.up,mode==='overview');
++      bothouseResidents.animate(0,walker.up.toArray() as Vec3,photo,false,showResidentNames);
++      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
++    }};
    },notice,
-@@ -1066,2 +1156,17 @@ const photoButton=document.createElement('button');photoButton.id='open-photo';s
+@@ -1066,2 +1161,17 @@ const photoButton=document.createElement('button');photoButton.id='open-photo';s
  $('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 +const visitPhotoButton=document.createElement('button');visitPhotoButton.id='open-visit-photo';visitPhotoButton.hidden=true;
 +setText(visitPhotoButton,'Photograph this view');
@@ -990,7 +995,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..4231b6cad810afb1bc2b0851282639ee
 +};
  window.addEventListener('open-photo-mode',()=>void photoMode?.open());
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..a514be9cea97d79de6c5de37fab48edb8f5f1bd0 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..76a6110fbd45db5b3236d1fab20f16ff8367bc28 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
 @@ -3,2 +3,4 @@
@@ -998,11 +1003,12 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..a514be9cea97d79de6c5de37fab48edb
 +  'This friend’s planet is unavailable.': '暂时无法拜访这位好友的星球。',
 +  'You are on your friend’s planet.': '已到达好友的星球。',
    'Show kit': '展开建造工具',
-@@ -221,2 +223,3 @@ export const messages: Record<string, string> = {
+@@ -221,2 +223,4 @@ export const messages: Record<string, string> = {
    "Photo mode": "照片模式",
++  "Show resident nameplates": "显示居民名牌",
 +  "Photograph this view": "拍下当前画面",
    "Back to exploring": "返回探索",
-@@ -1033,2 +1036,13 @@ export const messages: Record<string, string> = {
+@@ -1033,2 +1037,13 @@ export const messages: Record<string, string> = {
    "Make this my planet": "认领这颗星球",
 +  "Place a courtyard flower pot": "在院落放花盆",
 +  "Rest on the bench": "坐下休息",
@@ -1016,18 +1022,18 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..a514be9cea97d79de6c5de37fab48edb
 +  "Set it farther along the same side, leaving room to walk.": "沿同一侧往里放，留出行走空间。",
 +  "Set it opposite the lantern, facing the path.": "放在灯的对面，朝向石板路。",
    "Build on my planet": "在我的星球建造",
-@@ -1174,2 +1188,6 @@ export const messages: Record<string, string> = {
+@@ -1174,2 +1189,6 @@ export const messages: Record<string, string> = {
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
 +  "An idle resident may stop to admire this pot.": "居民空闲时可能会停下来欣赏这盆花。",
 +  "With this layout, residents won’t stop to admire this pot.": "按当前布置，居民不会欣赏这盆花。",
 +  "No residents here to watch flowers yet.": "这里暂时没有居民赏花。",
 +  "Flower watching cannot be predicted here yet.": "暂时无法判断居民能否在这里赏花。",
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
-@@ -1235,2 +1253,3 @@ export const messages: Record<string, string> = {
+@@ -1235,2 +1254,3 @@ export const messages: Record<string, string> = {
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
-@@ -1295,2 +1314,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1295,2 +1315,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
    ],
 +  [
 +    "Turn: {0}° · {1}",
@@ -1999,25 +2005,41 @@ index 2397a4bbd91144e845c1c8a6d9112c5559508622..518a41790130ba41a6ad6ae44a698f27
 +  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},sit(){body.sit();},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
   };
 diff --git a/src/client/photo-mode.ts b/src/client/photo-mode.ts
-index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..74c03ac5d937fdb3e624f822aa489ab14c771231 100644
+index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..30e02e6adadcd153e752810f65b12812ccd25089 100644
 --- a/src/client/photo-mode.ts
 +++ b/src/client/photo-mode.ts
-@@ -6,2 +6,3 @@ import {createVillageDrawing} from './village-drawing.ts';
+@@ -6,3 +6,9 @@ import {createVillageDrawing} from './village-drawing.ts';
  export type PhotoCamera = T.PerspectiveCamera | T.OrthographicCamera;
+-export interface PhotoView {scene:T.Scene;camera:PhotoCamera;target:T.Vector3;fixedAngle?:boolean;fixedLabel?:string;finish?:()=>void;prepare?:(camera:PhotoCamera)=>void}
 +type Framing = 'follow'|'overview';
- export interface PhotoView {scene:T.Scene;camera:PhotoCamera;target:T.Vector3;fixedAngle?:boolean;fixedLabel?:string;finish?:()=>void;prepare?:(camera:PhotoCamera)=>void}
-@@ -11,3 +12,3 @@ interface PhotoBridge {
++export interface PhotoView {
++  scene:T.Scene;camera:PhotoCamera;target:T.Vector3;
++  fixedAngle?:boolean;fixedLabel?:string;residentNames?:boolean;
++  finish?:()=>void;
++  prepare?:(camera:PhotoCamera,showResidentNames:boolean)=>void;
++}
+ interface PhotoBridge {
+@@ -11,3 +17,3 @@ interface PhotoBridge {
    flush():Promise<void>;
 -  view(mode:'follow'|'overview',width:number,height:number):PhotoView;
 +  view(mode:Framing,width:number,height:number):PhotoView;
    pause(active:boolean):void;
-@@ -33,3 +34,4 @@ export class PhotoMode {
+@@ -33,3 +39,4 @@ export class PhotoMode {
    private priorFocus:HTMLElement|null=null;
 -  private mode:'follow'|'overview'='overview';
 +  private mode:Framing='overview';
 +  private visitAllowed:(()=>boolean)|undefined;
    private drag:{id:number;x:number;y:number}|null=null;
-@@ -63,8 +65,11 @@ export class PhotoMode {
+@@ -45,2 +52,8 @@ export class PhotoMode {
+     document.body.append(this.root);
++    const names=document.createElement('label');
++    names.className='photo-resident-names';names.hidden=true;
++    setHTML(names,'<input id="photo-resident-names" type="checkbox">Show resident nameplates');
++    const zoomLabel=this.get('zoom').closest('label')!;
++    const options=document.createElement('div');options.className='photo-options';
++    zoomLabel.before(options);options.append(zoomLabel,names);
+     this.get('close').onclick=()=>this.close();this.get('save').onclick=()=>void this.capture();
+@@ -63,8 +76,12 @@ export class PhotoMode {
    private get<E extends HTMLElement=HTMLButtonElement>(id:string){return this.root.querySelector<E>('#photo-'+id)!;}
 -  async open(){
 -    if(this.active||this.opening||!this.bridge.ready())return;
@@ -2030,9 +2052,10 @@ index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..74c03ac5d937fdb3e624f822aa489ab1
 -      this.root.hidden=false;document.body.classList.add('photo-mode');this.reframe('overview');this.get('close').focus();
 +      if(visitAllowed?.()===false){this.bridge.pause(false);return;}
 +      this.visitAllowed=visitAllowed;
++      this.get<HTMLInputElement>('resident-names').checked=false;
 +      this.reframe(initial,current);this.root.hidden=false;document.body.classList.add('photo-mode');this.get('close').focus();
      }catch(error){this.bridge.pause(false);this.bridge.notice(error instanceof Error?error.message:'Could not open photo mode.');}
-@@ -74,8 +79,8 @@ export class PhotoMode {
+@@ -74,8 +91,9 @@ export class PhotoMode {
      if(!this.active||this.saving)return;
 -    this.restoreScene();this.current=null;this.drag=null;this.root.hidden=true;document.body.classList.remove('photo-mode');this.bridge.pause(false);this.priorFocus?.focus();
 +    this.restoreScene();this.current=null;this.visitAllowed=undefined;this.drag=null;this.root.hidden=true;document.body.classList.remove('photo-mode');this.bridge.pause(false);this.priorFocus?.focus();
@@ -2043,16 +2066,40 @@ index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..74c03ac5d937fdb3e624f822aa489ab1
      if(this.saving)return;this.restoreScene();this.mode=mode;
 -    this.current=this.bridge.view(mode,innerWidth,innerHeight);const {scene,camera}=this.current;
 +    this.current=view??this.bridge.view(mode,innerWidth,innerHeight);const {scene,camera}=this.current;
++    this.get('resident-names').closest('label')!.hidden=!this.current.residentNames;
      this.drawing=createVillageDrawing(this.bridge.renderer,scene,camera);
-@@ -102,2 +107,3 @@ export class PhotoMode {
+@@ -102,6 +120,9 @@ export class PhotoMode {
    frame(){
 +    if(this.visitAllowed?.()===false){this.close();return;}
      if(!this.current||this.saving)return;
-@@ -106,2 +112,3 @@ export class PhotoMode {
+-    this.current.prepare?.(this.current.camera);try{this.drawing?.render(this.current.target,this.mode==='overview');}finally{this.current.finish?.();}
++    this.current.prepare?.(this.current.camera,this.get<HTMLInputElement>('resident-names').checked);
++    try{this.drawing?.render(this.current.target,this.mode==='overview');}finally{this.current.finish?.();}
+   }
    async capture(){
 +    if(this.visitAllowed?.()===false){this.close();return;}
      const view=this.current;if(!view||this.saving)return;this.saving=true;
-@@ -120,2 +127,3 @@ export class PhotoMode {
+@@ -111,2 +132,3 @@ export class PhotoMode {
+     const photoCamera=view.camera.clone() as PhotoCamera;resizeCamera(photoCamera,dimensions.width/dimensions.height);
++    const showResidentNames=this.get<HTMLInputElement>('resident-names').checked;
+     for(const control of this.root.querySelectorAll<HTMLButtonElement|HTMLInputElement|HTMLSelectElement>('button,input,select'))control.disabled=true;
+@@ -115,3 +137,3 @@ export class PhotoMode {
+     try{
+-      renderer.setPixelRatio(factor);renderer.setSize(dimensions.width,dimensions.height,false);view.prepare?.(photoCamera);exportDrawing=createVillageDrawing(renderer,view.scene,photoCamera);exportDrawing.render(view.target,this.mode==='overview');
++      renderer.setPixelRatio(factor);renderer.setSize(dimensions.width,dimensions.height,false);view.prepare?.(photoCamera,showResidentNames);exportDrawing=createVillageDrawing(renderer,view.scene,photoCamera);exportDrawing.render(view.target,this.mode==='overview');
+       const canvas=document.createElement('canvas');canvas.width=dimensions.width;canvas.height=dimensions.height;
+@@ -120,2 +142,3 @@ export class PhotoMode {
        const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(Error('Photo export failed.')),'image/png'));
 +      if(this.visitAllowed?.()===false)return;
        const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`little-worlds-${new Date().toISOString().replace(/[:.]/g,'-')}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+diff --git a/src/client/photo-mode.css b/src/client/photo-mode.css
+index 37ae003931fd121bb03bef8214204195d3d5faf0..2e44da8cc037900e2f2cfbad0c57a04420d83cb8 100644
+--- a/src/client/photo-mode.css
++++ b/src/client/photo-mode.css
+@@ -7 +7,6 @@ body.photo-mode>:not(#world):not(#photo-mode):not(script):not(style){visibility:
+ @media(max-width:600px){#photo-mode header{inset:18px 18px auto}#photo-mode h2{font-size:19px}#photo-mode button,#photo-mode select{font-size:12px;padding:8px 10px}.photo-tools{padding:12px;gap:10px}.photo-views>*{flex:1}.photo-tools p{font-size:11px}}
++.photo-options{display:flex;align-items:center;gap:16px}
++.photo-options>label:first-child{flex:1;min-width:0;white-space:nowrap}
++.photo-tools .photo-resident-names{gap:6px;white-space:nowrap}
++.photo-tools .photo-resident-names[hidden]{display:none}
++.photo-resident-names input[type=checkbox]{width:auto;margin:0}

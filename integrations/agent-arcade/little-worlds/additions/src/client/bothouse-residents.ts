@@ -152,7 +152,10 @@ class ResidentFigure {
     const lean=looking?T.MathUtils.smoothstep(Math.min(this.flowerPause,2.6-this.flowerPause),0,.5):0;
     this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving),greeting?wave:0,lean);
   }
-  setVisible(visible:boolean) {this.model.root.visible=this.label.visible=visible;}
+  setVisible(visible:boolean,showName:boolean) {
+    this.model.root.visible=visible;
+    this.label.visible=visible&&showName;
+  }
   dispose() {
     this.disposed=true;this.model.root.removeFromParent();this.model.dispose();this.badge?.dispose();
     this.label.removeFromParent();this.label.material.map?.dispose();this.label.material.dispose();
@@ -274,7 +277,7 @@ export class BothouseResidents {
     if (!this.reduced) figure.greet(now);
     this.visitorGreeting = { figure, until: now + WAVE_MS };
   }
-  animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean) {
+  animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean,showNames=true) {
     if(!this.figures.size)return;
     camera.updateMatrixWorld();
     this.frustum.setFromProjectionMatrix(this.projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
@@ -285,7 +288,7 @@ export class BothouseResidents {
       this.bounds.center.copy(this.center).multiplyScalar(pose.radius+.9);
       const visible=f.motion.valid&&this.frustum.intersectsSphere(this.bounds)&&
         this.bounds.center.dot(camera.position)>=pose.radius**2-2.8*camera.position.length();
-      f.setVisible(visible);
+      f.setVisible(visible,showNames);
       if(enabled&&visible&&this.bounds.center.distanceTo(camera.position)<18)near.push(f);
     }
     const now=performance.now();
