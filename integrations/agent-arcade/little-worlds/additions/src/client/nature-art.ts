@@ -118,6 +118,9 @@ export function replaceTerrainNature(flora: T.Object3D, lod: LodTier) {
 
 let pot: T.LatheGeometry | undefined;
 let potMaterial: T.MeshStandardMaterial | undefined;
+/** The existing Quaternius flowers, without the standalone object's pot. */
+export function flowerFoliage() { return pieces(shapeData('flowers', 'distant')); }
+
 function flowerPot() {
   return pot ??= markShared(new T.LatheGeometry([
     [0, 0], [.64, 0], [.79, .91], [.94, .91], [.94, 1], [.76, 1], [.75, .90], [0, .90],
