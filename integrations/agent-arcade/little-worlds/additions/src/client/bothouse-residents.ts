@@ -19,6 +19,8 @@ const actions = {
 } as const;
 const zh=()=>document.documentElement.lang.startsWith('zh');
 const noObjects:PlanetView['objects']=[];
+const WAVE_MS = 1800;
+const GREETING_REACH = 2.6;
 
 class ResidentFigure {
   readonly model: ReturnType<typeof createBothouseResidentModel>;
@@ -125,10 +127,12 @@ class ResidentFigure {
     this.waveStart=now;
     this.flowerPause=0;
   }
+  stopGreeting() { this.waveStart = -Infinity; }
+  canGreet(now:number) { return this.role.activity === 'idle' && now - this.waveStart >= WAVE_MS; }
   frame(dt:number,reduced:boolean,viewer:Vec3,neighbours:Vec3[],now:number) {
     if(!this.motion.valid)return;
     const activity=this.role.activity, live=activity!=='offline'&&activity!=='unknown';
-    const wave=(now-this.waveStart)/1800;
+    const wave=(now-this.waveStart)/WAVE_MS;
     const greeting=wave<1&&!reduced&&activity==='idle';
     if(!reduced&&live)this.elapsed+=dt;
     if(!reduced&&activity==='idle'&&!greeting&&this.flower){
@@ -159,7 +163,10 @@ class ResidentFigure {
 /** Fence every asynchronous roster read to its acknowledged outdoor visit. */
 export class BothouseResidents {
   private visit='';private next=0;
-  private greetingTarget=new URLSearchParams(location.search).get('visit');
+  private readonly friendPlanet = new URLSearchParams(location.search).get('visit');
+  private greetingTarget=this.friendPlanet;
+  private visitorWorld: GroundWorld | null = null;
+  private visitorGreeting: { figure: ResidentFigure; until: number } | null = null;
   private arrivalWorld:GroundWorld|null=null;
   private request:AbortController|null=null;
   private seats:T.Vector3[]=[];
@@ -207,9 +214,59 @@ export class BothouseResidents {
     if(visit!==this.visit){
       this.visit=visit;this.request?.abort();this.request=null;this.clear();this.closure.hidden=true;this.next=0;
     }
+    this.visitorWorld = !owner && planet === this.friendPlanet ? world : null;
+    if (!this.visitorWorld) this.cancelVisitorGreeting();
     if(!planet||now<this.next||this.request)return;
     const request=this.request=new AbortController();
     void this.refresh(planet,world,request,objects);
+  }
+  private cancelVisitorGreeting() {
+    this.visitorGreeting?.figure.stopGreeting();
+    this.visitorGreeting = null;
+  }
+  private greetingDistance(figure: ResidentFigure, viewer: T.Vector3, camera: T.Camera) {
+    const world = this.visitorWorld;
+    if (!world || this.figures.get(figure.role.id) !== figure || !figure.model.root.visible || figure.role.activity !== 'idle') return Infinity;
+    const direction = figure.motion.pose.position;
+    const distance = viewer.angleTo(new T.Vector3(...direction)) * world.baseRadius;
+    if (distance > GREETING_REACH) return Infinity;
+    const target = new T.Vector3(...direction).multiplyScalar(figure.motion.pose.radius + .9);
+    const viewerDirection = viewer.toArray() as Vec3;
+    const support = world.support(viewerDirection, world.radius(viewerDirection) + .45);
+    const eye = viewer.clone().multiplyScalar(support.radius + 1.1);
+    for (const from of [eye, camera.position]) {
+      if (world.cameraDistance(from, target, .06) + .05 < from.distanceTo(target)) return Infinity;
+    }
+    return distance;
+  }
+  greetingPrompt(viewer: T.Vector3, camera: T.Camera, allowed: boolean) {
+    if (!allowed || !this.visitorWorld || !this.closure.hidden) {
+      this.cancelVisitorGreeting();
+      return null;
+    }
+    const now = performance.now();
+    const greeting = this.visitorGreeting;
+    if (greeting) {
+      if (now < greeting.until && Number.isFinite(this.greetingDistance(greeting.figure, viewer, camera))) {
+        return { id: greeting.figure.role.id, name: greeting.figure.role.displayName, greeted: true };
+      }
+      this.cancelVisitorGreeting();
+    }
+    let closest: ResidentFigure | undefined, range = Infinity;
+    for (const figure of this.figures.values()) {
+      if (!figure.canGreet(now)) continue;
+      const distance = this.greetingDistance(figure, viewer, camera);
+      if (distance < range) { closest = figure; range = distance; }
+    }
+    return closest ? { id: closest.role.id, name: closest.role.displayName, greeted: false } : null;
+  }
+  greetVisitor(id: string, viewer: T.Vector3, camera: T.Camera) {
+    const prompt = this.greetingPrompt(viewer, camera, true);
+    if (prompt?.id !== id || prompt.greeted) return;
+    const figure = this.figures.get(id)!;
+    const now = performance.now();
+    if (!this.reduced) figure.greet(now);
+    this.visitorGreeting = { figure, until: now + WAVE_MS };
   }
   animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean) {
     if(!this.figures.size)return;
@@ -259,6 +316,7 @@ export class BothouseResidents {
     });
   }
   private clear() {
+    this.cancelVisitorGreeting();
     for(const figure of this.figures.values())figure.dispose();
     this.seats=[];this.figures.clear();this.summary.hidden=true;this.summary.replaceChildren();
   }
