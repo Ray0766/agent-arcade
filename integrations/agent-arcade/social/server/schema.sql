@@ -559,4 +559,9 @@ CREATE TABLE IF NOT EXISTS bothouse_work_orders (
   scope TEXT NOT NULL, identity TEXT NOT NULL, board_id INTEGER, state TEXT NOT NULL DEFAULT 'queued',
   attempt INTEGER NOT NULL DEFAULT 0, next_check INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS bothouse_task_claims (
+  prompt INTEGER NOT NULL REFERENCES bothouse_work_orders(prompt) ON DELETE CASCADE,
+  attempt INTEGER NOT NULL, state TEXT NOT NULL, updated INTEGER NOT NULL, result TEXT,
+  PRIMARY KEY(prompt,attempt)
+);
 CREATE INDEX IF NOT EXISTS bothouse_work_due ON bothouse_work_orders(state,next_check);

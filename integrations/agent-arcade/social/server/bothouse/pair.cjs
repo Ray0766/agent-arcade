@@ -2,7 +2,7 @@
 const {databasePath}=require('../config.cjs');
 const {SocialStore}=require('../store.cjs');
 const {localInstance}=require('./directory.cjs');
-const {issue,revoke}=require('./pairing.cjs');
+const {issue,revoke,shareProject}=require('./pairing.cjs');
 
 async function main([operation,account,mode,...values]) {
   const request=localInstance();
@@ -12,9 +12,15 @@ async function main([operation,account,mode,...values]) {
     console.log(JSON.stringify(result.projects.map(({id,displayName,selectable})=>({id,displayName,selectable})),null,2));
     return;
   }
+  if ((operation==='share'||operation==='unshare') && account && mode && !values.length) {
+    const store=new SocialStore(databasePath());
+    try {console.log(JSON.stringify(await shareProject(store,request,operation,account,mode)));}
+    finally {store.db.close();}
+    return;
+  }
   if(!account || (operation!=='revoke' && (operation!=='issue' ||
       !((mode==='--identity' && values.length===1) || (mode==='--projects' && values.length>0)))))
-    throw Error('Usage: node pair.cjs projects | issue ACCOUNT --identity USER_ID | issue ACCOUNT --projects PROJECT... | revoke ACCOUNT');
+    throw Error('Usage: node pair.cjs projects | issue ACCOUNT --identity USER_ID | issue ACCOUNT --projects PROJECT... | share ACCOUNT PROJECT | unshare ACCOUNT PROJECT | revoke ACCOUNT');
   const store=new SocialStore(databasePath());
   try{
     if(operation==='revoke'){

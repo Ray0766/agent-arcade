@@ -1,7 +1,6 @@
 'use strict';
 const {execFile} = require('node:child_process');
 const {existsSync} = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const {fail} = require('../store.cjs');
 const pairing = require('./pairing.cjs');
@@ -10,9 +9,8 @@ const {dimensions,modelPhoto} = require('../../../src/core/static-image.cjs');
 const portraitLimit = 2 * 1024 * 1024;
 
 function instanceSettings(env) {
-  const preferred = path.join(os.homedir(), '.bothouse');
-  const legacy = path.join(os.homedir(), '.cc-connect');
-  const config = path.join(env.BOTHOUSE_DATA_DIR || (existsSync(preferred) || !existsSync(legacy) ? preferred : legacy), 'config.toml');
+  // Only the App-owned connection descriptor is opened. Never discover a host's private config.
+  const config = env.SOCIAL_BOTHOUSE_CONNECTION || '';
   const python = env.SOCIAL_BOTHOUSE_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
   return {config,python};
 }
@@ -27,7 +25,7 @@ function localInstance(env = process.env,settings=instanceSettings(env)) {
       return await new Promise(resolve => {
         const child = execFile(python, ['-I','-B','-X','utf8',path.join(__dirname,'instance.py'),config],
           {windowsHide:true, signal,
-            timeout:isTask ? 0 : data.action === 'chat' ? 70000 : 9000,
+            timeout:isTask ? 300000 : data.action === 'chat' ? 70000 : 9000,
             maxBuffer:data.action === 'portrait' ? 3 * 1024 * 1024 : 256 * 1024}, (error,out) => {
             if (!error) try {return resolve(JSON.parse(out));} catch {}
             resolve({error:isTask ? 'receipt_unknown' : 'unavailable'});
@@ -37,9 +35,6 @@ function localInstance(env = process.env,settings=instanceSettings(env)) {
       });
     } finally {active--;}
   }
-  const socket=env.SOCIAL_BOTHOUSE_TASK_SOCKET ||
-    (process.platform==='linux' && env.INVOCATION_ID && '/run/agent-arcade-social-task.sock');
-  request.startBoardTask=(turn,work)=>require('./task-executor.cjs').launchBoardTask({...work,request:turn,settings},socket);
   return request;
 }
 
@@ -48,9 +43,8 @@ function bothouseDirectory(store, request) {
   function nativeNumber(number) {
     return store.one('SELECT native FROM bothouse_native_numbers WHERE legacy=?',number)?.native || number;
   }
-  const accountIdentity=account=>store.one('SELECT identity FROM bothouse_share_accounts WHERE account=?',account)?.identity;
   async function list(account, number) {
-    const data = await request({action:'list',account,accountIdentity:accountIdentity(account),link:pairing.active(store,account),...(number && {number:nativeNumber(number)})});
+    const data = await request({action:'list',account,link:pairing.active(store,account),...(number && {number:nativeNumber(number)})});
     if (!Array.isArray(data?.contacts)) return {contacts:[],directoryStatus:'offline'};
     const contacts=data.contacts.filter(role=>{
       if (role.legacyNumber) {
@@ -130,7 +124,7 @@ function bothouseDirectory(store, request) {
     const number = peer(chat);
     if (!targetNumber.test(number) || store.user(number).kind !== 'ai') return null;
     const link = pairing.active(store,account);
-    const result = await request({action:'portrait',account,accountIdentity:accountIdentity(account),number:nativeNumber(number),link});
+    const result = await request({action:'portrait',account,number:nativeNumber(number),link});
     if (pairing.active(store,account)?.revision !== link?.revision) return null;
     const current = store.access(account,chatId);
     if (current.type !== 'direct' || peer(current) !== number || current.membershipRevision !== chat.membershipRevision)
@@ -167,7 +161,7 @@ function bothouseDirectory(store, request) {
   async function finish(turn) {
     if (!current(turn)) return {};
     if (/^\s*\//u.test(turn.text)) return {bothouseStatus:'chat_text_only'};
-    const data=await request({...turn,accountIdentity:accountIdentity(turn.account),number:nativeNumber(turn.number),action:'chat'});
+    const data=await request({...turn,number:nativeNumber(turn.number),action:'chat'});
     if (!data?.text) return {bothouseStatus:'unavailable'};
     // Re-read live visibility after the turn; a removed/replaced role cannot answer for its successor.
     const role=await resolveMember(turn.account,turn.number);
@@ -180,12 +174,11 @@ function bothouseDirectory(store, request) {
     return request(taskRequest(turn,'text_capability'));
   }
   function taskRequest(turn,action='text_task') {
-    return {...turn,accountIdentity:accountIdentity(turn.account),number:nativeNumber(turn.number),link:pairing.active(store,turn.account),action};
+    return {...turn,number:nativeNumber(turn.number),link:pairing.active(store,turn.account),action};
   }
   function runTextTask(turn,signal) {
     return request(taskRequest(turn),{signal});
   }
-  const startBoardTask=request.startBoardTask && ((turn,work)=>request.startBoardTask(taskRequest(turn),work));
-  return {list,resolveMember,start,group,portrait,stage,finish,runTextTask,textTaskCapability,startBoardTask,isRole:number=>typeof number==='string' && targetNumber.test(number.toLowerCase())};
+  return {list,resolveMember,start,group,portrait,stage,finish,runTextTask,textTaskCapability,isRole:number=>typeof number==='string' && targetNumber.test(number.toLowerCase())};
 }
 module.exports = {localInstance,bothouseDirectory,instanceSettings};

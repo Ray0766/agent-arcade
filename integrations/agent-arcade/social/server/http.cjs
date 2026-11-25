@@ -1,5 +1,5 @@
 'use strict';
-const {directoryBoardReceiver}=require('./bothouse/board-receiver.cjs');
+const {stockTaskReceiver}=require('./bothouse/stock-tasks.cjs');
 const {createWorkOrders}=require('./bothouse/work-orders.cjs');
 const {commentPage,commentsRoute}=require('./feed-comments.cjs');
 const {chatFeedbackReview} = require('./chat-feedback-review.cjs');
@@ -313,7 +313,7 @@ async function serveClient(client,url,req,res,privacyContact,publicSource,client
   res.end(req.method === 'HEAD' ? undefined : bytes);
 }
 function createServer(store,{publicOrigin,client = path.join(__dirname,'../client'),aiProvider,claudeProvider,openaiProvider,
-  groupAiProviders=[aiProvider,openaiProvider,claudeProvider].filter(Boolean),privacyContact,publicSource,voiceEngine,drawingProvider,feedClock,appointmentClock,webSearchFetch,personalAiFetch,bothouse,filename,friendLookupToken,taskReceiver=directoryBoardReceiver(bothouse,filename)} = {}) {
+  groupAiProviders=[aiProvider,openaiProvider,claudeProvider].filter(Boolean),privacyContact,publicSource,voiceEngine,drawingProvider,feedClock,appointmentClock,webSearchFetch,personalAiFetch,bothouse,filename,friendLookupToken,taskReceiver=stockTaskReceiver(store,bothouse)} = {}) {
   let loadedClient;
   const clientRelease=()=>loadedClient??=loadClientRelease(client);
   const auth = makeAuth(store,Boolean(publicOrigin));

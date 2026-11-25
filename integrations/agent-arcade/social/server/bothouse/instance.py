@@ -3,8 +3,6 @@ import base64
 import hashlib
 import http.client
 import json
-import ipaddress
-import os
 import re
 import secrets
 import socket
@@ -12,21 +10,19 @@ import sys
 import time
 import tomllib
 from pathlib import Path
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import quote
 
 
 def digest(value):
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def read_json(endpoint, token, route, body=None, optional=False):
-    conn = http.client.HTTPConnection("127.0.0.1", endpoint, timeout=None if body is not None else 3)
+def read_json(endpoint, token, route):
+    conn = http.client.HTTPConnection("127.0.0.1", endpoint, timeout=3)
     try:
-        conn.request("POST" if body is not None else "GET", route, body=json.dumps(body) if body is not None else None,
+        conn.request("GET", route,
                      headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
         res = conn.getresponse()
-        if optional and res.status in (404, 405):
-            return {"defer": "backend"}  # Older management service.
         if res.status != 200:
             raise ValueError("unavailable")
         raw = res.read(1024 * 1024 + 1)
@@ -94,7 +90,7 @@ def role_portrait(get, port, project):
         conn.close()
 
 
-def upstream_identity(access, actor, link, instance, project, identity=None):
+def upstream_identity(access, actor, link, instance, project):
     ids = {value for rule in access.get("roles", {}).values() for value in rule.get("user_ids", [])}
     if actor in ids:
         return actor
@@ -103,71 +99,12 @@ def upstream_identity(access, actor, link, instance, project, identity=None):
             return link["identity"]
         if access.get("configured") is False and project in link.get("projects", []):
             return actor
-    if actor and identity and actor.startswith("arcade:") and (actor[7:] + ":" + identity) in access.get("arcade_friend_accounts", []):
-        return actor
-    return None
-
-
-def local_channels_host(cfg, file):
-    # Follow collabDataDir's existing directory/legacy selection. Compare the
-    # origin only; never use the Channels owner credential to speak for a friend.
-    home = Path.home()
-    data = Path(os.environ.get("BOTHOUSE_DATA_DIR") or cfg.get("data_dir") or file.parent)
-    directory = data / "conest-collab"
-    if data in (home / ".bothouse", home / ".cc-connect") or not directory.exists():
-        directory = home / ".conest-collab"
-    record = Path(os.environ.get("CONEST_COLLAB_DATA") or directory) / "collab.owner.json"
-    with record.open("rb") as stream:
-        origin = urlsplit(json.loads(stream.read(16385))["local"]["origin"])
-    if (origin.scheme == "http" and origin.path in ("", "/") and not origin.username
-            and not origin.password and not origin.query and not origin.fragment and origin.port
-            and ipaddress.ip_address(origin.hostname).is_loopback):
-        return origin.netloc
     return None
 
 
 def is_bridge_role(row):
     # Management /roles omits the default source; the role-state feed names it.
     return row.get("source") in (None, "", "bridge")
-
-
-def native_bindings(cfg, file, get, rows):
-    # memberRole() uses the stored native member ID for both the project and
-    # its cloud_web ?bot=. The management role roster also includes external bots.
-    native = {r["name"][4:]: r for r in rows if r.get("source") == "dsh"
-              and r.get("agent_type") == "dsh" and r.get("name", "").startswith("dsh:")}
-    if not native:
-        return {}
-    try:
-        host = local_channels_host(cfg, file)
-        if not host:
-            return {}
-        stored = {m["id"] for m in get("dsh/members")["members"]
-                  if m.get("source") in ("ui", "config") and m.get("cli") is None}
-    except (OSError, KeyError, TypeError, ValueError, http.client.HTTPException):
-        return {}
-    engines = {r["name"]: r for r in rows if is_bridge_role(r) and r.get("agent_type") == "dsh"}
-    bound = {}
-    for project in cfg.get("projects", []):
-        key = project.get("name")
-        if key not in native or key not in stored or key not in engines:
-            continue
-        platforms = [p for p in project.get("platforms", []) if p.get("type") == "cloud_web"]
-        if len(platforms) != 1:
-            continue
-        opts = platforms[0].get("options", {})
-        try:
-            url = urlsplit(opts.get("ws_url", ""))
-            if (url.scheme != "ws" or url.netloc != host or url.path != "/cloud-web/ws"
-                    or parse_qs(url.query).get("bot") != [key]):
-                continue
-        except ValueError:
-            continue
-        channel_ready = any(p.get("name") == (opts.get("name") or "cloud_web") and p.get("ready") is True
-                            for p in engines[key].get("platforms", []))
-        bound[key] = (native[key], channel_ready and native[key].get("online") is True
-                      and not platforms[0].get("disabled") and not project.get("disabled"))
-    return bound
 
 
 def run(file, request):
@@ -180,7 +117,9 @@ def run(file, request):
     actor = "arcade:" + account if account else None
     authority = request["action"] == "authority"
     link = request.get("link") or {}
-    account_identity = request.get("accountIdentity")
+    text_projects = cfg.get("friends", {}).get("text_projects", [])
+    if not isinstance(text_projects, list) or not all(isinstance(p, str) for p in text_projects):
+        raise ValueError("Invalid shared project configuration")
     def get(route):
         return read_json(mgmt.get("port") or 9820, mgmt["token"], "/api/v1/" + route)
     bridge = cfg.get("bridge", {})
@@ -188,45 +127,40 @@ def run(file, request):
     instance = None
     upstream_user = actor
     rows = get("roles")["roles"]
-    native = native_bindings(cfg, file, get, rows)
+    # Stock Bridge projects are identified by their exact registered project ID.
+    # A DSH-only management row does not prove a chat transport.
     for item in rows:
         project = item["name"]
         if not is_bridge_role(item) or not project or "/" in project or project in (".", ".."):
-            continue  # A verified DSH member is emitted once through its own engine below.
+            continue  # Only explicitly identified Bridge projects can receive a turn.
         if instance is None:
             instance = instance_id(cfg, file)
         number = "bh_" + digest(instance + "\0" + project)[:21]
-        legacy = None
         label = item.get("display_name") or project
-        if project in native:
-            member, connected = native[project]
-            legacy = number
-            number = "bh_" + digest(instance + "\0dsh\0" + project)[:21]
-            label = member.get("display_name") or project
-        if "number" in request and request["number"] not in (number, legacy):
+        if "number" in request and request["number"] != number:
             continue
         access_route = "projects/" + quote(project, safe="") + "/users"
         access = get(access_route)
         if authority:
             ids = {value for rule in access.get("roles", {}).values() for value in rule.get("user_ids", [])}
             roles.append(dict(id=project, displayName=label,
-                              selectable=access.get("configured") is False, matches=request.get("identity") in ids))
+                              selectable=access.get("configured") is False and project in text_projects, matches=request.get("identity") in ids))
             continue
-        authorized = upstream_identity(access, actor, link, instance, project, account_identity)
+        authorized = upstream_identity(access, actor, link, instance, project)
         if authorized is None:
             continue
         upstream_user = authorized
         ready = bool(bridge.get("enabled") and bridge.get("token") and not item.get("paused")
-                     and (legacy is None or connected))
+                     and project in text_projects)
         if request["action"] == "portrait":
             if not request.get("number") or not ready:
                 return {}
             portrait = role_portrait(get, mgmt.get("port") or 9820, project)
-            if portrait and upstream_identity(get(access_route), actor, link, instance, project, account_identity) is not None:
+            if portrait and upstream_identity(get(access_route), actor, link, instance, project) is not None:
                 return portrait
             return {}
         roles.append(dict(id=project, number=number, displayName=label,
-                          configured=ready, kind="ai", source="bothouse", **({"legacyNumber": legacy} if legacy else {})))
+                          configured=ready, kind="ai", source="bothouse"))
     if authority:
         return {"instance": instance, "projects": roles}
     listing = request["action"] == "list"
@@ -237,7 +171,7 @@ def run(file, request):
                 "directoryReason": "no_roles" if instance is None else "not_shared"}
     if not any(r["configured"] for r in roles):
         return {"contacts": roles, "directoryStatus": "offline"} if listing else {"error": "unavailable"}
-    if not listing and (request["action"] not in ("chat", "task", "text_task", "text_capability") or len(roles) != 1):
+    if not listing and (request["action"] not in ("chat", "text_task", "text_capability") or len(roles) != 1):
         raise ValueError("invalid target")
 
     from websockets.sync.client import connect
@@ -267,45 +201,9 @@ def run(file, request):
             return {"contacts": roles, "directoryStatus": "ready" if any(r["configured"] for r in roles) else "offline"}
         if not roles[0]["configured"]:
             return {"error": "unavailable"}
-        task = request["action"] == "task"
-        if request["action"] in ("text_task", "text_capability"):
-            project_route = "projects/" + quote(target, safe="")
-            port = mgmt.get("port") or 9820
-            endpoint = "/api/v1/" + project_route + "/text-task"
-            capability = read_json(port, mgmt["token"], endpoint, optional=True)
-            if capability.get("available") is True:
-                route_kind = "provider"
-            elif capability.get("defer") == "backend":
-                # Older bridges have the role and its normal permission mode on
-                # the project detail endpoint. Never change mode or provider here.
-                detail = get(project_route)
-                if detail.get("agent_type") == "codex" and detail.get("agent_mode") == "suggest":
-                    route_kind = "native"
-                elif detail.get("agent_type") == "dsh" and target in native and native[target][1]:
-                    # An explicitly shared native Channels member already has a
-                    # board executor. Its own approvals remain in force.
-                    route_kind = "native"
-                else:
-                    route_kind = None
-            else:
-                return {"error": "unavailable"}
-            if not route_kind:
-                if request["action"] == "text_task" and request.get("executor") == "legacy":
-                    route_kind = "legacy"  # Board admitted an existing transformation.
-                else:
-                    return {"defer": "backend", "legacyNative": True}
-            if request["action"] == "text_capability":
-                return {"available": True, "executor": route_kind}
-            if route_kind != request.get("executor"):
-                return {"defer": "backend"}  # Do not change executor after intake.
-            if route_kind == "provider":
-                try:
-                    return read_json(port, mgmt["token"], endpoint, {"text": request["text"]}, optional=True)
-                except (OSError, http.client.HTTPException):
-                    return {"error": "receipt_unknown"}
-            # Use the same authenticated identity, project, Bridge and approvals
-            # as an assigned native turn. suggest does not mean all tools are absent.
-            task = True
+        if request["action"] == "text_capability":
+            return {"available": True, "executor": "bridge"}
+        task = request["action"] == "text_task"
         session = "arcade:" + digest(json.dumps([instance, actor, target, request["scope"]]))[:48]
         # The board worker owns this adapter until handback or cancellation.
         # Ordinary chat keeps its short observation deadline.

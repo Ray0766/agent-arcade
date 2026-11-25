@@ -52,6 +52,33 @@ async function issue(store, request, account, selection) {
   return {account,code,expires};
 }
 
+// Local operator only. An existing upstream-identity binding is never silently replaced.
+async function shareProject(store,request,operation,account,project) {
+  account=number(account);
+  if (!store.one("SELECT 1 FROM users WHERE number=? AND kind='human'",account))
+    fail(404,'unknown_account','请先注册好友账号并核对号码');
+  if (typeof project!=='string' || !project || project.length>256)
+    fail(400,'selection','请使用准确的项目 ID');
+  const inventory=operation==='share' ? await request({action:'authority'}) : null;
+  if (operation==='share' && (!inventory?.instance || !inventory.projects?.some(p=>p.id===project && p.selectable)))
+    fail(409,'selection','请选择已允许聊天且没有独立用户策略的项目');
+  return store.transaction(()=>{
+    const link=active(store,account);
+    if (link && (!Array.isArray(link.projects) || (inventory && inventory.instance!==link.instance)))
+      fail(409,'existing_pair','请先核对已有身份配对或实例');
+    const projects=new Set(link?.projects || []);
+    const changed=operation==='share' ? !projects.has(project) : projects.has(project);
+    if (operation==='share') projects.add(project); else projects.delete(project);
+    // Any old unredeemed replacement code predates this operator decision.
+    store.run('DELETE FROM bothouse_pair_codes WHERE account=?',account);
+    if (changed && projects.size)
+      store.run('INSERT OR REPLACE INTO bothouse_links(account,scope,revision) VALUES(?,?,?)',
+        account,JSON.stringify({instance:inventory?.instance || link.instance,projects:[...projects]}),randomUUID());
+    else if (changed) store.run('DELETE FROM bothouse_links WHERE account=?',account);
+    return {account,project,shared:projects.has(project),changed};
+  });
+}
+
 function redeem(store,account,body) {
   checkAccount(account,body.expectedAccount);
   const code=typeof body.code==='string' ? body.code.trim().toLowerCase() : '';
@@ -65,4 +92,4 @@ function redeem(store,account,body) {
     return {paired:true};
   });
 }
-module.exports={active,checkAccount,revoke,issue,redeem};
+module.exports={active,checkAccount,revoke,issue,redeem,shareProject};

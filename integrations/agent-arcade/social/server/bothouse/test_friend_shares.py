@@ -10,10 +10,12 @@ class FriendSharesTest(unittest.TestCase):
         actor = "arcade:river"
         access = {"configured": True, "arcade_friend_accounts": ["river:db-account-1"], "roles": {"member": {"user_ids": ["work-15"]}}}
         link = {"instance": "host", "identity": "work-15"}
-        self.assertEqual(resolve(access, actor, {}, "host", "paper", "db-account-1"), actor)
-        self.assertIsNone(resolve(access, actor, {}, "host", "paper", "different-account"))
         self.assertIsNone(resolve(access, actor, {}, "host", "paper"))
-        self.assertIsNone(resolve({"arcade_friends": ["river"]}, actor, {}, "host", "paper", "db-account-1"))
+        grant = {"instance": "host", "projects": ["paper"]}
+        self.assertEqual(resolve({"configured": False}, actor, grant, "host", "paper"), actor)
+        self.assertIsNone(resolve(access, actor, grant, "host", "paper"))
+        self.assertIsNone(resolve({"configured": False}, actor, grant, "host", "other"))
+        self.assertIsNone(resolve({"configured": False}, actor, grant, "other-host", "paper"))
         self.assertIsNone(resolve(access, "arcade:river2", {}, "host", "paper"))
         self.assertEqual(resolve(access, actor, link, "host", "paper"), "work-15")
         del access["arcade_friend_accounts"]
