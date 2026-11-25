@@ -227,7 +227,7 @@ export class BothouseResidents {
     this.visitorGreeting?.figure.stopGreeting();
     this.visitorGreeting = null;
   }
-  canRestAsVisitor(world: GroundWorld) {
+  hasApprovedVisit(world: GroundWorld) {
     return world === this.visitorWorld && this.visitorAllowed;
   }
   private greetingDistance(figure: ResidentFigure, viewer: T.Vector3, camera: T.Camera) {
