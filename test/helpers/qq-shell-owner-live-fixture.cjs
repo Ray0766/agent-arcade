@@ -21,7 +21,18 @@ async function stopRecordedCleanup(proofs,rows,stop,onObservation=()=>{}){
 }
 const source=`using System;using System.IO;using System.Diagnostics;using System.Threading;
 class ArcadeInert {
+ [System.Runtime.InteropServices.DllImport("kernel32.dll",SetLastError=true)]
+ static extern Microsoft.Win32.SafeHandles.SafeWaitHandle OpenProcess(uint access,bool inherit,int pid);
  static int Main(string[] args) {
+  if(args.Length==3 && args[0]=="--reserve-test-pids"){
+   // SYNCHRONIZE can wait for exit; it grants no right to stop a process.
+   using(var manager=OpenProcess(0x100000,false,int.Parse(args[1])))
+   using(var launcher=OpenProcess(0x100000,false,int.Parse(args[2]))){
+    if(manager.IsInvalid || launcher.IsInvalid)return 4;
+    Console.OpenStandardOutput().WriteByte(1);
+    Thread.Sleep(Timeout.Infinite);
+   }
+  }
   if (Path.GetFileName(Process.GetCurrentProcess().MainModule.FileName).Equals("QQ.exe",StringComparison.OrdinalIgnoreCase)) { while(true) Thread.Sleep(1000); }
   if(args.Length!=3 || !File.Exists(args[0]) || !File.Exists(args[1])) return 2;
   var work=Environment.GetEnvironmentVariable("NAPCAT_WORKDIR");if(String.IsNullOrEmpty(work)||!Directory.Exists(work))return 3;
