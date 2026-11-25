@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "797a42b1553eb6dbce06e33eb0329c98e848ca5c",
-  "worldTree": "25ee4ae2a65804761f82d7890440665ef6096b91",
-  "patchSHA256": "cefeda65ec2a6dad169eb899e8818394e3b4c43e0db8ce381ca9f2fe44be3a91",
+  "worldRevision": "ac5c77afd1fbc7bd3a7ba29e421345882150a174",
+  "worldTree": "1a4b554e74e3161505c52cc5439155358bfcca6e",
+  "patchSHA256": "a3b3b9227ba9958cd167a51f0f69af809b1d611f5387c1783edb0a7e051deff3",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -127,8 +127,8 @@
     {
       "action": "A",
       "path": "spec/bothouse-work-pose.test.ts",
-      "blob": "b95cd234b1a75af4abca421104b565d0ded0f394",
-      "sha256": "1ebe08c94c74d1a204ad3438112d5d22219ea34ac4f8eb070312ab3f6060e726"
+      "blob": "496ed9e599c6175d36072de7cf0240efa514de74",
+      "sha256": "2ed978aa8fe01daef770c2af6cd0b386f7b58de08ae12d1cbcd753a806363fb5"
     },
     {
       "action": "M",
@@ -427,8 +427,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-resident-model.ts",
-      "blob": "927eb44c0e8ff24caf02bb4cd3116d47a2852b46",
-      "sha256": "8d75fa9967584ab62762f67c23ef1d86aab0ec0c3c1e59addca1485a5cdde257"
+      "blob": "a41a748c054e408b40e1b627bb585d7d46b5e9e8",
+      "sha256": "cc171e91ed1037f095e8221a42760d63fe9c3fd472e4be2d959ba699959cbd52"
     },
     {
       "action": "A",
@@ -439,8 +439,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "b7631085cd83c0e9819a488007f3d3e0900b2a3e",
-      "sha256": "93083406c158e4e6dd5bed119abab8a4d41b57047e4d75fc1536c8bc6713d3a1"
+      "blob": "0aedff37d19bdb13145f8f053dc962c1db482cd7",
+      "sha256": "cf99cac4f7e9d71e69e6f8beaeddc8661b400ace92682d86ac23eafbfbd47f31"
     },
     {
       "action": "A",
@@ -505,8 +505,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "e55e97277ae3e8a00fe08b9cd7f90a3cbd34dc39",
-      "sha256": "39bea4a22d4de8177bbbb18f4a7fb9254b2c3dd9c871fe8d8f86bdfc3aacd5dd"
+      "blob": "d2eb072d159eb1ccd8ef4d5eb3fe554ff23376cf",
+      "sha256": "6bd48cbb99ab002b2c3f2c067762aae521da9785ba2c60e847cf0c3c76cac964"
     },
     {
       "action": "M",

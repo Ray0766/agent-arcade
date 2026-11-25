@@ -3,6 +3,7 @@ import { canBoard, portPoint } from '../shared/ports.ts';
 import { GroundWorld } from '../shared/physics/world.ts';
 import { TownResidentMotion } from '../shared/town-resident-motion.ts';
 import type { Vec3 } from '../shared/world.ts';
+import type { PlanetView } from '../shared/planets.ts';
 import type { PlanetResident } from '../shared/planet-residents.ts';
 import { residentPortrait } from '../shared/resident-portrait.ts';
 import { createBothouseResidentModel } from './bothouse-resident-model.ts';
@@ -17,6 +18,7 @@ const actions = {
   unknown:['Status unknown','状态未知'],
 } as const;
 const zh=()=>document.documentElement.lang.startsWith('zh');
+const noObjects:PlanetView['objects']=[];
 
 class ResidentFigure {
   readonly model: ReturnType<typeof createBothouseResidentModel>;
@@ -33,6 +35,8 @@ class ResidentFigure {
   private readonly dockFacing: T.Vector3;
   private phase:number;
   private elapsed=0;
+  private flowerPause=0;
+  private nextFlowerPause=1.2;
   private waveStart=-Infinity;
   private step=0;
   private badge?:T.Texture;
@@ -43,7 +47,7 @@ class ResidentFigure {
   private text=document.createElement('span');
 
   constructor(scene:T.Scene, world:GroundWorld, public role:Resident, readonly slot:number,
-    feet:T.Vector3, readonly key:string, portrait:Portrait) {
+    feet:T.Vector3, readonly key:string, portrait:Portrait, readonly flower:Vec3|undefined) {
     this.model=createBothouseResidentModel(key);
     this.model.animate(role.activity,0,true);
     const start=feet.clone().normalize(), pad=portPoint(world.planetId);
@@ -79,7 +83,10 @@ class ResidentFigure {
   }
   update(role:Resident,portrait:Portrait) {
     this.setPortrait(portrait);
-    if(role.activity!=='idle')this.waveStart=-Infinity;
+    if(role.activity!=='idle'){
+      this.waveStart=-Infinity;
+      this.flowerPause=0;
+    }
     if(role.activity!==this.role.activity)this.model.animate(role.activity,0,true);
     this.role=role;
     const activity=actions[role.activity][zh()?1:0], title=role.displayName+' · '+activity;
@@ -96,15 +103,15 @@ class ResidentFigure {
     const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
     this.label.material.map=texture;this.label.material.needsUpdate=true;
   }
-  private align(initial:boolean,dt:number,visitor?:Vec3) {
+  private align(initial:boolean,dt:number,target?:Vec3) {
     const {motion,model}=this;
     this.up.fromArray(motion.pose.position);
     this.forward.fromArray(motion.heading).projectOnPlane(this.up).normalize();
     if(this.role.activity==='working'){
       // Keep the safe foot position and angle the ledger toward the dock-side path.
       this.forward.copy(this.dockFacing).projectOnPlane(this.up).normalize().applyAxisAngle(this.up,.36);
-    }else if(visitor){
-      this.forward.fromArray(visitor).projectOnPlane(this.up).normalize();
+    }else if(target){
+      this.forward.fromArray(target).projectOnPlane(this.up).normalize();
     }
     this.right.crossVectors(this.up,this.forward).normalize();
     this.forward.crossVectors(this.right,this.up).normalize();
@@ -114,20 +121,32 @@ class ResidentFigure {
     model.root.position.copy(this.up).multiplyScalar(motion.pose.radius);
     this.label.position.copy(this.up).multiplyScalar(motion.pose.radius+1.99);
   }
-  greet(now:number) {this.waveStart=now;}
+  greet(now:number) {
+    this.waveStart=now;
+    this.flowerPause=0;
+  }
   frame(dt:number,reduced:boolean,viewer:Vec3,neighbours:Vec3[],now:number) {
     if(!this.motion.valid)return;
     const activity=this.role.activity, live=activity!=='offline'&&activity!=='unknown';
     const wave=(now-this.waveStart)/1800;
     const greeting=wave<1&&!reduced&&activity==='idle';
     if(!reduced&&live)this.elapsed+=dt;
+    if(!reduced&&activity==='idle'&&!greeting&&this.flower){
+      if(this.flowerPause>0)this.flowerPause=Math.max(0,this.flowerPause-dt);
+      else if(this.elapsed>=this.nextFlowerPause){
+        this.flowerPause=2.6;
+        this.nextFlowerPause=this.elapsed+15;
+      }
+    }
+    const looking=!greeting&&!reduced&&activity==='idle'&&this.flowerPause>0;
     // A short walk between rests uses the same capsule, slope and neighbour checks as town residents.
-    if(!reduced&&activity==='idle'&&!greeting){
+    if(!reduced&&activity==='idle'&&!looking&&!greeting){
       this.step+=dt;
       if(this.step>=.05){this.motion.tick(this.step,viewer,neighbours);this.step=0;}
     }else{this.motion.moving=false;this.step=0;}
-    this.align(reduced&&live,live&&!reduced?dt:0,greeting?viewer:undefined);
-    this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving),greeting?wave:0);
+    this.align(reduced&&live,live&&!reduced?dt:0,greeting?viewer:looking?this.flower:undefined);
+    const lean=looking?T.MathUtils.smoothstep(Math.min(this.flowerPause,2.6-this.flowerPause),0,.5):0;
+    this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving),greeting?wave:0,lean);
   }
   setVisible(visible:boolean) {this.model.root.visible=this.label.visible=visible;}
   dispose() {
@@ -170,7 +189,7 @@ export class BothouseResidents {
     actions.append(this.settings);
     this.bodySettings=new ResidentBodySettings(actions);
   }
-  frame(world:GroundWorld|null,planet:string|null,epoch:number,now:number,owner:boolean) {
+  frame(world:GroundWorld|null,planet:string|null,epoch:number,now:number,owner:boolean,objects=noObjects) {
     this.arrivalWorld=!owner&&planet===this.greetingTarget?world:null;
     this.settings.hidden=!owner;
     const settingsText=zh()?'连接星球搭档':'Connect planet companions';
@@ -190,7 +209,7 @@ export class BothouseResidents {
     }
     if(!planet||now<this.next||this.request)return;
     const request=this.request=new AbortController();
-    void this.refresh(planet,world,request);
+    void this.refresh(planet,world,request,objects);
   }
   animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean) {
     if(!this.figures.size)return;
@@ -235,14 +254,15 @@ export class BothouseResidents {
       const badgeImage=badge?.visible?badge.material.map?.image as HTMLImageElement|undefined:undefined;
       return {id:f.role.id,model:root.name,body:root.uuid,badge:badgeImage?.getAttribute('src')??null,look:f.key,activity:f.role.activity,position:root.position.toArray(),
         rotation:root.quaternion.toArray(),armAngle:root.getObjectByName('upper1')!.rotation.z,
-        moving:f.motion.moving,meshes,sprites,center:center.toArray()};
+        moving:f.motion.moving,meshes,sprites,center:center.toArray(),
+        checkingFlowers:root.getObjectByName('body')!.rotation.x>.25,flower:f.flower};
     });
   }
   private clear() {
     for(const figure of this.figures.values())figure.dispose();
     this.seats=[];this.figures.clear();this.summary.hidden=true;this.summary.replaceChildren();
   }
-  private async refresh(planet:string,world:GroundWorld|null,request:AbortController) {
+  private async refresh(planet:string,world:GroundWorld|null,request:AbortController,objects:PlanetView['objects']) {
     try{
       const signal=AbortSignal.any([request.signal,AbortSignal.timeout(5000)]);
       const response=await fetch('/api/planets/'+encodeURIComponent(planet)+'/residents',{cache:'no-store',signal});
@@ -284,7 +304,8 @@ export class BothouseResidents {
         if(!figure||figure.key!==key){
           const slot=figure?.slot??seats.findIndex((_,i)=>!used.has(i));
           if(slot<0||!seats[slot])continue;
-          figure?.dispose();figure=new ResidentFigure(this.scene,world,role,slot,seats[slot],key,portrait);
+          const flower=nearbyDoorstepFlower(world,seats[slot],objects);
+          figure?.dispose();figure=new ResidentFigure(this.scene,world,role,slot,seats[slot],key,portrait,flower);
           used.add(slot);this.figures.set(role.id,figure);
         }else figure.update(role,portrait);
         if(cards.length)cards.push(' / ');cards.push(figure.card);
@@ -297,4 +318,23 @@ export class BothouseResidents {
       this.summary.textContent=zh()?'暂时看不到搭档的动态。':'Companion activity is unavailable.';this.summary.hidden=false;
     }finally{if(request===this.request){this.request=null;this.next=performance.now()+3000;}}
   }
+}
+
+function nearbyDoorstepFlower(world:GroundWorld,feet:T.Vector3,objects:PlanetView['objects']) {
+  const up=feet.clone().normalize();
+  const homes=objects.filter(o=>o.kind==='structure'||o.kind==='cottage').map(o=>new T.Vector3(...o.position));
+  let closest=2.6;
+  let flower:Vec3|undefined;
+  for(const pot of objects){
+    if(pot.kind!=='flowers')continue;
+    const direction=new T.Vector3(...pot.position);
+    const distance=up.angleTo(direction)*world.baseRadius;
+    if(distance<.65||distance>=closest||!homes.some(home=>home.angleTo(direction)*world.baseRadius<7))continue;
+    const eye=feet.clone().addScaledVector(up,.9);
+    const target=direction.clone().multiplyScalar(world.radius(pot.position)+.72);
+    if(world.cameraDistance(eye,target,.06)+.05<eye.distanceTo(target))continue;
+    closest=distance;
+    flower=pot.position;
+  }
+  return flower;
 }
