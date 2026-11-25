@@ -6,7 +6,7 @@ const path=require('node:path');
 const {fail}=require('../store.cjs');
 const {instanceSettings}=require('./directory.cjs');
 
-const heartbeatInterval=6000, publisherRecoveryWindow=60000;
+const heartbeatInterval=6000;
 const sourcePattern=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u;
 const msg={
   config:[503,'请先在好友服务配置小星球地址和居民发布器。'],
@@ -144,6 +144,8 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
   const pairingRevision=account=>store.one('SELECT revision FROM bothouse_links WHERE account=?',account)?.revision??null;
   const storedPublisher=account=>store.one(`SELECT account,session,planet,source AS sourceId,token,pairing_revision AS pairingRevision
     FROM world_resident_publishers WHERE account=? AND issuer=? AND world=?`,account,socialOrigin(),origin);
+  const sameGrant=(job,saved)=>saved&&saved.token===job.token&&saved.session===job.session&&saved.planet===job.planet&&
+    saved.sourceId===job.sourceId&&saved.pairingRevision===job.pairingRevision;
   function detach(job){
     if(jobs.get(job.account)===job)jobs.delete(job.account);
     clearTimeout(job.timer);
@@ -152,6 +154,8 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
   function stop(job){
     detach(job);
     if(closed)return;
+    const saved=storedPublisher(job.account);
+    if(job.durable&&saved?.token===job.token&&!sameGrant(job,saved))return;
     store.run('DELETE FROM world_resident_publishers WHERE account=? AND issuer=? AND world=? AND token=?',
       job.account,socialOrigin(),origin,job.token);
     return job.pausing??=control(job,'pause');
@@ -161,7 +165,7 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
       problem('session');
     if(job.durable){
       const home=homeRow(job.account);
-      if(home?.planet!==job.planet||home?.resident_source!==job.sourceId)problem('binding');
+      if(home?.planet!==job.planet||home?.resident_source!==job.sourceId||!sameGrant(job,storedPublisher(job.account)))problem('binding');
     }
   }
   async function heartbeat(job){
@@ -173,34 +177,41 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
         const child=job.child=spawn(python,['-I','-B','-X','utf8',path.join(__dirname,'world-publish.py'),publisher,config,origin],
           {windowsHide:true,env:Object.fromEntries(['PATH','SystemRoot','WINDIR','TEMP','TMP','HOME','USERPROFILE','LOCALAPPDATA','LANG','LC_ALL'].filter(k=>env[k]).map(k=>[k,env[k]])),
             stdio:['pipe','pipe','ignore']});
-        const deadline=setTimeout(()=>child.kill(),30000);
-        let buf='',count=null,dirState='offline',reading=false,directorySeen=false;
+        let reason,buf='',count=null,reading=false,directorySeen=false;
+        const abort=why=>{reason??=why;child.kill();};
+        const deadline=setTimeout(()=>abort('worker_timeout'),30000);
         const cleanup=()=>{clearTimeout(deadline);if(job.child===child)job.child=null;};
-        child.once('error',e=>{cleanup();reject(e);});
+        child.once('error',()=>{reason??='worker_failed';}); // close follows a spawn failure.
         child.stdin.on('error',()=>{});
         child.stdout.setEncoding('utf8').on('data',chunk=>{
           buf+=chunk;
-          if(buf.length>2048){child.kill();return;}
+          if(buf.length>2048){abort('worker_protocol');return;}
           for(let newline;(newline=buf.indexOf('\n'))>=0;){
             const line=buf.slice(0,newline).trim();buf=buf.slice(newline+1);
             if(line==='directory'&&!reading){
               reading=true;
               Promise.resolve().then(async()=>{
                 current(job);
-                const {contacts,directoryStatus}=await bothouse.list(job.account);
+                const {contacts,directoryStatus,directoryReason}=await bothouse.list(job.account);
                 current(job);
+                if(job.child!==child||reason)return;
+                if(directoryStatus==='empty'&&directoryReason==='not_shared'&&contacts?.length===0){
+                  abort('not_shared');return;
+                }
+                if(!Array.isArray(contacts)||!['ready','offline'].includes(directoryStatus)){abort('directory_unavailable');return;}
                 const ids=contacts.filter(r=>r.source==='bothouse'&&/^bh_[a-f0-9]{21}$/u.test(r.number)).map(r=>r.number);
-                directorySeen=true;dirState=ids.length?'has_ids':directoryStatus==='offline'?'offline':'empty';
+                if(!ids.length){abort('directory_unavailable');return;}
+                directorySeen=true;
                 const output=JSON.stringify(ids);
                 if(output.length>=1024*1024)throw Error();
                 reading=false;child.stdin.write(output+'\n');
-              }).catch(()=>child.kill());
+              }).catch(()=>abort('directory_unavailable'));
             }else{
               try{
                 const result=JSON.parse(line);
                 if(!Number.isSafeInteger(result.count)||result.count<0||count!==null)throw Error();
                 count=result.count;
-              }catch{child.kill();}
+              }catch{abort('worker_protocol');}
             }
           }
         });
@@ -208,8 +219,11 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
           cleanup();
           try{
             current(job);
-            if(code!==0||!directorySeen||count===null)problem('unavailable');
-            if(count===0)problem(dirState==='empty'?'empty':'unavailable');
+            if(reason==='not_shared')problem('empty');
+            if(reason||code!==0||!directorySeen||!count){
+              job.sampleFailure=reason??(count===0?'empty_snapshot':'worker_failed');
+              problem('unavailable');
+            }
             resolve();
           }catch(e){reject(e);}
         });
@@ -220,10 +234,11 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
   function schedule(job,delay=heartbeatInterval){
     job.timer=setTimeout(async()=>{
       if(jobs.get(job.account)!==job)return;
-      // Keep at most one sample in flight per slot and defer saturated ticks.
-      if(workers>=4&&sessionAlive(job)){schedule(job);return;}
       try{
         current(job);
+        // Saturation defers sampling, but must not skip a local revocation.
+        if(workers>=4){schedule(job);return;}
+        job.sampleFailure=null;
         if(!job.ready){
           if(!configured())problem('unavailable');
           const verified=await control(job,'check');
@@ -234,16 +249,20 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
         await heartbeat(job);
         current(job);
         job.ready=true;
-        job.lastPublished=Date.now();
+        if(job.failure){console.info('Resident publisher resumed',job.sourceId);job.failure=null;}
       }catch(error){
         if(jobs.get(job.account)!==job)return;
-        // On startup a valid grant can wait for the world or the directory to come up.
-        // Revoked grants fail closed, and the world expires any unsampled roster.
-        if(error.code!=='planet_unavailable'||!sessionAlive(job)||
-           (job.ready&&Date.now()-job.lastPublished>=publisherRecoveryWindow)){
+        if(error.code!=='planet_unavailable'||!sessionAlive(job)){
+          console.info('Resident publisher stopped',job.sourceId,error.code||'publisher_error');
           await stop(job)?.catch(()=>{});
           return;
         }
+        // A missed sample expires in the world. Keep the existing grant so the
+        // next tick can check the same lease before obtaining a fresh directory.
+        job.ready=false;
+        const failure=job.sampleFailure||'service_unavailable';
+        if(job.failure!==failure)console.info('Resident publisher waiting',job.sourceId,failure);
+        job.failure=failure;
       }
       schedule(job);
     },delay);
@@ -293,7 +312,10 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
         job.planet=verified.planetId;
         const home=homeRow(account);
         if(home?.planet&&home.planet!==job.planet)problem('in_use');
-        if(existing?.ready&&existing.token===job.token&&existing.session===session)return view(account);
+        if(existing?.durable&&sameGrant(job,existing)){
+          current(existing);
+          return view(account);
+        }
         if(existing){
           if(existing.token!==job.token)await stop(existing).catch(()=>{});
           else {clearTimeout(existing.timer);existing.child?.kill();}
@@ -313,7 +335,7 @@ function planetPublishers({store,bothouse,socialOrigin,env=process.env}){
             planet=excluded.planet,source=excluded.source,token=excluded.token,pairing_revision=excluded.pairing_revision`,
             account,issuer,origin,session,job.planet,job.sourceId,job.token,job.pairingRevision);
         });
-        job.durable=true;job.ready=true;job.lastPublished=Date.now();schedule(job);return view(account);
+        job.durable=true;job.ready=true;schedule(job);return view(account);
       }catch(e){
         // A late pass cannot stop a newer source that now owns this token.
         const next=jobs.get(account),nextPending=pending.get(account);
