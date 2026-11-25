@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "417d6160d929a62c13a437e5f1bfac5f13ce214d",
-  "worldTree": "d0885242a1fc17144d11c6f9b6c4da012695cd2c",
-  "patchSHA256": "24ca50d5767193b4c61862a648483309af6c09bffbaa3088270b921b553f755e",
+  "worldRevision": "b142fbcfcb3ded194e377e9d5df045bf28217374",
+  "worldTree": "7efcfe6e9625382bc7d425e2d55bce0dc57aca31",
+  "patchSHA256": "cab6a1e837bb3e83b09fc757166bda25defbaab0634475b73b01bca32816d2b0",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -117,6 +117,12 @@
       "path": "scripts/verify-residents.mjs",
       "blob": "822a239ded31e0e4f30b7842db1d7f5aa9590a2c",
       "sha256": "3a4fd00afc305928ab798abf736a33e629ee66567f0f54af1e28c0fca8942de6"
+    },
+    {
+      "action": "A",
+      "path": "spec/bench-rest.test.ts",
+      "blob": "7a09597590a0c602ed69e803c4c0de8a0832ad3f",
+      "sha256": "01c511fb08f7cb4cf4e3a4be5d4cef30a2c45572d47298b8b35ee04eba360c28"
     },
     {
       "action": "A",
@@ -432,6 +438,12 @@
     },
     {
       "action": "A",
+      "path": "src/client/bench-rest.ts",
+      "blob": "74afb586414c484cf15713d58ed93870a129ce8d",
+      "sha256": "6c6e71a45c9a8f205d04f507aece3ca9a3ceea776627e29361f2c0d6a23d6cda"
+    },
+    {
+      "action": "A",
       "path": "src/client/bothouse-costume-model.ts",
       "blob": "602397f31cf8f043c3781745920e5aaea339922a",
       "sha256": "85b4e845c6e956c262908206bd30435cc9dd0a2769bd5439324d348a5b2c8633"
@@ -457,8 +469,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "dc68dc9fd2c102f4dfda34d2052eac143cb7e18a",
-      "sha256": "16feddb620ba1b83d5ad5229b0391bc488a61aa5b9808731afe1a61b1650be86"
+      "blob": "43c49f4f6240c629ac3121c8be11a09985a0cefe",
+      "sha256": "8b6b98b3e63fb191e13f04f486716a046f1bc4e5ee816666ed0df6692459866c"
     },
     {
       "action": "A",
@@ -475,14 +487,20 @@
     {
       "action": "M",
       "path": "src/client/character-sample.ts",
-      "blob": "a614b875aadb91c3d2e23932784dfa2f5b2f3194",
-      "sha256": "293c28d99e8ebb6a8a47b227f523246c6680d1a59f0d838936adf5fe99488c1c"
+      "blob": "d621be9dcc697e99164dad8926c4dfa95db123c1",
+      "sha256": "17d7dcb7c152fdb1ce863b2b16540b767be6c3aa7632af2f3f57ce4826552ad1"
+    },
+    {
+      "action": "M",
+      "path": "src/client/character.ts",
+      "blob": "518a41790130ba41a6ad6ae44a698f27b3eb1f88",
+      "sha256": "d27e184368b6203473ede6504ab644e5289f87d7d84d24e23a997de8aad4663e"
     },
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "7863627dff74413987e8da3a602b979d1fd02834",
-      "sha256": "d3145a680eb70842745f04a73a6990dc9078e2e4e006ff4a80133a33fb3d12b1"
+      "blob": "562d2589fbb1201ee925bfdcd231c54b123cee67",
+      "sha256": "0d8205c1b56a1e4835894b1e13728307a6284db03079884c0387243a55bf3a2f"
     },
     {
       "action": "A",
@@ -541,20 +559,20 @@
     {
       "action": "M",
       "path": "src/client/immersive.css",
-      "blob": "4953e14e3a2f207a3e21b5c4f368fd027134ea0a",
-      "sha256": "33e6cc8371d3926cc3c8a4584ce1fccd55743ae30b22d2aa4bb66c705f553cf6"
+      "blob": "4981cd4b6e9cf0f61177bf476dd2ecdb56f5b0c3",
+      "sha256": "909005c7bad2da8d4ea4d9c68e58a712bfa126b9026f02d3e025ed0a2e465690"
     },
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "1368ac78278b493493e8080ebf69085893f4590e",
-      "sha256": "341a3ffdd67d5fc88909023db813961696fb02c8aab9cf458e50e745fbc84d46"
+      "blob": "6d0daf8a6f5ec86da36db08a3e1a6eb6735e7f07",
+      "sha256": "7c89275bfc106ebfa049f27052955fdd163086bcec8618ca770c01b15f2a2f64"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "d9735c9227aad96f9bcf6ed644dcf074336fe561",
-      "sha256": "655b8bbcd35a2b4e1b08932dca894431637f42ed10d3df749e05e38a45f11b5f"
+      "blob": "802e6461d7081fe858b18fa096a626be7873548a",
+      "sha256": "70cf11571d7148100ceac7a72fad0768015563b3dc66ae626ac1a147f54812fa"
     },
     {
       "action": "A",
