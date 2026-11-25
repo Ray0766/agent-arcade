@@ -13,7 +13,7 @@ function fixture(t,{io=fs,host,existingConfig,existing=false,coreOptions={}}={})
  const processHost=host||r.host,selection=new QQComponentSelection({componentsRoot:r.descriptor.installationRoot,lockRoot:f.config.installation.lockRoot,preparedRoot:path.dirname(path.dirname(r.paths.codeRoot)),prepared:r.options.prepared,processHost,qqExe:r.paths.qqExe,managedInstallation:()=>structuredClone(r.descriptor)});
  const marker=path.join(r.paths.configDir,'napcat-update.json');if(!existing)fs.writeFileSync(marker,'SYNTHETIC_PLAN\0opaque');const state={mono:0},pending=new QQPendingUpdateRecovery({selection,io}),core=new QQPendingUpdateLockRecovery({selection,processHost,io,monotonic:()=>state.mono,...coreOptions});
  t.after(async()=>{await core.close();pending.close();await r.adapter.close();});
- const dead={pid:919999,createdAt:'2026-11-07T00:00:00.0000000Z',executable:process.execPath};
+ const dead={pid:919999,createdAt:'2026-11-07T00:00:00.0000000Z',executable:'C:\\synthetic\\previous-owner.exe'};
  const lock=(kind='installation',owner=dead)=>{const file=kind==='installation'?selection.lockFile:selection.lockFile+'.recover';fs.writeFileSync(file,JSON.stringify({schema:kind==='installation'?'qq_component_lock_v2':'qq_component_recovery_guard_v1',installationId:selection.installationId,owner,token:randomUUID(),at:new Date().toISOString()}));return file;};
  const preview=async(kind='installation')=>{const i=await core.inspect(),v=i.records.find(r=>r.kind===kind);return core.preview({recordId:v.recordId});};
  return {...f,r,selection,pending,core,marker,state,descriptor,host:processHost,dead,lock,preview,confirm:p=>core.confirm({ticketId:p.ticketId,expectedDigest:p.expectedDigest})};

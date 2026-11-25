@@ -15,6 +15,22 @@ test('owned group termination escalates and never targets a positive or invalid 
   await assert.rejects(terminateChild({}, {groupId:871234,killImpl:()=>{throw Object.assign(Error(),{code:'EPERM'});}}),{code:'EPERM'});
 });
 
+test('an exit probe retries a transient denial and requires a missing group to confirm cleanup',async()=>{
+  for(const disappears of [true,false]){
+    let probes=0;
+    const killImpl=(pid,signal)=>{
+      assert.equal(pid,-871234);
+      if(signal==='SIGTERM')return;
+      assert.equal(signal,0);
+      probes++;
+      throw Object.assign(Error(),{code:disappears&&probes>1?'ESRCH':'EPERM'});
+    };
+    const cleanup=terminateChild({}, {groupId:871234,timeoutMs:80,killImpl});
+    if(disappears)assert.equal(await cleanup,true);
+    else await assert.rejects(cleanup,{code:'EPERM'});
+  }
+});
+
 for(const mode of ['reply','abort','close'])test(`real POSIX ${mode} cleans an owned CLI group, including TERM-resistant descendants`,{skip:process.platform==='win32',timeout:15000},async()=>{
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-group-')),marker=path.join(folder,'ready.json'),release=path.join(folder,'release');
   const grandchild=`process.on('SIGTERM',()=>{});console.log(process.pid);setInterval(()=>{},1000);`;

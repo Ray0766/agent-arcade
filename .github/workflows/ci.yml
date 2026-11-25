@@ -13,11 +13,6 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    # Windows and macOS gate the build. macOS joined after three green runs in
-    # a row (2026-11-14, see docs/MACOS.md). The Linux leg is informative for
-    # now: it still fails in the QQ pending-lock tests, so a failure there is
-    # reported without blocking. Remove this line once it has passed.
-    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -66,13 +61,16 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
-      - run: npm run pack:mac
+      - run: node scripts/mac-credential-helper-native-unit.cjs
+      - run: npm run prepack:mac
+      - run: node scripts/pack-mac-ci-preview.cjs
       # ditto keeps the bundle's symbolic links and executable bits, which the
       # artifact upload would otherwise flatten.
       - name: Archive the application bundle
         run: |
           app=$(ls -d dist/mac*/*.app | head -n 1)
           test -d "$app"
+          codesign --verify --deep --strict "$app"
           ditto -c -k --sequesterRsrc --keepParent "$app" agent-arcade-macos-unsigned.zip
       - uses: actions/upload-artifact@v4
         with:

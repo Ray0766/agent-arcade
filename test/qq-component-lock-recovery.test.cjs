@@ -82,7 +82,7 @@ test('the ephemeral gate serializes recovery attempts and never creates a third 
 test('a recovery worker exits abruptly: Windows pipe or Linux abstract gate disappears without a disk recovery chain',async t=>{
   if(!['win32','linux'].includes(process.platform)){t.skip('only nonpersistent OS IPC gates are supported');return;}
   const f=fixture(t),{spawn}=require('node:child_process'),{once}=require('node:events');
-  const child=spawn(process.execPath,['-e',"const net=require('node:net');const s=net.createServer(c=>c.destroy());s.listen(process.argv[1],()=>process.send('ready'));process.on('message',()=>process.exit(73));",gateEndpoint(f.selection.installationId)],{stdio:['ignore','ignore','ignore','ipc'],windowsHide:true});
+  const child=spawn(process.execPath,['-e',"const net=require('node:net');const s=net.createServer(c=>c.destroy());s.listen(JSON.parse(process.argv[1]),()=>process.send('ready'));process.on('message',()=>process.exit(73));",JSON.stringify(gateEndpoint(f.selection.installationId))],{stdio:['ignore','ignore','ignore','ipc'],windowsHide:true});
   t.after(()=>{if(child.exitCode===null)child.kill();});const ready=await Promise.race([once(child,'message'),new Promise((_,reject)=>setTimeout(()=>reject(Error('synthetic child startup timeout')),4000).unref())]);assert.equal(ready[0],'ready');
   await assert.rejects(withRecoveryGate(f.selection.installationId,()=>assert.fail()),{code:'recovery_in_progress'});
   const exited=once(child,'exit');child.send('simulate-crash-without-finally');assert.equal((await exited)[0],73);

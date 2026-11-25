@@ -90,10 +90,10 @@ Use `npm test`, not a bare `node --test test/*.test.cjs`: see Tests and CI.
 The first `npm start` downloads the Electron binary (Electron 45 has no install
 script; `node_modules/electron/dist` is filled on first use).
 
-## Build the unsigned package
+## Build the macOS package
 
 ```sh
-npm run pack:mac   # host architecture only: dist/mac-arm64/Agent Arcade.app (dist/mac/ on Intel)
+npm run pack:mac   # local build with a pinned signing profile and its installed credential component
 npm run dist:mac   # dmg and zip for arm64 and x64
 ```
 
@@ -101,10 +101,10 @@ Both first run `scripts/build-icon.cjs`, which writes `src/assets/app-mac.png`
 (1024 px, generated from the brand source; not committed). electron-builder
 converts it to `.icns`.
 
-The build is **ad-hoc signed** (`"identity": "-"`) and **not notarized**, with
-the hardened runtime off. Apple Silicon refuses to run code that has no
-signature at all, so "unsigned" here means "signed with no identity". Gatekeeper
-still blocks a downloaded copy. To open it:
+Personal builds use the local signing identity and its matching credential
+component. CI builds a separate **ad-hoc signed, unnotarized** preview for
+testing without credentials. Both enable the hardened runtime. Gatekeeper
+may block a downloaded preview. To open it:
 
 - In Finder, Control-click the app, choose **Open**, then **Open** again; on
   recent macOS versions you may instead need System Settings › Privacy &
@@ -149,9 +149,11 @@ nobody has looked into yet.
 on macOS the default `/var/folders/...` sits behind the `/var` → `/private/var`
 link, and the fixtures compare paths under it with resolved ones. Without that,
 935 of 4941 tests failed on this Mac and `test/qq-console.test.cjs` never
-exited. On Windows the script expands an 8.3 short `TEMP` for the same reason. The job `mac-package` builds `npm run pack:mac` on
-`macos-latest` and uploads the bundle as the artifact
-`agent-arcade-macos-unsigned`; it publishes nothing and uses no secret.
+exited. On Windows the script expands an 8.3 short `TEMP` for the same reason.
+The `mac-package` job on `macos-latest` runs the native credential component's
+synthetic checks, builds the icon and ad-hoc preview, verifies its signature
+and uploads `agent-arcade-macos-unsigned`. This preview has no personal
+credential broker and cannot save or open provider keys.
 
 On macOS these tests are registered as skipped, each with its reason
 (`test/helpers/platform-skip.cjs`):
