@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "ac5c77afd1fbc7bd3a7ba29e421345882150a174",
-  "worldTree": "1a4b554e74e3161505c52cc5439155358bfcca6e",
-  "patchSHA256": "a3b3b9227ba9958cd167a51f0f69af809b1d611f5387c1783edb0a7e051deff3",
+  "worldRevision": "68a74193354b1adf9854cf80f307f426603079a8",
+  "worldTree": "7a4b4b60374691733cb70b2bb90e12ca1a03abac",
+  "patchSHA256": "e7aa8a8571b613bb72e1307c5b3581ec5d937cab3e043d9d7a91f3f98e392b73",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -463,8 +463,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "d8a52ee284d047a66651a2477aa56aed6ec474c1",
-      "sha256": "6abd35e336463fe670f1732cd088e6fe55cbf940d7cb9a340caae172dee8e5d6"
+      "blob": "822b3795ae1378485fa5df9ef08934a1e9825af2",
+      "sha256": "823c406f5b7d1fd33483408e7c0d8be12e1f8237bd77b1beb186108e1f70e0f3"
     },
     {
       "action": "M",
@@ -511,8 +511,8 @@
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "2c010f1c66e10925f06537c71bf95e11c7aa0efd",
-      "sha256": "bd644d2939a6997e6efb83d2f4afc2604570ce6362de3ff1783fee2696398ae2"
+      "blob": "aad811ec2c14fcc94cac02e0566828976911d6f9",
+      "sha256": "3ea346883bcb1a112925583bb522010b203309ad5d65eb1c566193eab9ebccea"
     },
     {
       "action": "A",
