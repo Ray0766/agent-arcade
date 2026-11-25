@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "b142fbcfcb3ded194e377e9d5df045bf28217374",
-  "worldTree": "7efcfe6e9625382bc7d425e2d55bce0dc57aca31",
-  "patchSHA256": "cab6a1e837bb3e83b09fc757166bda25defbaab0634475b73b01bca32816d2b0",
+  "worldRevision": "47027b1391f7d6fb8715e1c42ba534360ca235df",
+  "worldTree": "c9e2e4f60ab7dc897c8b9d94680b45e14ef078cb",
+  "patchSHA256": "7f32c0baab40e23d3cc6b1431e62605eaa1b64bab10cd0dc2d780273870f0357",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -469,8 +469,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "43c49f4f6240c629ac3121c8be11a09985a0cefe",
-      "sha256": "8b6b98b3e63fb191e13f04f486716a046f1bc4e5ee816666ed0df6692459866c"
+      "blob": "5dcdf39daec61d202d54e3faf969f4c5edf004e2",
+      "sha256": "057e890f79aeee4619ce4dd6265cbc1b87f2946d72c569bc444026c447059205"
     },
     {
       "action": "A",
@@ -565,20 +565,26 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "6d0daf8a6f5ec86da36db08a3e1a6eb6735e7f07",
-      "sha256": "7c89275bfc106ebfa049f27052955fdd163086bcec8618ca770c01b15f2a2f64"
+      "blob": "59a0f792f12b8f67af3f691327461ff476ec5ec0",
+      "sha256": "6a385161004f07420cc71bca13779ec88c8ec1c00f5cb9b1d95f2c5ff7138aaa"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "802e6461d7081fe858b18fa096a626be7873548a",
-      "sha256": "70cf11571d7148100ceac7a72fad0768015563b3dc66ae626ac1a147f54812fa"
+      "blob": "a514be9cea97d79de6c5de37fab48edb8f5f1bd0",
+      "sha256": "a42f3a69cb3b26d824a558125982032acfd6b131656b7e4b8f1f3a43d22bf095"
     },
     {
       "action": "A",
       "path": "src/client/nature-art.ts",
       "blob": "cafc0f18826c98d5debf73fb5ff14c6c1b00042b",
       "sha256": "9ef6d4f912fc91c7814e5bbb6bf6e1695638540b40f70a1472e5a87b046a7739"
+    },
+    {
+      "action": "M",
+      "path": "src/client/photo-mode.ts",
+      "blob": "74c03ac5d937fdb3e624f822aa489ab14c771231",
+      "sha256": "7f24e5288902fff68b45afa1c1c1aa0250440efea1794b26100ea8be148254f4"
     },
     {
       "action": "M",
@@ -685,8 +691,8 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "58b6e2dd06cac1b90dade278015ed85104190cad",
-      "sha256": "38a3a413b89ce8f251a2d4b2d1377a860f6fb9b90429750eb3314e5a5f13a4c0"
+      "blob": "b315c5a927de65d1a9c2ed2eff72974c3f74788f",
+      "sha256": "d58229916f1bb243d7e501f67e1cab784e3266d99d687195e8cf95f38752192c"
     },
     {
       "action": "A",
