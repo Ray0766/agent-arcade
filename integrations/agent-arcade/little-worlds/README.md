@@ -17,6 +17,10 @@ python install.py .\LittleWorlds --run
 
 After landing on your own planet, choose **Menu → Place a courtyard flower pot**. Pick an open spot and choose **Place object** to save it. Friends who can visit will see it outdoors.
 
+拜访有公共院落的好友星球时，在室外打开「向导 → 返回公共院落」，点「关闭并行走」，沿地面箭头走到院落。抵达后箭头会自动收起。
+
+On a friend's planet with a public courtyard, choose **Guide → Return to the courtyard**, then **Close and walk**. Follow the ground arrows until you reach the courtyard.
+
 ## 自定义居民的三维造型
 
 从 Agent Arcade 打开小星球，着陆自己的星球，连接「我的 AI」，再打开游戏菜单里的「居民三维造型」。给某位已同步居民选择造型并保存。固定造型留在这个星球存档里，更换头像后仍然保留。恢复「自动」会沿用居民原有的头像预设或默认造型。头像继续按原有分享许可显示。

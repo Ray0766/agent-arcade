@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "68a74193354b1adf9854cf80f307f426603079a8",
-  "worldTree": "7a4b4b60374691733cb70b2bb90e12ca1a03abac",
-  "patchSHA256": "e7aa8a8571b613bb72e1307c5b3581ec5d937cab3e043d9d7a91f3f98e392b73",
+  "worldRevision": "e204a24609fc7ec299f52d08649a557034591fda",
+  "worldTree": "4c3f2918a96b73906733d697252a9d0ba785a7ee",
+  "patchSHA256": "92de060025224c739ce87aa9bd9613ba50797acc1597f07dca031095a8dbcefc",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -133,8 +133,8 @@
     {
       "action": "M",
       "path": "spec/guide-interaction.test.ts",
-      "blob": "c846ef9b2e15b65dd66c59f0a7087c98595b0172",
-      "sha256": "52f735508d3e800f895c337ddfad34a74bf5f9982f5bf68f0c60419de5223ecd"
+      "blob": "5a1ab80110057c5e3b66efbb95bf041d28b58f4b",
+      "sha256": "cba565742ba18154e24b047dc7d21ba5c5ca6f79b7219294d7b2d553c50b0cf7"
     },
     {
       "action": "M",
@@ -159,6 +159,12 @@
       "path": "spec/town-residents.test.ts",
       "blob": "3c232d4e5a7bcc79aa6e56450e9f0d195ddf10ed",
       "sha256": "3dc3d8d96daf6f2e946c17a5d1bf8f5d876a1cbddb81dda1beec4f1ee1f156cb"
+    },
+    {
+      "action": "M",
+      "path": "spec/tutorial-navigation.test.ts",
+      "blob": "a7d4fbe55c76100d46625d59ccb3e9ea985b2987",
+      "sha256": "8b5c0e2774f45173fb52ba6d2bf66f0dff2718ec007ea26acd4773207f75e8ba"
     },
     {
       "action": "M",
@@ -601,8 +607,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "1cc0782009230650b88263a8406b1380f04ad5a9",
-      "sha256": "a6a8fb92b8ff4f0c56889815dc065eec39637359cdc74d5778b718bc1f87b065"
+      "blob": "2812e492c269da3b1dd4fa3a5bea969c3f385f55",
+      "sha256": "1b4233c364598bd79a49e2e1cb9bf285cb83cc657a1a2b8435d73422b620c22d"
     },
     {
       "action": "A",
@@ -669,6 +675,18 @@
       "path": "src/shared/town-resident-motion.ts",
       "blob": "94b75240f14c96ad09b58f5c04055881778d43bc",
       "sha256": "d702115cb78021066989595d584af64af901fc8ddd76d5d10bc954a074e9855b"
+    },
+    {
+      "action": "M",
+      "path": "src/shared/tutorial-navigation.ts",
+      "blob": "9b819f76e3b405fba91b96a5bcad156817531842",
+      "sha256": "80257f94dcfcc31fbaeb26d2a6ecc55c8c20fc6d517ecd789fc78fe968c2664f"
+    },
+    {
+      "action": "M",
+      "path": "src/shared/world-guide.ts",
+      "blob": "8263a829b4694ae05b8b53b2bc1e9217e9501bc9",
+      "sha256": "f80fcf2ea36fe034bf7d3f11bd6dfcef3d4140064bcc840b550e5818431c3d47"
     },
     {
       "action": "A",
