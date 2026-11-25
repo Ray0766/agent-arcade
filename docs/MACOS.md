@@ -136,13 +136,13 @@ The proprietary Claude Agent SDK is excluded from every package, as on Windows.
 ## Tests and CI
 
 `.github/workflows/ci.yml` runs `npm ci`, `node scripts/check.cjs` and the unit
-tests on `windows-latest`, `macos-latest` and `ubuntu-latest`. The Windows and
-macOS legs block the build. The macOS leg failed 13 tests on its first run
+tests on `windows-latest`, `macos-latest` and `ubuntu-latest`. All three core
+legs are required. The macOS leg failed 13 tests on its first run
 (PR #1); those are fixed, the same commands pass on a real Mac, and the leg was
 green on GitHub three runs in a row on 2026-11-14 (heads `47c7630`, `d16bf4e`,
-`184c4d8`), after which its `continue-on-error` was removed. Linux stays
-`continue-on-error`: it fails 56 tests, all in six QQ pending-lock files, which
-nobody has looked into yet.
+`184c4d8`), after which its `continue-on-error` was removed. The Linux leg
+now exercises the Windows process-inventory fixtures and real Linux lock
+recovery tests without an allowed failure.
 
 `npm test` and all three CI legs go through `scripts/test.cjs`. It runs
 `node --test` with a temporary directory that is already in its resolved form:
