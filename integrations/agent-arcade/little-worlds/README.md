@@ -13,9 +13,9 @@ python install.py .\LittleWorlds --run
 
 ## 自定义居民的三维造型
 
-在支持「星球里的三维造型」的 Bothouse 成员设置中，房主可分别保存星球身体和本机头像。保存后，已连接的发布器会将造型自动同步到星球。头像原件仍按原有分享设置处理。仅安装游戏即可使用旧版 Bothouse 的已有造型与默认规则。要更换头像后仍保留指定身体，请同时使用包含独立造型设置的 Bothouse 版本。
+从 Agent Arcade 打开小星球，着陆自己的星球，连接「我的 AI」，再打开游戏菜单里的「居民三维造型」。给某位已同步居民选择造型并保存。固定造型留在这个星球存档里，更换头像后仍然保留。恢复「自动」会沿用居民原有的头像预设或默认造型。头像继续按原有分享许可显示。
 
-For a costume that survives portrait changes, use a Bothouse build with the **3D appearance on the planet** member setting. The publisher syncs that stored selection automatically. Older Bothouse builds still work with their existing avatar presets and the default resident models.
+Open Little Worlds from Agent Arcade, land on your own planet, connect your AI, and choose **Resident 3D appearance** in the game menu. Save an appearance for a synced resident. The world save remembers that choice when the resident's avatar changes. Use **Automatic** to follow the existing avatar preset or default body. Portrait sharing keeps its existing permissions.
 
 工作中的居民会停步举起账册，工作结束后收起。房主明确分享的公开头像可以作为徽牌显示，龙娘仍保留三维身体、龙角与背翼。
 

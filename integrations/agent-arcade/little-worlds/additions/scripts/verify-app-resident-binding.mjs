@@ -45,3 +45,43 @@ test('keeps an independently paired source and refuses an old App publisher afte
   }finally{store.close();}
 });
 
+test('stores bodies by planet, Friends identity and native role number',()=>{
+  const store=openStore(':memory:');
+  try{
+    store.create('owner',0);store.create('visitor',0);
+    const planet=store.universe('owner').planets.find(p=>p.kind==='garden').id;
+    store.claim('owner',planet);
+    store.db.prepare('UPDATE players SET planet_id=?').run(planet);
+    const sources=withResidentArt(store.db,planetResidents(store.db));
+    const manage=appResidents(store.db,sources);
+    const connect=account=>manage.change('owner',{action:'connect',account,socialOrigin:'https://friends.example'});
+    const [one,two]=['first','second'].map(project=>({
+      project,source:'bridge',displayName:'Same name',appearanceKey:'orange',activity:'idle'
+    }));
+    const feed=(slot,rows)=>sources.publish(slot.token,{instance:'1'.repeat(64),residents:rows});
+    const read=()=>manage.withBodies(planet,manage.read('visitor',planet)).residents;
+    const slot=connect('friend_a');feed(slot,[one,two]);
+    const [a,b]=read().map(r=>r.id);
+    const pick=(sourceId,residentId,body)=>({action:'set-body',sourceId,residentId,body});
+    assert.deepEqual(read().map(r=>r.appearanceKey),['orange','orange']);
+    assert.throws(()=>manage.change('visitor',pick(slot.sourceId,a,'whale')),e=>e.status===403);
+    assert.throws(()=>manage.change('owner',pick(slot.sourceId,a,'custom')),e=>e.status===400);
+    manage.change('owner',pick(slot.sourceId,a,'whale'));
+    manage.change('owner',pick(slot.sourceId,b,'lanxi'));
+    feed(slot,[{...one,appearanceKey:'default'},two]);
+    assert.deepEqual(read().map(r=>r.appearanceKey),['whale','lanxi']);
+    assert.deepEqual(manage.status('owner').bodyResidents.map(r=>r.body),['whale','lanxi']);
+    feed(slot,[two]);
+    assert.throws(()=>manage.change('owner',pick(slot.sourceId,a,'dragon')),e=>e.status===409);
+    manage.change('owner',{action:'disconnect',sourceId:slot.sourceId});
+    const other=connect('friend_b');feed(other,[one,two]);
+    assert.deepEqual(read().map(r=>r.appearanceKey),['orange','orange']);
+    assert.throws(()=>manage.change('owner',pick(slot.sourceId,b,'dragon')),e=>e.status===409);
+    manage.change('owner',{action:'disconnect',sourceId:other.sourceId});
+    const returned=connect('friend_a');feed(returned,[one,two]);
+    assert.deepEqual(read().map(r=>r.appearanceKey),['whale','lanxi']);
+    manage.change('owner',pick(returned.sourceId,a,'auto'));
+    assert.deepEqual(read().map(r=>r.appearanceKey),['orange','lanxi']);
+  }finally{store.close();}
+});
+

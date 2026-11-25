@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "ed709673ad4177097fb2560b7442dfd2073c4ef8",
-  "worldTree": "9d1c92395db91b44766ad82f50ec360361e6133c",
-  "patchSHA256": "e617d2a69875ea9433dbebef4453c799e0dc7d3f0bd5d1d2ad98bd9f730568fb",
+  "worldRevision": "291400a05c0efa1f14ab80e4133e3db39d70c34f",
+  "worldTree": "ceaa3f85718914bdde743d69006f0a002136e0c7",
+  "patchSHA256": "cefeda65ec2a6dad169eb899e8818394e3b4c43e0db8ce381ca9f2fe44be3a91",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -97,8 +97,8 @@
     {
       "action": "A",
       "path": "scripts/verify-app-resident-binding.mjs",
-      "blob": "92cff283ec0d47fbe4ae8fda992314d8dc0317f7",
-      "sha256": "eecb62e1b219ee385ea907fff52a0fbba7785d6c662ea2e8731df0414269eaa7"
+      "blob": "0c62469aaec58618745c3e05ae9e76b955ed94f9",
+      "sha256": "722916ea944e51b5b6bef442715474b1c06a21d38f1c5115a946c4fda1356aae"
     },
     {
       "action": "A",
@@ -439,8 +439,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "a67fef180a6bd0f0ac1507caf679e974dcb4e44e",
-      "sha256": "912ff75c2c9dc3f1416c1103f53d8b310baa4d357be03445e93b159c6ca33381"
+      "blob": "588ff032a1e16efa65e48d5b963a6db5d8d804e4",
+      "sha256": "d6595668e11ae927f5b47f5cd281870f8f3564ee45f13355576817d513d163ac"
     },
     {
       "action": "A",
@@ -527,6 +527,18 @@
       "sha256": "e9435451f5795454f4e883d7696145a770876a91b4dab6bc3a18b5d3a2db352e"
     },
     {
+      "action": "A",
+      "path": "src/client/resident-body-settings.css",
+      "blob": "e307596adfbe985c7c299c7495783ebb2787d055",
+      "sha256": "f2b3292cb2d3f10f93e1d85c794afad6c97a9d73ff1080ea7ab286862d88da32"
+    },
+    {
+      "action": "A",
+      "path": "src/client/resident-body-settings.ts",
+      "blob": "15675019184928273fcf6da4cc6c027879e488bc",
+      "sha256": "653bff7ba01af0603137697125ad05905c8c5a3fa5e394a16c2a7e262fe746cd"
+    },
+    {
       "action": "M",
       "path": "src/client/ship-model.ts",
       "blob": "1f5185dbd58aaec5f078894547de43f4264ed156",
@@ -595,8 +607,8 @@
     {
       "action": "A",
       "path": "src/server/app-residents.ts",
-      "blob": "8d4f37d69c9305c71d111d3468bd4c5f10c11443",
-      "sha256": "c7d69f0a0440a5078dd74f71a9edbe1636013606037506becd083e026d5db631"
+      "blob": "da3115fcd52c6cb413c300535fcf17394c3a6ed8",
+      "sha256": "b1a476de82147ba109f79ad1ed683165c86b9620b572e2bb8086609ae96519ce"
     },
     {
       "action": "A",
@@ -613,8 +625,8 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "30d045c4d67d7fb9675a0123e8f41e9bd526f053",
-      "sha256": "407829db4e23010dd3758e43e9c032edb5d50079ef8461a0fc12c7322ebe97bd"
+      "blob": "58b6e2dd06cac1b90dade278015ed85104190cad",
+      "sha256": "38a3a413b89ce8f251a2d4b2d1377a860f6fb9b90429750eb3314e5a5f13a4c0"
     },
     {
       "action": "A",

@@ -1050,7 +1050,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..1cc0782009230650b88263a8406b1380
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..30d045c4d67d7fb9675a0123e8f41e9bd526f053 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..58b6e2dd06cac1b90dade278015ed85104190cad 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
 @@ -3,3 +3,3 @@ import { createHash, randomBytes } from 'node:crypto';
@@ -1158,7 +1158,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..30d045c4d67d7fb9675a0123e8f41e9b
 +        if(!id||!store.has(id))throw new RequestError(401,'Open your world first.');
 +        if(req.method==='GET'&&!residentRoute[2]){
 +          const planet=residentRoute[1],access=await residentVisitAccess(planet);
-+          send(200,access==='allowed'?residents.read(id,planet):
++          send(200,access==='allowed'?appResidentLinks.withBodies(planet,residents.read(id,planet)):
 +            access==='reopen'?{residents:[],visitReopen:true}:{residents:[],visitClosed:true});return;
 +        }
 +      }

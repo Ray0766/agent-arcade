@@ -6,6 +6,7 @@ import type { Vec3 } from '../shared/world.ts';
 import type { PlanetResident } from '../shared/planet-residents.ts';
 import { residentPortrait } from '../shared/resident-portrait.ts';
 import { createBothouseResidentModel } from './bothouse-resident-model.ts';
+import { ResidentBodySettings } from './resident-body-settings.ts';
 import { landingSites, residentWalkEnd } from './bothouse-resident-sites.ts';
 
 type Resident = PlanetResident & Parameters<typeof residentPortrait>[1];
@@ -141,6 +142,7 @@ export class BothouseResidents {
   private figures=new Map<string,ResidentFigure>();
   private summary=document.createElement('p');
   private settings=document.createElement('a');
+  private bodySettings:ResidentBodySettings;
   private closure=document.createElement('aside');
   private closureText=document.createElement('p');
   private back=document.createElement('a');
@@ -155,12 +157,15 @@ export class BothouseResidents {
     this.closure.append(this.closureText,this.back);
     document.querySelector('.minimal-bar')!.after(this.closure);
     this.settings.href='/resident-settings';this.settings.className='quiet';this.settings.hidden=true;
-    document.querySelector('#planet-card .planet-actions')!.append(this.settings);
+    const actions=document.querySelector('#planet-card .planet-actions')!;
+    actions.append(this.settings);
+    this.bodySettings=new ResidentBodySettings(actions);
   }
   frame(world:GroundWorld|null,planet:string|null,epoch:number,now:number,owner:boolean) {
     this.settings.hidden=!owner;
     const settingsText=zh()?'连接星球搭档':'Connect planet companions';
     if(owner&&this.settings.textContent!==settingsText)this.settings.textContent=settingsText;
+    this.bodySettings.update(owner?planet:null);
     if(!this.closure.hidden){
       const welcome=document.querySelector('#welcome-panel[open] .welcome-card');
       const host=document.querySelector('.scene-loading-overlay[open]')??welcome??document.body;
