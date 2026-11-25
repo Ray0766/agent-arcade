@@ -92,16 +92,21 @@ index 3485d1df00959a9d8f731596e3f84908297e6b66..41ef56f0edf09482e5f805005d64c4e2
 +<div id="travel-guidance"></div>
  <div id="boarding-prompt" class="boarding-prompt" hidden><small id="dock-context">STARPORT / BOARDING GATE</small><button id="board-ship" class="primary">Board your ship <kbd>E</kbd></button></div><div id="notice" class="notice" role="status" hidden></div>
 diff --git a/spec/guide-interaction.test.ts b/spec/guide-interaction.test.ts
-index b730d3d2aa8fcf30938fb85d0e57464b68942005..c846ef9b2e15b65dd66c59f0a7087c98595b0172 100644
+index b730d3d2aa8fcf30938fb85d0e57464b68942005..5a1ab80110057c5e3b66efbb95bf041d28b58f4b 100644
 --- a/spec/guide-interaction.test.ts
 +++ b/spec/guide-interaction.test.ts
-@@ -51 +51,13 @@ it('shows a stationary scene companion, replaces/clears routes and closes on tra
+@@ -28,3 +28,3 @@ it('uses only explicit fixed knowledge and a truthful unknown fallback in both l
+ it('shows a stationary scene companion, replaces/clears routes and closes on transitions',()=>{
+- document.body.innerHTML='<div class="minimal-bar"></div><button id="help"></button><div id="world"><canvas tabindex="0"></canvas></div>';vi.stubGlobal('innerWidth',390);vi.stubGlobal('innerHeight',844);
++ document.body.innerHTML='<div class="minimal-bar"></div><div id="travel-guidance"></div><button id="help"></button><div id="world"><canvas tabindex="0"></canvas></div>';vi.stubGlobal('innerWidth',390);vi.stubGlobal('innerHeight',844);
+  const scene=new Scene(),camera=new OrthographicCamera(-5,5,5,-5,.1,100);camera.position.set(0,3,5);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+@@ -51 +51,55 @@ it('shows a stationary scene companion, replaces/clears routes and closes on tra
  });
 +
 +it.each(['?appChat=bothouse','?appLang=zh'])('keeps fixed guidance and omits the course-chat panel on desktop (%s)',search=>{
 + vi.stubGlobal('location',{search});
 + const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
-+ document.body.innerHTML='<div class="minimal-bar"></div><button id="help"></button>';
++ document.body.innerHTML='<div class="minimal-bar"></div><div id="travel-guidance"></div><button id="help"></button>';
 + createWorldGuide(new Scene(),vi.fn());
 + expect(document.getElementById('world-guide-chat')).toBeNull();
 + expect(document.getElementById('world-guide-help-title')!.textContent).toBe('Fixed help & ground directions');
@@ -109,7 +114,48 @@ index b730d3d2aa8fcf30938fb85d0e57464b68942005..c846ef9b2e15b65dd66c59f0a7087c98
 + else expect(document.getElementById('world-guide-chat-open')).toBeNull();
 + expect(fetch).not.toHaveBeenCalled();
 +});
-\ No newline at end of file
++it('offers the public courtyard only during the matching outdoor visit and clears routes between visits', () => {
++  vi.stubGlobal('location', { search: '?appLang=en&visit=friend' });
++  document.body.innerHTML='<div class="minimal-bar"></div><div id="travel-guidance"></div><aside id="friend-visit-closure" hidden></aside>';
++  const square = { id:'square', kind:'structure', blueprintHash:'planted', position:[0,1,0], rotation:0, radius:2 };
++  const planet = { id:'friend', kind:'garden', radius:14, objects:[square], mine:false,
++    blueprints:{ planted:[{part:'street.paving'}, {part:'garden.bed'}] },
++    homeManifest:{ homeBuildingId:'private-cottage', objects:[square], routes:[{id:'orchard',width:1,points:[[0,0,1],square.position]}] } };
++  const universe = { currentPlanet:planet, player:{flight:{mode:'ground'}, location:{kind:'exterior', visitEpoch:1}} } as unknown as Universe;
++  const scene = new Scene();
++  const guide = createWorldGuide(scene, vi.fn());
++  const frame = { universe, position:portPoint('friend'), world:{baseRadius:14} as GroundWorld, enabled:true, visible:true,
++    time:1, reducedMotion:true, scene, camera:new OrthographicCamera(), feet:new Vector3(), up:new Vector3(0,1,0),
++    forward:new Vector3(0,0,1), roomKey:'friend', indoor:false, online:true, stand:(p:Vector3)=>p };
++  const button = () => document.querySelector<HTMLButtonElement>('[data-topic="courtyard"]');
++  guide.frame(frame);
++  document.getElementById('world-guide-open')!.click();
++  expect(button()!.textContent).toBe('Return to the courtyard');
++  button()!.click();
++  expect(guide.frame(frame).routeVisible).toBe(true);
++  universe.player.location!.visitEpoch++;
++  expect(guide.frame(frame).selected).toBeNull();
++  button()!.click();
++  const other = {...universe, currentPlanet:{...universe.currentPlanet,id:'elsewhere'}};
++  expect(guide.frame({...frame,universe:other}).routeVisible).toBe(false);
++  expect(button()).toBeNull();
++  expect(guide.frame(frame).selected).toBeNull();
++  button()!.click();
++  expect(guide.frame({...frame,indoor:true}).selected).toBeNull();
++  expect(button()).toBeNull();
++  guide.frame(frame);
++  button()!.click();
++  document.getElementById('friend-visit-closure')!.hidden=false;
++  expect(guide.frame(frame).routeVisible).toBe(false);
++  expect(button()).toBeNull();
++  document.getElementById('friend-visit-closure')!.hidden=true;
++  for (const currentPlanet of [{...planet,mine:true}, {...planet,objects:[]}, {...planet,homeManifest:undefined},
++    {...planet,objects:[{...square,position:[1,0,0]}]}]) {
++    guide.frame({...frame,universe:{...universe,currentPlanet} as unknown as Universe});
++    expect(button()).toBeNull();
++  }
++  expect(document.querySelector('[data-topic="visit"]')).not.toBeNull();
++});
 diff --git a/spec/multiplayer-sync.test.ts b/spec/multiplayer-sync.test.ts
 index 9d5be1fc64008293f78343a54bf166e39b88f224..fd8efa6865b7402a27b06514f66eb1caf37c9187 100644
 --- a/spec/multiplayer-sync.test.ts
@@ -322,18 +368,61 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..a614b875aadb91c3d2e23932784dfa2f
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..d8a52ee284d047a66651a2477aa56aed6ec474c1 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..822b3795ae1378485fa5df9ef08934a1e9825af2 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
-@@ -1 +1,2 @@
+@@ -1,2 +1,3 @@
 +import {addTownExterior} from './town-exterior.ts';
  import { localizedOption, setAttribute, setText, translate } from './i18n.ts';
-@@ -35,3 +36,3 @@ export interface ColonyBridge {
+ import { makePlacementPreview } from './placement-preview.ts';
+@@ -34,5 +35,5 @@ export interface ColonyBridge {
+   ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-@@ -226,3 +227,13 @@ export class Colony {
+   universe:(u:Universe)=>void; bearing:(id:string)=>void;
+@@ -66,5 +67,14 @@ export class Colony {
+       place:entry=>{this.localParts[entry.hash]=entry.blueprint.parts;this.setBuilding(true);this.draft={id:crypto.randomUUID(),kind:'structure',blueprintHash:entry.hash,...structureSize(entry.blueprint.parts),position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);bridge.notice('Tap an open spot, turn the structure, then Place object.');}});});
+     const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
+-    el('build-mode').after(workshopButton);
++    const addCourtyardFlower=document.createElement('button');
++    addCourtyardFlower.id='place-courtyard-flower';
++    addCourtyardFlower.hidden=true;
++    setText(addCourtyardFlower,'Place a courtyard flower pot');
++    el('build-mode').after(addCourtyardFlower,workshopButton);
++    addCourtyardFlower.onclick=()=>{
++      if(!this.canPlaceCourtyardFlower()||!this.syncing||this.busy||!this.discardPlacement())return;
++      this.setBuilding(true);
++      this.startPlacement('flowers');
++    };
+     workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
+     el<HTMLSelectElement>('region-select').onchange=()=>{this.cards='';this.starMap();};
+@@ -88,5 +98,5 @@ export class Colony {
+       const button=document.createElement('button');button.className='catalogue-item';button.dataset.kind=kind;setAttribute(button, 'aria-label', `Add ${CATALOGUE[kind].name.toLowerCase()}`);
+       const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
+-      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
++      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
+     }
+     bridge.canvas.addEventListener('pointerdown',e=>{
+@@ -117,4 +127,15 @@ export class Colony {
+     if(collapsed&&choices.contains(document.activeElement))toggle.focus();
+   }
++  private canPlaceCourtyardFlower(){
++    const world=this.universe;
++    return !!world?.currentPlanet.mine&&world.player.flight.mode==='ground'&&world.player.location?.kind!=='interior';
++  }
++  private startPlacement(kind:BuildKind){
++    this.clearDraft();
++    this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};
++    this.placing=true;
++    this.editor();
++    this.setKitCollapsed(innerWidth<=700);
++  }
+   private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
+   private hasDraft(){const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
+@@ -225,5 +246,15 @@ export class Colony {
+     if(this.pollBusy||this.busy||this.workshop?.opened)return;this.pollBusy=true;
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -348,13 +437,24 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..d8a52ee284d047a66651a2477aa56aed
 +      }
 +    }finally{this.pollBusy=false;}
    }
-@@ -277,3 +288,5 @@ export class Colony {
+   private async command(route:string,body:unknown){
+@@ -276,5 +307,7 @@ export class Colony {
+     const model=cameraCutaway?buildCameraBlueprintModel(visibleParts,worldMaterials(),'medium',{...options,identityParts:parts})
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
 +    const finish=buildStructureFinish(parts,worldMaterials(),{cameraPartSlots:slots});model.object.add(finish.object);
 +    addTownExterior(model.object,parts,worldMaterials(),slots);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
+     model.object.position.fromArray(transform.position);model.object.quaternion.fromArray(transform.quaternion);
+@@ -339,4 +372,7 @@ export class Colony {
+     el<HTMLButtonElement>('build-mode').hidden=!p.mine;setText(el('build-mode'), this.building?'Building…':'Build on my planet');
+     el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
++    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
++    courtyardFlower.hidden=!this.canPlaceCourtyardFlower();
++    courtyardFlower.disabled=this.busy||!this.syncing;
+     el<HTMLButtonElement>('open-workshop').hidden=!p.mine||u.player.flight.mode!=='ground';el<HTMLButtonElement>('open-workshop').disabled=this.busy||!this.syncing;
+     el('delivery-toggle').hidden=p.kind!=='hub';
 diff --git a/src/client/flight.css b/src/client/flight.css
 index e56a89e92190efaab22096861abb75c51ac8688a..044eb69124dbd394fcdf96bfbdd5145f969e5101 100644
 --- a/src/client/flight.css
@@ -612,18 +712,28 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d2eb072d159eb1ccd8ef4d5eb3fe554f
 +    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');bothouseResidents.animate(0,walker.up.toArray() as Vec3,photo,false);residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
    },notice,
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..2c010f1c66e10925f06537c71bf95e11c7aa0efd 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..aad811ec2c14fcc94cac02e0566828976911d6f9 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
-@@ -3,2 +3,4 @@
+@@ -2,4 +2,6 @@
+ // Saved names, IDs, resource snapshots and server payloads are not translated.
  export const messages: Record<string, string> = {
 +  'This friend’s planet is unavailable.': '暂时无法拜访这位好友的星球。',
 +  'You are on your friend’s planet.': '已到达好友的星球。',
    'Show kit': '展开建造工具',
-@@ -1235,2 +1237,3 @@ export const messages: Record<string, string> = {
+   'Hide kit': '收起建造工具',
+@@ -1032,4 +1034,5 @@ export const messages: Record<string, string> = {
+   "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
+   "Make this my planet": "认领这颗星球",
++  "Place a courtyard flower pot": "在院落放花盆",
+   "Build on my planet": "在我的星球建造",
+   "Mark my planet ↗": "标记我的星球 ↗",
+@@ -1234,4 +1237,5 @@ export const messages: Record<string, string> = {
+ // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
+   ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
 diff --git a/src/client/public-town-art.ts b/src/client/public-town-art.ts
 index e31b823b5a69a8875885e1cde20d0b3ecb36b77b..2c01445b7080b652b279186f4250be714ecedaf0 100644
 --- a/src/client/public-town-art.ts
@@ -950,16 +1060,34 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..ecb98897cb97a494611a31cdc641d69d
 +      }
        box(frame, ART_PALETTE.wood, 1.42, .43, .065, 0, 2.37, -.04);
 diff --git a/src/client/world-guide.ts b/src/client/world-guide.ts
-index f533e71cfc73d2be94e83498c99214dc9d9a3057..1cc0782009230650b88263a8406b1380f04ad5a9 100644
+index f533e71cfc73d2be94e83498c99214dc9d9a3057..2812e492c269da3b1dd4fa3a5bea969c3f385f55 100644
 --- a/src/client/world-guide.ts
 +++ b/src/client/world-guide.ts
-@@ -22,2 +22,5 @@ interface Frame {
+@@ -8,3 +8,3 @@ import {distance,type Vec3} from '../shared/world.ts';
+ import {BOARD_RADIUS,portPoint} from '../shared/ports.ts';
+-import { GUIDE_HELP, GUIDE_TOPICS, guideTarget } from '../shared/world-guide.ts';
++import { courtyardTarget, GUIDE_HELP, GUIDE_TOPICS, guideTarget } from '../shared/world-guide.ts';
+ import type { GuideTopic } from '../shared/world-guide.ts';
+@@ -15,2 +15,6 @@ import {createGuideConversation} from './guide-conversation.ts';
+ const names = { en: ['My planet', 'Place a module', 'Find ship', 'Return', 'People & saving'], zh: ['自己的星球', '放一个模块', '寻找飞船', '传送返回', '多人和保存'] };
++type Topic = GuideTopic | 'courtyard';
++const courtyardName = { en: 'Return to the courtyard', zh: '返回公共院落' };
++const courtyardHelp = { en: 'Close the guide and follow the arrows to the paved courtyard with a flower bed and a bench.', zh: '关闭向导，沿地面箭头走到有花床和长椅的石板院落。' };
++const topicName = (topic: Topic, lang: 'en' | 'zh') => topic === 'courtyard' ? courtyardName[lang] : names[lang][GUIDE_TOPICS.indexOf(topic)];
+ interface Frame {
+@@ -22,3 +26,10 @@ interface Frame {
  export function createWorldGuide(scene: T.Scene, release: () => void) {
+-  let current: Frame | null=null, topic:GuideTopic='home', selected:GuideTopic|null=null, routePlanet='', roomKey='', lastPaint='', talking=false;
 +  const entry = new URLSearchParams(location.search);
 +  const hostChat = entry.get('appChat') === 'bothouse';
 +  const embedded = hostChat || ['zh', 'en'].includes(entry.get('appLang') ?? '');
-   let current: Frame | null=null, topic:GuideTopic='home', selected:GuideTopic|null=null, routePlanet='', roomKey='', lastPaint='', talking=false;
-@@ -34,10 +37,17 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
++  const friendPlanet = entry.get('visit');
++  let checkedPlanet: Universe['currentPlanet'] | undefined;
++  let courtyard: ReturnType<typeof courtyardTarget> = null, routeVisitEpoch: number | undefined;
++  let canGuideToCourtyard = false;
++  let current: Frame | null=null, topic:Topic='home', selected:Topic|null=null, routePlanet='', roomKey='', lastPaint='', talking=false;
+   const actor=courier('fern');actor.root.name='world-guide';actor.root.visible=false;scene.add(actor.root);
+@@ -34,27 +45,52 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    chat.innerHTML='<header><h2 id="world-guide-chat-title"></h2><button id="world-guide-chat-close" type="button" aria-label="Close chat">×</button></header><details id="world-guide-disclosure"><summary id="world-guide-disclosure-title"></summary><p id="world-guide-ai-status"></p></details><p id="world-guide-ai-quota"></p><div id="world-guide-messages" role="log" aria-live="polite"><p id="world-guide-ai-answer"></p></div><p id="world-guide-ai-result" role="status"></p><form id="world-guide-form"><label for="world-guide-question" id="world-guide-question-label"></label><div class="world-guide-input"><textarea id="world-guide-question" maxlength="500" rows="2"></textarea><button id="world-guide-ask" type="submit"></button></div></form><footer><button id="world-guide-ai-stop" type="button" hidden></button><button id="world-guide-refresh" type="button"></button><button id="world-guide-local" type="button"></button></footer>';
 -  document.body.append(chat);
 -  const chatOpen=document.createElement('button');chatOpen.id='world-guide-chat-open';chatOpen.type='button';document.querySelector('.minimal-bar')?.append(chatOpen);
@@ -981,34 +1109,54 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..1cc0782009230650b88263a8406b1380
 +      document.querySelector<HTMLButtonElement>('.tutorial-skip')?.click();
 +    }
 +  }
-+  function select(value:GuideTopic){topic=value;selected=value==='save'?null:value;routePlanet=current?.universe.currentPlanet.id??'';route.root.visible=false;skipTutorialOutsideFriendVisit();paint();}
++  function select(value:Topic){
++    if (value === 'courtyard') {
++      if (!canGuideToCourtyard) return;
++      routeVisitEpoch = current?.universe.player.location?.visitEpoch;
++    }
++    topic = value;
++    selected = value === 'save' ? null : value;
++    routePlanet = current?.universe.currentPlanet.id ?? '';
++    route.root.visible = false;
++    skipTutorialOutsideFriendVisit();
++    paint();
++  }
++  function destination(value: Topic) {
++    if (value === 'courtyard') return canGuideToCourtyard ? courtyard : null;
++    return current && guideTarget(current.universe, value);
++  }
    function paint(){
-@@ -45,7 +55,9 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+-    const lang=language(),zh=lang==='zh',target=current&&guideTarget(current.universe,topic),available=!!target&&!!current?.enabled&&!current.indoor;
++    const lang=language(),zh=lang==='zh',target=destination(topic),available=!!target&&!!current?.enabled&&!current.indoor;
      const aboard=current?.universe.player.flight.mode==='space',nearShip=topic==='visit'&&!current?.indoor&&!!current&&distance(current.position,portPoint(current.universe.currentPlanet.id),current.world.baseRadius)<BOARD_RADIUS-.12;
 -    const key=[lang,topic,selected,available,aboard,nearShip,current?.indoor,current?.online,route.diagnostics.reason,actor.root.visible,talking,ai.revision].join('|');if(key===lastPaint)return;lastPaint=key;
 -    homeChat.textContent=chatOpen.textContent=zh?'聊天 · DeepSeek':'Chat · DeepSeek';el('chat-close').setAttribute('aria-label',zh?'收起聊天':'Close chat');
-+    const key=[lang,topic,selected,available,aboard,nearShip,current?.indoor,current?.online,route.diagnostics.reason,actor.root.visible,talking,ai?.revision].join('|');if(key===lastPaint)return;lastPaint=key;
++    const key=[lang,topic,selected,canGuideToCourtyard,available,aboard,nearShip,current?.indoor,current?.online,route.diagnostics.reason,actor.root.visible,talking,ai?.revision].join('|');if(key===lastPaint)return;lastPaint=key;
 +    homeChat.textContent=chatOpen.textContent=embedded?(zh?'AI 聊天':'AI chat'):(zh?'聊天 · DeepSeek':'Chat · DeepSeek');
 +    if(ai)el('chat-close').setAttribute('aria-label',zh?'收起聊天':'Close chat');
 +    el('help-title').textContent=zh?'固定玩法帮助与地面路线':'Fixed help & ground directions';
      open.textContent=aboard?(zh?'向导 · 已登船':'Guide · Aboard'):(zh?'向导 · 空格':'Guide · Space');open.title=aboard?(zh?'你已在飞船中，使用目的地与航程控制；落地后可使用地面向导。':'You are already aboard. Use the destination and trip controls; ground guidance resumes after landing.'):(zh?'空格打开向导，选择寻找飞船。':'Space opens the guide. Choose Find ship.');open.setAttribute('aria-label',zh?'小星球向导':'World guide');menuOpen.textContent=homeOpen.textContent=zh?'小星球向导':'World guide';
      el('title').textContent=zh?'芽芽 · 小星球向导':'Sprout · World guide';
 -    el('intro').textContent=actor.root.visible?(zh?'我在你身边。可在右侧聊天，或展开固定帮助查看地面路线。':'I am beside you. Chat on the right, or open fixed help for ground directions.'):(zh?'附近没有安全的站立空位，仍可在此聊天或查看固定帮助。':'There is no safe standing space nearby; chat and fixed help remain available here.');
+-    el('topics').replaceChildren(...GUIDE_TOPICS.map((value,i)=>{const b=document.createElement('button');b.type='button';b.textContent=names[lang][i];b.dataset.topic=value;b.setAttribute('aria-pressed',String(topic===value));b.onclick=()=>select(value);return b;}));
+-    el('answer').textContent=GUIDE_HELP[topic][lang];
 +    el('intro').textContent=embedded?(zh?'选择玩法帮助或查看地面路线。':'Choose a help topic or view ground directions.'):actor.root.visible?(zh?'我在你身边。可在右侧聊天，或展开固定帮助查看地面路线。':'I am beside you. Chat on the right, or open fixed help for ground directions.'):(zh?'附近没有安全的站立空位，仍可在此聊天或查看固定帮助。':'There is no safe standing space nearby; chat and fixed help remain available here.');
-     el('topics').replaceChildren(...GUIDE_TOPICS.map((value,i)=>{const b=document.createElement('button');b.type='button';b.textContent=names[lang][i];b.dataset.topic=value;b.setAttribute('aria-pressed',String(topic===value));b.onclick=()=>select(value);return b;}));
-@@ -53,3 +65,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
++    const topics: readonly Topic[] = canGuideToCourtyard ? ['courtyard', ...GUIDE_TOPICS] : GUIDE_TOPICS;
++    el('topics').replaceChildren(...topics.map(value=>{const b=document.createElement('button');b.type='button';b.textContent=topicName(value,lang);b.dataset.topic=value;b.setAttribute('aria-pressed',String(topic===value));b.onclick=()=>select(value);return b;}));
++    el('answer').textContent=topic==='courtyard'?courtyardHelp[lang]:GUIDE_HELP[topic][lang];
      el('availability').textContent=aboard?(zh?'你已在飞船中，请使用目的地与航程控制。':'You are already aboard; use the destination and trip controls.'):!current?.online?(zh?'当前离线。可以阅读本地帮助；重连后再继续路线。':'Offline. Local help is available; reconnect before continuing the route.'):current.indoor?(topic==='visit'?(zh?'第 1 步：关闭对话，从房门出去。第 2 步：室外地面箭头会继续指向飞船。':'Step 1: close this chat and leave through the room door. Step 2: ground arrows outside continue to your ship.'):(zh?'室内可交谈；请先出门，再显示室外目的地路线。':'You can talk indoors. Go outside before showing a route to an outdoor destination.')):nearShip?(zh?'飞船就在这里。关闭对话，按 E 或点击“登上飞船”，再选择目的地。':'Your ship is here. Close this chat, press E or choose Board your ship, then pick a destination.'):!available?(zh?'这里没有可用的步行目的地；请使用固定帮助。':'There is no walking destination here; use the fixed help.'):selected?(route.diagnostics.connected?(zh?'地面箭头已显示。向导不会领路；请自己沿路线行走。':'Ground arrows are shown. Sprout stays here; walk the route yourself.'):(zh?'正在确认安全路线。若无法连通，请回到附近石板路再试。':'Checking a safe route. If no route connects, return to the nearby stone path and try again.')):(zh?'点一个目的地，显示地面导航。':'Choose a destination to show ground directions.');
 -    ai.paint();
 +    ai?.paint();
      el('walk').textContent=zh?'关闭并行走':'Close and walk';el('details').textContent=zh?'与向导交谈':'Talk to guide';el('stop').textContent=zh?'清除路线':'Clear route';el('close').setAttribute('aria-label',zh?'关闭向导':'Close guide');
-@@ -57,4 +69,4 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+-    el('status').textContent=selected?(names[lang][GUIDE_TOPICS.indexOf(selected)]+' · '+(current?.indoor?(zh?'出门后继续':'Continue outside'):!current?.online?(zh?'等待重连':'Waiting for connection'):selected==='visit'&&nearShip?(zh?'可登船':'Ready to board'):route.diagnostics.reason==='arrived'?(zh?'已到达':'Arrived'):route.diagnostics.connected?(zh?'沿地面箭头行走':'Follow the ground arrows'):route.diagnostics.reason==='checking'?(zh?'检查路线中':'Checking route'):(zh?'没有已确认的安全路线':'No confirmed safe route'))):'';
++    el('status').textContent=selected?(topicName(selected,lang)+' · '+(current?.indoor?(zh?'出门后继续':'Continue outside'):!current?.online?(zh?'等待重连':'Waiting for connection'):selected==='visit'&&nearShip?(zh?'可登船':'Ready to board'):route.diagnostics.reason==='arrived'?(zh?'已到达':'Arrived'):route.diagnostics.connected?(zh?'沿地面箭头行走':'Follow the ground arrows'):route.diagnostics.reason==='checking'?(zh?'检查路线中':'Checking route'):(zh?'没有已确认的安全路线':'No confirmed safe route'))):'';
    }
 -  function show(panel:'help'|'chat'|'both'='both'){
 -    if(!current?.visible)return;release();document.querySelector<HTMLDialogElement>('#menu-dialog')?.close();document.querySelector<HTMLButtonElement>('.tutorial-skip')?.click();
 +  function show(panel:'help'|'chat'|'both'=embedded?'help':'both'){
 +    if(!current?.visible)return;release();document.querySelector<HTMLDialogElement>('#menu-dialog')?.close();skipTutorialOutsideFriendVisit();
      const p=nearbyGuidePoint(current.feet,current.up,current.forward,current.stand);talking=true;document.body.classList.add('world-guide-talking');if(panel!=='chat')bubble.hidden=false;if(panel!=='help')chat.hidden=false;roomKey=current.roomKey;
-@@ -62,8 +74,14 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -62,8 +98,14 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      if(p){actor.root.position.copy(p);const up=current.up.clone().normalize(),forward=current.feet.clone().sub(p).projectOnPlane(up).normalize(),right=new T.Vector3().crossVectors(up,forward).normalize();actor.root.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(right,up,forward));actor.greet(current.time);}
 -    lastPaint='';paint();if(panel!=='help')void ai.refresh();el(panel==='help'?'close':'question').focus({preventScroll:true});
 +    lastPaint='';paint();if(panel!=='help')void ai?.refresh();el(panel==='help'?'close':'question').focus({preventScroll:true});
@@ -1028,23 +1176,41 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..1cc0782009230650b88263a8406b1380
 -  el('local').addEventListener('click',()=>show('help'));
 -  el('chat-close').onclick=()=>{ai.cancel();chat.hidden=true;if(bubble.hidden)close(true);else el('close').focus();};
    el('close').onclick=()=>{bubble.hidden=true;if(chat.hidden)close(true);else el('question').focus();};
-@@ -71,3 +89,2 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -71,3 +113,2 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    el('stop').onclick=()=>{selected=null;route.root.visible=false;hud.hidden=true;paint();};
 -  el('form').onsubmit=event=>{event.preventDefault();void ai.ask();};
    let shortcutHeld=false;
-@@ -77,3 +94,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -77,3 +118,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      if(shortcutHeld&&(event.code==='Space'||event.key===' ')){event.preventDefault();event.stopImmediatePropagation();return;}
 -    if(guideShortcut(event)&&current?.visible&&!document.querySelector('dialog[open]')){shortcutHeld=true;event.preventDefault();event.stopImmediatePropagation();if(talking)close(true);else show('both');}
 +    if(guideShortcut(event)&&current?.visible&&!document.querySelector('dialog[open]')){shortcutHeld=true;event.preventDefault();event.stopImmediatePropagation();if(talking)close(true);else show();}
    },{capture:true});
-@@ -81,4 +98,4 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -81,8 +122,21 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    return {get active(){return selected!==null;},get talking(){return talking;},close,findShip(){if(!current?.visible)return;select('visit');show();el<HTMLDetailsElement>('help').open=true;},frame(input:Frame){
 -    ai.tick(!chat.hidden);current=input;chatOpen.disabled=!input.visible;open.disabled=menuOpen.disabled=!input.visible;homeOpen.hidden=!input.visible||!input.indoor||!input.universe.player.location||input.universe.player.location.kind!=='interior';
 -    homeChat.hidden=homeOpen.hidden;
 +    ai?.tick(!chat.hidden);current=input;chatOpen.disabled=!input.visible;open.disabled=menuOpen.disabled=!input.visible;homeOpen.hidden=!input.visible||!input.indoor||!input.universe.player.location||input.universe.player.location.kind!=='interior';
 +    homeChat.hidden=homeOpen.hidden||(embedded&&!hostChat);
      if(talking&&(!input.visible||input.roomKey!==roomKey||!!document.querySelector('dialog[open]')))close();
-@@ -93,3 +110,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+     if(selected&&routePlanet!==input.universe.currentPlanet.id){selected=null;route.root.visible=false;}
+-    const target=selected?guideTarget(input.universe,selected):null;
++    const { currentPlanet, player } = input.universe;
++    if (checkedPlanet !== currentPlanet) {
++      checkedPlanet = currentPlanet;
++      courtyard = currentPlanet.id === friendPlanet ? courtyardTarget(currentPlanet) : null;
++    }
++    canGuideToCourtyard = !!courtyard && !input.indoor && player.location?.kind !== 'interior' && player.flight.mode === 'ground'
++      && !document.querySelector('#friend-visit-closure:not([hidden])');
++    if (selected === 'courtyard' && (!canGuideToCourtyard || routeVisitEpoch !== player.location?.visitEpoch)) selected = null;
++    if (topic === 'courtyard' && !canGuideToCourtyard) topic = 'home';
++    const target=selected?destination(selected):null;
+     route.frame({position:input.position,target,planetId:input.universe.currentPlanet.id,radius:input.world.baseRadius,visible:!!selected&&input.visible&&!input.indoor,paused:!input.enabled,time:input.time,reducedMotion:input.reducedMotion,homeRoutes:input.universe.currentPlanet.homeManifest?.routes,routeRevision:input.universe.currentPlanet.revision,stationApproaches:tutorialStationApproaches(input.universe.currentPlanet),canConnect:(a,b)=>canWalkTutorialConnector(input.world,a,b)});
++    if (selected === 'courtyard' && route.root.visible && route.diagnostics.reason === 'arrived') {
++      selected = null;
++      route.root.visible = false;
++    }
+     hud.hidden=!selected||!input.visible||talking;
+@@ -93,3 +147,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      }
 -    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,aiEnabled:ai.enabled,actorVisible:actor.root.visible};
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
@@ -1257,3 +1423,117 @@ index 30b342267729476ac36ece59318dd512aa98f329..94b75240f14c96ad09b58f5c04055881
 -  constructor(world: GroundWorld, definition: TownResidentDefinition) {
 +  constructor(world: GroundWorld, definition: D) {
      this.world = world; this.definition = definition;
+diff --git a/spec/tutorial-navigation.test.ts b/spec/tutorial-navigation.test.ts
+index 69e48150b5a650e1689245e91a516161b7282712..a7d4fbe55c76100d46625d59ccb3e9ea985b2987 100644
+--- a/spec/tutorial-navigation.test.ts
++++ b/spec/tutorial-navigation.test.ts
+@@ -145 +145,31 @@ it('never draws an unproved local ship shortcut even when the home manifest exis
+ });
++
++it('follows the shared lane to the courtyard and withholds arrows if its final approach is blocked', () => {
++  const radius = 21.6, manifest = generateHomeManifest(radius, 0), scene = homeManifestScene(manifest);
++  const pavilion = manifest.routes.find(route => route.id === 'infrastructure-2')!;
++  const courtyard = manifest.routes.find(route => route.id === 'infrastructure-3')!;
++  const planet = { ...scene, id:'friend', radius, revision:1, environment:manifest.environment };
++  const target = { kind:'courtyard' as const, position:courtyard.points.at(-1)!, planetId:planet.id, routeId:courtyard.id };
++  const start = pavilion.points.at(-2)!;
++  function plan(objects: typeof planet.objects) {
++    const world = new GroundWorld({ ...planet, objects }), proofs = new Map<string,boolean>();
++    const input = { position:start, target, radius, planetId:planet.id, homeRoutes:manifest.routes, clock:()=>0,
++      readProofCache:(a:Vec3,b:Vec3)=>proofs.get(a+'/'+b), canConnect(a:Vec3,b:Vec3) {
++        const pass = canWalkTutorialConnector(world,a,b);
++        proofs.set(a+'/'+b,pass);
++        return pass;
++      } };
++    for (let frame=0; frame<100; frame++) {
++      const path = routeToTutorialTarget(input);
++      if (path.reason !== 'checking') return path;
++    }
++    throw new Error('Courtyard route did not settle');
++  }
++  const path = plan(planet.objects);
++  expect(path.sourceRoutes).toEqual([pavilion.id,courtyard.id]);
++  expect(path.points.at(-1)).toEqual(target.position);
++  expect(path.points).not.toContainEqual(SPAWN);
++  const blocked = plan([...planet.objects,{id:'parked-cabin',kind:'cottage',position:target.position,rotation:0,version:1}]);
++  expect(blocked.connected).toBe(false);
++  expect(blocked.points).toEqual([]);
++});
+diff --git a/src/shared/tutorial-navigation.ts b/src/shared/tutorial-navigation.ts
+index 7b1ac05dd955d8f19f6023bb36130da81c6fb0f8..9b819f76e3b405fba91b96a5bcad156817531842 100644
+--- a/src/shared/tutorial-navigation.ts
++++ b/src/shared/tutorial-navigation.ts
+@@ -11,4 +11,6 @@ import { GATE } from './village-kit/geometry.ts';
+
+-export type TutorialDestination = 'mica' | 'sol' | 'gate' | 'home' | 'port';
+-export interface TutorialTarget { kind: TutorialDestination; position: Vec3; planetId: string }
++export type TutorialDestination = 'mica' | 'sol' | 'gate' | 'home' | 'port' | 'courtyard';
++export type TutorialTarget = { position: Vec3; planetId: string } & (
++  { kind: Exclude<TutorialDestination, 'courtyard'> } | { kind: 'courtyard'; routeId: string }
++);
+ export interface TutorialNavigationInput {
+@@ -98,2 +100,3 @@ function targetRoute(input: TutorialNavigationInput): HomeSurfaceRoute | null {
+   const routes = input.homeRoutes ?? [];
++  if (target.kind === 'courtyard') return routes.find(route => route.id === target.routeId) ?? null;
+   // Prefer the real home path. For the return gate, reverse that path toward
+@@ -152,3 +155,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+     // is still allowed when the exact current world proves it, never guessed.
+-    if (input.planetId !== 'hub' && !(input.homeRoutes?.length)) {
++    if (input.planetId !== 'hub' && input.target.kind !== 'courtyard' && !(input.homeRoutes?.length)) {
+       const direct = connectorPath(input.position, input.target.position, input);
+@@ -170,5 +173,14 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+     if (source.id === destination.id || arc(source.points[0], destination.points[0], input.radius) > .025) continue;
+-    appendCandidates({ ...source, points: [...source.points].reverse() }, destination.points.slice(1), [source.id, destination.id]);
++    let junction = 0;
++    if (input.target.kind === 'courtyard') {
++      // Neighbourhood lanes share more than the dock. Turn where the two branches split.
++      while (source.points[junction + 1] && destination.points[junction + 1]
++        && arc(source.points[junction + 1], destination.points[junction + 1], input.radius) < .025) junction++;
++    }
++    appendCandidates({ ...source, points: source.points.slice(junction).reverse() }, destination.points.slice(junction + 1), [source.id, destination.id]);
+   }
+   const nearby = candidates.sort((a, b) => a.distance - b.distance).filter(candidate => candidate.distance <= 8).slice(0, 12);
++  // The owner's placements can block any branch, including the one the visitor starts on.
++  const walkable = (points: Vec3[]) => input.target.kind !== 'courtyard'
++    || points.every((point, i) => !i || connector(points[i - 1], point, input));
+   // The nearest proven candidate is enough; do not replay every candidate
+@@ -178,2 +190,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+     const points = compact([input.position, ...candidate.points], input.radius);
++    if (!walkable(points)) continue;
+     return { ...result, points, sourceRoutes: candidate.ids, connected: true, reason: 'route' };
+@@ -184,3 +197,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+   const approach = connectorPath(input.position, destination.points[0], input);
+-  if (approach) return { ...result, points: compact([...approach, ...destination.points.slice(1)], input.radius), sourceRoutes: [destination.id], connected: true, reason: 'route' };
++  if (approach && walkable(destination.points)) return { ...result, points: compact([...approach, ...destination.points.slice(1)], input.radius), sourceRoutes: [destination.id], connected: true, reason: 'route' };
+   return deferred ? { ...result, reason: 'checking' } : result;
+diff --git a/src/shared/world-guide.ts b/src/shared/world-guide.ts
+index 2b433c5b22c99b234990f3ffbc8c32533f538d22..8263a829b4694ae05b8b53b2bc1e9217e9501bc9 100644
+--- a/src/shared/world-guide.ts
++++ b/src/shared/world-guide.ts
+@@ -1,2 +1,3 @@
+-import type { Universe } from './planets.ts';
++import type { PlanetView, Universe } from './planets.ts';
++import { distance } from './world.ts';
+ import { portPoint } from './ports.ts';
+@@ -14,2 +15,21 @@ export const GUIDE_HELP: Record<GuideTopic, { en: string; zh: string }> = {
+ };
++/** Older saves can lack a courtyard, and owners can move or remove its structure. */
++export function courtyardTarget(planet: PlanetView): TutorialTarget | null {
++  if (planet.mine || planet.kind !== 'garden' || !planet.homeManifest?.routes?.length || !planet.homeManifest.objects?.length) return null;
++  const { routes, homeBuildingId } = planet.homeManifest;
++  for (const object of planet.objects) {
++    if (object.kind !== 'structure' || object.id === homeBuildingId || !object.blueprintHash) continue;
++    const parts = planet.blueprints?.[object.blueprintHash];
++    if (!parts?.some(p => p.part === 'garden.bed') || !parts.some(p => p.part === 'street.paving')) continue;
++    const originalSquare = planet.homeManifest.objects.some(original => original.id === object.id
++      && original.blueprintHash === object.blueprintHash && original.rotation === object.rotation
++      && original.position.every((v, i) => v === object.position[i]));
++    if (!originalSquare) continue;
++    // The orchard square's saved lane ends on its public paving (at the edge in older layouts).
++    const route = routes.find(r => r.id !== 'home' && r.points.length >= 2
++      && distance(r.points.at(-1)!, object.position, planet.radius) <= (object.radius ?? 0));
++    if (route) return { kind: 'courtyard', routeId: route.id, position: route.points.at(-1)!, planetId: planet.id };
++  }
++  return null;
++}
+ export function guideTarget(universe: Universe, topic: GuideTopic): TutorialTarget | null {

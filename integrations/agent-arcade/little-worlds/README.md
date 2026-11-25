@@ -11,6 +11,16 @@ python install.py .\LittleWorlds --run
 
 关闭终端后，从仓库根重新进入 `integrations/agent-arcade/little-worlds`，运行 `python .\LittleWorlds\serve.py` 重开同一处存档。默认保存于安装目录的 .data/resident-preview/world.sqlite。请使用空目录首次安装；端口已占用可选 `--port 18749`，此时选择该回环地址，同一端口使用同一存档。已有 Bothouse 角色和模型配置由房主在 Bothouse 中管理。
 
+## 布置公共院落
+
+在自己的星球落地后，打开「菜单 → 在院落放花盆」，点击房前空地预览，再点「放置物件」保存。获准来访的好友能在室外看到保存的花盆。
+
+After landing on your own planet, choose **Menu → Place a courtyard flower pot**. Pick an open spot and choose **Place object** to save it. Friends who can visit will see it outdoors.
+
+拜访有公共院落的好友星球时，在室外打开「向导 → 返回公共院落」，点「关闭并行走」，沿地面箭头走到院落。抵达后箭头会自动收起。
+
+On a friend's planet with a public courtyard, choose **Guide → Return to the courtyard**, then **Close and walk**. Follow the ground arrows until you reach the courtyard.
+
 ## 自定义居民的三维造型
 
 从 Agent Arcade 打开小星球，着陆自己的星球，连接「我的 AI」，再打开游戏菜单里的「居民三维造型」。给某位已同步居民选择造型并保存。固定造型留在这个星球存档里，更换头像后仍然保留。恢复「自动」会沿用居民原有的头像预设或默认造型。头像继续按原有分享许可显示。
