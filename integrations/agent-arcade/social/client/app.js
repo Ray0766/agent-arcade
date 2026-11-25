@@ -2598,6 +2598,7 @@ function showStickerPicker() {
 // Based on bothouse role-household/rh/static/rh-history.js at 8ec73a8f (Apache-2.0).
 // Cursor search and latest-response wins are kept; the local service supplies a bounded context page.
 function highlightHistoryHit(element,text,query){
+  if(!query){element.textContent=text?text.slice(0,200).toWellFormed()+(text.length>200?'…':''):'附件或语音消息';return;}
   const fold=value=>value.replace(/[A-Z]/g,c=>c.toLowerCase()); // Match SQLite's case folding without changing offsets.
   const needle=fold(query),lower=fold(text);
   const first=lower.indexOf(needle), start=Math.max(0,first-40);
@@ -2639,10 +2640,16 @@ historySearchButton?.addEventListener('click',()=>{
   if(!user||!chat||!conversation)return;
   const id=chat,account=user.number,visit=chatVisit,epoch=generation;
   const form=el('form',null,'history-search-form'), label=el('label','关键词');
-  const input=el('input');input.type='search';input.id='history-keyword';input.maxLength=100;input.required=true;
+  const input=el('input');input.type='search';input.id='history-keyword';input.maxLength=100;
   label.htmlFor=input.id;
   const submit=el('button','搜索','primary');submit.type='submit';
-  form.append(label,input,submit);
+  const senderLabel=el('label','发送人'),sender=el('select');
+  const dateLabel=el('label','日期（本地时间）'),day=el('input');
+  day.type='date';
+  sender.append(new Option('全部发送人',''));
+  senderLabel.append(sender);
+  dateLabel.append(day);
+  form.append(label,input,senderLabel,dateLabel,submit);
   const status=el('p',null,'minor');status.setAttribute('role','status');
   const results=el('ul',null,'history-search-results');
   const more=button('更多结果',()=>void search(true),'outline');more.hidden=true;
@@ -2659,10 +2666,16 @@ historySearchButton?.addEventListener('click',()=>{
   historyFinder=marker;
   dialogCleanup=()=>{if(historyFinder===marker)historyFinder=undefined;};
   input.focus();
-  let searchSeq=0, query='', next=null, locateFlight;
+  let searchSeq=0, filters={}, next=null, locateFlight;
   const current=()=>dialog.open&&dialogGeneration===panel&&chat===id&&chatVisit===visit&&generation===epoch;
   const inScope=data=>data.historyFloor===historyFloor&&data.membershipRevision===membershipRevision;
   const route=params=>thread(id)+'/history-search?'+new URLSearchParams({account,...params});
+  void api(route({senders:1})).then(data=>{
+    if(!current()||!inScope(data))return;
+    for(const person of data.senders) sender.append(new Option(person.displayName+'（'+person.number+'）',person.number));
+  }).catch(()=>{
+    if(current())sender.options[0].textContent='加载发送人失败，请重新打开搜索';
+  });
   async function jumpTo(messageId){
     if(!current()||locateFlight)return;
     const seq=searchSeq, lock={};locateFlight=lock;
@@ -2681,19 +2694,42 @@ historySearchButton?.addEventListener('click',()=>{
   async function search(append){
     if(!current()||append&&!next)return;
     const seq=++searchSeq;
-    if(!append){query=input.value.trim();next=null;results.replaceChildren();}
-    if(!query)return;
+    if(!append){
+      filters={};
+      next=null;
+      results.replaceChildren();
+      const query=input.value.trim();
+      if(query)filters.q=query;
+      if(sender.value)filters.sender=sender.value;
+      if(day.value){
+        if(!/^\d{4}-\d{2}-\d{2}$/u.test(day.value)){
+          status.textContent='请选择有效日期。';return;
+        }
+        const start=new Date(day.value+'T00:00:00');
+        const nextDay=new Date(day.value+'T00:00:00Z');
+        nextDay.setUTCDate(nextDay.getUTCDate()+1);
+        const end=new Date(nextDay.toISOString().split('T')[0]+'T00:00:00');
+        if(!Number.isFinite(end.getTime())||start>=end){
+          status.textContent='请选择有效日期。';return;
+        }
+        filters.from=start.toISOString();
+        filters.until=end.toISOString();
+      }
+      if(!Object.keys(filters).length){
+        status.textContent='请选择日期或发送人，或填写关键词。';return;
+      }
+    }
     const before=next;
     more.hidden=true;status.textContent='正在搜索…';
     try{
-      const data=await api(route({q:query,...(append&&{before})}));
+      const data=await api(route({...filters,...(append&&{before})}));
       if(!current()||seq!==searchSeq)return;
       if(!inScope(data)){status.textContent='会话权限已变化，请重新打开。';return;}
       let firstAdded;
       for(const hit of data.results){
         if(removedMessages.has(hit.id))continue;
         const snippet=el('span',null,'history-search-snippet');
-        highlightHistoryHit(snippet,hit.text,query);
+        highlightHistoryHit(snippet,hit.text,filters.q);
         const open=button('',()=>void jumpTo(hit.id),'history-search-hit');
         open.append(el('span',hit.sender+'　'+time(hit.createdAt),'minor'),snippet);
         const entry=el('li');
@@ -2711,7 +2747,7 @@ historySearchButton?.addEventListener('click',()=>{
     }
   }
   form.addEventListener('submit',event=>{event.preventDefault();void search(false);});
-  input.addEventListener('input',()=>{
+  form.addEventListener('input',()=>{
     ++searchSeq;locateFlight=undefined;next=null;results.replaceChildren();more.hidden=true;status.textContent='';
   });
 });
