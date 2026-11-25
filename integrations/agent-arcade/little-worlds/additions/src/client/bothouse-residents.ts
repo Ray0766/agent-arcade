@@ -8,7 +8,7 @@ import type { PlanetResident } from '../shared/planet-residents.ts';
 import { residentPortrait } from '../shared/resident-portrait.ts';
 import { createBothouseResidentModel } from './bothouse-resident-model.ts';
 import { ResidentBodySettings } from './resident-body-settings.ts';
-import { landingSites, residentWalkEnd } from './bothouse-resident-sites.ts';
+import { landingSites, nearbyDoorstepFlower, residentWalkEnd } from './bothouse-resident-sites.ts';
 
 type Resident = PlanetResident & Parameters<typeof residentPortrait>[1];
 type Portrait = ReturnType<typeof residentPortrait>;
@@ -173,6 +173,7 @@ export class BothouseResidents {
   private center=new T.Vector3();
   private frustum=new T.Frustum();
   private projection=new T.Matrix4();
+  private rosterSize:number|null=null;
   private bounds=new T.Sphere(new T.Vector3(),1.5);
   private figures=new Map<string,ResidentFigure>();
   private summary=document.createElement('p');
@@ -319,6 +320,11 @@ export class BothouseResidents {
     this.cancelVisitorGreeting();
     for(const figure of this.figures.values())figure.dispose();
     this.seats=[];this.figures.clear();this.summary.hidden=true;this.summary.replaceChildren();
+    this.rosterSize=null;
+  }
+  /** Only expose a count from the acknowledged outdoor scene to its owner. */
+  ownerRosterSize(planet:PlanetView, epoch:number) {
+    return planet.mine && this.visit === planet.id+'/'+epoch+'/'+planet.revision ? this.rosterSize : null;
   }
   private async refresh(planet:string,world:GroundWorld|null,request:AbortController,objects:PlanetView['objects']) {
     try{
@@ -369,6 +375,7 @@ export class BothouseResidents {
         if(cards.length)cards.push(' / ');cards.push(figure.card);
       }
       this.summary.replaceChildren(...cards);this.summary.hidden=!cards.length;
+      this.rosterSize=residents.length;
     }catch{
       if(request!==this.request)return;
       this.clear();
@@ -376,23 +383,4 @@ export class BothouseResidents {
       this.summary.textContent=zh()?'暂时看不到搭档的动态。':'Companion activity is unavailable.';this.summary.hidden=false;
     }finally{if(request===this.request){this.request=null;this.next=performance.now()+3000;}}
   }
-}
-
-function nearbyDoorstepFlower(world:GroundWorld,feet:T.Vector3,objects:PlanetView['objects']) {
-  const up=feet.clone().normalize();
-  const homes=objects.filter(o=>o.kind==='structure'||o.kind==='cottage').map(o=>new T.Vector3(...o.position));
-  let closest=2.6;
-  let flower:Vec3|undefined;
-  for(const pot of objects){
-    if(pot.kind!=='flowers')continue;
-    const direction=new T.Vector3(...pot.position);
-    const distance=up.angleTo(direction)*world.baseRadius;
-    if(distance<.65||distance>=closest||!homes.some(home=>home.angleTo(direction)*world.baseRadius<7))continue;
-    const eye=feet.clone().addScaledVector(up,.9);
-    const target=direction.clone().multiplyScalar(world.radius(pot.position)+.72);
-    if(world.cameraDistance(eye,target,.06)+.05<eye.distanceTo(target))continue;
-    closest=distance;
-    flower=pot.position;
-  }
-  return flower;
 }

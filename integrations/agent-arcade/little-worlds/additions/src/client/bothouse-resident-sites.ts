@@ -1,7 +1,8 @@
 import * as T from 'three';
 import {portPoint} from '../shared/ports.ts';
 import {GroundWorld,STEP_HEIGHT} from '../shared/physics/world.ts';
-import type {Vec3} from '../shared/world.ts';
+import {normalize,type Vec3} from '../shared/world.ts';
+import type {PlacedObject,PlanetView} from '../shared/planets.ts';
 
 export function residentWalkEnd(start:T.Vector3,pad:T.Vector3,radius:number) {
   const outward=start.clone().sub(pad).projectOnPlane(start).normalize();
@@ -50,4 +51,42 @@ export function landingSites(world:GroundWorld,count:number) {
   }
   for(const feet of fallback)if(sites.length<count&&spaced(feet))sites.push(feet);
   return sites;
+}
+
+export function nearbyDoorstepFlower(world:GroundWorld,feet:T.Vector3,objects:PlanetView['objects']) {
+  const up=feet.clone().normalize();
+  const homes=objects.filter(o=>o.kind==='structure'||o.kind==='cottage').map(o=>new T.Vector3(...o.position));
+  let closest=2.6;
+  let flower:Vec3|undefined;
+  for(const pot of objects){
+    if(pot.kind!=='flowers')continue;
+    const direction=new T.Vector3(...pot.position);
+    const distance=up.angleTo(direction)*world.baseRadius;
+    if(distance<.65||distance>=closest||!homes.some(home=>home.angleTo(direction)*world.baseRadius<7))continue;
+    const eye=feet.clone().addScaledVector(up,.9);
+    const target=direction.clone().multiplyScalar(world.radius(pot.position)+.72);
+    if(world.cameraDistance(eye,target,.06)+.05<eye.distanceTo(target))continue;
+    closest=distance;
+    flower=pot.position;
+  }
+  return flower;
+}
+
+export function flowerPlacementHint(planet:PlanetView, draft:PlacedObject, rosterSize:number|null) {
+  const unknown='Flower watching cannot be predicted here yet.';
+  if(rosterSize===null)return unknown;
+  if(!rosterSize)return 'No residents here to watch flowers yet.';
+  if(planet.objects.some(o=>o.kind==='structure'&&!planet.blueprints?.[o.blueprintHash??'']?.length))return unknown;
+
+  // Match the saved order (including distance ties) and the next scene's colliders and seats.
+  const pot={...draft,position:normalize(draft.position)};
+  const editing=planet.objects.some(o=>o.id===pot.id);
+  const objects=editing?planet.objects.map(o=>o.id===pot.id?pot:o):[...planet.objects,pot];
+  const world=new GroundWorld({...planet,objects});
+  if(!world.bodies.some(body=>body.objectId===pot.id&&body.colliders.length))return unknown;
+  const seats=landingSites(world,rosterSize);
+  if(seats.some(feet=>nearbyDoorstepFlower(world,feet,objects)===pot.position)){
+    return 'An idle resident may stop to admire this pot.';
+  }
+  return seats.length===rosterSize?'With this layout, residents won’t stop to admire this pot.':unknown;
 }
