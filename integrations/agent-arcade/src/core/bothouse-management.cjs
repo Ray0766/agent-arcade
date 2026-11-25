@@ -48,8 +48,10 @@ function readAddress(text) {
     }
   }
   const host = fields.get('host')?.match(/^(['"])(127\.0\.0\.1|::1)\1$/u)?.[2];
-  const port = Number(fields.get('port'));
-  if(fields.get('enabled')!=='true' || !host || !/^\d{1,5}$/u.test(fields.get('port')) || port<1 || port>65535) fail('config');
+  const configuredPort = fields.get('port');
+  if(fields.get('enabled')!=='true' || !host ||
+    (configuredPort !== undefined && (!/^\d{1,5}$/u.test(configuredPort) || Number(configuredPort)>65535))) fail('config');
+  const port = Number(configuredPort) || 9820;
   return {host,port,origin:'http://'+(host==='::1'?'[::1]':host)+':'+port};
 }
 

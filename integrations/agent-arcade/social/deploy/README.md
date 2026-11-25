@@ -23,7 +23,7 @@
 
 房主在自己的星球点「允许好友来访」，好友可从私聊的「会话设置 → 拜访好友星球」前往。此选择与 AI 居民分开保存，登出、重启仍生效；房主可点「关闭好友来访」。访客只能看到世界服务实际提供的居民状态。旧档仅有本地房主凭据时，先从原设备打开一次建立关联。
 
-配套世界使用随版的 `install.py LittleWorlds --desktop-service /path/to/resources/app/service.json`。安装器从该桌面配置读取好友和世界原点并持久保存。保留好友库和世界库；伙伴分发与独立课程安装见 [Little Worlds 集成](https://github.com/zuiho-kai/bothouse/pull/2181)。好友服务使用同一世界原点签发一分钟有效的一次性票据；世界向配对的好友服务核验后，在当前设备建立它自己的登录会话。
+配套世界使用随版的 `install.py LittleWorlds --desktop-service /path/to/resources/app/service.json`。安装器从该桌面配置读取好友和世界原点并持久保存。保留好友库和世界库；伙伴分发与独立课程安装见 [Little Worlds 集成](../../little-worlds/README.md)。好友服务使用同一世界原点签发一分钟有效的一次性票据；世界向配对的好友服务核验后，在当前设备建立它自己的登录会话。
 
 ### 基础服务
 
