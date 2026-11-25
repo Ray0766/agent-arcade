@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "68e5843170d505b47f579c57644ec38041647c1b",
-  "worldTree": "1e20e997cb31ea145495bc4f02ebff733736a83b",
-  "patchSHA256": "1f97080a17c5d81e631a1b802915f6e6e4f963ad6d7885065f95752f6eb63fa1",
+  "worldRevision": "89577130289f79f3186f1fbf054db8f64a7ccf4c",
+  "worldTree": "c5e37f41d887102a7d33b8f39cc01c01439518f6",
+  "patchSHA256": "81fab32ff538565958cc9d2618b902cadf02d8737c2d8c0dd353609adabffc0d",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -171,6 +171,12 @@
       "path": "spec/welcome.test.ts",
       "blob": "0cdeab3be9ed7c353f834f27c717cb7c0a488c16",
       "sha256": "ff96647f955154e465a91d11d0671c597566d2a87ddedcd47e40eb7174575d00"
+    },
+    {
+      "action": "A",
+      "path": "spec/window-boxes.test.ts",
+      "blob": "e2c9149c3359a564244b0bb979827c672eddaa71",
+      "sha256": "4a044e22b82510b253257c47d13541a876159c4205584ed481627982b614c688"
     },
     {
       "action": "A",
@@ -469,8 +475,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "822b3795ae1378485fa5df9ef08934a1e9825af2",
-      "sha256": "823c406f5b7d1fd33483408e7c0d8be12e1f8237bd77b1beb186108e1f70e0f3"
+      "blob": "0ec4a3420589089e145442c9b3eb9e1fc0172fe4",
+      "sha256": "04d240ab1afd990a72a72358c8c874ee14679eb2dd45898d42f3601d68e26603"
     },
     {
       "action": "M",
@@ -529,8 +535,8 @@
     {
       "action": "A",
       "path": "src/client/nature-art.ts",
-      "blob": "3e254c59840119cea310b015c3e59126e5a58686",
-      "sha256": "48bf877cf222fdd96a98990389317831e91bdf9ea9988d09d887bcda199b97b2"
+      "blob": "cafc0f18826c98d5debf73fb5ff14c6c1b00042b",
+      "sha256": "9ef6d4f912fc91c7814e5bbb6bf6e1695638540b40f70a1472e5a87b046a7739"
     },
     {
       "action": "M",
@@ -571,8 +577,8 @@
     {
       "action": "A",
       "path": "src/client/town-exterior.ts",
-      "blob": "22d337cdaf2d494920d04f6ae86d8ac68f27e6fa",
-      "sha256": "0d468863cacb2ea701aa9a3c417727515f1ef51f260334fd2d39e23e05e42806"
+      "blob": "fe277442fe5d23039b362d745c4d122b4942d28c",
+      "sha256": "c947c3a83cd44de164dff24f023a4cc3851a84017ada0332e2184b03031ac54e"
     },
     {
       "action": "A",

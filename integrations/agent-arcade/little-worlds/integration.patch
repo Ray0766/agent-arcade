@@ -368,22 +368,18 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..a614b875aadb91c3d2e23932784dfa2f
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..822b3795ae1378485fa5df9ef08934a1e9825af2 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..0ec4a3420589089e145442c9b3eb9e1fc0172fe4 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
-@@ -1,2 +1,3 @@
+@@ -1 +1,2 @@
 +import {addTownExterior} from './town-exterior.ts';
  import { localizedOption, setAttribute, setText, translate } from './i18n.ts';
- import { makePlacementPreview } from './placement-preview.ts';
-@@ -34,5 +35,5 @@ export interface ColonyBridge {
-   ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
+@@ -35,3 +36,3 @@ export interface ColonyBridge {
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-   universe:(u:Universe)=>void; bearing:(id:string)=>void;
-@@ -66,5 +67,14 @@ export class Colony {
-       place:entry=>{this.localParts[entry.hash]=entry.blueprint.parts;this.setBuilding(true);this.draft={id:crypto.randomUUID(),kind:'structure',blueprintHash:entry.hash,...structureSize(entry.blueprint.parts),position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);bridge.notice('Tap an open spot, turn the structure, then Place object.');}});});
+@@ -67,3 +68,12 @@ export class Colony {
      const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
 -    el('build-mode').after(workshopButton);
 +    const addCourtyardFlower=document.createElement('button');
@@ -397,16 +393,12 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..822b3795ae1378485fa5df9ef08934a1
 +      this.startPlacement('flowers');
 +    };
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
-     el<HTMLSelectElement>('region-select').onchange=()=>{this.cards='';this.starMap();};
-@@ -88,5 +98,5 @@ export class Colony {
-       const button=document.createElement('button');button.className='catalogue-item';button.dataset.kind=kind;setAttribute(button, 'aria-label', `Add ${CATALOGUE[kind].name.toLowerCase()}`);
+@@ -89,3 +99,3 @@ export class Colony {
        const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
 -      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
 +      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
      }
-     bridge.canvas.addEventListener('pointerdown',e=>{
-@@ -117,4 +127,15 @@ export class Colony {
-     if(collapsed&&choices.contains(document.activeElement))toggle.focus();
+@@ -118,2 +128,13 @@ export class Colony {
    }
 +  private canPlaceCourtyardFlower(){
 +    const world=this.universe;
@@ -420,9 +412,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..822b3795ae1378485fa5df9ef08934a1
 +    this.setKitCollapsed(innerWidth<=700);
 +  }
    private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
-   private hasDraft(){const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
-@@ -225,5 +246,15 @@ export class Colony {
-     if(this.pollBusy||this.busy||this.workshop?.opened)return;this.pollBusy=true;
+@@ -226,3 +247,13 @@ export class Colony {
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -437,24 +427,20 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..822b3795ae1378485fa5df9ef08934a1
 +      }
 +    }finally{this.pollBusy=false;}
    }
-   private async command(route:string,body:unknown){
-@@ -276,5 +307,7 @@ export class Colony {
-     const model=cameraCutaway?buildCameraBlueprintModel(visibleParts,worldMaterials(),'medium',{...options,identityParts:parts})
+@@ -277,3 +308,6 @@ export class Colony {
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
 +    const finish=buildStructureFinish(parts,worldMaterials(),{cameraPartSlots:slots});model.object.add(finish.object);
-+    addTownExterior(model.object,parts,worldMaterials(),slots);
++    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
++    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
-     model.object.position.fromArray(transform.position);model.object.quaternion.fromArray(transform.quaternion);
-@@ -339,4 +372,7 @@ export class Colony {
-     el<HTMLButtonElement>('build-mode').hidden=!p.mine;setText(el('build-mode'), this.building?'Building…':'Build on my planet');
+@@ -340,2 +374,5 @@ export class Colony {
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
 +    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
 +    courtyardFlower.hidden=!this.canPlaceCourtyardFlower();
 +    courtyardFlower.disabled=this.busy||!this.syncing;
      el<HTMLButtonElement>('open-workshop').hidden=!p.mine||u.player.flight.mode!=='ground';el<HTMLButtonElement>('open-workshop').disabled=this.busy||!this.syncing;
-     el('delivery-toggle').hidden=p.kind!=='hub';
 diff --git a/src/client/flight.css b/src/client/flight.css
 index e56a89e92190efaab22096861abb75c51ac8688a..044eb69124dbd394fcdf96bfbdd5145f969e5101 100644
 --- a/src/client/flight.css
