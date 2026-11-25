@@ -95,7 +95,7 @@ export function createBothouseResidentModel(appearanceKey:string){
   badge.visible=false;
   body.add(badge);
   let disposed=false;
-  const animate=(activity:Activity,seconds:number,reducedMotion:boolean,walk=0,flowerLean=0)=>{
+  const animate=(activity:Activity,seconds:number,reducedMotion:boolean,walk=0,wave=0,flowerLean=0)=>{
     const t=reducedMotion?0:seconds,pace=reducedMotion?0:T.MathUtils.clamp(walk,0,1);
     const rest=activity==='offline',think=activity==='thinking',talk=activity==='talking',work=activity==='working';
     const lean=activity==='idle'&&!reducedMotion?flowerLean:0;
@@ -124,6 +124,13 @@ export function createBothouseResidentModel(appearanceKey:string){
         l.arm.rotation.set(think&&sign===1?-.82:talk&&sign===1?-.49:book?-.50:sign*swing*.31,0,
           -sign*(book?.09:talk&&sign===1?.33:think&&sign===1?.10:.07));
         l.elbow.rotation.set(think&&sign===1?-1.55:talk&&sign===1?-.85:book?-.92:-.18,0,think&&sign===1?-.37:book?-sign*.43:0);
+        if(sign===1&&activity==='idle'&&!reducedMotion&&wave>0&&wave<1){
+          const lift=T.MathUtils.smoothstep(wave,0,.18)*(1-T.MathUtils.smoothstep(wave,.80,1));
+          l.arm.rotation.x=T.MathUtils.lerp(l.arm.rotation.x,-.30,lift);
+          l.arm.rotation.z=T.MathUtils.lerp(l.arm.rotation.z,1.92,lift);
+          l.elbow.rotation.x=T.MathUtils.lerp(l.elbow.rotation.x,-.45,lift);
+          l.elbow.rotation.z=T.MathUtils.lerp(l.elbow.rotation.z,.62+.40*Math.sin(wave*4*Math.PI),lift);
+        }
       }
     }
     if(work)ledger.rotation.set(1.37,.08,-.36);
