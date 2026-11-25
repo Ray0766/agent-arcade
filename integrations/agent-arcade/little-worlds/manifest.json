@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "e204a24609fc7ec299f52d08649a557034591fda",
-  "worldTree": "4c3f2918a96b73906733d697252a9d0ba785a7ee",
-  "patchSHA256": "92de060025224c739ce87aa9bd9613ba50797acc1597f07dca031095a8dbcefc",
+  "worldRevision": "68e5843170d505b47f579c57644ec38041647c1b",
+  "worldTree": "1e20e997cb31ea145495bc4f02ebff733736a83b",
+  "patchSHA256": "1f97080a17c5d81e631a1b802915f6e6e4f963ad6d7885065f95752f6eb63fa1",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -498,9 +498,15 @@
     },
     {
       "action": "M",
+      "path": "src/client/home-interior.css",
+      "blob": "7ab960bc4edf6b565d362bc2e98607c6ed148979",
+      "sha256": "e753dd6f4593c271e1bd19991e9b4af3de8104d0cef5f6cb6c2d392e27783373"
+    },
+    {
+      "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "4f7c95d00b864c34b7af561e939ecd02035f2bc8",
-      "sha256": "e63bce0c0b182708b5d0f7f7a2e4bb0c985ce68750d01f95a9c9c044338373be"
+      "blob": "de734774898f838e228274eb36f9945c86d0bfb9",
+      "sha256": "621f3c8e611fcff437cc55664a55314b4eca56e90b5845434b637d7c30cdb247"
     },
     {
       "action": "M",
@@ -687,6 +693,12 @@
       "path": "src/shared/world-guide.ts",
       "blob": "8263a829b4694ae05b8b53b2bc1e9217e9501bc9",
       "sha256": "f80fcf2ea36fe034bf7d3f11bd6dfcef3d4140064bcc840b550e5818431c3d47"
+    },
+    {
+      "action": "M",
+      "path": "tests/e2e/home-room-v2.spec.ts",
+      "blob": "dab56cab32b15b863b5616bb68856f0f12d2a6bc",
+      "sha256": "50cadbccd3b454e819041d9def96b7461f5cd13e9d2b67b938ec8f516d8cfb0b"
     },
     {
       "action": "A",

@@ -561,18 +561,60 @@ index 5e243b9ac17c704ab24ecf75238869f6006af5f8..353faeb78c3b1508899eece2aebc32ed
 +   addTownExterior(model.object,parts,worldMaterials());
     if(village){
 diff --git a/src/client/home-interior.ts b/src/client/home-interior.ts
-index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..4f7c95d00b864c34b7af561e939ecd02035f2bc8 100644
+index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..de734774898f838e228274eb36f9945c86d0bfb9 100644
 --- a/src/client/home-interior.ts
 +++ b/src/client/home-interior.ts
 @@ -21,2 +21,3 @@ import { createHomeDoor } from './home-door.ts';
  import { createHomeRoomArt, applyHomeRoomTheme } from './home-room-art.ts';
 +import {loadHomeFurniture} from './home-furniture-models.ts';
  import {beginSceneLoading,yieldSceneFrame} from './loading-state.ts';
+@@ -58,3 +59,3 @@ const translation: Record<string, [string, string]> = {
+   photo: ['Photo mode', '照片模式'],
+-  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'],
++  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'], undo: ['Undo last change', '撤销上一步'],
+   move: ['MOVE', '移动'], hint: ['WASD / arrows · open the door, then E to leave', 'WASD / 方向键移动 · 门口开门后按 E 出门'],
 @@ -86,2 +87,3 @@ export class HomeInterior {
    private furniture = new T.Group();
 +  private furnitureModels: Awaited<ReturnType<typeof loadHomeFurniture>> = new Map();
    private avatar = courier('clay');
-@@ -252,5 +254,7 @@ export class HomeInterior {
+@@ -102,3 +104,3 @@ export class HomeInterior {
+   private editing = false;
+-  private dirty = false;
++  private readonly undoHistory: InteriorData[] = [];
+   private draftVersion = 0;
+@@ -130,3 +132,3 @@ export class HomeInterior {
+       <div class="home-room-tools"><button id="home-photo" data-home-text="photo"></button><button id="home-arrange" data-home-text="arrange"></button><button id="home-retry" data-home-text="retry" hidden></button><p id="home-room-hint"></p></div>
+-      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
++      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-room-undo" data-home-text="undo"></button><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
+       <div id="home-joystick" class="home-joystick" role="group" aria-label="Move around the room"><span id="home-stick"></span><small data-home-text="move"></small></div>`;
+@@ -138,2 +140,3 @@ export class HomeInterior {
+     on('home-arrange', () => this.beginEditing());
++    on('home-room-undo', () => this.undoDraft());
+     on('home-cancel', () => this.cancelEditing());
+@@ -142,4 +145,5 @@ export class HomeInterior {
+     for (const material of ['warm', 'sage', 'blue'] as const) on(`home-material-${material}`, () => {
+-      if (!this.canChange() || !this.draft) return;
+-      this.draft.material = material; this.dirty = true; this.applyTheme(material); this.setStatus('edited'); this.updateControls();
++      if (!this.canChange() || !this.draft || this.draft.material === material) return;
++      this.undoHistory.push(this.draft);
++      this.previewDraft({ ...this.draft, material });
+     });
+@@ -152,3 +156,3 @@ export class HomeInterior {
+     window.addEventListener('blur', () => this.clearInput(), { signal: this.abort.signal });
+-    window.addEventListener('beforeunload', event => { if (this.active && this.dirty) event.preventDefault(); }, { signal: this.abort.signal });
++    window.addEventListener('beforeunload', event => { if (this.active && this.undoHistory.length) event.preventDefault(); }, { signal: this.abort.signal });
+     document.addEventListener('visibilitychange', () => { if (document.hidden) { this.clearInput(); if(!this.photoMode)void this.flush(); } }, { signal: this.abort.signal });
+@@ -204,3 +208,3 @@ export class HomeInterior {
+       this.currentVisit = visit; this.position = [...location.position]; this.yaw = location.yaw;
+-      this.editing = false; this.dirty = false; this.clearInput();
++      this.editing = false; this.undoHistory.length = 0; this.clearInput();
+       this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; this.selected = this.draft.items[0]?.id ?? '';
+@@ -211,3 +215,3 @@ export class HomeInterior {
+     if (arriving || sourceKey !== this.sourceKey || this.preparation?.visit !== undefined && this.preparation.visit !== visit) {
+-      if (!this.editing || this.pendingAction) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
++      if (!this.editing) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
+       if(this.preparation?.key!==sourceKey||this.preparation.visit!==visit)void this.prepareRoom(sourceKey,visit);
+@@ -252,5 +256,7 @@ export class HomeInterior {
        room=this.createRoom(interior);await next();
 +      const models=await loadHomeFurniture(interior.items.map(item=>item.kind));
 +      if(!current())return;
@@ -581,11 +623,11 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..4f7c95d00b864c34b7af561e939ecd02
 -        furniture.add(this.createFurnitureItem(item));await next();
 +        furniture.add(this.createFurnitureItem(item,models));await next();
        }
-@@ -265,2 +269,3 @@ export class HomeInterior {
+@@ -265,2 +271,3 @@ export class HomeInterior {
        disposeGeometry(this.room);disposeGeometry(this.furniture);
 +      this.furnitureModels=models;
        this.room=room;this.furniture=furniture;room=null;furniture=null;this.scene.add(this.room,this.furniture);
-@@ -299,12 +304,21 @@ export class HomeInterior {
+@@ -299,12 +306,21 @@ export class HomeInterior {
    }
 -  private createFurnitureItem(item:HomeItem) {
 -      const b = new PartBuilder('medium'), source = libraryMaterials(this.library), kit = makeKit(b, source);
@@ -617,6 +659,51 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..4f7c95d00b864c34b7af561e939ecd02
 +    source.owned().forEach(material => { material.userData.ownedResource = true; });
 +    return group;
    }
+@@ -325,3 +341,3 @@ export class HomeInterior {
+   private beginEditing() { if (this.preparing || !this.home?.canEdit || !this.online || this.pendingAction) return; this.clearInput(); this.editing = true; this.draft = copy(this.home.interior); this.draftVersion = this.draft.version; this.selected ||= this.draft.items[0]?.id ?? ''; this.populateItems(); this.updateControls(); }
+-  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.editing = false; this.dirty = false; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
++  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.editing = false; this.undoHistory.length = 0; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
+   private populateItems() {
+@@ -338,3 +354,17 @@ export class HomeInterior {
+     if (!homeFurnitureFits(candidate.items, this.position, candidate.room, this.home!.interior.doorOpen, this.home!.door.partId)) { this.setStatus('blocked'); return; }
+-    this.draft = candidate; this.dirty = true; this.buildFurniture(); this.applyTheme(candidate.material); this.setStatus('edited'); this.updateControls();
++    this.undoHistory.push(this.draft);
++    this.previewDraft(candidate);
++  }
++  private undoDraft() {
++    if (!this.canChange()) return;
++    const previous = this.undoHistory.pop();
++    if (previous) this.previewDraft(previous);
++  }
++  private previewDraft(next: InteriorData) {
++    const furnitureChanged = next.items !== this.draft?.items;
++    this.draft = next;
++    if (furnitureChanged) this.buildFurniture();
++    this.applyTheme(next.material);
++    this.setStatus(this.undoHistory.length ? 'edited' : 'saved');
++    this.updateControls();
+   }
+@@ -355,3 +385,4 @@ export class HomeInterior {
+     this.get('home-joystick').hidden = this.editing;
+-    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.dirty;
++    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.undoHistory.length;
++    this.get<HTMLButtonElement>('home-room-undo').disabled = !this.canChange() || !this.undoHistory.length;
+     this.get<HTMLButtonElement>('home-cancel').disabled = this.pendingAction;
+@@ -424,3 +455,3 @@ export class HomeInterior {
+   private async saveDraft() {
+-    if (!this.canChange() || !this.home || !this.draft || !this.dirty) return;
++    if (!this.canChange() || !this.home || !this.draft || !this.undoHistory.length) return;
+     this.clearInput(); this.pendingAction = true; this.updateControls(); this.setStatus('saving');
+@@ -429,3 +460,3 @@ export class HomeInterior {
+       const next = await this.options.save({ buildingId: this.home.buildingId, expectedVersion: this.draftVersion, material: this.draft.material, items: this.draft.items });
+-      this.editing = false; this.dirty = false; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
++      this.editing = false; this.undoHistory.length = 0; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
+     } catch (error) { this.get('home-room-status').textContent = error instanceof Error ? error.message : this.text('offline'); }
+@@ -471,3 +502,3 @@ export class HomeInterior {
+     this.photoMode=false;
+-    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.dirty = false;
++    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.undoHistory.length = 0;
+     document.body.classList.remove('home-interior-active');
 diff --git a/src/client/i18n.ts b/src/client/i18n.ts
 index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995a39b312b 100644
 --- a/src/client/i18n.ts
@@ -1537,3 +1624,34 @@ index 2b433c5b22c99b234990f3ffbc8c32533f538d22..8263a829b4694ae05b8b53b2bc1e9217
 +  return null;
 +}
  export function guideTarget(universe: Universe, topic: GuideTopic): TutorialTarget | null {
+diff --git a/src/client/home-interior.css b/src/client/home-interior.css
+index fc3fb21c093796cc2f5096d32cdf0790c27d8378..7ab960bc4edf6b565d362bc2e98607c6ed148979 100644
+--- a/src/client/home-interior.css
++++ b/src/client/home-interior.css
+@@ -25,3 +25,5 @@
+ .home-item-moves button:last-child{flex:1.7;font-size:12px}
+-.home-save-row{justify-content:flex-end;border-top:1px solid #d5d5b9;padding-top:12px}
++.home-save-row{justify-content:flex-end;flex-wrap:wrap;border-top:1px solid #d5d5b9;padding-top:12px}
++.home-save-row button{padding-inline:12px}
++#home-room-undo{margin-inline-end:auto}
+ .home-joystick{position:absolute;left:28px;bottom:max(28px,env(safe-area-inset-bottom));width:102px;height:102px;border-radius:50%;background:#f5efdbe6;border:1px solid #c6cfb3;touch-action:none;user-select:none;box-shadow:0 3px 16px #44675121;display:none;align-items:center;justify-content:center}
+diff --git a/tests/e2e/home-room-v2.spec.ts b/tests/e2e/home-room-v2.spec.ts
+index 1a570ac8d81c2294e8da58e4818effaead2d1f9f..dab56cab32b15b863b5616bb68856f0f12d2a6bc 100644
+--- a/tests/e2e/home-room-v2.spec.ts
++++ b/tests/e2e/home-room-v2.spec.ts
+@@ -45,3 +45,10 @@ for(const phone of [false,true])test(`large independent room and explicit door:
+     checks.push('60.2 square metres, unchanged furniture dimensions/coordinates and persistent interior identity','Exterior and interior close/open actions survive reload without moving the player','Closed portal refuses entry/exit; fixed 2.5D room camera remains unchanged');
+-    await click('#home-arrange');await click('#home-material-sage');await click('#home-item-left');await click('#home-save');
++    await click('#home-arrange');
++    await expect(page.locator('#home-room-undo')).toBeDisabled();
++    await click('#home-item-left');
++    await click('#home-material-sage');
++    await click('#home-room-undo');
++    await expect(page.locator('#home-material-warm')).toHaveAttribute('aria-pressed','true');
++    await expect(page.locator('#home-save')).toBeEnabled();
++    await click('#home-save');
+     await expect(page.locator('#home-room-editor')).not.toBeVisible();
+@@ -49,2 +56,3 @@ for(const phone of [false,true])test(`large independent room and explicit door:
+     expect(saved.home!.interior.doorOpen).toBe(false);
++    expect(saved.home!.interior.material).toBe(home.interior.material);
+     await click('#home-toggle-door');await expect(page.locator('#home-exit')).toBeEnabled();
