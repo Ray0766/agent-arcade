@@ -101,10 +101,19 @@ jobs:
       - name: Reconstruct the world and exercise the resident publisher
         shell: pwsh
         run: |
+          $sourceArchive = Join-Path $env:RUNNER_TEMP 'arcade-source.zip'
+          $source = Join-Path $env:RUNNER_TEMP 'arcade-source'
           $world = Join-Path $env:RUNNER_TEMP 'arcade-world'
+          git -c core.autocrlf=false archive --format=zip --output=$sourceArchive HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m zipfile -e $sourceArchive $source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Set-Location $source
           python little-worlds/install.py $world
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $revision = node -p "require('./little-worlds/manifest.json').worldRevision"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Set-Location (Join-Path $world ".data/resident-preview/releases/$revision")
           node scripts/verify-residents.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test scripts/verify-app-resident-binding.mjs
