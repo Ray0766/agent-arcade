@@ -2,8 +2,8 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "291400a05c0efa1f14ab80e4133e3db39d70c34f",
-  "worldTree": "ceaa3f85718914bdde743d69006f0a002136e0c7",
+  "worldRevision": "797a42b1553eb6dbce06e33eb0329c98e848ca5c",
+  "worldTree": "25ee4ae2a65804761f82d7890440665ef6096b91",
   "patchSHA256": "cefeda65ec2a6dad169eb899e8818394e3b4c43e0db8ce381ca9f2fe44be3a91",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
@@ -127,8 +127,8 @@
     {
       "action": "A",
       "path": "spec/bothouse-work-pose.test.ts",
-      "blob": "d1906f7e1ea9239e8a87ceaf93a824e1a3ccbc80",
-      "sha256": "ba5c27adc64728c4d7cf1b8d6915e5eb6f649ac2cbc44c07f0d3d6ff61d6d40e"
+      "blob": "b95cd234b1a75af4abca421104b565d0ded0f394",
+      "sha256": "1ebe08c94c74d1a204ad3438112d5d22219ea34ac4f8eb070312ab3f6060e726"
     },
     {
       "action": "M",
@@ -427,8 +427,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-resident-model.ts",
-      "blob": "c0bd3c7cbc7d5969d67cfc653c3b65bf48e1b2c4",
-      "sha256": "ef7f6de3b984c1bb20e9dbfa2025fd3d94a7c848ea53d0ab9f0a6b1839046694"
+      "blob": "927eb44c0e8ff24caf02bb4cd3116d47a2852b46",
+      "sha256": "8d75fa9967584ab62762f67c23ef1d86aab0ec0c3c1e59addca1485a5cdde257"
     },
     {
       "action": "A",
@@ -439,8 +439,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "588ff032a1e16efa65e48d5b963a6db5d8d804e4",
-      "sha256": "d6595668e11ae927f5b47f5cd281870f8f3564ee45f13355576817d513d163ac"
+      "blob": "b7631085cd83c0e9819a488007f3d3e0900b2a3e",
+      "sha256": "93083406c158e4e6dd5bed119abab8a4d41b57047e4d75fc1536c8bc6713d3a1"
     },
     {
       "action": "A",

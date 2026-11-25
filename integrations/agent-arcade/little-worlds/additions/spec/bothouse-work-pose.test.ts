@@ -25,3 +25,23 @@ it('shows the town ledger for work and keeps the reduced-motion pose still',()=>
     }
   }finally{resident.dispose();}
 });
+
+it('raises one empty hand for an idle greeting and yields to activity or reduced motion',()=>{
+  const resident=createBothouseResidentModel('dragon');
+  try{
+    const arm=resident.root.getObjectByName('upper1')!;
+    const ledger=resident.root.getObjectByName('work-ledger')!;
+    resident.animate('idle',1,false,0,.4);
+    expect(arm.rotation.z).toBeGreaterThan(1.5);
+    expect(ledger.visible).toBe(false);
+    for(const activity of ['working','unknown','offline'] as const){
+      resident.animate(activity,1,false,0,.4);
+      expect(arm.rotation.z).toBeLessThan(.5);
+      expect(ledger.visible).toBe(activity==='working');
+    }
+    resident.animate('idle',1,true,0,.4);
+    expect(arm.rotation.z).toBeLessThan(.5);
+    resident.animate('idle',1,false,0,1);
+    expect(arm.rotation.z).toBeLessThan(.5);
+  }finally{resident.dispose();}
+});

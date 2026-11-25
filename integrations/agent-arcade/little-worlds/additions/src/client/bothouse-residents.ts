@@ -1,5 +1,5 @@
 import * as T from 'three';
-import { portPoint } from '../shared/ports.ts';
+import { canBoard, portPoint } from '../shared/ports.ts';
 import { GroundWorld } from '../shared/physics/world.ts';
 import { TownResidentMotion } from '../shared/town-resident-motion.ts';
 import type { Vec3 } from '../shared/world.ts';
@@ -33,6 +33,7 @@ class ResidentFigure {
   private readonly dockFacing: T.Vector3;
   private phase:number;
   private elapsed=0;
+  private waveStart=-Infinity;
   private step=0;
   private badge?:T.Texture;
   private portrait:Portrait;
@@ -78,6 +79,7 @@ class ResidentFigure {
   }
   update(role:Resident,portrait:Portrait) {
     this.setPortrait(portrait);
+    if(role.activity!=='idle')this.waveStart=-Infinity;
     if(role.activity!==this.role.activity)this.model.animate(role.activity,0,true);
     this.role=role;
     const activity=actions[role.activity][zh()?1:0], title=role.displayName+' · '+activity;
@@ -94,13 +96,15 @@ class ResidentFigure {
     const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
     this.label.material.map=texture;this.label.material.needsUpdate=true;
   }
-  private align(initial:boolean,dt:number) {
+  private align(initial:boolean,dt:number,visitor?:Vec3) {
     const {motion,model}=this;
     this.up.fromArray(motion.pose.position);
     this.forward.fromArray(motion.heading).projectOnPlane(this.up).normalize();
     if(this.role.activity==='working'){
       // Keep the safe foot position and angle the ledger toward the dock-side path.
       this.forward.copy(this.dockFacing).projectOnPlane(this.up).normalize().applyAxisAngle(this.up,.36);
+    }else if(visitor){
+      this.forward.fromArray(visitor).projectOnPlane(this.up).normalize();
     }
     this.right.crossVectors(this.up,this.forward).normalize();
     this.forward.crossVectors(this.right,this.up).normalize();
@@ -110,17 +114,20 @@ class ResidentFigure {
     model.root.position.copy(this.up).multiplyScalar(motion.pose.radius);
     this.label.position.copy(this.up).multiplyScalar(motion.pose.radius+1.99);
   }
-  frame(dt:number,reduced:boolean,viewer:Vec3,neighbours:Vec3[]) {
+  greet(now:number) {this.waveStart=now;}
+  frame(dt:number,reduced:boolean,viewer:Vec3,neighbours:Vec3[],now:number) {
     if(!this.motion.valid)return;
     const activity=this.role.activity, live=activity!=='offline'&&activity!=='unknown';
+    const wave=(now-this.waveStart)/1800;
+    const greeting=wave<1&&!reduced&&activity==='idle';
     if(!reduced&&live)this.elapsed+=dt;
     // A short walk between rests uses the same capsule, slope and neighbour checks as town residents.
-    if(!reduced&&activity==='idle'){
+    if(!reduced&&activity==='idle'&&!greeting){
       this.step+=dt;
       if(this.step>=.05){this.motion.tick(this.step,viewer,neighbours);this.step=0;}
     }else{this.motion.moving=false;this.step=0;}
-    this.align(reduced&&live,live&&!reduced?dt:0);
-    this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving));
+    this.align(reduced&&live,live&&!reduced?dt:0,greeting?viewer:undefined);
+    this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving),greeting?wave:0);
   }
   setVisible(visible:boolean) {this.model.root.visible=this.label.visible=visible;}
   dispose() {
@@ -133,6 +140,8 @@ class ResidentFigure {
 /** Fence every asynchronous roster read to its acknowledged outdoor visit. */
 export class BothouseResidents {
   private visit='';private next=0;
+  private greetingTarget=new URLSearchParams(location.search).get('visit');
+  private arrivalWorld:GroundWorld|null=null;
   private request:AbortController|null=null;
   private seats:T.Vector3[]=[];
   private center=new T.Vector3();
@@ -162,6 +171,7 @@ export class BothouseResidents {
     this.bodySettings=new ResidentBodySettings(actions);
   }
   frame(world:GroundWorld|null,planet:string|null,epoch:number,now:number,owner:boolean) {
+    this.arrivalWorld=!owner&&planet===this.greetingTarget?world:null;
     this.settings.hidden=!owner;
     const settingsText=zh()?'连接星球搭档':'Connect planet companions';
     if(owner&&this.settings.textContent!==settingsText)this.settings.textContent=settingsText;
@@ -196,13 +206,22 @@ export class BothouseResidents {
       f.setVisible(visible);
       if(enabled&&visible&&this.bounds.center.distanceTo(camera.position)<18)near.push(f);
     }
+    const now=performance.now();
+    if(this.arrivalWorld&&near.length){
+      // Consume this arrival even if all the visible residents are busy.
+      if(!this.reduced&&canBoard(this.arrivalWorld.planetId,viewer,this.arrivalWorld.baseRadius)){
+        near.find(f=>f.role.activity==='idle')?.greet(now);
+      }
+      this.greetingTarget=null;
+      this.arrivalWorld=null;
+    }
     // Include neighbours just outside the camera, as well as those being animated.
     for(const f of near){
       const neighbours:Vec3[]=[];
       if(f.role.activity==='idle'&&!this.reduced){
         for(const other of this.figures.values())if(other!==f&&other.motion.valid)neighbours.push(other.motion.pose.position);
       }
-      f.frame(dt,this.reduced,viewer,neighbours);
+      f.frame(dt,this.reduced,viewer,neighbours,now);
     }
   }
   /** Opt-in frame evidence; uses the same transforms rendered in the game. */
@@ -215,7 +234,8 @@ export class BothouseResidents {
       const badge=root.getObjectByName('public-portrait-badge') as T.Mesh<T.BufferGeometry,T.MeshStandardMaterial>|undefined;
       const badgeImage=badge?.visible?badge.material.map?.image as HTMLImageElement|undefined:undefined;
       return {id:f.role.id,model:root.name,body:root.uuid,badge:badgeImage?.getAttribute('src')??null,look:f.key,activity:f.role.activity,position:root.position.toArray(),
-        rotation:root.quaternion.toArray(),moving:f.motion.moving,meshes,sprites,center:center.toArray()};
+        rotation:root.quaternion.toArray(),armAngle:root.getObjectByName('upper1')!.rotation.z,
+        moving:f.motion.moving,meshes,sprites,center:center.toArray()};
     });
   }
   private clear() {
