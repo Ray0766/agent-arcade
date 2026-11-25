@@ -13,8 +13,9 @@ class QQPendingUpdateLockRecoveryError extends Error{constructor(c){super(`Pendi
 const fail=c=>{throw new QQPendingUpdateLockRecoveryError(c);};
 const nodeId=s=>({dev:String(s.dev),ino:String(s.ino),birth:String(s.birthtimeNs)});
 const identity=s=>({...nodeId(s),size:String(s.size),mtime:String(s.mtimeNs),ctime:String(s.ctimeNs),links:String(s.nlink)});
-const owner=v=>v&&Number.isSafeInteger(v.pid)&&v.pid>0&&typeof v.createdAt==='string'&&v.createdAt.length<=64&&Number.isFinite(Date.parse(v.createdAt))&&typeof v.executable==='string'&&path.isAbsolute(v.executable)&&!/^[/\\]{2}/.test(v.executable)&&!/[\0\r\n]/.test(v.executable);
-const sameOwner=(a,b)=>owner(a)&&owner(b)&&a.pid===b.pid&&a.createdAt===b.createdAt&&path.resolve(a.executable).toLowerCase()===path.resolve(b.executable).toLowerCase();
+// Executable identities in the Windows process inventory use Windows path syntax.
+const owner=v=>v&&Number.isSafeInteger(v.pid)&&v.pid>0&&typeof v.createdAt==='string'&&v.createdAt.length<=64&&Number.isFinite(Date.parse(v.createdAt))&&typeof v.executable==='string'&&path.win32.isAbsolute(v.executable)&&!/^[/\\]{2}/.test(v.executable)&&!/[\0\r\n]/.test(v.executable);
+const sameOwner=(a,b)=>owner(a)&&owner(b)&&a.pid===b.pid&&a.createdAt===b.createdAt&&path.win32.resolve(a.executable).toLowerCase()===path.win32.resolve(b.executable).toLowerCase();
 // Compare the full serialized timestamp without truncating fractions to JS ms.
 // CIM provides microseconds; its .NET round-trip representation has seven digits.
 // Strict calendar/offset validation is required before a later identity can prove

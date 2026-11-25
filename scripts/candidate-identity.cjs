@@ -19,7 +19,12 @@ function captureSource(root){
 }
 function captureArchive(file){
  const asar=require('@electron/asar'),files=[];
- for(const entry of asar.listPackage(file)){const name=entry.replace(/^\//,'');if(!name.startsWith('src/')||!CODE.test(name)||asar.statFile(file,name).files)continue;const data=asar.extractFile(file,name);files.push({path:name,bytes:data.length,sha256:sha(data)});}
+ for(const entry of asar.listPackage(file)){
+  const name=entry.split(path.sep).join('/').replace(/^\//,'');
+  if(!name.startsWith('src/')||!CODE.test(name)||asar.statFile(file,name).files)continue;
+  const data=asar.extractFile(file,name);
+  files.push({path:name,bytes:data.length,sha256:sha(data)});
+ }
  files.sort((a,b)=>a.path.localeCompare(b.path,'en'));const pkg=JSON.parse(asar.extractFile(file,'package.json'));
  return {sha256:sha(bytes(file)),bytes:fs.statSync(file).size,package:{name:pkg.name,version:pkg.version,main:pkg.main},codeTreeSha256:treeHash(files),codeFiles:files};
 }

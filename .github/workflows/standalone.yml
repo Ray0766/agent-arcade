@@ -1,0 +1,119 @@
+name: Standalone companion checks
+
+on:
+  push:
+    branches: [main, 'codex/standalone-*']
+    paths:
+      - 'integrations/agent-arcade/**'
+      - '.github/workflows/standalone.yml'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'integrations/agent-arcade/**'
+      - '.github/workflows/standalone.yml'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: integrations/agent-arcade
+
+jobs:
+  friends:
+    name: Friends and default Bothouse Bridge
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the stock Bridge client dependency
+        run: python -m pip install --disable-pip-version-check websockets==15.0.1
+      - name: Friends service regression suite
+        working-directory: .
+        run: npm run friends:test
+      - name: Default SQLite and stock Bridge connection
+        run: node --test social/server/bothouse-stock-tasks.test.cjs social/server/standalone-bridge.test.cjs
+      - name: World sessions and Windows host contracts
+        run: node --test social/server/world-session.test.cjs social/windows/verify-view.test.cjs
+
+  legacy-board:
+    name: Legacy Python board compatibility
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Checkout the stock Bothouse board fixture
+        uses: actions/checkout@v4
+        with:
+          repository: zuiho-kai/bothouse
+          ref: bd16c956e267a76b8bdfbfd68c1df4feee574c85
+          path: .ci-bothouse
+          sparse-checkout: bridge/contrib/gate
+          persist-credentials: false
+      - name: Explicit legacy board receiver
+        shell: pwsh
+        run: |
+          $env:BOTHOUSE_TEST_GATE = Join-Path $env:GITHUB_WORKSPACE '.ci-bothouse/bridge/contrib/gate'
+          if (!(Test-Path -LiteralPath (Join-Path $env:BOTHOUSE_TEST_GATE 'board.py'))) {
+            throw 'The stock Bothouse board fixture is missing.'
+          }
+          node --test social/server/bothouse-work.test.cjs
+
+  world:
+    name: Little Worlds install and resident transport
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the pinned world package manager
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'arcade-world-tools'
+          npm install --prefix $tools --ignore-scripts --no-audit --no-fund pnpm@11.9.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Join-Path $tools 'node_modules/.bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Reconstruct the world and exercise the resident publisher
+        shell: pwsh
+        run: |
+          $sourceArchive = Join-Path $env:RUNNER_TEMP 'arcade-source.zip'
+          $source = Join-Path $env:RUNNER_TEMP 'arcade-source'
+          $world = Join-Path $env:RUNNER_TEMP 'arcade-world'
+          git -c core.autocrlf=false archive --format=zip --output=$sourceArchive HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m zipfile -e $sourceArchive $source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Set-Location $source
+          python little-worlds/install.py $world
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $revision = node -p "require('./little-worlds/manifest.json').worldRevision"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Set-Location (Join-Path $world ".data/resident-preview/releases/$revision")
+          node scripts/verify-residents.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test scripts/verify-app-resident-binding.mjs

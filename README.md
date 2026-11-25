@@ -2,9 +2,25 @@
 
 # Agent Arcade
 
-**Chat with AI companions on your desktop.** Use your own API key to start a conversation, switch characters, and manage what each companion remembers. Chat history and memories are stored on your computer. Agent Arcade is open source under AGPL-3.0. API usage is billed by your model provider.
+**Agent Arcade Friends** lets you find people by user number, chat privately or in groups, and share pictures, voice messages and posts. Agent Arcade is open source under AGPL-3.0.
 
-[简体中文](README.zh-CN.md) · [First-run guide](docs/FIRST_RUN.md) · [Validation](docs/VALIDATION.md)
+[简体中文](README.zh-CN.md) · [Friends guide](integrations/agent-arcade/social/README.md) · [Source and licenses](integrations/agent-arcade/README.md#source-and-licenses)
+
+## Run Friends locally
+
+With [Node.js 24.18+ within 24.x](https://nodejs.org/), run this from the repository root, then open the local address printed in the terminal (normally http://127.0.0.1:8787/).
+
+```sh
+npm run friends
+```
+
+Register two test users in separate browser profiles. In **Contacts**, find the other user by number and accept the friend request. Open **Messages** to chat. No dependency install or AI account is needed for ordinary chat. Friends stores accounts and messages in its own database. Run `npm run friends:test` for the service tests.
+
+For a native client, use the [Windows build instructions](integrations/agent-arcade/social/windows/README.md). For other devices, set up the [HTTPS Friends service](integrations/agent-arcade/social/deploy/README.md). [Little Worlds](integrations/agent-arcade/little-worlds/README.md) is installed separately. The [optional Bothouse integration](integrations/agent-arcade/social/server/bothouse/README.md) connects shared AI roles.
+
+## Original local companion preview
+
+Use your own API key to chat with desktop companions, switch characters, and manage their local memories. The companion stores its chats on your computer. API usage is billed by your model provider. [First-run guide](docs/FIRST_RUN.md) · [Validation](docs/VALIDATION.md)
 
 Run the public **preview.8** source to try App chat. The **preview.61** screenshots below show a newer local Mac candidate. See [Run from source](#run-from-source) for both versions.
 
@@ -40,7 +56,7 @@ You can switch between immersive, messenger and minimal layouts, choose day, nig
 
 | Version | Where to start |
 | --- | --- |
-| **0.4.0-preview.8** development source | GitHub `main`. Use the exact checkpoint below for public App chat, the companion switcher, and App memory. |
+| **0.4.0-preview.8** development source | Historical public checkpoint. Use the exact commit below for public App chat, the companion switcher, and App memory. |
 | **0.4.0-preview.61** local Mac candidate | The build shown here was tested on Apple Silicon with an isolated profile. There is no public Mac installer. |
 | **0.3.0-preview.2** Windows download | [Public Windows preview](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2) with the [WeChat task and observer workflow](docs/releases/0.3.0-preview.2.md). |
 

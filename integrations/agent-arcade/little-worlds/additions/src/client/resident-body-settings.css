@@ -1,0 +1,27 @@
+#resident-bodies {
+  width: min(480px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  overflow: auto;
+}
+#resident-bodies form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  margin: 0 0 14px;
+}
+#resident-bodies label,
+#resident-bodies form [role="status"] {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+#resident-bodies select {
+  width: 100%;
+  min-height: 38px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--ui-choice);
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 4px;
+}
+#resident-bodies > button { font-size: 13px; }
+#resident-bodies form [role="status"]:empty { display: none; }

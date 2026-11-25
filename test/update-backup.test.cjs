@@ -37,11 +37,13 @@ test('first installation of the guard protects an existing profile and never pru
 
 test('actual WAL-only rows and user_version survive the copy without touching the source databases',t=>{
  const f=fixture(t),store=path.join(f.root,'local-companion');fs.mkdirSync(store);const file=path.join(store,'social-memory.sqlite'),db=new DatabaseSync(file);
- t.after(()=>db.close());db.exec("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA user_version=6; CREATE TABLE messages(text TEXT); INSERT INTO messages VALUES ('WAL-only message')");
- const before=contents(store),result=f.run();assert.equal(result.databases,1);assert.deepEqual(contents(store),before);
- const backup=new DatabaseSync(path.join(result.backupPath,'root-0','local-companion','social-memory.sqlite'),{readOnly:true});
- try{assert.equal(backup.prepare('SELECT text FROM messages').get().text,'WAL-only message');assert.equal(backup.prepare('PRAGMA user_version').get().user_version,6);}finally{backup.close();}
- assert.deepEqual(contents(store),before);
+ try{
+  db.exec("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA user_version=6; CREATE TABLE messages(text TEXT); INSERT INTO messages VALUES ('WAL-only message')");
+  const before=contents(store),result=f.run();assert.equal(result.databases,1);assert.deepEqual(contents(store),before);
+  const backup=new DatabaseSync(path.join(result.backupPath,'root-0','local-companion','social-memory.sqlite'),{readOnly:true});
+  try{assert.equal(backup.prepare('SELECT text FROM messages').get().text,'WAL-only message');assert.equal(backup.prepare('PRAGMA user_version').get().user_version,6);}finally{backup.close();}
+  assert.deepEqual(contents(store),before);
+ }finally{db.close();}
 });
 
 test('registered external companion roots are included once and private files keep restrictive permissions',t=>{

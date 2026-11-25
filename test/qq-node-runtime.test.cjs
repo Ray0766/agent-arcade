@@ -1,6 +1,8 @@
 'use strict';
 const test=require('./helpers/platform-skip.cjs').ownedIpcTest,assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {createHash,randomUUID}=require('node:crypto');
+// The injected Windows process inventory needs a fully qualified synthetic system root on POSIX.
+if (process.platform !== 'win32') process.env.SystemRoot = path.join(os.tmpdir(), 'arcade-test-windows');
 const {QQRuntimeManager}=require('../src/bot/qq-runtime.cjs');
 const {QQNodeSelection}=require('../src/bot/qq-node-selection.cjs');
 const {withNodeCodeGate}=require('../src/bot/qq-node-code-gate.cjs');

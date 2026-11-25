@@ -11,13 +11,13 @@ test('package smoke accepts actual archive inputs and refuses developer App as f
 });
 
 test('package smoke rejects symlink extraction escaping its disposable tree',t=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-smoke-boundary-')),inner=path.join(root,'inner');fs.mkdirSync(inner);fs.symlinkSync(os.tmpdir(),path.join(inner,'outside'));
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'arcade-smoke-boundary-')),inner=path.join(root,'inner');fs.mkdirSync(inner);fs.symlinkSync(os.tmpdir(),path.join(inner,'outside'),process.platform==='win32'?'junction':'dir');
  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));assert.equal(contained(inner,root),fs.realpathSync(inner));assert.throws(()=>contained(path.join(inner,'outside'),root),/leaves disposable/);
 });
 
 test('smoke environment strips inherited credentials while preserving HOME and CODEX_HOME',()=>{
  const result=isolatedEnvironment('/private/tmp/test','/private/tmp/test/data',{HOME:'/owner/home',CODEX_HOME:'/owner/codex',PATH:'/host/path',ANTHROPIC_API_KEY:'fixture',OPENAI_TOKEN:'fixture',NODE_OPTIONS:'--require original.cjs',AGENT_ARCADE_HOME:'/original'});
- assert.equal(result.HOME,'/owner/home');assert.equal(result.CODEX_HOME,'/owner/codex');assert.equal(result.PATH,'/host/path');assert.equal(result.ANTHROPIC_API_KEY,undefined);assert.equal(result.OPENAI_TOKEN,undefined);assert.equal(result.NODE_OPTIONS,undefined);assert.equal(result.AGENT_ARCADE_HOME,'/private/tmp/test/data');assert.equal(result.AGENT_ARCADE_CLAUDE_SETTINGS,'/private/tmp/test/tool-config/claude-settings.json');
+ assert.equal(result.HOME,'/owner/home');assert.equal(result.CODEX_HOME,'/owner/codex');assert.equal(result.PATH,'/host/path');assert.equal(result.ANTHROPIC_API_KEY,undefined);assert.equal(result.OPENAI_TOKEN,undefined);assert.equal(result.NODE_OPTIONS,undefined);assert.equal(result.AGENT_ARCADE_HOME,'/private/tmp/test/data');assert.equal(result.AGENT_ARCADE_CLAUDE_SETTINGS,path.join('/private/tmp/test','tool-config','claude-settings.json'));
 });
 
 test('paused-bootstrap prelude keeps the real guard and a throwing native safeStorage getter is never read',async()=>{
@@ -31,7 +31,8 @@ test('paused-bootstrap prelude keeps the real guard and a throwing native safeSt
  let contextRequire;const loader={_load:name=>contextRequire(name),createRequire:file=>{assert.equal(file,'/private/tmp/fixture/resources/app.asar/package.json');return name=>loader._load(name);}};
  const context=vm.createContext({process:{platform:'darwin',resourcesPath:'/private/tmp/fixture/resources',env:{AGENT_ARCADE_HOME:'/private/tmp/fixture/data'},getBuiltinModule:name=>{assert.equal(name,'module');return loader;}},require:name=>loader._load(name),fetch:async(url,init)=>{forwarded={url,init};return {ok:true};}});
  contextRequire=name=>{
-  if(name==='node:path'||name==='node:crypto'||name==='node:buffer')return require(name);if(name==='node:child_process')return child;
+  if(name==='node:path')return path.posix;
+  if(name==='node:crypto'||name==='node:buffer')return require(name);if(name==='node:child_process')return child;
   if(name==='electron')return electron;
   const key=Object.keys(modules).find(file=>name.endsWith(file));if(key)return modules[key];throw Error('Unexpected fixture import.');
  };

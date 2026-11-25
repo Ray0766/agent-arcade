@@ -11,6 +11,8 @@
   },
   "scripts": {
     "start": "electron .",
+    "friends": "npm --prefix integrations/agent-arcade/social start",
+    "friends:test": "npm --prefix integrations/agent-arcade/social test",
     "demo": "electron . --demo",
     "test": "node scripts/test.cjs",
     "test:transfer-helper": "npm --prefix deploy/transfer-helper test",

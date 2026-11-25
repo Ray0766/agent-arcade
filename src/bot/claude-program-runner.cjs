@@ -28,7 +28,17 @@ async function terminateChild(child,{groupId,timeoutMs=2000,killImpl=process.kil
   if(groupId!==undefined){
     if(!Number.isSafeInteger(groupId)||groupId<=1||groupId===process.pid)return false;
     const signal=value=>{try{killImpl(-groupId,value);return true;}catch(error){if(error.code==='ESRCH')return false;throw error;}};
-    const gone=async()=>{const until=Date.now()+timeoutMs;do{if(!signal(0))return true;await new Promise(resolve=>setTimeout(resolve,20));}while(Date.now()<until);return !signal(0);};
+    const gone=async()=>{
+      const deadline=Date.now()+timeoutMs;
+      for(;;){
+        // Darwin may report EPERM while the last exiting members still occupy
+        // the group. Only ESRCH confirms absence; keep polling within budget.
+        try{if(!signal(0))return true;}
+        catch(error){if(error.code!=='EPERM'||Date.now()>=deadline)throw error;}
+        if(Date.now()>=deadline)return false;
+        await new Promise(resolve=>setTimeout(resolve,20));
+      }
+    };
     if(!signal('SIGTERM'))return true;
     if(await gone())return true;
     if(!signal('SIGKILL'))return true;

@@ -4,7 +4,9 @@ const {fixture}=require('./helpers/qq-transfer-service-fixture.cjs');
 const P=require('../src/bot/qq-transfer-client.cjs');
 const {QQTransferStage}=require('../src/bot/qq-transfer-stage.cjs');
 test('formal helper tus + desktop job/stage uploads exact bytes and publishes once',async t=>{
- const f=await fixture(t),bytes=Buffer.alloc(P.LIMITS.chunk+35,0xad);fs.writeFileSync(f.state.uploadPath,bytes);const p=await f.preview('upload'),r=await f.confirm(p);
+ // Exercise job creation even when the clock crosses a millisecond between reads.
+ let clock=Date.now();
+ const f=await fixture(t,{now:()=>clock++}),bytes=Buffer.alloc(P.LIMITS.chunk+35,0xad);fs.writeFileSync(f.state.uploadPath,bytes);const p=await f.preview('upload'),r=await f.confirm(p);
  assert.equal(r.job.state,'completed');assert.equal(r.job.published,true);assert.deepEqual(fs.readFileSync(path.join(f.dirs.files,'source.bin')),bytes);
  const j=await f.request('GET','/v1/jobs/'+r.job.jobId);assert.equal(j.json.job.published,true);assert.equal(j.json.job.sha256,P.sha(bytes));
  await f.reopen();const before=f.state.requestCount;assert.equal(f.jobs.list()[0].published,true);assert.equal(f.state.requestCount,before);

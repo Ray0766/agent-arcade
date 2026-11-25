@@ -1,0 +1,43 @@
+name: Verify and build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prerelease:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [core, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-arcade-windows
+          path: release-assets
+      - name: Publish verified preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            released_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/v$version" --jq .sha)
+            if [ "$released_sha" != "$GITHUB_SHA" ]; then
+              echo "::error::v$version already points to another commit. Bump the preview version and update docs/RELEASE.md before publishing. Existing assets were not changed."
+              exit 1
+            fi
+            echo "v$version already exists for this commit; preserving its published assets."
+          else
+            # GitHub replaces spaces in uploaded asset names with dots.
+            for file in release-assets/dist/*.exe; do
+              name=$(basename "$file")
+              safe_name="${name// /.}"
+              if [ "$name" != "$safe_name" ]; then mv -- "$file" "release-assets/dist/$safe_name"; fi
+            done
+            sha256sum release-assets/dist/*.exe | sed 's|release-assets/dist/||' > release-assets/SHA256SUMS.txt
+            gh release create "v$version" release-assets/dist/*.exe release-assets/SHA256SUMS.txt release-assets/package-lock.json --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Agent Arcade $version" --notes-file docs/RELEASE.md
+          fi

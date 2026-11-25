@@ -13,10 +13,18 @@ function trackHost(runtime,e){const stop=runtime.host.stop.bind(runtime.host);ru
 function previewOK(v,accountId,count){assert.equal(v.accountId,accountId);assert.equal(v.kind,'verified-orphan-cleanup');assert.equal(v.action,'terminate');assert.equal(v.count,count);assert.match(v.expectedDigest,/^[a-f0-9]{64}$/);assert.equal(typeof v.expiresAt,'string');assert.equal(new Date(v.expiresAt).toISOString(),v.expiresAt);assert.equal(v.automaticStart,false);}
 function complete(v,accountId,count){assert.equal(v.recovery,'orphans-cleared');assert.equal(v.accountId,accountId);assert.equal(v.terminatedCount,count);assert.equal(v.automaticStart,false);assert.deepEqual(Object.keys(v.cleanup).sort(),cleanupKeys);assert.deepEqual(v.cleanup,{kind:'pending-shell-orphan-cleanup',accountId,selectedCount:count,confirmedAbsentCount:count,terminationAttempted:true,processes:'confirmed-absent',lease:'cleared',resources:'closed',automaticStart:false,pendingUpdateRecoveryRequired:true});}
 async function crashToOrphan(f,w,e){await w.crash();const lease=JSON.parse(fs.readFileSync(f.leasePath)),live=await f.observer.inspect(w.ready.rows.map(p=>p.pid));assert.equal(lease.version,2);assert.equal(lease.engine,'managed-shell');assert.equal(live.length,1,'exercise actual ordinary-start orphan, never detached full-tree adoption');assert.equal(live[0].pid,lease.runtimeTree.find(p=>p.pid!==lease.runtime.pid).pid);assert.equal(live[0].parentPid,lease.runtime.pid);assert.equal(live.some(p=>p.pid===lease.runtime.pid),false);assert.equal((await f.observer.inspect([w.proof.pid,lease.runtime.pid])).length,0);Object.assign(e,{defaultProductionSpawn:true,managerExitCode:86,managerAndLauncherIndependentlyAbsent:true,selectedChildPresentBeforeProduct:true,selectedPids:live.map(p=>p.pid)});return live;}
-async function unrelated(f,{samePath=false}={}){
+async function unrelated(f,{samePath=false,reserve=[]}={}){
  const file=samePath?f.descriptor.qq.file:inside(f,path.join(f.dir,'unrelated-private','QQ.exe'));if(!samePath){fs.mkdirSync(path.dirname(file));fs.copyFileSync(f.descriptor.qq.file,file);}
- const child=spawn(file,[],{windowsHide:true,stdio:'ignore',detached:true});const exited=new Promise(resolve=>child.once('close',resolve));await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
- try{const proof=(await f.observer.inspect([child.pid]))[0];assert(proof);assert.equal(proof.executable.toLowerCase(),file.toLowerCase());assert.equal(proof.parentPid,process.pid);f.remember([proof]);return proof;}catch(error){
+ const args=reserve.length?['--reserve-test-pids',...reserve.map(p=>String(p.pid))]:[];
+ const child=spawn(file,args,{windowsHide:true,stdio:['ignore',reserve.length?'pipe':'ignore','ignore'],detached:true});const exited=new Promise(resolve=>child.once('close',resolve));await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
+ try{
+  if(reserve.length){
+   const [ready]=await require('node:events').once(child.stdout,'data',{signal:AbortSignal.timeout(10000)});
+   assert.deepEqual(ready,Buffer.from([1]),'test control must hold both identities before the crash');
+   const observed=await f.observer.inspect(reserve.map(p=>p.pid));
+   assert(reserve.every(p=>observed.some(row=>same(row,p))),'reserved identities must still be our live manager and launcher');
+  }
+  const proof=(await f.observer.inspect([child.pid]))[0];assert(proof);assert.equal(proof.executable.toLowerCase(),file.toLowerCase());assert.equal(proof.parentPid,process.pid);f.remember([proof]);return proof;}catch(error){
   // Only this just-created ChildProcess is involved if initial metadata fails;
   // no name scan or guessed PID is used to clean up an unproved test child.
   child.kill();await Promise.race([exited,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('private test child cleanup unconfirmed')),10000);timer.unref();})]);throw error;
@@ -28,7 +36,13 @@ async function run(t,body){const f=await fixture(t),e={actualWindows:true,synthe
 }
 
 test('default native manager crash: explicit pending orphan cleanup terminates only the recorded child',options,async t=>run(t,async(f,e)=>{
- const w=await f.worker();f.addMarker();const live=await crashToOrphan(f,w,e);f.addDeadComponentLock(w.proof);const other=await unrelated(f),kept=snapshot([f.marker,f.selection.lockFile,...dataFiles(f)]),leaseBefore=fs.readFileSync(f.leasePath),r=trackHost(f.reload().manager,e);
+ const w=await f.worker();f.addMarker();
+ // This positive scenario requires the original PIDs to stay absent throughout
+ // discovery, preview and confirmation. Let the unrelated control reserve both
+ // identities while they are alive, so later system processes cannot reuse them.
+ const launcher=w.ready.rows.find(p=>p.parentPid===w.proof.pid);assert(launcher);
+ const other=await unrelated(f,{reserve:[w.proof,launcher]});
+ const live=await crashToOrphan(f,w,e);f.addDeadComponentLock(w.proof);const kept=snapshot([f.marker,f.selection.lockFile,...dataFiles(f)]),leaseBefore=fs.readFileSync(f.leasePath),r=trackHost(f.reload().manager,e);
  const view=(await r.discover()).instances.find(p=>p.accountId===f.config.expectedQQ);assert(view);assert.equal(view.canInspectOrphanCleanup,true);for(const k of ['canStart','canStop','canRecover'])assert.equal(view[k],false);assert.equal(view.reason,'pending_upstream_update');
  const preview=await r.previewOrphanCleanup(f.config.expectedQQ,{assertCurrent(){}});previewOK(preview,f.config.expectedQQ,1);assert.equal(e.productStopCalls.length,0);assert(fs.readFileSync(f.leasePath).equals(leaseBefore));assert.equal((await f.observer.inspect(live.map(p=>p.pid))).length,1);unchanged(kept);
  const result=await r.cleanupOrphans(f.config.expectedQQ,{expectedDigest:preview.expectedDigest,assertCurrent(){},beforeStop:async()=>{}});complete(result,f.config.expectedQQ,1);assert.deepEqual(e.productStopCalls,[live.map(p=>p.pid)]);await absent(f,live);assert.equal(fs.existsSync(f.leasePath),false);assert(same((await f.observer.inspect([other.pid]))[0],other));unchanged(kept);

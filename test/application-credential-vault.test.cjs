@@ -8,7 +8,21 @@ function fixture(t){
  const profile={schema:1,protocol:1,helperPath:path.join(dir,'helper-v1'),helperSha256:HASH,helperCdHash:CD,identitySha1:PIN,sourceSha256:HASH,service:'agent-arcade Safe Storage',account:'agent-arcade Key'};
  const file=path.join(dir,'profile-v1.json');fs.writeFileSync(file,JSON.stringify(profile),{mode:0o600});
  const metadata={macCredentialBroker:{protocol:1,identitySha1:PIN,helperSha256:HASH,helperCdHash:CD,sourceSha256:HASH}};
- t.after(()=>fs.rmSync(home,{recursive:true,force:true}));return {home,dir,file,profile,metadata};
+ const modes=new Map([[dir,0o700],[file,0o600]]);
+ const setMode=(target,mode)=>{fs.chmodSync(target,mode);modes.set(target,mode);};
+ // NTFS does not expose the POSIX owner/mode used by this macOS-only broker.
+ // Keep the real file contents, descriptor checks and link metadata on every OS.
+ if(process.platform==='win32'){
+  process.getuid=()=>501;
+  t.after(()=>{delete process.getuid;});
+  const lstat=fs.lstatSync;
+  t.mock.method(fs,'lstatSync',(target,...args)=>{
+   const st=lstat(target,...args);
+   if(modes.has(target)){st.uid=501;st.mode=(st.mode&~0o7777)|modes.get(target);}
+   return st;
+  });
+ }
+ t.after(()=>fs.rmSync(home,{recursive:true,force:true}));return {home,dir,file,profile,metadata,setMode};
 }
 test('Windows/Linux and source fixtures retain their native vault, without broker access',()=>{
  const native={marker:'native'};
@@ -30,9 +44,16 @@ test('signed App metadata must match the fixed private broker profile before fac
 });
 test('unsafe profile mode, directory mode, symlink and oversized profile never reach the factory',t=>{
  const f=fixture(t),read=()=>loadBrokerProfile({home:f.home,metadata:f.metadata});
- fs.chmodSync(f.file,0o644);assert.throws(read,{code:'INVALID_PROFILE'});fs.chmodSync(f.file,0o600);
- fs.chmodSync(f.dir,0o755);assert.throws(read,{code:'INVALID_PROFILE'});fs.chmodSync(f.dir,0o700);
- fs.renameSync(f.file,f.file+'.saved');fs.symlinkSync(f.file+'.saved',f.file);assert.throws(read,{code:'INVALID_PROFILE'});fs.unlinkSync(f.file);fs.renameSync(f.file+'.saved',f.file);
+ assert.equal(read().helperPath,f.profile.helperPath);
+ f.setMode(f.file,0o644);assert.throws(read,{code:'INVALID_PROFILE'});f.setMode(f.file,0o600);
+ f.setMode(f.dir,0o755);assert.throws(read,{code:'INVALID_PROFILE'});f.setMode(f.dir,0o700);
+ fs.renameSync(f.file,f.file+'.saved');
+ try{fs.symlinkSync(f.file+'.saved',f.file);}
+ catch(error){
+  if(process.platform!=='win32'||error.code!=='EPERM')throw error;
+  fs.symlinkSync(f.home,f.file,'junction');
+ }
+ assert.throws(read,{code:'INVALID_PROFILE'});fs.unlinkSync(f.file);fs.renameSync(f.file+'.saved',f.file);
  fs.writeFileSync(f.file,'x'.repeat(16385));assert.throws(read,{code:'INVALID_PROFILE'});
 });
 test('packaged startup rejects interpreter, inspector, Chromium remote-debugging and unsafe code loading',()=>{
