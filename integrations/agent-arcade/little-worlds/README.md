@@ -21,9 +21,9 @@ Open Little Worlds from Agent Arcade, land on your own planet, connect your AI, 
 
 Working residents stop and hold a ledger until the work ends. An explicitly shared portrait can appear as a badge while the dragon resident keeps its 3D body, horns, and wings.
 
-访友落地时，居民会在便于看清的码头旁站位。连线状态以小星球服务是否可达为准。若临时停服，保持游戏页面打开，同一服务恢复后可以继续原航程或在已到达的星球行走。
+访友落地时，居民会在便于看清的码头旁站位。有房前花盆就在附近时，空闲的居民偶尔会停下，面向花盆俯身看看，再继续散步。启用减少动态效果时会省略这段动作。连线状态以小星球服务是否可达为准。若临时停服，保持游戏页面打开，同一服务恢复后可以继续原航程或在已到达的星球行走。
 
-Residents greet visitors from clearer positions near the dock. The game checks whether the world server itself can be reached. If that server goes down temporarily, keep the page open. When it comes back at the same address, the current visit can continue.
+Residents greet visitors from clearer positions near the dock. An idle resident near a doorstep flower pot may pause, turn toward it, and lean in before resuming their stroll. Reduced motion skips this gesture. The game checks whether the world server itself can be reached. If that server goes down temporarily, keep the page open. When it comes back at the same address, the current visit can continue.
 
 ## 与 Agent Arcade 好友共用星球
 

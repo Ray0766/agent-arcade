@@ -95,14 +95,15 @@ export function createBothouseResidentModel(appearanceKey:string){
   badge.visible=false;
   body.add(badge);
   let disposed=false;
-  const animate=(activity:Activity,seconds:number,reducedMotion:boolean,walk=0)=>{
+  const animate=(activity:Activity,seconds:number,reducedMotion:boolean,walk=0,flowerLean=0)=>{
     const t=reducedMotion?0:seconds,pace=reducedMotion?0:T.MathUtils.clamp(walk,0,1);
     const rest=activity==='offline',think=activity==='thinking',talk=activity==='talking',work=activity==='working';
+    const lean=activity==='idle'&&!reducedMotion?flowerLean:0;
     const swing=Math.sin(t*6.2)*pace;
     rig.position.y=-standingSoleOffset+Math.abs(swing)*.014;
     ledger.visible=work;
-    body.rotation.x=work?.10:rest?.045:.018*pace;
-    head.rotation.set(think?.10:work?.14:rest?.19:talk?-.025:0,reducedMotion?0:Math.sin(t*.73)*.042,think?-.105:0);
+    body.rotation.x=work?.10:rest?.045:.018*pace+.48*lean;
+    head.rotation.set(think?.10:work?.14:rest?.19:talk?-.025:.30*lean,reducedMotion?0:Math.sin(t*.73)*.042,think?-.105:0);
     if(face?.morphTargetInfluences&&face.morphTargetDictionary){
       const weights=face.morphTargetInfluences, keys=face.morphTargetDictionary;
       weights[keys.blink]=rest?.58:!reducedMotion&&t%5.1>.12&&t%5.1<.23?1:0;
