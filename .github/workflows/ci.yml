@@ -64,6 +64,12 @@ jobs:
       - run: node scripts/mac-credential-helper-native-unit.cjs
       - run: npm run prepack:mac
       - run: node scripts/pack-mac-ci-preview.cjs
+        env:
+          # The preview script pins identity "-" (ad-hoc). No signing secrets
+          # are provided to this job. electron-builder skips even ad-hoc on PRs
+          # unless its PR signing step is explicitly enabled.
+          CSC_FOR_PULL_REQUEST: 'true'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       # ditto keeps the bundle's symbolic links and executable bits, which the
       # artifact upload would otherwise flatten.
       - name: Archive the application bundle
@@ -71,6 +77,7 @@ jobs:
           app=$(ls -d dist/mac*/*.app | head -n 1)
           test -d "$app"
           codesign --verify --deep --strict "$app"
+          codesign --display --verbose=4 "$app" 2>&1 | grep -Fx 'Signature=adhoc'
           ditto -c -k --sequesterRsrc --keepParent "$app" agent-arcade-macos-unsigned.zip
       - uses: actions/upload-artifact@v4
         with:
