@@ -9,12 +9,12 @@ Windows 聊天中点 **截图** 可调用系统截屏。系统工具无法启动
 1. 当前提供 Windows 内测包，微软商店尚未上架。打开运营方提供的内测包，注册或登录后，在「通讯录」搜朋友的用户号并发送好友申请。
 2. 从「消息」打开私聊互发文字。在通讯录选好友可建群。配套 Windows 包使用构建时写入的同一好友服务原点。见 [Windows 构建与安装](windows/README.md)。
 3. 要和 AI 聊天，从「我 → 复制用户号」把号码给 Bothouse 房主。房主按你的注册账号分享后，直接从「通讯录 → AI 联系人」找到角色，点「打开私聊」。如果收到的是配对码，再按下文兑换。私聊可直接交办，群内用 @ 选择已加入的角色，结果回原会话。
-4. 桌面从「更多 → 小星球」进入自己的星球。房主允许来访后，从好友私聊的「会话设置」进入对方星球。返回后继续原会话与草稿。见 [世界安装器](https://github.com/zuiho-kai/bothouse/pull/2181)。
+4. 桌面从「更多 → 小星球」进入自己的星球。房主允许来访后，从好友私聊的「会话设置」进入对方星球。返回后继续原会话与草稿。见 [世界安装器](../little-worlds/README.md)。
 
 1. A Windows test build is available from your Friends service operator and is not yet listed in the Microsoft Store. Register or sign in, then look up your friend’s user number in **Contacts** and send a friend request.
 2. Open the direct chat in **Messages** and exchange a message. Select friends in Contacts to start a group. A paired Windows package uses the same Friends origin. See [Windows build and installation](windows/README.md).
 3. In **我 → 复制用户号** (Me → Copy user number), copy your number and give it to the Bothouse host. Once the host shares a role with that registered account, go to **通讯录 → AI 联系人 → 打开私聊** (Contacts → AI contacts → Open direct chat). If the host sends a pairing code, redeem it as described below. Assign work in the direct chat or @ an added role in a group. Results return to the original chat.
-4. In the desktop app, **More → Little Worlds** opens your home. Once a friend allows visits, use the conversation settings in their private chat. Returning restores the chat and its draft. See the [world installer](https://github.com/zuiho-kai/bothouse/pull/2181).
+4. In the desktop app, **More → Little Worlds** opens your home. Once a friend allows visits, use the conversation settings in their private chat. Returning restores the chat and its draft. See the [world installer](../little-worlds/README.md).
 
 ## 联系 Bothouse 角色
 
@@ -32,10 +32,10 @@ If the service operator shares access by code, they can verify the account and i
 
 ## 本机启动
 
-需要 Node.js 24.18 或更新的 24.x。服务使用 Node 自带的 HTTP、scrypt 与 SQLite，无 npm 运行依赖。从 Bothouse 仓库根目录运行以下命令。单独部署时按[单机部署清单](deploy/README.md)一并安装共享模块。
+需要 Node.js 24.18 或更新的 24.x。服务使用 Node 自带的 HTTP、scrypt 与 SQLite，无 npm 运行依赖。从 Agent Arcade 仓库根目录运行以下命令。若使用解压后只含本模块的源码 ZIP，在含 `social/` 的目录运行 `npm --prefix social start`。单独部署时按[单机部署清单](deploy/README.md)一并安装共享模块。
 
 ```powershell
-npm --prefix integrations/agent-arcade/social start
+npm run friends
 ```
 
 浏览器打开 `http://127.0.0.1:8787/`。两个独立浏览器档案可各自注册一个合成账号；同一档案下的两个标签页共享登录。用户号可由用户选择，昵称可重复。服务重启或换设备后使用原号和密码登录。首版无找回密码和端到端加密。默认数据库在当前操作系统用户目录的 `.agent-arcade-social/social.sqlite`，也可用 `SOCIAL_DB` 指定持久磁盘上的路径。部署进程账户独占此目录的读写权限。
@@ -43,7 +43,7 @@ npm --prefix integrations/agent-arcade/social start
 ## 合成验收与同网手机入口
 
 ```powershell
-npm --prefix integrations/agent-arcade/social test
+npm run friends:test
 npm --prefix integrations/agent-arcade/social run test:lan
 ```
 

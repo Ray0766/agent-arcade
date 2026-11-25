@@ -33,7 +33,7 @@ Windows MSIX 与好友服务可同版发行，也可独立升级好友服务。�
 
 服务 ZIP 的 [Git 导出清单](service-archive-paths.txt) 包含 `social/assets/stickers` 下的随版 PNG、可编辑源和授权说明，也包含贴图和真人附图运行依赖的共享模块。浏览器验收脚本和服务测试保存在完整 source.zip 中，部署 ZIP 只带服务所需的代码、资源、许可证和运维文件。部署时保留归档目录结构。用新注册的测试账号打开收到的角色贴图及原图详情，验证运行中的服务可以读取图像并显示来源。
 
-优先取同次交接的服务 ZIP、完整源码 ZIP 和摘要。自行重建时，从冻结的 Bothouse 检出进入 Agent Arcade 模块。Git 从模块目录导出相对路径，生成的服务 ZIP 根目录直接包含 `social/`、`src/` 和许可文件。
+优先取同次交接的服务 ZIP、完整源码 ZIP 和摘要。自行重建时，从独立 Agent Arcade 的冻结检出进入 `integrations/agent-arcade`。Git 从模块目录导出相对路径，生成的服务 ZIP 根目录直接包含 `social/`、`src/` 和许可文件。
 
 ```sh
 cd integrations/agent-arcade

@@ -2,9 +2,25 @@
 
 # Agent Arcade
 
-**在桌面上和 AI 搭档聊天。** 用自己的 API key 开始对话，随时换角色，也能查看和管理每位搭档记住的事。聊天记录和记忆保存在你的电脑上。Agent Arcade 以 AGPL-3.0 开源，API 调用由模型提供商计费。
+**Agent Arcade 好友**支持按用户号加好友、私聊、群聊，分享图片、语音和动态。Agent Arcade 以 AGPL-3.0 开源。
 
-[English](README.md) · [首次使用](docs/FIRST_RUN.md) · [验证记录](docs/VALIDATION.md)
+[English](README.md) · [好友使用说明](integrations/agent-arcade/social/README.md) · [来源与许可](integrations/agent-arcade/README.md#source-and-licenses)
+
+## 在本机打开好友
+
+安装 [Node.js 24.18+（24.x）](https://nodejs.org/) 后，从仓库根目录运行这一条命令，再打开终端显示的本机地址（默认 http://127.0.0.1:8787/）。
+
+```sh
+npm run friends
+```
+
+用两个独立浏览器档案各注册一个测试号。在「通讯录」按号搜索对方，接受好友申请后就能在「消息」里聊天。真人聊天无需另外安装依赖或配置 AI。好友服务用独立数据库保存账号和消息。服务测试运行 `npm run friends:test`。
+
+原生客户端见 [Windows 构建说明](integrations/agent-arcade/social/windows/README.md)。其他设备连接见 [好友服务 HTTPS 部署](integrations/agent-arcade/social/deploy/README.md)。[小星球](integrations/agent-arcade/little-worlds/README.md)单独安装。[Bothouse 接入](integrations/agent-arcade/social/server/bothouse/README.md)可选，用于接收已分享的 AI 角色。
+
+## 原本机陪伴预览
+
+用自己的 API key 与桌面 AI 搭档聊天、切换角色和管理记忆。这部分聊天记录保存在你的电脑上，API 调用由模型提供商计费。[首次使用](docs/FIRST_RUN.md) · [验证记录](docs/VALIDATION.md)
 
 现在可从公开 **preview.8** 源码体验 App 内聊天。下面的 **preview.61** 配图取自较新的本机 Mac 候选版。[从源码运行](#从源码运行)一节列出了两个版本的入口。
 
@@ -40,7 +56,7 @@ App 内聊天只需对应提供商的 API key。请求直接发给该提供商�
 
 | 版本 | 使用入口 |
 | --- | --- |
-| **0.4.0-preview.8** 开发源码 | GitHub `main`。用下方固定提交体验 App 内对话、搭档切换和 App 记忆。 |
+| **0.4.0-preview.8** 开发源码 | 历史公开检查点。用下方固定提交体验 App 内对话、搭档切换和 App 记忆。 |
 | **0.4.0-preview.61** 本机 Mac 候选版 | 本文配图所用版本，已在 Apple Silicon 上用隔离档案验证。目前没有公开可下载的 Mac 安装包。 |
 | **0.3.0-preview.2** Windows 下载版 | [公开 Windows 预览版](https://github.com/Ray0766/agent-arcade/releases/tag/v0.3.0-preview.2)，使用[微信派活与观察器流程](docs/releases/0.3.0-preview.2.md)。 |
 

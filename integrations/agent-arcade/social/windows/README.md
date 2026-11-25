@@ -4,7 +4,7 @@
 
 ## 构建和测试
 
-使用 x64 Visual Studio Developer PowerShell 和 Windows SDK。打开 Bothouse 检出目录，进入 Agent Arcade 模块根，再安装锁定的构建和运行依赖：
+使用 x64 Visual Studio Developer PowerShell 和 Windows SDK。打开独立 Agent Arcade 仓库，进入 Windows 社交版的模块根，再安装锁定的构建和运行依赖：
 
 ```powershell
 cd integrations/agent-arcade

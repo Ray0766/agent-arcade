@@ -8,11 +8,11 @@ A Windows test build is available from your Friends service operator and is not 
 
 ## Run the service locally / 合作者本机运行
 
-From the **Bothouse repository root**, run `npm --prefix integrations/agent-arcade/social start` with Node.js 24.18 or later in the 24.x line, then open the loopback address printed in the terminal. The web service uses Node's built-in HTTP and SQLite. Set `SOCIAL_DB` to choose a database. Open separate browser profiles to register two test users, add each other by user number and start a private or group conversation.
+From the **Agent Arcade repository root**, run `npm run friends` with Node.js 24.18 or later in the 24.x line, then open the loopback address printed in the terminal. From an extracted module-only source ZIP, use `npm --prefix social start`. The web service uses Node's built-in HTTP and SQLite. Set `SOCIAL_DB` to choose a database. Open separate browser profiles to register two test users, add each other by user number and start a private or group conversation.
 
 For AI contacts the service needs access to its configured Bothouse instance, authenticated management and Bridge listeners, Python 3.11+ and `websockets==15.0.1`. Set `SOCIAL_BOTHOUSE_PYTHON` to the intended interpreter. The [directory guide](social/server/bothouse/README.md) describes account visibility, required configuration and transport. The browser receives messages from the Friends service. Bothouse owns the underlying model connection. [Windows host and package build](social/windows/README.md) · [Friend service operation and backup](social/deploy/README.md)
 
-Run `npm --prefix integrations/agent-arcade/social test` for service regressions. The Windows package uses the pinned Electron version in [package-lock.json](package-lock.json), Windows SDK and x64 Visual C++ build tools. Service-only installation has no npm runtime dependencies.
+Run `npm run friends:test` from the repository root for service regressions (or `npm --prefix social test` from the module source ZIP). The Windows package uses the pinned Electron version in [package-lock.json](package-lock.json), Windows SDK and x64 Visual C++ build tools. Service-only installation has no npm runtime dependencies.
 
 ### Daily chat and Little Worlds
 
@@ -22,8 +22,10 @@ Use the conversation list to search or pin a chat. In a conversation, quote a me
 
 ### Reproduce role pairing locally
 
-From the Bothouse root, run `python integrations/agent-arcade/test/bothouse/pairing.py` with Python 3.11+, websockets 15.0.1, Node 24.18+ (24.x) and the Go dependencies of `bridge/` already cached. The test starts this checkout's management server and Bridge in a temporary directory. Two accounts redeem different test grants and receive replies from their own roles. A third account remains unpaired. The test checks restart and revocation while a reply is pending. The model session uses deterministic test replies.
+The original pairing fixture remains available in the [pinned Bothouse source below]. Run `python integrations/agent-arcade/test/bothouse/pairing.py` from that separate checkout with Python 3.11+, websockets 15.0.1, Node 24.18+ (24.x) and its Go dependencies cached. The fixture starts the management server and Bridge in a temporary directory. Two accounts redeem different test grants and receive replies from their own roles. A third account remains unpaired. The test checks restart and revocation while a reply is pending. The model session uses deterministic test replies.
 
 ## Source and licenses
 
-The source was imported from [Ray0766/agent-arcade](https://github.com/Ray0766/agent-arcade). Original revisions are listed on the import commits. This module retains Agent Arcade's [AGPL-3.0-only license](LICENSE), [historical MIT license](LICENSE-MIT-HISTORICAL), [third-party notices](THIRD_PARTY_NOTICES.md) and component-specific licenses. Generated project artwork has its own [portrait provenance](src/ui/portraits/README.md) and [brand provenance](src/assets/brand/README.md). The normalized npm scripts start and test the nested Friends service. The production desktop build uses `social/windows/pack.cjs`.
+The independent repository imports this module from the [pinned Bothouse source below]. The source commit is `c9be4df59e47e11830fe1bd34feaff78224917bc` and its `integrations/agent-arcade` Git tree is `6df6d38a082a4ed0fd5bf222342de9838d979bf7`. Original authors and revision references are retained. Bothouse runs separately for optional AI. The [Little Worlds installer](little-worlds/README.md) applies the integration delta to a pinned public game baseline whose [source and asset terms](little-worlds/NOTICE.md) are separate. This module retains Agent Arcade's [AGPL-3.0-only license](LICENSE), [historical MIT license](LICENSE-MIT-HISTORICAL), [third-party notices](THIRD_PARTY_NOTICES.md) and component-specific licenses. Generated project artwork has its own [portrait provenance](src/ui/portraits/README.md) and [brand provenance](src/assets/brand/README.md). The production desktop build uses `social/windows/pack.cjs` from this module and includes its own source and notices.
+
+[pinned Bothouse source below]: https://github.com/Ray0766/bothouse/tree/c9be4df59e47e11830fe1bd34feaff78224917bc/integrations/agent-arcade
