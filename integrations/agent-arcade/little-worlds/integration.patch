@@ -711,20 +711,24 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..d2eb072d159eb1ccd8ef4d5eb3fe554ff23376cf 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..b629b9dce1c96e1e378fe2914c85352fcb2228ac 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
 +import { BothouseResidents } from './bothouse-residents.ts';
  import { GroundPresence } from './presence.ts';
-@@ -270,3 +271,4 @@ function accept(next: PlayerState) {
+@@ -146,2 +147,3 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
+ const action = $<HTMLButtonElement>('interact');
++const interaction = action.parentElement!;
+ function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
+@@ -270,3 +272,4 @@ function accept(next: PlayerState) {
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
 -  physicsMismatch=false;online = navigator.onLine; renderSaveProgress(); renderTask();
 +  // An accepted world response proves this server is reachable, even on a local-only network.
 +  physicsMismatch=false;online=true;renderSaveProgress();renderTask();
    homeInterior?.receive(state);homeInterior?.setOnline(online);homeControls?.receivePlayer(state);
-@@ -275,7 +277,10 @@ function accept(next: PlayerState) {
+@@ -275,7 +278,10 @@ function accept(next: PlayerState) {
  }
 -function failed(error: unknown) {
 -  clearGroundMotion();
@@ -739,47 +743,85 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d2eb072d159eb1ccd8ef4d5eb3fe554f
 +function failed(error: unknown) {
 +  worldUnavailable();
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
-@@ -319,2 +324,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
+@@ -319,2 +325,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
 +const bothouseResidents=new BothouseResidents(scene,reduced);
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
-@@ -723,3 +729,3 @@ setInterval(async()=>{
+@@ -700,3 +707,12 @@ async function interact() {
+ }
+-action.onclick=()=>void interact();
++function canGreetVisitor() {
++  return canSceneInput() && state.location?.kind !== 'interior' && !indoorRoomView.room && !!standing?.grounded && !overview &&
++    !near && !nearResident && !homeControls?.canEnter && !teleportStations?.canUse && !worldGuide.active &&
++    distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius()) >= BOARD_RADIUS-.12;
++}
++action.onclick=()=>{
++  const id = action.dataset.visitorGreeting;
++  if (!id) { void interact(); return; }
++  if (canGreetVisitor()) bothouseResidents.greetVisitor(id,walker.up,renderCamera());
++};
+ setInterval(()=>void savePosition(),350);
+@@ -723,3 +739,3 @@ setInterval(async()=>{
    try {
 -    const next=await serial(()=>stateLoader.read());if(!accept(next))return;
 +    const next=await serial(()=>stateLoader.read());if(online||!accept(next))return;
      walker=new SurfaceWalker(next.position);lastSaved.copy(walker.up);clearInput();rebaseGroundCamera();ensureColony();notice('Back at your last saved spot. Welcome home.');
-@@ -727,4 +733,2 @@ setInterval(async()=>{
+@@ -727,4 +743,2 @@ setInterval(async()=>{
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
- 
-@@ -734,2 +738,6 @@ function animate(now:number) {
+
+@@ -734,2 +748,7 @@ function animate(now:number) {
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
 +  const landedGarden=online&&colony?.syncing&&state?.flight.mode==='ground'&&garden?.kind==='garden'&&garden.claimed?garden.id:null;
++  if (!visitVisible || photoPaused) interaction.removeAttribute('data-visitor-greeting');
 +  bothouseResidents.frame(visitVisible?groundWorld:null,landedGarden,state?.location?.visitEpoch??0,now,!!garden?.mine&&garden.id===activePlanet&&online,garden?.objects);
    if(graphicsLost)return;
-@@ -910,2 +918,3 @@ function animate(now:number) {
+@@ -910,2 +929,3 @@ function animate(now:number) {
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
 +  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused);
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +924,3 @@ function animate(now:number) {
+@@ -915,2 +935,3 @@ function animate(now:number) {
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -1032,3 +1042,3 @@ function ensureColony() {
+@@ -966,3 +987,6 @@ function animate(now:number) {
+     if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
+-    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
++    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!paused && canGreetVisitor());
++    interaction.toggleAttribute('data-visitor-greeting',!!greeting);
++    delete action.dataset.visitorGreeting;
++    action.hidden=(!near&&!nearResident&&(!greeting||greeting.greeted))||paused||nearDock||!!teleportStations?.canUse;
+     if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
+@@ -978,2 +1002,14 @@ function animate(now:number) {
+     }
++    else if(greeting){
++      delete action.dataset.residentPrompt;
++      const chinese = document.documentElement.lang.startsWith('zh');
++      if (!greeting.greeted) {
++        action.dataset.visitorGreeting = greeting.id;
++        setText(action,chinese ? '打招呼' : 'Say hello',true);
++      }
++      const text = greeting.greeted
++        ? (chinese ? `已和${greeting.name}打招呼` : `You greeted ${greeting.name}`)
++        : greeting.name;
++      if ($('nearby').textContent !== text) setText($('nearby'),text,true);
++    }
+     else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
+@@ -1032,3 +1068,3 @@ function ensureColony() {
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
 +  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
    flight.setDesign((state.ship??defaultShip()).design);flight.receive(state.flight);scene.environment=flight.scene.environment;scene.environmentIntensity=groundPresentation(activePlanet,activeRadius).environmentIntensity;
-@@ -1040,3 +1050,4 @@ function ensureColony() {
+@@ -1040,3 +1076,4 @@ function ensureColony() {
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1072,3 @@ photoMode=new PhotoMode({renderer,
+@@ -1061,3 +1098,3 @@ photoMode=new PhotoMode({renderer,
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');bothouseResidents.animate(0,walker.up.toArray() as Vec3,photo,false);residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
@@ -1641,3 +1683,14 @@ index 1a570ac8d81c2294e8da58e4818effaead2d1f9f..dab56cab32b15b863b5616bb68856f0f
      expect(saved.home!.interior.doorOpen).toBe(false);
 +    expect(saved.home!.interior.material).toBe(home.interior.material);
      await click('#home-toggle-door');await expect(page.locator('#home-exit')).toBeEnabled();
+diff --git a/src/client/immersive.css b/src/client/immersive.css
+index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..4953e14e3a2f207a3e21b5c4f368fd027134ea0a 100644
+--- a/src/client/immersive.css
++++ b/src/client/immersive.css
+@@ -119 +119,6 @@ body.indoor-room-active #mouse-look,body.indoor-room-active #view-mode{display:n
+ .minimal-bar #open-menu kbd{display:inline-block;margin:0;padding:2px 5px;font:10px system-ui;color:inherit;background:var(--ui-choice);border:1px solid var(--ui-dialog-border);border-radius:4px}
++
++/* The visitor prompt shares the ordinary nearby-action slot on garden worlds. */
++body:not(.in-space,.building,.home-interior-active) .interaction[data-visitor-greeting]{display:block!important}
++.interaction[data-visitor-greeting] #nearby{overflow-wrap:anywhere}
++.interaction[data-visitor-greeting] #interact:not([hidden]){min-height:44px}
