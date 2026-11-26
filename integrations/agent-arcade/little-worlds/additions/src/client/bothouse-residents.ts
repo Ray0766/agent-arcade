@@ -167,6 +167,7 @@ export class BothouseResidents {
   private greetingTarget=this.friendPlanet;
   private visitorWorld: GroundWorld | null = null;
   private visitorAllowed = false;
+  private friendVisitAllowed = false;
   private visitorGreeting: { figure: ResidentFigure; until: number } | null = null;
   private arrivalWorld:GroundWorld|null=null;
   private request:AbortController|null=null;
@@ -320,7 +321,12 @@ export class BothouseResidents {
         checkingFlowers:root.getObjectByName('body')!.rotation.x>.25,flower:f.flower};
     });
   }
+  canPhotographVisit(world:GroundWorld,epoch:number) {
+    return world === this.visitorWorld && this.friendVisitAllowed
+      && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
+  }
   private clear() {
+    this.friendVisitAllowed = false;
     this.visitorAllowed = false;
     this.cancelVisitorGreeting();
     for(const figure of this.figures.values())figure.dispose();
@@ -336,8 +342,8 @@ export class BothouseResidents {
       const signal=AbortSignal.any([request.signal,AbortSignal.timeout(5000)]);
       const response=await fetch('/api/planets/'+encodeURIComponent(planet)+'/residents',{cache:'no-store',signal});
       if(!response.ok)throw Error('Roster unavailable');
-      const {residents,visitClosed,visitReopen}=await response.json() as {
-        residents:Resident[];visitClosed?:boolean;visitReopen?:boolean
+      const {residents,visitClosed,visitReopen,friendVisitAllowed}=await response.json() as {
+        residents:Resident[];visitClosed?:boolean;visitReopen?:boolean;friendVisitAllowed?:boolean
       };
       if(request!==this.request)return;
       this.closure.hidden=!visitClosed&&!visitReopen;
@@ -359,6 +365,7 @@ export class BothouseResidents {
       }
       if(!world)return;
       this.visitorAllowed = true;
+      this.friendVisitAllowed = friendVisitAllowed === true;
       const ids=new Set(residents.map(r=>r.id));
       for(const [id,figure] of this.figures)if(!ids.has(id)){figure.dispose();this.figures.delete(id);}
       const used=new Set(Array.from(this.figures.values(),f=>f.slot));
