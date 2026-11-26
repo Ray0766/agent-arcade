@@ -375,7 +375,7 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..562d2589fbb1201ee925bfdcd231c54b123cee67 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d1654ed7d 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
 @@ -1,3 +1,5 @@
@@ -384,26 +384,28 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..562d2589fbb1201ee925bfdcd231c54b
  import { makePlacementPreview } from './placement-preview.ts';
 +import { createCourtyardInspiration } from './courtyard-inspiration.ts';
  import { PlacedObjectShadows } from './placed-shadows.ts';
-@@ -12,2 +14,3 @@ import {RADIUS} from '../shared/world.ts';
+@@ -12,2 +14,4 @@ import {RADIUS} from '../shared/world.ts';
  import { builtObject, disposeGeometry } from './build-art.ts';
 +import { flowerPlacementHint } from './bothouse-resident-sites.ts';
++import { courtyardPlacementImpact } from './courtyard-placement-impact.ts';
  import type { Workshop } from './workshop.ts';
-@@ -34,4 +37,5 @@ export interface ColonyBridge {
+@@ -34,4 +38,5 @@ export interface ColonyBridge {
    ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
 +  ownerRosterSize?: (planet:PlanetView, epoch:number) => number|null;
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-@@ -55,2 +59,3 @@ export class Colony {
+@@ -55,2 +60,4 @@ export class Colony {
    private placing = false; private selected: string | null = null;
 +  private flowerHint: {key:string; text:string}|null=null;
++  private courtyardImpact: {key:string; text:string|null}|null=null;
    private painted = ''; private cards = ''; private pointer: {id:number;x:number;y:number} | null = null;
-@@ -59,2 +64,3 @@ export class Colony {
+@@ -59,2 +66,3 @@ export class Colony {
    private loadWorkshop: () => Promise<Workshop>;
 +  private readonly courtyardInspiration: ReturnType<typeof createCourtyardInspiration>;
    private localParts: Record<string,PartPlacement[]> = {};
-@@ -67,3 +73,15 @@ export class Colony {
+@@ -67,3 +75,15 @@ export class Colony {
      const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
 -    el('build-mode').after(workshopButton);
 +    const addCourtyardFlower=document.createElement('button');
@@ -420,16 +422,16 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..562d2589fbb1201ee925bfdcd231c54b
 +      this.startCourtyardPlacement('flowers');
 +    };
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
-@@ -89,3 +107,3 @@ export class Colony {
+@@ -89,3 +109,3 @@ export class Colony {
        const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
 -      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
 +      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
      }
-@@ -111,2 +129,3 @@ export class Colony {
+@@ -111,2 +131,3 @@ export class Colony {
    get paused() { return this.building || this.map.open || this.busy || this.workshop?.opened; }
 +  savedObjectModel(id: string) { return this.objects.get(id); }
    private setKitCollapsed(collapsed:boolean){
-@@ -118,2 +137,19 @@ export class Colony {
+@@ -118,2 +139,19 @@ export class Colony {
    }
 +  private canArrangeCourtyard(){
 +    const world=this.universe;
@@ -449,7 +451,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..562d2589fbb1201ee925bfdcd231c54b
 +    this.setKitCollapsed(innerWidth<=700);
 +  }
    private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
-@@ -226,3 +262,13 @@ export class Colony {
+@@ -226,3 +264,13 @@ export class Colony {
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -464,7 +466,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..562d2589fbb1201ee925bfdcd231c54b
 +      }
 +    }finally{this.pollBusy=false;}
    }
-@@ -277,3 +323,6 @@ export class Colony {
+@@ -277,3 +325,6 @@ export class Colony {
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
@@ -472,7 +474,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..562d2589fbb1201ee925bfdcd231c54b
 +    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
 +    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
-@@ -320,3 +369,14 @@ export class Colony {
+@@ -320,3 +371,23 @@ export class Colony {
      const problem=d?.position?this.problem(d):null;
 -    setText(el('placement-status'), problem??(d?.position?`Turn: ${Math.round(d.rotation*180/Math.PI)}°`:''));
 +    let status=problem??(d?.position?`Turn: ${Math.round(d.rotation*180/Math.PI)}°`:'');
@@ -486,9 +488,18 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..562d2589fbb1201ee925bfdcd231c54b
 +      }
 +      status+=' · '+this.flowerHint.text;
 +    }
++    if(!problem&&d?.kind==='structure'&&d.position&&d.version&&this.canArrangeCourtyard()&&this.universe){
++      const planet=this.universe.currentPlanet;
++      const key=JSON.stringify([planet.id,planet.revision,planet.homeDoor?.version,this.syncing,d]);
++      if(this.courtyardImpact?.key!==key){
++        const text=courtyardPlacementImpact(planet,{...d,position:d.position,version:d.version},this.syncing);
++        this.courtyardImpact={key,text};
++      }
++      if(this.courtyardImpact.text)status+=' · '+this.courtyardImpact.text;
++    }
 +    setText(el('placement-status'),status);
      el<HTMLButtonElement>('save-object').disabled=this.busy||!this.syncing||!d?.position||!!problem;
-@@ -340,2 +400,6 @@ export class Colony {
+@@ -340,2 +411,6 @@ export class Colony {
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
 +    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
 +    courtyardFlower.hidden=!this.canArrangeCourtyard();
@@ -601,37 +612,64 @@ index 5e243b9ac17c704ab24ecf75238869f6006af5f8..353faeb78c3b1508899eece2aebc32ed
 +   addTownExterior(model.object,parts,worldMaterials());
     if(village){
 diff --git a/src/client/home-interior.ts b/src/client/home-interior.ts
-index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..de734774898f838e228274eb36f9945c86d0bfb9 100644
+index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800cc565a3b9 100644
 --- a/src/client/home-interior.ts
 +++ b/src/client/home-interior.ts
 @@ -21,2 +21,3 @@ import { createHomeDoor } from './home-door.ts';
  import { createHomeRoomArt, applyHomeRoomTheme } from './home-room-art.ts';
 +import {loadHomeFurniture} from './home-furniture-models.ts';
  import {beginSceneLoading,yieldSceneFrame} from './loading-state.ts';
-@@ -58,3 +59,3 @@ const translation: Record<string, [string, string]> = {
+@@ -53,2 +54,18 @@ export function homeFurnitureFits(items: readonly HomeItem[], position: Vec3, ro
+ }
++export function firstHomeFurnitureHit(ray: T.Raycaster, roots: T.Object3D[], furniture: T.Group) {
++  for (const hit of ray.intersectObjects(roots)) {
++    if (!(hit.object instanceof T.Mesh)) continue;
++    const material = Array.isArray(hit.object.material) ? hit.object.material[hit.face?.materialIndex ?? 0] : hit.object.material;
++    if (!material?.visible || (material.transparent && material.opacity === 0)) continue;
++    let visible = true;
++    let itemId: string | undefined;
++    for (let node: T.Object3D | null = hit.object; node; node = node.parent) {
++      if (!node.visible) { visible = false; break; }
++      if (node.parent === furniture) itemId = node.userData.homeItem;
++    }
++    if (!visible) continue;
++    return itemId;
++  }
++}
++
+ const translation: Record<string, [string, string]> = {
+@@ -58,3 +75,3 @@ const translation: Record<string, [string, string]> = {
    photo: ['Photo mode', '照片模式'],
 -  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'],
 +  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'], undo: ['Undo last change', '撤销上一步'],
    move: ['MOVE', '移动'], hint: ['WASD / arrows · open the door, then E to leave', 'WASD / 方向键移动 · 门口开门后按 E 出门'],
-@@ -86,2 +87,3 @@ export class HomeInterior {
+@@ -67,2 +84,3 @@ const translation: Record<string, [string, string]> = {
+   table: ['Low table', '矮桌'], chair: ['Stool', '木凳'], shelf: ['Shelf', '书架'], plant: ['Plant', '盆栽'],
++  pickFurniture: ['Click or tap furniture, or choose it from the list', '点选家具，或从列表选择'],
+   edited: ['Preview · save to keep your changes', '布置预览 · 保存后保留修改'],
+@@ -86,2 +104,3 @@ export class HomeInterior {
    private furniture = new T.Group();
 +  private furnitureModels: Awaited<ReturnType<typeof loadHomeFurniture>> = new Map();
    private avatar = courier('clay');
-@@ -102,3 +104,3 @@ export class HomeInterior {
+@@ -102,5 +121,7 @@ export class HomeInterior {
    private editing = false;
 -  private dirty = false;
 +  private readonly undoHistory: InteriorData[] = [];
    private draftVersion = 0;
-@@ -130,3 +132,3 @@ export class HomeInterior {
+   private selected = '';
++  private furniturePress: { pointerId: number; x: number; y: number; group: T.Group } | null = null;
++  private readonly furnitureRay = new T.Raycaster();
+   private lastSend = 0;
+@@ -130,3 +151,3 @@ export class HomeInterior {
        <div class="home-room-tools"><button id="home-photo" data-home-text="photo"></button><button id="home-arrange" data-home-text="arrange"></button><button id="home-retry" data-home-text="retry" hidden></button><p id="home-room-hint"></p></div>
 -      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
 +      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-room-undo" data-home-text="undo"></button><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
        <div id="home-joystick" class="home-joystick" role="group" aria-label="Move around the room"><span id="home-stick"></span><small data-home-text="move"></small></div>`;
-@@ -138,2 +140,3 @@ export class HomeInterior {
+@@ -138,2 +159,3 @@ export class HomeInterior {
      on('home-arrange', () => this.beginEditing());
 +    on('home-room-undo', () => this.undoDraft());
      on('home-cancel', () => this.cancelEditing());
-@@ -142,4 +145,5 @@ export class HomeInterior {
+@@ -142,6 +164,33 @@ export class HomeInterior {
      for (const material of ['warm', 'sage', 'blue'] as const) on(`home-material-${material}`, () => {
 -      if (!this.canChange() || !this.draft) return;
 -      this.draft.material = material; this.dirty = true; this.applyTheme(material); this.setStatus('edited'); this.updateControls();
@@ -639,22 +677,56 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..de734774898f838e228274eb36f9945c
 +      this.undoHistory.push(this.draft);
 +      this.previewDraft({ ...this.draft, material });
      });
-@@ -152,3 +156,3 @@ export class HomeInterior {
+-    this.get<HTMLSelectElement>('home-item-select').addEventListener('change', e => { this.selected = (e.target as HTMLSelectElement).value; }, { signal: this.abort.signal });
++    const itemSelect = this.get<HTMLSelectElement>('home-item-select');
++    itemSelect.addEventListener('change', () => this.selectItem(itemSelect.value), { signal: this.abort.signal });
++    const canvas = options.renderer.domElement;
++    const pointerOptions = { signal: this.abort.signal };
++    canvas.addEventListener('pointerdown', event => {
++      if (!event.isPrimary || event.button !== 0 || !this.canPickFurniture()) return;
++      this.furniturePress = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, group: this.furniture };
++    }, pointerOptions);
++    canvas.addEventListener('pointermove', event => {
++      const press = this.furniturePress;
++      if (press?.pointerId === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 7) {
++        this.furniturePress = null;
++      }
++    }, pointerOptions);
++    canvas.addEventListener('pointerup', event => {
++      const press = this.furniturePress;
++      if (press?.pointerId !== event.pointerId) return;
++      this.furniturePress = null;
++      if (press.group !== this.furniture || !this.canPickFurniture() ||
++          Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) return;
++      this.pickFurniture(event.clientX, event.clientY);
++    }, pointerOptions);
++    for (const type of ['pointerleave', 'pointercancel', 'lostpointercapture'] as const) {
++      canvas.addEventListener(type, event => {
++        if (this.furniturePress?.pointerId === event.pointerId) this.furniturePress = null;
++      }, pointerOptions);
++    }
+     on('home-item-left', () => this.changeItem(-.25, 0)); on('home-item-right', () => this.changeItem(.25, 0));
+@@ -152,3 +201,3 @@ export class HomeInterior {
      window.addEventListener('blur', () => this.clearInput(), { signal: this.abort.signal });
 -    window.addEventListener('beforeunload', event => { if (this.active && this.dirty) event.preventDefault(); }, { signal: this.abort.signal });
 +    window.addEventListener('beforeunload', event => { if (this.active && this.undoHistory.length) event.preventDefault(); }, { signal: this.abort.signal });
      document.addEventListener('visibilitychange', () => { if (document.hidden) { this.clearInput(); if(!this.photoMode)void this.flush(); } }, { signal: this.abort.signal });
-@@ -204,3 +208,3 @@ export class HomeInterior {
+@@ -171,3 +220,3 @@ export class HomeInterior {
+   private setStatus(key: string) { this.statusKey = key; this.get('home-room-status').textContent = this.text(key); }
+-  private clearInput() { this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
++  private clearInput() { this.furniturePress = null; this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
+   private keyDown = (event: KeyboardEvent) => {
+@@ -204,3 +253,3 @@ export class HomeInterior {
        this.currentVisit = visit; this.position = [...location.position]; this.yaw = location.yaw;
 -      this.editing = false; this.dirty = false; this.clearInput();
 +      this.editing = false; this.undoHistory.length = 0; this.clearInput();
        this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; this.selected = this.draft.items[0]?.id ?? '';
-@@ -211,3 +215,3 @@ export class HomeInterior {
+@@ -211,3 +260,3 @@ export class HomeInterior {
      if (arriving || sourceKey !== this.sourceKey || this.preparation?.visit !== undefined && this.preparation.visit !== visit) {
 -      if (!this.editing || this.pendingAction) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
 +      if (!this.editing) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
        if(this.preparation?.key!==sourceKey||this.preparation.visit!==visit)void this.prepareRoom(sourceKey,visit);
-@@ -252,5 +256,7 @@ export class HomeInterior {
+@@ -252,5 +301,7 @@ export class HomeInterior {
        room=this.createRoom(interior);await next();
 +      const models=await loadHomeFurniture(interior.items.map(item=>item.kind));
 +      if(!current())return;
@@ -663,11 +735,11 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..de734774898f838e228274eb36f9945c
 -        furniture.add(this.createFurnitureItem(item));await next();
 +        furniture.add(this.createFurnitureItem(item,models));await next();
        }
-@@ -265,2 +271,3 @@ export class HomeInterior {
+@@ -265,2 +316,3 @@ export class HomeInterior {
        disposeGeometry(this.room);disposeGeometry(this.furniture);
 +      this.furnitureModels=models;
        this.room=room;this.furniture=furniture;room=null;furniture=null;this.scene.add(this.room,this.furniture);
-@@ -299,12 +306,21 @@ export class HomeInterior {
+@@ -299,12 +351,21 @@ export class HomeInterior {
    }
 -  private createFurnitureItem(item:HomeItem) {
 -      const b = new PartBuilder('medium'), source = libraryMaterials(this.library), kit = makeKit(b, source);
@@ -699,12 +771,35 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..de734774898f838e228274eb36f9945c
 +    source.owned().forEach(material => { material.userData.ownedResource = true; });
 +    return group;
    }
-@@ -325,3 +341,3 @@ export class HomeInterior {
+@@ -324,4 +385,26 @@ export class HomeInterior {
+   private canChange() { return this.active && !this.preparing && this.online && this.home?.canEdit && this.editing && !this.pendingAction; }
++  private canPickFurniture() {
++    return this.canChange() && !this.photoMode && !document.body.classList.contains('world-guide-talking') &&
++      !document.querySelector('dialog[open]');
++  }
++  private selectItem(id: string) {
++    if (!this.draft?.items.some(item => item.id === id)) return;
++    this.selected = id;
++    this.get<HTMLSelectElement>('home-item-select').value = id;
++    this.updateControls();
++  }
++  private pickFurniture(x: number, y: number) {
++    const bounds = this.options.renderer.domElement.getBoundingClientRect();
++    if (!bounds.width || !bounds.height || x < bounds.left || x >= bounds.right || y < bounds.top || y >= bounds.bottom) return;
++    const pointer = new T.Vector2((x - bounds.left) / bounds.width * 2 - 1, 1 - (y - bounds.top) / bounds.height * 2);
++    this.scene.updateMatrixWorld(true);
++    this.camera.updateMatrixWorld(true);
++    this.furnitureRay.setFromCamera(pointer, this.camera);
++    // Include rendered obstructions, but leave the selection ring out of the raycast.
++    const roots = [this.room, this.doorView.root, this.furniture, this.avatar.root, ...Array.from(this.guests.values(), guest => guest.root)];
++    const id = firstHomeFurnitureHit(this.furnitureRay, roots, this.furniture);
++    if (id !== undefined) this.selectItem(id);
++  }
    private beginEditing() { if (this.preparing || !this.home?.canEdit || !this.online || this.pendingAction) return; this.clearInput(); this.editing = true; this.draft = copy(this.home.interior); this.draftVersion = this.draft.version; this.selected ||= this.draft.items[0]?.id ?? ''; this.populateItems(); this.updateControls(); }
 -  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.editing = false; this.dirty = false; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
-+  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.editing = false; this.undoHistory.length = 0; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
++  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.clearInput(); this.editing = false; this.undoHistory.length = 0; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
    private populateItems() {
-@@ -338,3 +354,17 @@ export class HomeInterior {
+@@ -338,3 +421,17 @@ export class HomeInterior {
      if (!homeFurnitureFits(candidate.items, this.position, candidate.room, this.home!.interior.doorOpen, this.home!.door.partId)) { this.setStatus('blocked'); return; }
 -    this.draft = candidate; this.dirty = true; this.buildFurniture(); this.applyTheme(candidate.material); this.setStatus('edited'); this.updateControls();
 +    this.undoHistory.push(this.draft);
@@ -723,23 +818,26 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..de734774898f838e228274eb36f9945c
 +    this.setStatus(this.undoHistory.length ? 'edited' : 'saved');
 +    this.updateControls();
    }
-@@ -355,3 +385,4 @@ export class HomeInterior {
+@@ -355,5 +452,6 @@ export class HomeInterior {
      this.get('home-joystick').hidden = this.editing;
 -    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.dirty;
 +    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.undoHistory.length;
 +    this.get<HTMLButtonElement>('home-room-undo').disabled = !this.canChange() || !this.undoHistory.length;
      this.get<HTMLButtonElement>('home-cancel').disabled = this.pendingAction;
-@@ -424,3 +455,3 @@ export class HomeInterior {
+-    this.get('home-room-hint').textContent = this.editing ? this.text('edited') : this.text(innerWidth < 700 ? 'phoneHint' : 'hint');
++    this.get('home-room-hint').textContent = this.editing ? this.text('pickFurniture') : this.text(innerWidth < 700 ? 'phoneHint' : 'hint');
+     const selected = this.draft?.items.find(item => item.id === this.selected);
+@@ -424,3 +522,3 @@ export class HomeInterior {
    private async saveDraft() {
 -    if (!this.canChange() || !this.home || !this.draft || !this.dirty) return;
 +    if (!this.canChange() || !this.home || !this.draft || !this.undoHistory.length) return;
      this.clearInput(); this.pendingAction = true; this.updateControls(); this.setStatus('saving');
-@@ -429,3 +460,3 @@ export class HomeInterior {
+@@ -429,3 +527,3 @@ export class HomeInterior {
        const next = await this.options.save({ buildingId: this.home.buildingId, expectedVersion: this.draftVersion, material: this.draft.material, items: this.draft.items });
 -      this.editing = false; this.dirty = false; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
 +      this.editing = false; this.undoHistory.length = 0; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
      } catch (error) { this.get('home-room-status').textContent = error instanceof Error ? error.message : this.text('offline'); }
-@@ -471,3 +502,3 @@ export class HomeInterior {
+@@ -471,3 +569,3 @@ export class HomeInterior {
      this.photoMode=false;
 -    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.dirty = false;
 +    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.undoHistory.length = 0;
@@ -1004,7 +1102,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..d408fbd1698d9aa116041f25c5d8716f16705564 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..b01ec0d741f31618d5d87870bca1e0429743ffbb 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
 @@ -3,2 +3,4 @@
@@ -1041,18 +1139,22 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..d408fbd1698d9aa116041f25c5d8716f
 +  "Set it farther along the same side, leaving room to walk.": "沿同一侧往里放，留出行走空间。",
 +  "Set it opposite the lantern, facing the path.": "放在灯的对面，朝向石板路。",
    "Build on my planet": "在我的星球建造",
-@@ -1174,2 +1196,6 @@ export const messages: Record<string, string> = {
+@@ -1174,2 +1196,10 @@ export const messages: Record<string, string> = {
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
 +  "An idle resident may stop to admire this pot.": "居民空闲时可能会停下来欣赏这盆花。",
 +  "With this layout, residents won’t stop to admire this pot.": "按当前布置，居民不会欣赏这盆花。",
 +  "No residents here to watch flowers yet.": "这里暂时没有居民赏花。",
 +  "Flower watching cannot be predicted here yet.": "暂时无法判断居民能否在这里赏花。",
++  "The effect on the courtyard guide and landmark is unknown.": "暂时无法判断这次改建对院落向导和地标的影响。",
++  "With this layout, visitors will not see the courtyard guide or landmark.": "保存后，访客将看不到院落向导入口和地标。",
++  "The courtyard guide will be available, but the landmark has no clear spot.": "保存后仍有院落向导入口，地标因周围受阻无法显示。",
++  "The courtyard guide and landmark will be available to visitors.": "保存后，访客可以看到院落向导入口和地标。",
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
-@@ -1235,2 +1261,3 @@ export const messages: Record<string, string> = {
+@@ -1235,2 +1265,3 @@ export const messages: Record<string, string> = {
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
-@@ -1295,2 +1322,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1295,2 +1326,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
    ],
 +  [
 +    "Turn: {0}° · {1}",
@@ -2253,3 +2355,40 @@ index 37ae003931fd121bb03bef8214204195d3d5faf0..2e44da8cc037900e2f2cfbad0c57a044
 +.photo-tools .photo-resident-names{gap:6px;white-space:nowrap}
 +.photo-tools .photo-resident-names[hidden]{display:none}
 +.photo-resident-names input[type=checkbox]{width:auto;margin:0}
+diff --git a/spec/home-interior-view.test.ts b/spec/home-interior-view.test.ts
+index dfb67eff73917c4c0465af233eace6eea4fdccd9..3f01aff3d6e6cb2437d48aa556ee1620e7d6ab5e 100644
+--- a/spec/home-interior-view.test.ts
++++ b/spec/home-interior-view.test.ts
+@@ -1,4 +1,4 @@
+ import { describe, expect, it } from 'vitest';
+-import { OrthographicCamera, Vector3 } from 'three';
+-import { fitHomeCamera, homeFurnitureFits } from '../src/client/home-interior.ts';
++import { BoxGeometry, Group, Mesh, MeshBasicMaterial, OrthographicCamera, Raycaster, Vector3 } from 'three';
++import { firstHomeFurnitureHit, fitHomeCamera, homeFurnitureFits } from '../src/client/home-interior.ts';
+ import { defaultHomeInterior, HOME_ENTRY, HOME_ROOM, HOME_MAX_ITEMS, homePathAllowed, homePositionAllowed } from '../src/shared/home.ts';
+@@ -23,2 +23,25 @@ describe('home room presentation', () => {
+
++  it('picks the closest visible furniture surface and respects room occlusion', () => {
++    const furniture = new Group();
++    for (const [id, z] of [['table', 0], ['chair', 2]] as const) {
++      const item = new Group();
++      item.userData.homeItem = id;
++      item.position.z = z;
++      item.add(new Mesh(new BoxGeometry(), new MeshBasicMaterial()));
++      furniture.add(item);
++    }
++    const room = new Group();
++    const shutter = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
++    shutter.position.z = 4;
++    room.add(shutter);
++    room.updateMatrixWorld(true);
++    furniture.updateMatrixWorld(true);
++    const ray = new Raycaster(new Vector3(0, 0, 6), new Vector3(0, 0, -1));
++    expect(firstHomeFurnitureHit(ray, [furniture, room], furniture)).toBeUndefined();
++    room.visible = false;
++    expect(firstHomeFurnitureHit(ray, [furniture, room], furniture)).toBe('chair');
++    furniture.children[1].visible = false;
++    expect(firstHomeFurnitureHit(ray, [furniture, room], furniture)).toBe('table');
++  });
++
+   it('allows moving a table into open space but refuses doorway, overlaps and a standing player', () => {
