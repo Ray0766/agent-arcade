@@ -56,14 +56,33 @@ async function createService({config,tls,deps,now,hook}={}) {
     if(match){const id=match[1];if(!P.uuid(id))P.fail('invalid_request');
       const captured=store._resource(id,'download');
       if(req.method==='DELETE'&&!match[2]){await store.exclusive(captured.clientJobId,async()=>ok({job:await store.discard(id,'download')}));return;}
-      if(['GET','HEAD'].includes(req.method)&&match[2]){await store.exclusive(captured.clientJobId,async()=>{
-        const {job:j,fd}=await store.snapshotFile(id);try{const etag='"sha256-'+j.sha256+'"';let start=0,end=j.length-1,status=200;
-          const headers={'Content-Type':j.archive?'application/zip':'application/octet-stream','Content-Length':j.length,'Accept-Ranges':'bytes','ETag':etag,'X-Content-SHA256':j.sha256,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'};
-          if(req.headers.range!==undefined){if(req.headers['if-range']!==etag)P.fail('validator_mismatch',412);const r=/^bytes=(0|[1-9][0-9]*)-(0|[1-9][0-9]*)?$/.exec(req.headers.range);if(!r)P.fail('range_invalid',400);start=Number(r[1]);end=r[2]===undefined?j.length-1:Number(r[2]);if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>=j.length||end<start||end>=j.length){res.setHeader('Content-Range','bytes */'+j.length);P.fail('range_invalid',416);}status=206;headers['Content-Range']=`bytes ${start}-${end}/${j.length}`;headers['Content-Length']=end-start+1;}
-          res.writeHead(status,headers);if(req.method==='HEAD'||j.length===0){res.end();return;}
-          const source=Readable.from((async function*(){const b=Buffer.allocUnsafe(262144);let pos=start;while(pos<=end){const {bytesRead}=await fd.read(b,0,Math.min(b.length,end-pos+1),pos);if(!bytesRead)P.fail('integrity_failed');pos+=bytesRead;yield Buffer.from(b.subarray(0,bytesRead));}})());await pipeline(source,res);
-        }finally{await store._closeFile(fd);}
-      });return;}
+      if(['GET','HEAD'].includes(req.method)&&match[2]){
+        let finalChunk;
+        await store.exclusive(captured.clientJobId,async()=>{
+          const {job:j,fd}=await store.snapshotFile(id);try{const etag='"sha256-'+j.sha256+'"';let start=0,end=j.length-1,status=200;
+            const headers={'Content-Type':j.archive?'application/zip':'application/octet-stream','Content-Length':j.length,'Accept-Ranges':'bytes','ETag':etag,'X-Content-SHA256':j.sha256,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'};
+            if(req.headers.range!==undefined){if(req.headers['if-range']!==etag)P.fail('validator_mismatch',412);const r=/^bytes=(0|[1-9][0-9]*)-(0|[1-9][0-9]*)?$/.exec(req.headers.range);if(!r)P.fail('range_invalid',400);start=Number(r[1]);end=r[2]===undefined?j.length-1:Number(r[2]);if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>=j.length||end<start||end>=j.length){res.setHeader('Content-Range','bytes */'+j.length);P.fail('range_invalid',416);}status=206;headers['Content-Range']=`bytes ${start}-${end}/${j.length}`;headers['Content-Length']=end-start+1;}
+            res.writeHead(status,headers);
+            if(req.method==='HEAD'||j.length===0)return;
+            // A Content-Length response is complete at its last byte, even before end().
+            // Keep that chunk until file cleanup and the job's exclusive section finish.
+            const source=Readable.from((async function*(){
+              const buffer=Buffer.allocUnsafe(262144);
+              let pos=start;
+              while(pos<=end){
+                const {bytesRead}=await fd.read(buffer,0,Math.min(buffer.length,end-pos+1),pos);
+                if(!bytesRead)P.fail('integrity_failed');
+                pos+=bytesRead;
+                if(pos>end){finalChunk=buffer.subarray(0,bytesRead);return;}
+                yield Buffer.from(buffer.subarray(0,bytesRead));
+              }
+            })());
+            await pipeline(source,res,{end:false});
+          }finally{await store._closeFile(fd);}
+        });
+        res.end(finalChunk);
+        return;
+      }
     }
     match=/^\/v1\/uploads(?:\/([a-f0-9-]+))?$/.exec(req.url);
     if(match){const id=match[1];if(id&&!P.uuid(id))P.fail('invalid_request');if(!['POST','PATCH','HEAD','DELETE','OPTIONS'].includes(req.method)||req.method==='POST'&&id||req.method!=='POST'&&req.method!=='OPTIONS'&&!id)P.fail('invalid_request');

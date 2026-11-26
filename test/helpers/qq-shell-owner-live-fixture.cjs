@@ -92,4 +92,34 @@ async function buildFixture(t,{detached=false}={}){
   const config=structuredClone(f.config);config.installation.setupId=randomUUID();const d=structuredClone(r.descriptor),root=path.join(config.installation.componentStoreRoot,'qq-installations',config.installation.setupId);Object.assign(d,{setupId:config.installation.setupId,installationRoot:root,installationId:hash(root.toLowerCase()),workDir:path.join(root,'work'),configDir:path.join(root,'work','config'),qqDataDir:path.join(root,'qq-data')});for(const dir of [d.configDir,d.qqDataDir])fs.mkdirSync(dir,{recursive:true});fs.copyFileSync(path.join(r.descriptor.configDir,`onebot11_${config.expectedQQ}.json`),path.join(d.configDir,`onebot11_${config.expectedQQ}.json`));fs.writeFileSync(path.join(d.qqDataDir,'sentinel'),'OTHER_DATA_UNCHANGED');fs.writeFileSync(path.join(root,'installation.json'),JSON.stringify(d));return config;
  },addMarker(){const bytes=Buffer.from('SYNTHETIC_UPDATE_MARKER\0do not interpret');fs.writeFileSync(r.marker,bytes);return bytes;},addDeadComponentLock(proof){const bytes=Buffer.from(JSON.stringify({schema:'qq_component_lock_v2',installationId:r.selection.installationId,owner:{pid:proof.pid,createdAt:proof.createdAt,executable:proof.executable},token:randomUUID(),at:new Date().toISOString()}));fs.writeFileSync(r.selection.lockFile,bytes);return bytes;}};
 }
-module.exports={fixture,load,waitNative,hash,same,classifyRecordedAbsence,stopRecordedCleanup};
+// Positive crash cases require the original PIDs to stay absent across independent
+// native observations. The control holds wait-only handles before the worker exits.
+async function privateControl(f,{samePath=false,worker}={}){
+ const reserve=[];
+ if(worker){
+  const launcher=worker.ready.rows.find(row=>row.parentPid===worker.proof.pid);
+  assert(launcher,'expected a recorded launcher owned by the live worker');
+  reserve.push(worker.proof,launcher);
+ }
+ const file=samePath?f.descriptor.qq.file:path.join(f.dir,'unrelated-private','QQ.exe');
+ if(!samePath){
+  assert(path.resolve(file).toLowerCase().startsWith(path.resolve(f.dir).toLowerCase()+path.sep));
+  fs.mkdirSync(path.dirname(file));
+  fs.copyFileSync(f.descriptor.qq.file,file);
+ }
+ const args=reserve.length?['--reserve-test-pids',...reserve.map(p=>String(p.pid))]:[];
+ const child=spawn(file,args,{windowsHide:true,stdio:['ignore',reserve.length?'pipe':'ignore','ignore'],detached:true});const exited=new Promise(resolve=>child.once('close',resolve));await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
+ try{
+  if(reserve.length){
+   const [ready]=await require('node:events').once(child.stdout,'data',{signal:AbortSignal.timeout(10000)});
+   assert.deepEqual(ready,Buffer.from([1]),'test control must hold both identities before the crash');
+   const observed=await f.observer.inspect(reserve.map(p=>p.pid));
+   assert(reserve.every(p=>observed.some(row=>same(row,p))),'reserved identities must still be our live manager and launcher');
+  }
+  const proof=(await f.observer.inspect([child.pid]))[0];assert(proof);assert.equal(proof.executable.toLowerCase(),file.toLowerCase());assert.equal(proof.parentPid,process.pid);f.remember([proof]);return proof;}catch(error){
+  // Only this just-created ChildProcess is involved if initial metadata fails;
+  // no name scan or guessed PID is used to clean up an unproved test child.
+  child.kill();await Promise.race([exited,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('private test child cleanup unconfirmed')),10000);timer.unref();})]);throw error;
+ }
+}
+module.exports={fixture,privateControl,load,waitNative,hash,same,classifyRecordedAbsence,stopRecordedCleanup};
