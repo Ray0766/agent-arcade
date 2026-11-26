@@ -381,6 +381,14 @@ export class BothouseResidents {
     const now = performance.now();
     if (!this.reduced) figure.greet(now);
     this.visitorGreeting = { figure, until: now + WAVE_MS };
+    return true;
+  }
+  visitorGreetingDirection(id: string) {
+    const greeting = this.visitorGreeting;
+    if (!this.visitorWorld || !this.visitorAllowed || !this.closure.hidden || !greeting ||
+        greeting.figure !== this.figures.get(id) || greeting.figure.role.activity !== 'idle' ||
+        !greeting.figure.motion.valid || performance.now() >= greeting.until) return null;
+    return greeting.figure.motion.pose.position;
   }
   animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean,labelStyle:'exploration'|'photo'|'hidden'='exploration',benches?:BenchModels) {
     if(!this.figures.size)return;
