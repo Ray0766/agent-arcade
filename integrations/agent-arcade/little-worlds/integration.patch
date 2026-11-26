@@ -96,7 +96,7 @@ index 3485d1df00959a9d8f731596e3f84908297e6b66..49996b7bfcbe7e096e498061e8f7b2c7
 +<div id="travel-guidance"></div>
  <div id="boarding-prompt" class="boarding-prompt" hidden><small id="dock-context">STARPORT / BOARDING GATE</small><button id="board-ship" class="primary">Board your ship <kbd>E</kbd></button></div><div id="notice" class="notice" role="status" hidden></div>
 diff --git a/spec/guide-interaction.test.ts b/spec/guide-interaction.test.ts
-index b730d3d2aa8fcf30938fb85d0e57464b68942005..6ae7e86665a1cce7cfa13e6385d52c84f5a6dfb6 100644
+index b730d3d2aa8fcf30938fb85d0e57464b68942005..0b8075cbf1ad03e99e9bcb5d43d02c256131269b 100644
 --- a/spec/guide-interaction.test.ts
 +++ b/spec/guide-interaction.test.ts
 @@ -7,3 +7,3 @@ import {portPoint} from '../src/shared/ports.ts';
@@ -140,7 +140,7 @@ index b730d3d2aa8fcf30938fb85d0e57464b68942005..6ae7e86665a1cce7cfa13e6385d52c84
 +  const frame = { universe, position:portPoint('friend'), world:new GroundWorld({...universe.currentPlanet,objects:[]}), approvedCourtyard:true, residentRoster:[], enabled:true, visible:true,
 +    time:1, reducedMotion:true, scene, camera:new OrthographicCamera(), feet:new Vector3(), up:new Vector3(0,1,0),
 +    forward:new Vector3(0,0,1), roomKey:'friend', indoor:false, online:true, stand:(p:Vector3)=>p };
-+  const button = () => document.querySelector<HTMLButtonElement>('[data-topic="courtyard"]');
++  const button = () => document.querySelector<HTMLButtonElement>('[data-topic="courtyard"]:not([hidden])');
 +  guide.frame(frame);
 +  document.getElementById('world-guide-open')!.click();
 +  expect(button()!.textContent).toBe('Return to the courtyard');
@@ -1941,7 +1941,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
 +      input.courtyard?.planet.revision]);
      if (nextKey !== key) { rebuild(input); key = nextKey; }
 diff --git a/src/client/world-guide.ts b/src/client/world-guide.ts
-index f533e71cfc73d2be94e83498c99214dc9d9a3057..a0da800ff66f134e4e51cbbb033428aa1ece2f6e 100644
+index f533e71cfc73d2be94e83498c99214dc9d9a3057..612dcf308581b61e009081819d9a602fa42a3484 100644
 --- a/src/client/world-guide.ts
 +++ b/src/client/world-guide.ts
 @@ -8,3 +8,4 @@ import {distance,type Vec3} from '../shared/world.ts';
@@ -2152,7 +2152,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..a0da800ff66f134e4e51cbbb033428aa
 +    if(!current?.visible)return;release();document.querySelector<HTMLDialogElement>('#menu-dialog')?.close();skipTutorialOutsideFriendVisit();
 +    if(panel!=='chat'&&bubble.hidden)el<HTMLDetailsElement>('help').open=!visitorHome;
      const p=nearbyGuidePoint(current.feet,current.up,current.forward,current.stand);talking=true;document.body.classList.add('world-guide-talking');if(panel!=='chat')bubble.hidden=false;if(panel!=='help')chat.hidden=false;roomKey=current.roomKey;
-@@ -62,12 +203,23 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -62,12 +203,24 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      if(p){actor.root.position.copy(p);const up=current.up.clone().normalize(),forward=current.feet.clone().sub(p).projectOnPlane(up).normalize(),right=new T.Vector3().crossVectors(up,forward).normalize();actor.root.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(right,up,forward));actor.greet(current.time);}
 -    lastPaint='';paint();if(panel!=='help')void ai.refresh();el(panel==='help'?'close':'question').focus({preventScroll:true});
 +    lastPaint='';paint();if(panel!=='help')void ai?.refresh();el(panel==='help'?'close':'question').focus({preventScroll:true});
@@ -2160,7 +2160,8 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..a0da800ff66f134e4e51cbbb033428aa
 +  open.onclick=menuOpen.onclick=homeOpen.onclick=el('details').onclick=()=>show();
 +  el('courtyard').onclick=()=>select('courtyard');
 +  el('return-ship').onclick=()=>select('visit');
-+  el('help').addEventListener('toggle',paint);
++  const helpSection=el<HTMLDetailsElement>('help');
++  helpSection.addEventListener('toggle',()=>{if(helpSection.isConnected)paint();});
 +  homeChat.onclick=chatOpen.onclick=()=>{
 +    if(hostChat) location.assign('/.well-known/agent-arcade-ai-contacts');
 +    else if(ai) show('chat');
@@ -2183,7 +2184,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..a0da800ff66f134e4e51cbbb033428aa
 +    notice=null;selected=null;route.root.visible=false;hud.hidden=true;paint();
 +  };
    let shortcutHeld=false;
-@@ -77,13 +229,63 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -77,13 +230,63 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      if(shortcutHeld&&(event.code==='Space'||event.key===' ')){event.preventDefault();event.stopImmediatePropagation();return;}
 -    if(guideShortcut(event)&&current?.visible&&!document.querySelector('dialog[open]')){shortcutHeld=true;event.preventDefault();event.stopImmediatePropagation();if(talking)close(true);else show('both');}
 +    if(guideShortcut(event)&&current?.visible&&!document.querySelector('dialog[open]')){shortcutHeld=true;event.preventDefault();event.stopImmediatePropagation();if(talking)close(true);else show();}
@@ -2255,7 +2256,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..a0da800ff66f134e4e51cbbb033428aa
 +    }
 +    hud.hidden=(!selected&&!notice)||!input.visible||talking;
      if(talking){
-@@ -93,3 +295,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -93,3 +296,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      }
 -    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,aiEnabled:ai.enabled,actorVisible:actor.root.visible};
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};

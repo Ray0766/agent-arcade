@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "6c148c8da137bb5903f891cabe6ba788120b33c9",
-  "worldTree": "743304e4ba1f1b5762443215e63302c9f50745e1",
-  "patchSHA256": "b77e708248ebdd4f59c48905af7df42da21d30b50ac1b3965876aefd4be20523",
+  "worldRevision": "bd6ea7a07a95af3ed1bf3c467e5c1b77a95b8a2e",
+  "worldTree": "f2a6b415470171e18618669b53556bde1273d275",
+  "patchSHA256": "151278fdfe393fcb2b985b6ba5c989d048a5560b8f4bc6097ce2000621c2da21",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -193,8 +193,8 @@
     {
       "action": "M",
       "path": "spec/guide-interaction.test.ts",
-      "blob": "6ae7e86665a1cce7cfa13e6385d52c84f5a6dfb6",
-      "sha256": "9bf8bb4ac1e6950dd3935a7b565c3dd9d661b02dbc6bbcb5633e642eb95c97d3"
+      "blob": "0b8075cbf1ad03e99e9bcb5d43d02c256131269b",
+      "sha256": "bf17ac96efe675beff42d88799a2c9883a43105ee744d751555a5bcc4729c778"
     },
     {
       "action": "M",
@@ -775,8 +775,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "a0da800ff66f134e4e51cbbb033428aa1ece2f6e",
-      "sha256": "79ba67960c7b8c542f66bfa344e0402558f3f428d2b23e6de7ef3cf83b058d84"
+      "blob": "612dcf308581b61e009081819d9a602fa42a3484",
+      "sha256": "c1b27aa995a373b0a27d4372ad13e948a5794132d32075ebda5b61650696b7d4"
     },
     {
       "action": "A",
