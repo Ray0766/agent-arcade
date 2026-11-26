@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "a58761479934ed87db32bfe241d064c2ef0fc36b",
-  "worldTree": "798729f384dfff5e6422784c58bb1113f0f78d74",
-  "patchSHA256": "949ae29c0ea126850b4a349d51d0d43187188aa88eff177543ac8087c74c4722",
+  "worldRevision": "9ebdf6fd8efa61cab7802fcc90821fe34da66eab",
+  "worldTree": "20722ca92b8f1488bb014bdcc6131cee63e6d2e0",
+  "patchSHA256": "ce691634045116024a7cdb93805edf56ecd0e59893062411a43d300e51e32b71",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -157,8 +157,8 @@
     {
       "action": "M",
       "path": "spec/guide-interaction.test.ts",
-      "blob": "5a1ab80110057c5e3b66efbb95bf041d28b58f4b",
-      "sha256": "cba565742ba18154e24b047dc7d21ba5c5ca6f79b7219294d7b2d553c50b0cf7"
+      "blob": "6ae7e86665a1cce7cfa13e6385d52c84f5a6dfb6",
+      "sha256": "9bf8bb4ac1e6950dd3935a7b565c3dd9d661b02dbc6bbcb5633e642eb95c97d3"
     },
     {
       "action": "M",
@@ -211,8 +211,8 @@
     {
       "action": "M",
       "path": "spec/tutorial-navigation.test.ts",
-      "blob": "a7d4fbe55c76100d46625d59ccb3e9ea985b2987",
-      "sha256": "8b5c0e2774f45173fb52ba6d2bf66f0dff2718ec007ea26acd4773207f75e8ba"
+      "blob": "a08299f008c3e82b05d8a63c53f9d95a6bdafb91",
+      "sha256": "b6e7a101d642c1bbe25115eac5df7c4166b02a97f5f9ca5fa292e8674dc914b0"
     },
     {
       "action": "M",
@@ -511,8 +511,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "76fd7817ff73790268d623c3ea4fe6678bf528c8",
-      "sha256": "8891fda79094736300d180f903ea07a3d6dfe6912ba832c8b2e3315474466485"
+      "blob": "2310e66b178e67f3caf05569d959317292765728",
+      "sha256": "dbe595f8133040171427b122b144b66f601f4e91c04e36e3787bb0479348fe60"
     },
     {
       "action": "A",
@@ -613,14 +613,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "7e073b8f61d8e3db2b74db6a8201c04bc2097fbc",
-      "sha256": "8602aa5aa11be8ca464e7f568b5e243da9ca828ed8f5b087187eee2058d5a379"
+      "blob": "10790394641a165d3c63a929dbe033e42ffce812",
+      "sha256": "efd748ba3a696efa0f2ec768f57a8e028d971a1d91fa5f521f0b573061986ca7"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "03e0c59f9a3af8d8ad32ec09656af6e2e4fce47f",
-      "sha256": "105283ea0e20847ec8a44735416e6f4e209049f2440460ddc42afb87ddf28a19"
+      "blob": "992cafe704edc69412e8a22d704386db99b6f449",
+      "sha256": "46428718fd216b2e9ace2a49ebe4772e0c3dfafd785737db0beb1123a0a4556d"
     },
     {
       "action": "A",
@@ -637,8 +637,8 @@
     {
       "action": "M",
       "path": "src/client/photo-mode.ts",
-      "blob": "c3126e8404a12f4dd599b935c468d9e3cfc706b7",
-      "sha256": "d54c64469b46d128bca106ec4f0f965c2a3549cefb779e400fd91ab04b04be82"
+      "blob": "b827ccc218a09106f5a68c9da855fa10b73cc7eb",
+      "sha256": "c1ede7c5fe6c639d06bd755e1a042187d68a7e0ddd4fdd0717b3ffba99ebe63c"
     },
     {
       "action": "M",
@@ -663,6 +663,12 @@
       "path": "src/client/resident-body-settings.ts",
       "blob": "15675019184928273fcf6da4cc6c027879e488bc",
       "sha256": "653bff7ba01af0603137697125ad05905c8c5a3fa5e394a16c2a7e262fe746cd"
+    },
+    {
+      "action": "A",
+      "path": "src/client/resident-guide-target.ts",
+      "blob": "2c540910c6360de3573cc54c4535131993b2a4f2",
+      "sha256": "f6d3ee0a62d8e5ded9ea3c2466745aacd72f968987af9cbe6dcccb7154c66396"
     },
     {
       "action": "M",
@@ -726,9 +732,15 @@
     },
     {
       "action": "M",
+      "path": "src/client/world-guide.css",
+      "blob": "17521eef977a179cab5891569819ee83174bd804",
+      "sha256": "bb1aaeb3be3d5b39181cbbf8f7a333f4e19ba3b3f670e0eb6df8776a72130287"
+    },
+    {
+      "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "5ee81223aa28231b534cb01cc574194477ff2d43",
-      "sha256": "39c79bf6fdf71b84905e5588e98727abe8e5e9576d3ed3fe835cf826a3ec4803"
+      "blob": "faed0a799741bf12007cbf4f0d224884b266918f",
+      "sha256": "59dbcb913a462654f1d10e031a02a49fbaf60dffc4304c43c87f9bd659ff2a41"
     },
     {
       "action": "A",
@@ -829,8 +841,8 @@
     {
       "action": "M",
       "path": "src/shared/tutorial-navigation.ts",
-      "blob": "662a9bbc697892dfee0d6abd25352bc5350d6333",
-      "sha256": "e5a31b9aaed1599dd3dc75f56f6b6ebe7c99dbd0629259c547f2fcc4e4966aae"
+      "blob": "757834452abb873cef60a7c8a3a2b674b21765cf",
+      "sha256": "d14034e2420a540e3cffe7f95e5045d93e6ad6ad4052bb5a2654b9228836eb64"
     },
     {
       "action": "M",

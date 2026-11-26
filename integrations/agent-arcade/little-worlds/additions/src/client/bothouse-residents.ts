@@ -11,6 +11,7 @@ import { ResidentBodySettings } from './resident-body-settings.ts';
 import { landingSites, nearbyDoorstepFlower, residentWalkEnd } from './bothouse-resident-sites.ts';
 import { planResidentBench, type ResidentBenchPlan } from './resident-bench-rest.ts';
 import { distance } from '../shared/world.ts';
+import type { ResidentGuideEntry } from './resident-guide-target.ts';
 
 type Resident = PlanetResident & Parameters<typeof residentPortrait>[1];
 type Portrait = ReturnType<typeof residentPortrait>;
@@ -33,6 +34,7 @@ class ResidentFigure {
   // The ink pass uses scene depth. Write the card's depth so a background
   // outline cannot cut through the text, while walls still occlude the card.
   private label = new T.Sprite(new T.SpriteMaterial({transparent:true,alphaTest:.02,toneMapped:false}));
+  private photoName?: {name:string;sprite:T.Sprite};
   private up=new T.Vector3();
   private forward=new T.Vector3();
   private right=new T.Vector3();
@@ -196,13 +198,56 @@ class ResidentFigure {
     this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving),greeting?wave:0,lean,sitting);
   }
   findBench(models:ReadonlyMap<string,T.Object3D>) {return planResidentBench(this.world,this.motion.pose,models);}
-  setVisible(visible:boolean,showName:boolean) {
+  private photoNameSprite() {
+    const name=this.role.displayName;
+    if(this.photoName?.name===name)return this.photoName.sprite;
+    this.disposePhotoName();
+    const canvas=document.createElement('canvas'), context=canvas.getContext('2d')!;
+    const font='600 54px system-ui', padding=18, maxTextWidth=320;
+    context.font=font;
+    let text=name;
+    if(context.measureText(text).width>maxTextWidth){
+      text='';
+      for(const {segment} of new Intl.Segmenter().segment(name)){
+        if(context.measureText(text+segment+'…').width>maxTextWidth)break;
+        text+=segment;
+      }
+      text+='…';
+    }
+    canvas.width=Math.ceil(context.measureText(text).width)+padding*2;
+    canvas.height=80;
+    context.font=font;context.textAlign='center';context.textBaseline='middle';
+    context.fillStyle='rgba(26,46,49,.78)';
+    context.beginPath();context.roundRect(0,0,canvas.width,canvas.height,24);context.fill();
+    context.fillStyle='#fff';context.fillText(text,canvas.width/2,canvas.height/2);
+    const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
+    const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,alphaTest:.02,toneMapped:false}));
+    const height=.125;
+    sprite.scale.set(height*canvas.width/canvas.height,height,1);
+    this.label.parent?.add(sprite);
+    this.photoName={name,sprite};
+    return sprite;
+  }
+  private disposePhotoName() {
+    const sprite=this.photoName?.sprite;
+    if(!sprite)return;
+    sprite.removeFromParent();sprite.material.map?.dispose();sprite.material.dispose();
+    this.photoName=undefined;
+  }
+  setVisible(visible:boolean,labelStyle:'exploration'|'photo'|'hidden') {
     this.model.root.visible=visible;
-    this.label.visible=visible&&showName;
+    this.label.visible=visible&&labelStyle==='exploration';
+    if(this.photoName)this.photoName.sprite.visible=false;
+    if(visible&&labelStyle==='photo'){
+      const sprite=this.photoNameSprite();
+      sprite.position.copy(this.label.position).addScaledVector(this.up,-.10);
+      sprite.visible=true;
+    }
   }
   dispose() {
     this.disposed=true;this.model.root.removeFromParent();this.model.dispose();this.badge?.dispose();
     this.label.removeFromParent();this.label.material.map?.dispose();this.label.material.dispose();
+    this.disposePhotoName();
     this.card.remove();
   }
 }
@@ -223,6 +268,7 @@ export class BothouseResidents {
   private frustum=new T.Frustum();
   private projection=new T.Matrix4();
   private rosterSize:number|null=null;
+  private publicRoster: Pick<PlanetResident, 'id' | 'displayName'>[] = [];
   private bounds=new T.Sphere(new T.Vector3(),1.5);
   private figures=new Map<string,ResidentFigure>();
   private benchIds: string[] = [];
@@ -278,6 +324,14 @@ export class BothouseResidents {
   hasApprovedVisit(world: GroundWorld) {
     return world === this.visitorWorld && this.visitorAllowed;
   }
+  guideRoster(world: GroundWorld, epoch: number): ResidentGuideEntry[] {
+    if (world !== this.visitorWorld || !this.friendVisitAllowed || !this.closure.hidden ||
+        this.visit !== world.planetId+'/'+epoch+'/'+world.revision) return [];
+    return this.publicRoster.map(({ id, displayName }) => {
+      const motion = this.figures.get(id)?.motion;
+      return { id, name: displayName, pose: motion?.valid ? motion.pose : null };
+    });
+  }
   private greetingDistance(figure: ResidentFigure, viewer: T.Vector3, camera: T.Camera) {
     const world = this.visitorWorld;
     if (!world || this.figures.get(figure.role.id) !== figure || !figure.model.root.visible || figure.role.activity !== 'idle') return Infinity;
@@ -322,7 +376,7 @@ export class BothouseResidents {
     if (!this.reduced) figure.greet(now);
     this.visitorGreeting = { figure, until: now + WAVE_MS };
   }
-  animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean,showNames=true,benches?:BenchModels) {
+  animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean,labelStyle:'exploration'|'photo'|'hidden'='exploration',benches?:BenchModels) {
     if(!this.figures.size)return;
     camera.updateMatrixWorld();
     this.frustum.setFromProjectionMatrix(this.projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
@@ -333,7 +387,7 @@ export class BothouseResidents {
       this.bounds.center.copy(this.center).multiplyScalar(pose.radius+.9);
       const visible=f.motion.valid&&this.frustum.intersectsSphere(this.bounds)&&
         this.bounds.center.dot(camera.position)>=pose.radius**2-2.8*camera.position.length();
-      f.setVisible(visible,showNames);
+      f.setVisible(visible,labelStyle);
       if(enabled&&visible&&this.bounds.center.distanceTo(camera.position)<18)near.push(f);
     }
     const now=performance.now();
@@ -391,6 +445,7 @@ export class BothouseResidents {
     for(const figure of this.figures.values())figure.dispose();
     this.seats=[];this.figures.clear();this.summary.hidden=true;this.summary.replaceChildren();
     this.rosterSize=null;
+    this.publicRoster=[];
   }
   /** Only expose a count from the acknowledged outdoor scene to its owner. */
   ownerRosterSize(planet:PlanetView, epoch:number) {
@@ -449,6 +504,7 @@ export class BothouseResidents {
       }
       this.summary.replaceChildren(...cards);this.summary.hidden=!cards.length;
       this.rosterSize=residents.length;
+      this.publicRoster=residents.map(({id,displayName})=>({id,displayName}));
     }catch{
       if(request!==this.request)return;
       this.clear();
