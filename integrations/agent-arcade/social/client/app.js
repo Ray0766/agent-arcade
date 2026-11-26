@@ -3955,10 +3955,39 @@ function showAiContacts() {
       }
       return;
     }
+    const search=el('div',null,'conversation-search ai-role-search');
+    const query=el('input');
+    query.type='search';
+    query.placeholder='搜索角色名称或账号';
+    query.setAttribute('aria-label',query.placeholder);
+    query.setAttribute('aria-controls','ai-role-results');
+    query.maxLength=100;
+    const clear=button('清空',()=>{
+      query.value='';
+      filterCards();
+      query.focus();
+    },'text-button');
+    search.append(query,clear);
     const cards=el('div',null,'ai-role-grid');
-    list.replaceChildren(cards);
+    cards.id='ai-role-results';
+    const results=el('p',null,'minor ai-role-search-status');
+    results.setAttribute('role','status');
+    function filterCards(){
+      const keyword=contactText(query.value);
+      let hasMatch=false;
+      for(const card of cards.children){
+        card.hidden=!card.dataset.search.includes(keyword);
+        hasMatch||=!card.hidden;
+      }
+      clear.hidden=!query.value;
+      results.textContent=hasMatch?'':cards.childElementCount?
+        '没有匹配的 AI 联系人。':'当前没有可打开的 AI 联系人，请重新打开目录刷新。';
+    }
+    query.addEventListener('input',filterCards);
+    list.replaceChildren(search,results,cards);
     for(const contact of roles){
       const item=el('article',null,'request ai-role-card');
+      item.dataset.search=[contact.displayName,contact.number].map(contactText).join('\n');
       const header=el('header'), identity=el('div');
       identity.append(el('h3',contact.displayName),el('p',contact.number,'minor'));
       const marker=el('span','AI','ai-role-mark');
@@ -3966,14 +3995,26 @@ function showAiContacts() {
       header.append(marker,identity);
       item.append(header);
       const start=button('打开私聊',()=>void perform(async()=>{
-        const response=await api('/ai-contacts/start',{number:contact.number,expectedAccount:account},{expectedAccount:account});
+        let response;
+        try{
+          response=await api('/ai-contacts/start',{number:contact.number,expectedAccount:account},{expectedAccount:account});
+        }catch(error){
+          if(error.message==='bothouse_unavailable'&&generation===epoch&&dialogGeneration===scope){
+            if(item.contains(document.activeElement))query.focus();
+            item.remove();
+            filterCards();
+          }
+          throw error;
+        }
         if(generation!==epoch||dialogGeneration!==scope)return;
         closeDialog();
         goChat(response.conversation.id);
         void sync();
       },start,scope),'primary');
+      start.setAttribute('aria-label','打开私聊：'+contact.displayName+'（'+contact.number+'）');
       item.append(start);cards.append(item);
     }
+    filterCards();
   },null,scope);
 }
 function friendRequestActions(request,scope,afterDecline){
