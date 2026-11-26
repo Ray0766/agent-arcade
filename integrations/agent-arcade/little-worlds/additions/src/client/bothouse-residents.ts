@@ -9,6 +9,8 @@ import { residentPortrait } from '../shared/resident-portrait.ts';
 import { createBothouseResidentModel } from './bothouse-resident-model.ts';
 import { ResidentBodySettings } from './resident-body-settings.ts';
 import { landingSites, nearbyDoorstepFlower, residentWalkEnd } from './bothouse-resident-sites.ts';
+import { planResidentBench, type ResidentBenchPlan } from './resident-bench-rest.ts';
+import { distance } from '../shared/world.ts';
 
 type Resident = PlanetResident & Parameters<typeof residentPortrait>[1];
 type Portrait = ReturnType<typeof residentPortrait>;
@@ -21,6 +23,8 @@ const zh=()=>document.documentElement.lang.startsWith('zh');
 const noObjects:PlanetView['objects']=[];
 const WAVE_MS = 1800;
 const GREETING_REACH = 2.6;
+const BENCH_REST_SECONDS = 4.2;
+type BenchModels = { usedByPlayer?: string; getModel(id: string): T.Object3D | undefined };
 
 class ResidentFigure {
   readonly model: ReturnType<typeof createBothouseResidentModel>;
@@ -39,6 +43,10 @@ class ResidentFigure {
   private elapsed=0;
   private flowerPause=0;
   private nextFlowerPause=1.2;
+  private nextBenchPause=4;
+  private bench: { plan: ResidentBenchPlan; started: number; sat?: number } | null = null;
+  get restBenchId() { return this.bench?.plan.id; }
+  get benchPose() { return this.bench ? this.bench.sat === undefined ? 'approaching' : 'seated' : 'standing'; }
   private waveStart=-Infinity;
   private step=0;
   private badge?:T.Texture;
@@ -48,7 +56,7 @@ class ResidentFigure {
   private lastText='';
   private text=document.createElement('span');
 
-  constructor(scene:T.Scene, world:GroundWorld, public role:Resident, readonly slot:number,
+  constructor(scene:T.Scene, private readonly world:GroundWorld, public role:Resident, readonly slot:number,
     feet:T.Vector3, readonly key:string, portrait:Portrait, readonly flower:Vec3|undefined) {
     this.model=createBothouseResidentModel(key);
     this.model.animate(role.activity,0,true);
@@ -85,12 +93,14 @@ class ResidentFigure {
   }
   update(role:Resident,portrait:Portrait) {
     this.setPortrait(portrait);
+    const changed = role.activity !== this.role.activity;
+    this.role=role;
     if(role.activity!=='idle'){
       this.waveStart=-Infinity;
       this.flowerPause=0;
+      if(this.bench){this.finishBench();this.align(true,0);}
     }
-    if(role.activity!==this.role.activity)this.model.animate(role.activity,0,true);
-    this.role=role;
+    if(changed)this.model.animate(role.activity,0,true);
     const activity=actions[role.activity][zh()?1:0], title=role.displayName+' · '+activity;
     this.text.textContent=title+(portrait?' ('+portrait.credit+')':'');
     if(this.lastText===title)return;
@@ -126,16 +136,44 @@ class ResidentFigure {
   greet(now:number) {
     this.waveStart=now;
     this.flowerPause=0;
+    if(this.bench)this.finishBench();
   }
   stopGreeting() { this.waveStart = -Infinity; }
   canGreet(now:number) { return this.role.activity === 'idle' && now - this.waveStart >= WAVE_MS; }
-  frame(dt:number,reduced:boolean,viewer:Vec3,neighbours:Vec3[],now:number) {
+  private finishBench() {
+    this.bench=null;
+    this.motion.blockedSeconds=0;
+    this.nextBenchPause=this.elapsed+14;
+  }
+  private benchFrame(allowed:boolean, findBench:()=>ResidentBenchPlan|null, getModel:(id:string)=>T.Object3D|undefined) {
+    if(this.bench && (!allowed || getModel(this.bench.plan.id)!==this.bench.plan.model || this.world.blocked(this.motion.pose))) {
+      this.finishBench();
+    }
+    if(!allowed)return 0;
+    if(!this.bench && !this.flowerPause && this.elapsed>=this.nextBenchPause){
+      this.nextBenchPause=this.elapsed+7;
+      const plan=findBench();
+      if(plan)this.bench={plan,started:this.elapsed};
+    }
+    const bench=this.bench;
+    if(!bench)return 0;
+    if(bench.sat===undefined){
+      if(distance(this.motion.pose.position,bench.plan.approach,this.world.baseRadius)<.12 && this.motion.pose.grounded) bench.sat=this.elapsed;
+      else if(this.elapsed-bench.started>=9) this.finishBench();
+      return 0;
+    }
+    const duration=this.elapsed-bench.sat;
+    if(duration>=BENCH_REST_SECONDS){this.finishBench();return 0;}
+    return T.MathUtils.smoothstep(Math.min(duration,BENCH_REST_SECONDS-duration),0,.32);
+  }
+  frame(dt:number,reduced:boolean,viewer:Vec3,neighbours:Vec3[],now:number,findBench:()=>ResidentBenchPlan|null,getModel:(id:string)=>T.Object3D|undefined) {
     if(!this.motion.valid)return;
     const activity=this.role.activity, live=activity!=='offline'&&activity!=='unknown';
     const wave=(now-this.waveStart)/WAVE_MS;
     const greeting=wave<1&&!reduced&&activity==='idle';
     if(!reduced&&live)this.elapsed+=dt;
-    if(!reduced&&activity==='idle'&&!greeting&&this.flower){
+    const sitting=this.benchFrame(!reduced&&!greeting&&activity==='idle',findBench,getModel);
+    if(!reduced&&activity==='idle'&&!greeting&&!this.bench&&this.flower){
       if(this.flowerPause>0)this.flowerPause=Math.max(0,this.flowerPause-dt);
       else if(this.elapsed>=this.nextFlowerPause){
         this.flowerPause=2.6;
@@ -144,14 +182,20 @@ class ResidentFigure {
     }
     const looking=!greeting&&!reduced&&activity==='idle'&&this.flowerPause>0;
     // A short walk between rests uses the same capsule, slope and neighbour checks as town residents.
-    if(!reduced&&activity==='idle'&&!looking&&!greeting){
+    if(!reduced&&activity==='idle'&&!looking&&!greeting&&this.bench?.sat===undefined){
       this.step+=dt;
-      if(this.step>=.05){this.motion.tick(this.step,viewer,neighbours);this.step=0;}
+      if(this.step>=.05){this.motion.tick(this.step,viewer,neighbours,this.bench?.plan.approach);this.step=0;}
     }else{this.motion.moving=false;this.step=0;}
     this.align(reduced&&live,live&&!reduced?dt:0,greeting?viewer:looking?this.flower:undefined);
+    if(sitting&&this.bench){
+      this.model.root.position.lerp(this.bench.plan.seat.position,sitting);
+      this.model.root.quaternion.slerp(this.bench.plan.seat.rotation,sitting);
+      this.label.position.copy(this.model.root.position).addScaledVector(this.up,1.99);
+    }
     const lean=looking?T.MathUtils.smoothstep(Math.min(this.flowerPause,2.6-this.flowerPause),0,.5):0;
-    this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving),greeting?wave:0,lean);
+    this.model.animate(activity,this.elapsed+this.phase,reduced||!live,Number(this.motion.moving),greeting?wave:0,lean,sitting);
   }
+  findBench(models:ReadonlyMap<string,T.Object3D>) {return planResidentBench(this.world,this.motion.pose,models);}
   setVisible(visible:boolean,showName:boolean) {
     this.model.root.visible=visible;
     this.label.visible=visible&&showName;
@@ -181,6 +225,7 @@ export class BothouseResidents {
   private rosterSize:number|null=null;
   private bounds=new T.Sphere(new T.Vector3(),1.5);
   private figures=new Map<string,ResidentFigure>();
+  private benchIds: string[] = [];
   private summary=document.createElement('p');
   private settings=document.createElement('a');
   private bodySettings:ResidentBodySettings;
@@ -277,7 +322,7 @@ export class BothouseResidents {
     if (!this.reduced) figure.greet(now);
     this.visitorGreeting = { figure, until: now + WAVE_MS };
   }
-  animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean,showNames=true) {
+  animate(dt:number,viewer:Vec3,camera:T.Camera,enabled:boolean,showNames=true,benches?:BenchModels) {
     if(!this.figures.size)return;
     camera.updateMatrixWorld();
     this.frustum.setFromProjectionMatrix(this.projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
@@ -306,7 +351,16 @@ export class BothouseResidents {
       if(f.role.activity==='idle'&&!this.reduced){
         for(const other of this.figures.values())if(other!==f&&other.motion.valid)neighbours.push(other.motion.pose.position);
       }
-      f.frame(dt,this.reduced,viewer,neighbours,now);
+      const getModel=(id:string)=>id===benches?.usedByPlayer?undefined:benches?.getModel(id);
+      f.frame(dt,this.reduced,viewer,neighbours,now,()=>{
+        const inUse=new Set(Array.from(this.figures.values(),other=>other.restBenchId));
+        const available=new Map<string,T.Object3D>();
+        for(const id of this.benchIds){
+          const model=!inUse.has(id)&&getModel(id);
+          if(model)available.set(id,model);
+        }
+        return f.findBench(available);
+      },getModel);
     }
   }
   /** Opt-in frame evidence; uses the same transforms rendered in the game. */
@@ -320,7 +374,8 @@ export class BothouseResidents {
       const badgeImage=badge?.visible?badge.material.map?.image as HTMLImageElement|undefined:undefined;
       return {id:f.role.id,model:root.name,body:root.uuid,badge:badgeImage?.getAttribute('src')??null,look:f.key,activity:f.role.activity,position:root.position.toArray(),
         rotation:root.quaternion.toArray(),armAngle:root.getObjectByName('upper1')!.rotation.z,
-        moving:f.motion.moving,meshes,sprites,center:center.toArray(),
+        moving:f.motion.moving,meshes,sprites,center:center.toArray(),benchPose:f.benchPose,
+        kneeAngle:root.getObjectByName('knee1')!.rotation.x,ledgerVisible:root.getObjectByName('work-ledger')!.visible,
         checkingFlowers:root.getObjectByName('body')!.rotation.x>.25,flower:f.flower};
     });
   }
@@ -329,6 +384,7 @@ export class BothouseResidents {
       && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
   }
   private clear() {
+    this.benchIds=[];
     this.friendVisitAllowed = false;
     this.visitorAllowed = false;
     this.cancelVisitorGreeting();
@@ -367,6 +423,7 @@ export class BothouseResidents {
         return;
       }
       if(!world)return;
+      this.benchIds=objects.filter(object=>object.kind==='bench'&&object.assetVersion===2).map(object=>object.id);
       this.visitorAllowed = true;
       this.friendVisitAllowed = friendVisitAllowed === true;
       const ids=new Set(residents.map(r=>r.id));
