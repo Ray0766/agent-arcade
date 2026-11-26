@@ -8,7 +8,7 @@ export interface BenchSeat {
 }
 
 /** The Kenney quick-build bench has a .439 m seat and no back.
- * The render pose faces the side from which the visitor approached. */
+ * The render pose faces the side from which the player approached. */
 export function benchSeat(model: Object3D, feet: GroundPose, world: Pick<GroundWorld, 'cameraDistance'>, hipHeight = .65): BenchSeat | null {
   const footing = new Vector3(...feet.position).multiplyScalar(feet.radius);
   const local = model.worldToLocal(footing.clone());
