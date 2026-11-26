@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "91989b8c570be8f7f3e19c857d930863427b89dc",
-  "worldTree": "2de7a4429ef4147313fbee5996b8f3c8772bbd64",
-  "patchSHA256": "b121ca23d5eae0e77ba2e016ed7e2b034d50b1847aaffc97347a79910e6e980f",
+  "worldRevision": "621ed53a1bf4783bca5c543d5fd666cf241c2a85",
+  "worldTree": "561a561995986023e493ba5510814cd199a40e61",
+  "patchSHA256": "2f071f7a37b418fb1d84b741c5e9bc40fc230af642a36a9f7d1c3568a3b2ad3f",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -147,6 +147,12 @@
       "path": "spec/guide-interaction.test.ts",
       "blob": "5a1ab80110057c5e3b66efbb95bf041d28b58f4b",
       "sha256": "cba565742ba18154e24b047dc7d21ba5c5ca6f79b7219294d7b2d553c50b0cf7"
+    },
+    {
+      "action": "M",
+      "path": "spec/home-interior-view.test.ts",
+      "blob": "3f01aff3d6e6cb2437d48aa556ee1620e7d6ab5e",
+      "sha256": "4d6835531faabd35851d9874e8a1fa6640800a30f07c03ee291d88e4de1e4e1c"
     },
     {
       "action": "M",
@@ -505,8 +511,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "562d2589fbb1201ee925bfdcd231c54b123cee67",
-      "sha256": "0d8205c1b56a1e4835894b1e13728307a6284db03079884c0387243a55bf3a2f"
+      "blob": "907237af8ad18d6414090c620078291d1654ed7d",
+      "sha256": "3318ab367c34318e7baad1d5e5368229484ec9f2bef6ca59f2aaacb5e74588a1"
     },
     {
       "action": "A",
@@ -519,6 +525,12 @@
       "path": "src/client/courtyard-inspiration.ts",
       "blob": "167d266c8a6dd078a0f8a112bda0b079733141ab",
       "sha256": "f7542f2ba2e3e820869165f108b90ca8f5390aead3e814f655ed3a39b1b19f0d"
+    },
+    {
+      "action": "A",
+      "path": "src/client/courtyard-placement-impact.ts",
+      "blob": "9d62ae362f16bfab23ce36c0b7d68d6235c22364",
+      "sha256": "f26a81e7dfecb451685d8a92b6c7bf82605591d8fc3ecbaf61c7616bf8c20579"
     },
     {
       "action": "M",
@@ -553,8 +565,8 @@
     {
       "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "de734774898f838e228274eb36f9945c86d0bfb9",
-      "sha256": "621f3c8e611fcff437cc55664a55314b4eca56e90b5845434b637d7c30cdb247"
+      "blob": "fab2a0364142b0a8c95f4bffda3f800cc565a3b9",
+      "sha256": "c0d4567ba303d7125a5eb121329ebcfc8f58bf38fbdacf7e13bd79b36e21a15c"
     },
     {
       "action": "M",
@@ -577,8 +589,8 @@
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "d408fbd1698d9aa116041f25c5d8716f16705564",
-      "sha256": "d553a5e42a9cb8bc4225a4057c027ac965667688c7e4228db2f18c6c5001300e"
+      "blob": "b01ec0d741f31618d5d87870bca1e0429743ffbb",
+      "sha256": "eae87e12581091f22ada3a77332352b47c3bbc053791f17486488ed6b5fa1646"
     },
     {
       "action": "A",
