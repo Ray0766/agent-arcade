@@ -321,6 +321,12 @@ export class BothouseResidents {
     this.visitorGreeting?.figure.stopGreeting();
     this.visitorGreeting = null;
   }
+  occupiesBench(id: string) {
+    for (const figure of this.figures.values()) {
+      if (figure.restBenchId === id && figure.benchPose === 'seated') return true;
+    }
+    return false;
+  }
   hasApprovedVisit(world: GroundWorld) {
     return world === this.visitorWorld && this.visitorAllowed;
   }

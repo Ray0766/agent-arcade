@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "9ebdf6fd8efa61cab7802fcc90821fe34da66eab",
-  "worldTree": "20722ca92b8f1488bb014bdcc6131cee63e6d2e0",
-  "patchSHA256": "ce691634045116024a7cdb93805edf56ecd0e59893062411a43d300e51e32b71",
+  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
+  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
+  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -55,8 +55,8 @@
     {
       "action": "M",
       "path": "index.html",
-      "blob": "41ef56f0edf09482e5f805005d64c4e2a034534c",
-      "sha256": "7a649843be0a792739348ce3cffa1509a5779905b8224523e6a86b263a06127f"
+      "blob": "49996b7bfcbe7e096e498061e8f7b2c7a760b9c3",
+      "sha256": "eef2836161e6b9fdd5a7de6f9c8eb25867f77ccb7a6d5a2db7c3ce043dcab595"
     },
     {
       "action": "A",
@@ -481,8 +481,8 @@
     {
       "action": "A",
       "path": "src/client/bench-rest.ts",
-      "blob": "31f6412f620538a4ee2a4a35d9f772df1c0e4a7e",
-      "sha256": "a24ac77c30810e959c1be901422b6960827303ddab853a76e69bc90b3c238c56"
+      "blob": "2c40ce96edabbebe6432d85b5a431ecb061b2eb3",
+      "sha256": "561547547f28ae671d4bba7c53bd068c099c4a04fbaa86681ebf4a2d340418a7"
     },
     {
       "action": "A",
@@ -511,8 +511,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "2310e66b178e67f3caf05569d959317292765728",
-      "sha256": "dbe595f8133040171427b122b144b66f601f4e91c04e36e3787bb0479348fe60"
+      "blob": "6b5468c5294258ee5f6e6a4bcf1e75ad734210b4",
+      "sha256": "3a4ed80e080acdd4e95c135c2ce0730b668b4529b83a6d4b31f20258de2041cb"
     },
     {
       "action": "A",
@@ -607,14 +607,14 @@
     {
       "action": "M",
       "path": "src/client/immersive.css",
-      "blob": "4981cd4b6e9cf0f61177bf476dd2ecdb56f5b0c3",
-      "sha256": "909005c7bad2da8d4ea4d9c68e58a712bfa126b9026f02d3e025ed0a2e465690"
+      "blob": "faf4192aa5083eaa2d78bc191a82f0b26ff815d3",
+      "sha256": "f1ce6bb0e3e9ea511440d67c9813c79794abfee06e7bc9c9cdd6f54cb2597bdf"
     },
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "10790394641a165d3c63a929dbe033e42ffce812",
-      "sha256": "efd748ba3a696efa0f2ec768f57a8e028d971a1d91fa5f521f0b573061986ca7"
+      "blob": "92983bc0cbfab0bfae35edf381fdedf000a7de7b",
+      "sha256": "867ce3d4b574d1af231325087a0e4660afa4d056201b6344af7a1d5f779a91eb"
     },
     {
       "action": "M",

@@ -68,7 +68,7 @@ index 95c6d02a4c10b9de7c542f53fcf28eb916e30454..bd3a7cf533c85f9d2eb98a086e5fcffe
 +The list credits the pack, author and licence supplied by its publisher. The
 +scene needs no sprite-sheet installation or desktop-pet animation files.
 diff --git a/index.html b/index.html
-index 3485d1df00959a9d8f731596e3f84908297e6b66..41ef56f0edf09482e5f805005d64c4e2a034534c 100644
+index 3485d1df00959a9d8f731596e3f84908297e6b66..49996b7bfcbe7e096e498061e8f7b2c7a760b9c3 100644
 --- a/index.html
 +++ b/index.html
 @@ -77,3 +77,14 @@
@@ -87,7 +87,11 @@ index 3485d1df00959a9d8f731596e3f84908297e6b66..41ef56f0edf09482e5f805005d64c4e2
 +  }
 +}catch{}
  if(language==='zh'){document.documentElement.lang='zh-CN';const copies={eyebrow:'SUNSEED · 慢慢探索',title:'小星球',intro:'逛逛小村庄，送出一点善意，再把家变成喜欢的模样。',deviceNote:'小星球使用实时 3D 画面。性能较低的设备可能加载缓慢、出现卡顿，或无法完成加载。请先尝试「流畅」画质；若仍无法顺畅运行，建议换用性能更强的电脑。加载失败也可能与网络或浏览器设置有关。'};for(const node of document.querySelectorAll('[data-welcome-string]'))node.textContent=copies[node.dataset.welcomeString];document.getElementById('welcome-panel').setAttribute('aria-label','欢迎来到小星球');document.getElementById('welcome-stage').textContent='正在下载游戏模块…';document.getElementById('welcome-help').textContent='正在加载游戏模块，可测的准备计数将在可用时显示。';document.getElementById('welcome-start').textContent='正在准备你的星球…';document.getElementById('welcome-progress').setAttribute('aria-label','当前准备阶段');document.getElementById('welcome-retry').textContent='重试';}
-@@ -94,2 +105,3 @@ window.addEventListener('error',event=>{if(!(event.target instanceof HTMLScriptE
+@@ -91,5 +102,6 @@ window.addEventListener('error',event=>{if(!(event.target instanceof HTMLScriptE
+ <div id="npc-mica" class="npc-label" hidden>Mica <small>POST OFFICE · RESIDENT</small></div><div id="npc-sol" class="npc-label" hidden>Sol <small>GLASSHOUSE · RESIDENT</small></div>
+-<div class="interaction"><p id="nearby" aria-live="polite"></p><button id="interact" class="primary" hidden>Talk to Mica <kbd>E</kbd></button></div>
++<div class="interaction"><p id="nearby" aria-live="polite"></p><button id="interact" class="primary" hidden>Talk to Mica <kbd>E</kbd></button> <button id="visitor-bench-choice" class="primary" hidden>Rest on the bench</button></div>
+ <div id="flight-labels" class="flight-labels" hidden></div>
  <section id="flight-hud" class="flight-hud" aria-label="Flight instruments" hidden><aside class="flight-course"><span class="eyebrow">NAVIGATION / TARGET VECTOR</span><h2 id="course-name">A world ahead</h2><p id="course-distance"></p><p id="course-heading" role="status"></p></aside><div class="flight-ident"><b>SHIP</b><span>Loading saved design</span></div><div id="flight-heading" class="flight-heading"></div><div id="ship-marker" class="flight-ship-marker" aria-hidden="true"><span>Your ship</span></div><span id="course-marker" class="course-marker" aria-hidden="true">◇</span><div class="flight-speed"><span id="flight-throttle">STANDBY</span><strong id="ship-speed">0</strong><small>m / s</small><div class="velocity-track"><i id="velocity-bar"></i></div><p id="flight-altitude"></p></div></section>
 +<div id="travel-guidance"></div>
  <div id="boarding-prompt" class="boarding-prompt" hidden><small id="dock-context">STARPORT / BOARDING GATE</small><button id="board-ship" class="primary">Board your ship <kbd>E</kbd></button></div><div id="notice" class="notice" role="status" hidden></div>
@@ -1039,7 +1043,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e42ffce812 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf000a7de7b 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
@@ -1050,18 +1054,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
  import {arrivalViewScore} from './arrival-camera.ts';
 +import { benchSeat, type BenchSeat } from './bench-rest.ts';
  import { HomeSetup } from './home-setup.ts';
-@@ -146,2 +148,4 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
+@@ -146,2 +148,5 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
 +const interaction = action.parentElement!;
++const benchChoice = $<HTMLButtonElement>('visitor-bench-choice');
 +let benchRest: { id: string; model: T.Object3D; seat: BenchSeat; footing: T.Vector3 } | null = null;
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
-@@ -270,3 +274,4 @@ function accept(next: PlayerState) {
+@@ -270,3 +275,4 @@ function accept(next: PlayerState) {
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
 -  physicsMismatch=false;online = navigator.onLine; renderSaveProgress(); renderTask();
 +  // An accepted world response proves this server is reachable, even on a local-only network.
 +  physicsMismatch=false;online=true;renderSaveProgress();renderTask();
    homeInterior?.receive(state);homeInterior?.setOnline(online);homeControls?.receivePlayer(state);
-@@ -275,7 +280,10 @@ function accept(next: PlayerState) {
+@@ -275,7 +281,10 @@ function accept(next: PlayerState) {
  }
 -function failed(error: unknown) {
 -  clearGroundMotion();
@@ -1076,11 +1081,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +function failed(error: unknown) {
 +  worldUnavailable();
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
-@@ -319,2 +327,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
+@@ -319,2 +328,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
 +const bothouseResidents=new BothouseResidents(scene,reduced);
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
-@@ -351,7 +360,9 @@ function tutorialContext(){
+@@ -351,7 +361,9 @@ function tutorialContext(){
  function frameVillageGuide(){
 -  tutorial?.frame(tutorialContext());
 +  const context=tutorialContext(),planet=colony?.universe?.currentPlanet;
@@ -1094,30 +1099,30 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +    ? {planet,world:groundWorld} : undefined;
 +  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
-@@ -364,2 +375,5 @@ function frameVillageGuide(){
+@@ -364,2 +376,5 @@ function frameVillageGuide(){
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
 +      approvedCourtyard:!!courtyard,
 +      residentRoster:context.online&&context.ready&&!indoor&&state?.flight.mode==='ground'
 +        ? bothouseResidents.guideRoster(groundWorld,state.location?.visitEpoch??0) : [],
        visible:context.ready&&!photoPaused&&!colony?.paused&&!flight?.active&&!departure&&(!homeInterior?.active||!!room),enabled:context.ready&&online&&!photoPaused&&!colony?.paused&&!document.querySelector('dialog[open]'),
-@@ -369,3 +383,3 @@ function frameVillageGuide(){
+@@ -369,3 +384,3 @@ function frameVillageGuide(){
      renderer.domElement.dataset.worldGuide=JSON.stringify(guideState);
 -  }
 +  } else worldGuide.clearResidentVisit();
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
-@@ -546,2 +560,6 @@ window.addEventListener('keydown',event=> {
+@@ -546,2 +561,6 @@ window.addEventListener('keydown',event=> {
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
 +    if (benchRest && key !== 'shift') {
 +      benchRest = null;
 +      if (key === 'e') { event.preventDefault(); return; }
 +    }
      event.preventDefault();keys.add(key);target=null;
-@@ -599,3 +617,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
+@@ -599,3 +618,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
 -  if(flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
 +  if(benchRest || flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
-@@ -700,3 +718,35 @@ async function interact() {
+@@ -700,3 +719,46 @@ async function interact() {
  }
 -action.onclick=()=>void interact();
 +function canGreetVisitor() {
@@ -1125,12 +1130,18 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +    !near && !nearResident && !homeControls?.canEnter && !teleportStations?.canUse && !worldGuide.active &&
 +    distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius()) >= BOARD_RADIUS-.12;
 +}
-+function nearestVisitorBench() {
-+  if (!groundWorld || !standing?.grounded || !canGreetVisitor() || !bothouseResidents.hasApprovedVisit(groundWorld) ||
++function canUseOutdoorBench(world: GroundWorld) {
++  const garden = colony?.universe?.currentPlanet;
++  return !!colony?.syncing && garden?.claimed && garden.kind === 'garden' &&
++    garden.id === activePlanet && world.planetId === garden.id &&
++    (garden.mine || bothouseResidents.hasApprovedVisit(world));
++}
++function nearestOutdoorBench() {
++  if (!groundWorld || !standing?.grounded || !canGreetVisitor() || !canUseOutdoorBench(groundWorld) ||
 +    groundWorld.blocked(standing)) return null;
 +  let nearest: typeof benchRest = null;
 +  for (const object of colony?.universe?.currentPlanet.objects ?? []) {
-+    if (object.kind !== 'bench' || object.assetVersion !== 2) continue;
++    if (object.kind !== 'bench' || object.assetVersion !== 2 || bothouseResidents.occupiesBench(object.id)) continue;
 +    const model = colony?.savedObjectModel(object.id);
 +    const seat = model && benchSeat(model,standing,groundWorld);
 +    if (model && seat && (!nearest || seat.distance < nearest.seat.distance)) {
@@ -1139,32 +1150,37 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +  }
 +  return nearest;
 +}
-+action.onclick=()=>{
-+  const benchId = action.dataset.benchRest;
-+  if (benchId) {
-+    if (benchRest) benchRest = null;
-+    else {
-+      const candidate = nearestVisitorBench();
-+      if (candidate?.id === benchId) { clearInput(); benchRest = candidate; }
-+    }
++function useOutdoorBench(id: string) {
++  if (benchRest) {
++    if (benchRest.id === id) benchRest = null;
 +    return;
 +  }
++  const candidate = nearestOutdoorBench();
++  if (candidate?.id === id) { clearInput(); benchRest = candidate; }
++}
++benchChoice.onclick=()=>{
++  const id = benchChoice.dataset.benchRest;
++  if (!benchChoice.hidden && id) useOutdoorBench(id);
++};
++action.onclick=()=>{
++  const benchId = action.dataset.benchRest;
++  if (benchId) { useOutdoorBench(benchId); return; }
 +  const id = action.dataset.visitorGreeting;
 +  if (!id) { void interact(); return; }
 +  if (canGreetVisitor()) bothouseResidents.greetVisitor(id,walker.up,renderCamera());
 +};
  setInterval(()=>void savePosition(),350);
-@@ -723,3 +773,3 @@ setInterval(async()=>{
+@@ -723,3 +785,3 @@ setInterval(async()=>{
    try {
 -    const next=await serial(()=>stateLoader.read());if(!accept(next))return;
 +    const next=await serial(()=>stateLoader.read());if(online||!accept(next))return;
      walker=new SurfaceWalker(next.position);lastSaved.copy(walker.up);clearInput();rebaseGroundCamera();ensureColony();notice('Back at your last saved spot. Welcome home.');
-@@ -727,4 +777,2 @@ setInterval(async()=>{
+@@ -727,4 +789,2 @@ setInterval(async()=>{
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
 
-@@ -734,2 +782,14 @@ function animate(now:number) {
+@@ -734,2 +794,21 @@ function animate(now:number) {
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
@@ -1173,18 +1189,25 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +  bothouseResidents.frame(visitVisible?groundWorld:null,landedGarden,state?.location?.visitEpoch??0,now,!!garden?.mine&&garden.id===activePlanet&&online,garden?.objects);
 +  visitPhotoButton.hidden=!canTakeVisitPhoto();
 +  if (benchRest && (!visitVisible || !groundWorld || !standing?.grounded ||
-+    !bothouseResidents.hasApprovedVisit(groundWorld) || !canSceneInput() || overview || indoorRoomView.room ||
++    !canUseOutdoorBench(groundWorld) || bothouseResidents.occupiesBench(benchRest.id) || !canSceneInput() || overview || indoorRoomView.room ||
 +    colony?.savedObjectModel(benchRest.id) !== benchRest.model || walker.up.angleTo(benchRest.footing) > .002 ||
 +    groundWorld.blocked(standing) || joy.lengthSq() > 0)) benchRest = null;
-+  if (measureCamera) renderer.domElement.dataset.benchRest = benchRest?.id ?? '';
-+  if (!visitVisible || photoPaused) interaction.removeAttribute('data-bench-rest');
++  if (measureCamera) {
++    renderer.domElement.dataset.benchRest = benchRest?.id ?? '';
++    renderer.domElement.dataset.benchFacing = benchRest
++      ? JSON.stringify(new T.Vector3(0,0,1).applyQuaternion(benchRest.seat.rotation).toArray()) : '';
++  }
++  if (!visitVisible || photoPaused) {
++    interaction.removeAttribute('data-bench-rest');
++    benchChoice.hidden=true;
++  }
    if(graphicsLost)return;
-@@ -781,3 +841,3 @@ function animate(now:number) {
+@@ -781,3 +860,3 @@ function animate(now:number) {
    if(groundWorld&&standing){
 -    if(paused){clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
 +    if(paused||benchRest){if(paused)clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
        physicsClock=Math.min(.05,physicsClock+dt);
-@@ -801,2 +861,7 @@ function animate(now:number) {
+@@ -801,2 +880,7 @@ function animate(now:number) {
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
 +  if (benchRest) {
 +    player.root.position.copy(benchRest.seat.position);
@@ -1192,32 +1215,37 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +    player.sit();
 +  }
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-@@ -873,3 +938,3 @@ function animate(now:number) {
+@@ -873,3 +957,3 @@ function animate(now:number) {
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
 -      player.root.visible=pose.playerVisible;
 +      player.root.visible=pose.playerVisible||!!benchRest;
        // Retain the baseline hub/craft geometry checks alongside static proxies.
-@@ -910,2 +975,4 @@ function animate(now:number) {
+@@ -910,2 +994,4 @@ function animate(now:number) {
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
 +  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused,'exploration',
 +    {usedByPlayer:benchRest?.id,getModel:id=>colony?.savedObjectModel(id)});
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +982,3 @@ function animate(now:number) {
+@@ -915,2 +1001,3 @@ function animate(now:number) {
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -966,3 +1034,9 @@ function animate(now:number) {
+@@ -966,3 +1053,14 @@ function animate(now:number) {
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
-+    const bench = benchRest ?? (!paused && !greeting ? nearestVisitorBench() : null);
++    const bench = benchRest ?? (!paused ? nearestOutdoorBench() : null);
++    const interactionPaused = paused || nearDock || !!teleportStations?.canUse;
++    const offerBenchChoice = !!greeting && !!bench && !interactionPaused;
++    benchChoice.hidden = !offerBenchChoice;
++    if (offerBenchChoice) benchChoice.dataset.benchRest = bench.id;
++    else delete benchChoice.dataset.benchRest;
 +    interaction.toggleAttribute('data-visitor-greeting',!!greeting);
 +    interaction.toggleAttribute('data-bench-rest',!!bench);
 +    delete action.dataset.visitorGreeting;
 +    delete action.dataset.benchRest;
-+    action.hidden=(!near&&!nearResident&&(!greeting||greeting.greeted)&&!bench)||paused||nearDock||!!teleportStations?.canUse;
++    action.hidden=interactionPaused||(!near&&!nearResident&&(!greeting||greeting.greeted)&&(!bench||offerBenchChoice));
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
-@@ -978,2 +1052,20 @@ function animate(now:number) {
+@@ -978,2 +1076,20 @@ function animate(now:number) {
      }
 +    else if(greeting){
 +      delete action.dataset.residentPrompt;
@@ -1238,7 +1266,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +      setText($('nearby'),'');
 +    }
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
-@@ -1032,5 +1124,6 @@ function ensureColony() {
+@@ -1032,5 +1148,6 @@ function ensureColony() {
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
 +  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
@@ -1246,13 +1274,13 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
      applyPlayer:accept,
-@@ -1040,3 +1133,4 @@ function ensureColony() {
+@@ -1040,3 +1157,4 @@ function ensureColony() {
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1155,8 @@ photoMode=new PhotoMode({renderer,
+@@ -1061,3 +1179,8 @@ photoMode=new PhotoMode({renderer,
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
@@ -1262,7 +1290,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..10790394641a165d3c63a929dbe033e4
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1065,4 +1164,23 @@ photoMode=new PhotoMode({renderer,
+@@ -1065,4 +1188,23 @@ photoMode=new PhotoMode({renderer,
  const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
 -$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 -window.addEventListener('open-photo-mode',()=>void photoMode?.open());
@@ -2511,10 +2539,10 @@ index 1a570ac8d81c2294e8da58e4818effaead2d1f9f..dab56cab32b15b863b5616bb68856f0f
 +    expect(saved.home!.interior.material).toBe(home.interior.material);
      await click('#home-toggle-door');await expect(page.locator('#home-exit')).toBeEnabled();
 diff --git a/src/client/immersive.css b/src/client/immersive.css
-index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..4981cd4b6e9cf0f61177bf476dd2ecdb56f5b0c3 100644
+index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..faf4192aa5083eaa2d78bc191a82f0b26ff815d3 100644
 --- a/src/client/immersive.css
 +++ b/src/client/immersive.css
-@@ -119 +119,8 @@ body.indoor-room-active #mouse-look,body.indoor-room-active #view-mode{display:n
+@@ -119 +119,9 @@ body.indoor-room-active #mouse-look,body.indoor-room-active #view-mode{display:n
  .minimal-bar #open-menu kbd{display:inline-block;margin:0;padding:2px 5px;font:10px system-ui;color:inherit;background:var(--ui-choice);border:1px solid var(--ui-dialog-border);border-radius:4px}
 +
 +/* The visitor prompt shares the ordinary nearby-action slot on garden worlds. */
@@ -2522,7 +2550,8 @@ index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..4981cd4b6e9cf0f61177bf476dd2ecdb
 +.interaction[data-visitor-greeting] #nearby{overflow-wrap:anywhere}
 +.interaction[data-visitor-greeting] #interact:not([hidden]){min-height:44px}
 +body:not(.in-space,.building,.home-interior-active) .interaction[data-bench-rest]{display:block!important}
-+.interaction[data-bench-rest] #interact:not([hidden]){min-height:44px}
++.interaction[data-bench-rest] #interact:not([hidden]),#visitor-bench-choice{min-height:44px}
++@media(max-width:600px){#visitor-bench-choice{margin-top:6px}}
 diff --git a/src/client/character.ts b/src/client/character.ts
 index 2397a4bbd91144e845c1c8a6d9112c5559508622..518a41790130ba41a6ad6ae44a698f27b3eb1f88 100644
 --- a/src/client/character.ts
