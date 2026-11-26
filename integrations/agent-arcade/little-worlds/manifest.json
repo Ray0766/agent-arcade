@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "36acad99faab71f3b4c3ec8333e09fb1d71d0ec8",
-  "worldTree": "4bdb14e49eab7eb508e93503d61fb75c4c2c18e9",
-  "patchSHA256": "a3187b1abc9d4845733d07f58e90a30959e12f54b9be9137c473ebb86d09c085",
+  "worldRevision": "91989b8c570be8f7f3e19c857d930863427b89dc",
+  "worldTree": "2de7a4429ef4147313fbee5996b8f3c8772bbd64",
+  "patchSHA256": "b121ca23d5eae0e77ba2e016ed7e2b034d50b1847aaffc97347a79910e6e980f",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -133,8 +133,8 @@
     {
       "action": "A",
       "path": "spec/bothouse-work-pose.test.ts",
-      "blob": "496ed9e599c6175d36072de7cf0240efa514de74",
-      "sha256": "2ed978aa8fe01daef770c2af6cd0b386f7b58de08ae12d1cbcd753a806363fb5"
+      "blob": "4c25871a71dfb03d1149e9f765ad9392b905db68",
+      "sha256": "7a199a120e35d37e8fca392d877b697f81bd1f66dc7616cfa9f2d238a5e118fb"
     },
     {
       "action": "A",
@@ -445,8 +445,8 @@
     {
       "action": "A",
       "path": "src/client/bench-rest.ts",
-      "blob": "74afb586414c484cf15713d58ed93870a129ce8d",
-      "sha256": "6c6e71a45c9a8f205d04f507aece3ca9a3ceea776627e29361f2c0d6a23d6cda"
+      "blob": "31f6412f620538a4ee2a4a35d9f772df1c0e4a7e",
+      "sha256": "a24ac77c30810e959c1be901422b6960827303ddab853a76e69bc90b3c238c56"
     },
     {
       "action": "A",
@@ -463,8 +463,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-resident-model.ts",
-      "blob": "a41a748c054e408b40e1b627bb585d7d46b5e9e8",
-      "sha256": "cc171e91ed1037f095e8221a42760d63fe9c3fd472e4be2d959ba699959cbd52"
+      "blob": "9131a534964e33a6e404a6d2a6b89073af68576d",
+      "sha256": "827e03d29a0548431cd7109c17265a47ec078cc961205047271eea95eab7342f"
     },
     {
       "action": "A",
@@ -475,8 +475,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "9a620af53e5b91231b446f00fecd66e5aa348408",
-      "sha256": "dea5452338c47428ec080379c98c9996afe3e9c912cc4745586c8fd823927b44"
+      "blob": "76fd7817ff73790268d623c3ea4fe6678bf528c8",
+      "sha256": "8891fda79094736300d180f903ea07a3d6dfe6912ba832c8b2e3315474466485"
     },
     {
       "action": "A",
@@ -571,8 +571,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "305c837531d415ac75e29f89af294cbb5dffa6f0",
-      "sha256": "e25f9b9759e3aa944c1268c4936a344c24d7f8984d5f51377cc64b555b5fa03b"
+      "blob": "deb6d54db704385d7913dbf5189c0d224d3aa894",
+      "sha256": "dcaf817daec69c5ed64e9b0a5461b913ba9b1a9fd7e5f921b665a4f28e7692f4"
     },
     {
       "action": "M",
@@ -603,6 +603,12 @@
       "path": "src/client/public-town-art.ts",
       "blob": "2c01445b7080b652b279186f4250be714ecedaf0",
       "sha256": "e9435451f5795454f4e883d7696145a770876a91b4dab6bc3a18b5d3a2db352e"
+    },
+    {
+      "action": "A",
+      "path": "src/client/resident-bench-rest.ts",
+      "blob": "8a0185cdd5d44a19524358d4f9706e17429a2122",
+      "sha256": "19b5ce66f3e39af8772e89c5cb7784a7b536784e51077e80cdd62474085a2e07"
     },
     {
       "action": "A",
@@ -745,8 +751,8 @@
     {
       "action": "M",
       "path": "src/shared/town-resident-motion.ts",
-      "blob": "94b75240f14c96ad09b58f5c04055881778d43bc",
-      "sha256": "d702115cb78021066989595d584af64af901fc8ddd76d5d10bc954a074e9855b"
+      "blob": "220d883f09acba1b6517ecd7d996b7b6399fe3c0",
+      "sha256": "69e3dd2edaa2d949452d4e0d304bf964ea3621fd084f15024cafdf86c79d4bc6"
     },
     {
       "action": "M",

@@ -67,3 +67,20 @@ it('raises one empty hand for an idle greeting and yields to activity or reduced
     expect(arm.rotation.z).toBeLessThan(.5);
   }finally{resident.dispose();}
 });
+it('sits with bent knees and gives work, greetings and reduced motion priority',()=>{
+  const resident=createBothouseResidentModel('lanxi');
+  const knee=resident.root.getObjectByName('knee1')!;
+  const ledger=resident.root.getObjectByName('work-ledger')!;
+  try{
+    resident.animate('idle',1,false,0,0,0,1);
+    expect(knee.rotation.x).toBeCloseTo(Math.PI/2);
+    expect(ledger.visible).toBe(false);
+    resident.animate('working',1,false,0,0,0,1);
+    expect(knee.rotation.x).toBeCloseTo(0);
+    expect(ledger.visible).toBe(true);
+    resident.animate('idle',1,true,0,0,0,1);
+    expect(knee.rotation.x).toBeCloseTo(0);
+    resident.animate('idle',1,false,0,.4,0,1);
+    expect(knee.rotation.x).toBeCloseTo(0);
+  }finally{resident.dispose();}
+});

@@ -9,6 +9,7 @@ import {townResidentLedger} from './town-resident-ledger.ts';
 type Activity=PlanetResident['activity'];
 const cream='#f6ead3',skin='#f0ceac',ink='#42353f';
 const hipHeight=.625, shinPivotDrop=.260;
+export const residentHipHeight = hipHeight;
 const shoeCenterDrop=.292, shoeHalfHeight=.056, soleCenterDrop=.324, soleHalfHeight=.022;
 // Both curved shoe pieces count toward the lowest resting point.
 const shoeBottom=Math.max(shoeCenterDrop+shoeHalfHeight,soleCenterDrop+soleHalfHeight);
@@ -95,10 +96,11 @@ export function createBothouseResidentModel(appearanceKey:string){
   badge.visible=false;
   body.add(badge);
   let disposed=false;
-  const animate=(activity:Activity,seconds:number,reducedMotion:boolean,walk=0,wave=0,flowerLean=0)=>{
+  const animate=(activity:Activity,seconds:number,reducedMotion:boolean,walk=0,wave=0,flowerLean=0,benchRest=0)=>{
     const t=reducedMotion?0:seconds,pace=reducedMotion?0:T.MathUtils.clamp(walk,0,1);
     const rest=activity==='offline',think=activity==='thinking',talk=activity==='talking',work=activity==='working';
     const lean=activity==='idle'&&!reducedMotion?flowerLean:0;
+    const seated=activity==='idle'&&!reducedMotion&&!wave?T.MathUtils.clamp(benchRest,0,1):0;
     const swing=Math.sin(t*6.2)*pace;
     rig.position.y=-standingSoleOffset+Math.abs(swing)*.014;
     ledger.visible=work;
@@ -131,6 +133,12 @@ export function createBothouseResidentModel(appearanceKey:string){
           l.elbow.rotation.x=T.MathUtils.lerp(l.elbow.rotation.x,-.45,lift);
           l.elbow.rotation.z=T.MathUtils.lerp(l.elbow.rotation.z,.62+.40*Math.sin(wave*4*Math.PI),lift);
         }
+      }
+      if(seated){
+        l.hip.rotation.x=T.MathUtils.lerp(l.hip.rotation.x,-Math.PI/2,seated);
+        l.knee.rotation.x=T.MathUtils.lerp(l.knee.rotation.x,Math.PI/2,seated);
+        l.arm.rotation.x=T.MathUtils.lerp(l.arm.rotation.x,-.33,seated);
+        l.elbow.rotation.x=T.MathUtils.lerp(l.elbow.rotation.x,-.72,seated);
       }
     }
     if(work)ledger.rotation.set(1.37,.08,-.36);

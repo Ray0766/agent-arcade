@@ -765,7 +765,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..305c837531d415ac75e29f89af294cbb5dffa6f0 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d224d3aa894 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
@@ -912,15 +912,16 @@ index 0639a7b2e636be2963ca2599618308f12632025a..305c837531d415ac75e29f89af294cbb
 -      player.root.visible=pose.playerVisible;
 +      player.root.visible=pose.playerVisible||!!benchRest;
        // Retain the baseline hub/craft geometry checks alongside static proxies.
-@@ -910,2 +972,3 @@ function animate(now:number) {
+@@ -910,2 +972,4 @@ function animate(now:number) {
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
-+  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused);
++  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused,true,
++    {usedByPlayer:benchRest?.id,getModel:id=>colony?.savedObjectModel(id)});
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +978,3 @@ function animate(now:number) {
+@@ -915,2 +979,3 @@ function animate(now:number) {
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -966,3 +1030,9 @@ function animate(now:number) {
+@@ -966,3 +1031,9 @@ function animate(now:number) {
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
@@ -931,7 +932,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..305c837531d415ac75e29f89af294cbb
 +    delete action.dataset.benchRest;
 +    action.hidden=(!near&&!nearResident&&(!greeting||greeting.greeted)&&!bench)||paused||nearDock||!!teleportStations?.canUse;
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
-@@ -978,2 +1048,20 @@ function animate(now:number) {
+@@ -978,2 +1049,20 @@ function animate(now:number) {
      }
 +    else if(greeting){
 +      delete action.dataset.residentPrompt;
@@ -952,7 +953,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..305c837531d415ac75e29f89af294cbb
 +      setText($('nearby'),'');
 +    }
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
-@@ -1032,5 +1120,6 @@ function ensureColony() {
+@@ -1032,5 +1121,6 @@ function ensureColony() {
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
 +  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
@@ -960,13 +961,13 @@ index 0639a7b2e636be2963ca2599618308f12632025a..305c837531d415ac75e29f89af294cbb
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
      applyPlayer:accept,
-@@ -1040,3 +1129,4 @@ function ensureColony() {
+@@ -1040,3 +1130,4 @@ function ensureColony() {
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1151,8 @@ photoMode=new PhotoMode({renderer,
+@@ -1061,3 +1152,8 @@ photoMode=new PhotoMode({renderer,
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
@@ -976,7 +977,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..305c837531d415ac75e29f89af294cbb
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1065,4 +1160,23 @@ photoMode=new PhotoMode({renderer,
+@@ -1065,4 +1161,23 @@ photoMode=new PhotoMode({renderer,
  const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
 -$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 -window.addEventListener('open-photo-mode',()=>void photoMode?.open());
@@ -1835,11 +1836,11 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c5e2c769335fc38daa8d5677c5ad2b66
 +            if(attempt<2)return this.createPrepared(id,now,attempt+1,bind);
              throw new RequestError(503,BUSY);
 diff --git a/src/shared/town-resident-motion.ts b/src/shared/town-resident-motion.ts
-index 30b342267729476ac36ece59318dd512aa98f329..94b75240f14c96ad09b58f5c04055881778d43bc 100644
+index 30b342267729476ac36ece59318dd512aa98f329..220d883f09acba1b6517ecd7d996b7b6399fe3c0 100644
 --- a/src/shared/town-resident-motion.ts
 +++ b/src/shared/town-resident-motion.ts
 @@ -6,2 +6,4 @@ import type { Vec3 } from './world.ts';
- 
+
 +type MotionDefinition = Pick<TownResidentDefinition, 'position'|'route'|'facing'|'activity'|'phase'|'speed'>;
 +
  /** Ephemeral scenery motion; shares the player's capsule, supports and sweeps.
@@ -1851,10 +1852,39 @@ index 30b342267729476ac36ece59318dd512aa98f329..94b75240f14c96ad09b58f5c04055881
 +  readonly definition: D;
    readonly valid: boolean;
 @@ -23,3 +25,3 @@ export class TownResidentMotion {
- 
+
 -  constructor(world: GroundWorld, definition: TownResidentDefinition) {
 +  constructor(world: GroundWorld, definition: D) {
      this.world = world; this.definition = definition;
+@@ -37,6 +39,6 @@ export class TownResidentMotion {
+   /** dt is elapsed visible time. At most two shared physics steps per tick. */
+-  tick(dt: number, viewer?: Vec3, neighbours: readonly Vec3[] = []) {
++  tick(dt: number, viewer?: Vec3, neighbours: readonly Vec3[] = [], destination?: Vec3) {
+     this.moving = false;
+     const route = this.definition.route;
+-    if (!this.valid || !route || route.length < 2 || this.definition.activity !== 'walk') return;
++    if (!this.valid || this.definition.activity !== 'walk' || (!destination && (!route || route.length < 2))) return;
+     this.accumulator = Math.min(.1, this.accumulator + Math.max(0, dt));
+@@ -45,5 +47,9 @@ export class TownResidentMotion {
+       if (this.pause > 0) { this.pause -= .05; continue; }
+-      const up = new Vector3(...this.pose.position), target = new Vector3(...route[this.routeIndex]);
++      const up = new Vector3(...this.pose.position), target = new Vector3(...(destination ?? route![this.routeIndex]));
+       const remaining = up.angleTo(target) * this.world.baseRadius;
+-      if (remaining < .11) { this.nextStop(route.length); continue; }
++      if (remaining < .11) {
++        if (destination) break;
++        this.nextStop(route!.length);
++        continue;
++      }
+       const tangent = target.projectOnPlane(up).normalize();
+@@ -60,5 +66,5 @@ export class TownResidentMotion {
+         this.blockedSeconds += .05;
+-        if (this.blockedSeconds >= 1) {
++        if (this.blockedSeconds >= 1 && !destination) {
+           this.routeDirection *= -1;
+-          this.routeIndex = Math.max(0, Math.min(route.length - 1, this.routeIndex + this.routeDirection));
++          this.routeIndex = Math.max(0, Math.min(route!.length - 1, this.routeIndex + this.routeDirection));
+           this.blockedSeconds = 0; this.pause = 1; this.reversals++;
 diff --git a/spec/tutorial-navigation.test.ts b/spec/tutorial-navigation.test.ts
 index 69e48150b5a650e1689245e91a516161b7282712..a7d4fbe55c76100d46625d59ccb3e9ea985b2987 100644
 --- a/spec/tutorial-navigation.test.ts
