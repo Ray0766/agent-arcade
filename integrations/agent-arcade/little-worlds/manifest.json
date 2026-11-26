@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "47027b1391f7d6fb8715e1c42ba534360ca235df",
-  "worldTree": "c9e2e4f60ab7dc897c8b9d94680b45e14ef078cb",
-  "patchSHA256": "7f32c0baab40e23d3cc6b1431e62605eaa1b64bab10cd0dc2d780273870f0357",
+  "worldRevision": "3b43aa784ab0e5b678e4bba16d09fa12108434d7",
+  "worldTree": "ac569a22bd761832c0e10daaac60fbd5a83c882d",
+  "patchSHA256": "a3b2a26d204721a53d065dfb33c0566b1449090e04d438b58edf7b4977c8d0b3",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -135,6 +135,12 @@
       "path": "spec/bothouse-work-pose.test.ts",
       "blob": "496ed9e599c6175d36072de7cf0240efa514de74",
       "sha256": "2ed978aa8fe01daef770c2af6cd0b386f7b58de08ae12d1cbcd753a806363fb5"
+    },
+    {
+      "action": "A",
+      "path": "spec/courtyard-landmark.test.ts",
+      "blob": "a74d7c44e8cdb6cf0b5e34c4bd1959011d4a16b0",
+      "sha256": "099429d466337922061c24036cd55e953d8e1485b2c2f6e90072ff45301f0e44"
     },
     {
       "action": "M",
@@ -469,8 +475,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "5dcdf39daec61d202d54e3faf969f4c5edf004e2",
-      "sha256": "057e890f79aeee4619ce4dd6265cbc1b87f2946d72c569bc444026c447059205"
+      "blob": "9a620af53e5b91231b446f00fecd66e5aa348408",
+      "sha256": "dea5452338c47428ec080379c98c9996afe3e9c912cc4745586c8fd823927b44"
     },
     {
       "action": "A",
@@ -565,14 +571,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "59a0f792f12b8f67af3f691327461ff476ec5ec0",
-      "sha256": "6a385161004f07420cc71bca13779ec88c8ec1c00f5cb9b1d95f2c5ff7138aaa"
+      "blob": "305ba0e7f15c934332e7cc7ab586bba93c94e58a",
+      "sha256": "c43b54da40e551c9fc1cf2ce04d8e3529c5b552f97df5a739c27d72f46dbd53e"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "a514be9cea97d79de6c5de37fab48edb8f5f1bd0",
-      "sha256": "a42f3a69cb3b26d824a558125982032acfd6b131656b7e4b8f1f3a43d22bf095"
+      "blob": "76a6110fbd45db5b3236d1fab20f16ff8367bc28",
+      "sha256": "757c34965340c16152068dbe71dcb49a06d2096d93811e2f0963456108aff7aa"
     },
     {
       "action": "A",
@@ -582,9 +588,15 @@
     },
     {
       "action": "M",
+      "path": "src/client/photo-mode.css",
+      "blob": "2e44da8cc037900e2f2cfbad0c57a04420d83cb8",
+      "sha256": "2dd982be2cbda4ce7ec522d3eb002ef71def69a0475ae5d1cc65bc61e48412b5"
+    },
+    {
+      "action": "M",
       "path": "src/client/photo-mode.ts",
-      "blob": "74c03ac5d937fdb3e624f822aa489ab14c771231",
-      "sha256": "7f24e5288902fff68b45afa1c1c1aa0250440efea1794b26100ea8be148254f4"
+      "blob": "30e02e6adadcd153e752810f65b12812ccd25089",
+      "sha256": "2f7649a7dca1762e0e4a43e2081d63d8b797c6966e572e9f3ea5145136de6f74"
     },
     {
       "action": "M",
@@ -661,8 +673,8 @@
     {
       "action": "M",
       "path": "src/client/village-polish.ts",
-      "blob": "ecb98897cb97a494611a31cdc641d69d165be265",
-      "sha256": "125a0861057c12ef2cc61017ebc9847ad6b45a4f7a92eee404ec79c70ed8f168"
+      "blob": "816c1c204c76a3f3dbd84d8fd3b52ec260a337e1",
+      "sha256": "e1513d417f149a76920e03a3e97b5732a611b9fabf1650893ac18b34165f2abc"
     },
     {
       "action": "M",
