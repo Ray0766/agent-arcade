@@ -74,14 +74,19 @@ function createWorkOrders(store,receiver){
     try{return roleScope(job.human,job.chat,job.ai,job.identity)===job.scope;}catch(error){if(error.status===404)return false;throw error;}
   }
   function save(job,state,text,boardId){
-    store.run('UPDATE bothouse_work_orders SET state=?,board_id=coalesce(?,board_id),next_check=? WHERE prompt=?',
-      state,boardId??null,Date.now()+(state.startsWith('waiting_')?8000:3000),job.prompt);
+    const changed=store.run(`UPDATE bothouse_work_orders SET state=?,board_id=coalesce(?,board_id),next_check=?
+      WHERE prompt=? AND request=? AND attempt=? AND state=?`,
+      state,boardId??null,Date.now()+(state.startsWith('waiting_')?8000:3000),job.prompt,job.request,job.attempt,job.state);
+    if(!changed.changes)return;
+    if(state==='returned')store.run("UPDATE bothouse_task_claims SET state='returned' WHERE prompt=? AND attempt=? AND state='verified'",job.prompt,job.attempt);
+    if(state==='cancelled')store.run("UPDATE bothouse_task_claims SET state='cancelled',result=NULL WHERE prompt=? AND attempt=? AND state IN ('verified','running')",job.prompt,job.attempt);
     if(text)store.send(job.ai,job.chat,{clientId:'work_'+job.request+'_'+job.attempt+'_'+state,
       text:'任务 #'+job.prompt+' · '+text});
+    return true;
   }
   function cancel(job){
     receiver.cancel?.(job.request,job);
-    save(job,'cancelled');
+    store.transaction(()=>save(job,'cancelled'));
   }
   async function advance(job){
     if(!current(job)){if(!closed)cancel(job);return;}
@@ -122,11 +127,19 @@ function createWorkOrders(store,receiver){
       failed:'执行失败。请发送「重试任务 #'+job.prompt+'」。',
       uncertain:'暂时无法核实这项任务是否交回。原任务已保留。',
       returned:'已交回\n'+(receipt.text||'')};
-    store.transaction(()=>save(job,receipt.state,job.state===receipt.state?null:label[receipt.state],receipt.boardId));
+    const saved=store.transaction(()=>{
+      if(current(job))return save(job,receipt.state,job.state===receipt.state?null:label[receipt.state],receipt.boardId);
+      else save(job,'cancelled');
+    });
+    if(saved&&receipt.state==='returned')console.info('Bothouse task delivered',job.prompt,job.attempt);
   }
   function poll(){
     if(closed||!receiver||active.size>=4)return;
-    for(const job of store.all("SELECT * FROM bothouse_work_orders WHERE state IN ('queued','accepted','running','waiting_external','waiting_backend') AND next_check<=? ORDER BY next_check,prompt LIMIT 8",Date.now())){
+    for(const job of store.all(`SELECT w.* FROM bothouse_work_orders w WHERE next_check<=? AND
+      (w.state IN ('queued','accepted','running','waiting_external','waiting_backend') OR
+       (w.state='uncertain' AND EXISTS(SELECT 1 FROM bothouse_task_claims c WHERE
+        c.prompt=w.prompt AND c.attempt=w.attempt AND c.state='verified')))
+      ORDER BY next_check,prompt LIMIT 8`,Date.now())){
       if(active.has(job.prompt))continue;
       active.add(job.prompt);
       void advance(job).catch(error=>console.error('Social task polling failed',error.code||error.name))

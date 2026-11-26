@@ -11,8 +11,9 @@ function stockTaskReceiver(store,directory) {
   let closed = false;
   const identity = async (account,number) => {
     const found = await directory.list(account,number);
-    if (found.directoryStatus === 'offline') throw Error('Bothouse offline');
+    if (found.directoryStatus === 'offline'||found.directoryReason==='no_roles') throw Error('Bothouse directory unavailable');
     const role = found.contacts.find(r=>r.number===number || r.legacyNumber===number);
+    if(role&&!role.configured)throw Error('Bothouse role offline');
     return role?.configured ? role.id : undefined;
   };
 
@@ -33,23 +34,28 @@ function stockTaskReceiver(store,directory) {
         messageId:job.request+'-'+job.attempt, scope:[job.chat,job.scope,job.request],
         text:transform.prompt
       },controller.signal);
-      if (closed || controller.signal.aborted || !permitted() || await identity(job.human,job.ai)!==job.identity) return;
+      if (closed || controller.signal.aborted || !permitted()) return;
       if (answer?.defer==='backend') state = 'waiting_backend';
       else if (answer?.text?.trim()==='[NEEDS_WORKER]') state = 'waiting_external';
       else if (answer?.text?.trim()==='[NEEDS_INPUT]') state = 'waiting_input';
       else if (typeof answer?.text==='string') {
         state='failed';
         result=transform.render(answer.text);
-        state='returned';
+        state='verified';
       }
     } catch {
       // Malformed answers may be retried explicitly; network uncertainty may not.
     } finally {
       clearInterval(renewal);
       workers.delete(job.request);
-      if (!closed && !controller.signal.aborted && permitted())
-        store.run("UPDATE bothouse_task_claims SET state=?,result=? WHERE prompt=? AND attempt=? AND state='running'",
-          state,result,job.prompt,job.attempt);
+      if (!closed && !controller.signal.aborted && permitted()){
+        // The claim belongs to the immutable request behind this prompt and attempt.
+        // Persist the validated artifact before any further asynchronous role lookup.
+        const saved=store.run("UPDATE bothouse_task_claims SET state=?,result=?,updated=? WHERE prompt=? AND attempt=? AND state='running'",
+          state,result,Date.now(),job.prompt,job.attempt);
+        if(saved.changes&&(state==='verified'||state==='uncertain'))
+          console.info('Bothouse task handback',job.prompt,job.attempt,state);
+      }
     }
   }
 
@@ -63,7 +69,8 @@ function stockTaskReceiver(store,directory) {
     const claim = store.one('SELECT state,result,updated FROM bothouse_task_claims WHERE prompt=? AND attempt=?',job.prompt,job.attempt);
     if (!claim) return {...receipt,state:'uncertain'}; // Pre-migration board owns this request.
     const state=claim.state;
-    if (state==='returned') return {...receipt,state,text:claim.result,sha256:createHash('sha256').update(claim.result).digest('hex')};
+    if (state==='verified'||state==='returned')
+      return {...receipt,state:'returned',text:claim.result,sha256:createHash('sha256').update(claim.result).digest('hex')};
     if (state==='running' && !workers.has(job.request) && Date.now()-claim.updated>90000)
       return {...receipt,state:'uncertain'};
     if (state!=='waiting_backend' && state!=='accepted') return {...receipt,state};
