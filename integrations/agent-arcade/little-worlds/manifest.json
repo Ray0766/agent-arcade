@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "3b43aa784ab0e5b678e4bba16d09fa12108434d7",
-  "worldTree": "ac569a22bd761832c0e10daaac60fbd5a83c882d",
-  "patchSHA256": "a3b2a26d204721a53d065dfb33c0566b1449090e04d438b58edf7b4977c8d0b3",
+  "worldRevision": "36acad99faab71f3b4c3ec8333e09fb1d71d0ec8",
+  "worldTree": "4bdb14e49eab7eb508e93503d61fb75c4c2c18e9",
+  "patchSHA256": "a3187b1abc9d4845733d07f58e90a30959e12f54b9be9137c473ebb86d09c085",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -571,14 +571,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "305ba0e7f15c934332e7cc7ab586bba93c94e58a",
-      "sha256": "c43b54da40e551c9fc1cf2ce04d8e3529c5b552f97df5a739c27d72f46dbd53e"
+      "blob": "305c837531d415ac75e29f89af294cbb5dffa6f0",
+      "sha256": "e25f9b9759e3aa944c1268c4936a344c24d7f8984d5f51377cc64b555b5fa03b"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "76a6110fbd45db5b3236d1fab20f16ff8367bc28",
-      "sha256": "757c34965340c16152068dbe71dcb49a06d2096d93811e2f0963456108aff7aa"
+      "blob": "d408fbd1698d9aa116041f25c5d8716f16705564",
+      "sha256": "d553a5e42a9cb8bc4225a4057c027ac965667688c7e4228db2f18c6c5001300e"
     },
     {
       "action": "A",
@@ -595,8 +595,8 @@
     {
       "action": "M",
       "path": "src/client/photo-mode.ts",
-      "blob": "30e02e6adadcd153e752810f65b12812ccd25089",
-      "sha256": "2f7649a7dca1762e0e4a43e2081d63d8b797c6966e572e9f3ea5145136de6f74"
+      "blob": "c3126e8404a12f4dd599b935c468d9e3cfc706b7",
+      "sha256": "d54c64469b46d128bca106ec4f0f965c2a3549cefb779e400fd91ab04b04be82"
     },
     {
       "action": "M",
