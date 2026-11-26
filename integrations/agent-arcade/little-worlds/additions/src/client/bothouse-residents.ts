@@ -166,6 +166,7 @@ export class BothouseResidents {
   private readonly friendPlanet = new URLSearchParams(location.search).get('visit');
   private greetingTarget=this.friendPlanet;
   private visitorWorld: GroundWorld | null = null;
+  private visitorAllowed = false;
   private visitorGreeting: { figure: ResidentFigure; until: number } | null = null;
   private arrivalWorld:GroundWorld|null=null;
   private request:AbortController|null=null;
@@ -224,6 +225,9 @@ export class BothouseResidents {
   private cancelVisitorGreeting() {
     this.visitorGreeting?.figure.stopGreeting();
     this.visitorGreeting = null;
+  }
+  canRestAsVisitor(world: GroundWorld) {
+    return world === this.visitorWorld && this.visitorAllowed;
   }
   private greetingDistance(figure: ResidentFigure, viewer: T.Vector3, camera: T.Camera) {
     const world = this.visitorWorld;
@@ -317,6 +321,7 @@ export class BothouseResidents {
     });
   }
   private clear() {
+    this.visitorAllowed = false;
     this.cancelVisitorGreeting();
     for(const figure of this.figures.values())figure.dispose();
     this.seats=[];this.figures.clear();this.summary.hidden=true;this.summary.replaceChildren();
@@ -353,6 +358,7 @@ export class BothouseResidents {
         return;
       }
       if(!world)return;
+      this.visitorAllowed = true;
       const ids=new Set(residents.map(r=>r.id));
       for(const [id,figure] of this.figures)if(!ids.has(id)){figure.dispose();this.figures.delete(id);}
       const used=new Set(Array.from(this.figures.values(),f=>f.slot));
