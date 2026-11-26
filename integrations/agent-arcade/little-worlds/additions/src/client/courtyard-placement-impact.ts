@@ -2,7 +2,7 @@ import type {PlacedObject,PlanetView} from '../shared/planets.ts';
 import {GroundWorld} from '../shared/physics/world.ts';
 import {courtyardTarget} from '../shared/world-guide.ts';
 import {normalize} from '../shared/world.ts';
-import {courtyardLandmark} from './village-polish.ts';
+import {courtyardVisit} from '../shared/courtyard-arrival.ts';
 
 export function courtyardPlacementImpact(planet:PlanetView, draft:Pick<PlacedObject,'id'|'kind'|'rotation'|'version'|'position'>, syncing:boolean) {
   const manifest=planet.homeManifest;
@@ -17,7 +17,7 @@ export function courtyardPlacementImpact(planet:PlanetView, draft:Pick<PlacedObj
   const visitorPlanet={...planet,mine:false};
   // Recognize the authored square even if it was moved in an earlier edit.
   const authored={...saved,position:original.position,rotation:original.rotation,blueprintHash:original.blueprintHash};
-  if(!courtyardTarget({...visitorPlanet,objects:[authored]}))return null;
+  if(!courtyardTarget({...visitorPlanet,courtyardArrival:undefined,objects:[authored]}))return null;
   if(!syncing||saved.version!==draft.version
     ||planet.objects.some(o=>o.kind==='structure'&&!planet.blueprints?.[o.blueprintHash??'']?.length))return unknown;
 
@@ -28,7 +28,8 @@ export function courtyardPlacementImpact(planet:PlanetView, draft:Pick<PlacedObj
   const objects=unchanged?planet.objects:planet.objects.map(object=>
     object.id===saved.id?{...object,position,rotation:draft.rotation}:object);
   const next={...visitorPlanet,objects};
-  if(!courtyardTarget(next))return 'With this layout, visitors will not see the courtyard guide or landmark.';
-  if(!courtyardLandmark(next,new GroundWorld(next)))return 'The courtyard guide will be available, but the landmark has no clear spot.';
+  const visit=courtyardVisit(next,new GroundWorld(next));
+  if(!visit)return 'With this layout, visitors will not see the courtyard guide or landmark.';
+  if(!visit.landmark)return 'The courtyard guide will be available, but the landmark has no clear spot.';
   return 'The courtyard guide and landmark will be available to visitors.';
 }

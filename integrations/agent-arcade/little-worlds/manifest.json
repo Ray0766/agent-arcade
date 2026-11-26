@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "621ed53a1bf4783bca5c543d5fd666cf241c2a85",
-  "worldTree": "561a561995986023e493ba5510814cd199a40e61",
-  "patchSHA256": "2f071f7a37b418fb1d84b741c5e9bc40fc230af642a36a9f7d1c3568a3b2ad3f",
+  "worldRevision": "a58761479934ed87db32bfe241d064c2ef0fc36b",
+  "worldTree": "798729f384dfff5e6422784c58bb1113f0f78d74",
+  "patchSHA256": "949ae29c0ea126850b4a349d51d0d43187188aa88eff177543ac8087c74c4722",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -119,6 +119,12 @@
       "sha256": "3a4fd00afc305928ab798abf736a33e629ee66567f0f54af1e28c0fca8942de6"
     },
     {
+      "action": "M",
+      "path": "spec/appearance.test.ts",
+      "blob": "5792c50afcacc87a52e0d888c7c7128036994410",
+      "sha256": "a586d4cd697cff5ce4954845f1938b97fef91ca61294746d1455dbed5642d076"
+    },
+    {
       "action": "A",
       "path": "spec/bench-rest.test.ts",
       "blob": "7a09597590a0c602ed69e803c4c0de8a0832ad3f",
@@ -135,6 +141,12 @@
       "path": "spec/bothouse-work-pose.test.ts",
       "blob": "4c25871a71dfb03d1149e9f765ad9392b905db68",
       "sha256": "7a199a120e35d37e8fca392d877b697f81bd1f66dc7616cfa9f2d238a5e118fb"
+    },
+    {
+      "action": "M",
+      "path": "spec/compact-worlds.test.ts",
+      "blob": "c20e3a441c8cc95bf1149eb94eb9c7bb8a576fcc",
+      "sha256": "5a4c980b4e6e188917b283d12a376a5ac33cfca8e8b9db9394ccff9bab6af757"
     },
     {
       "action": "A",
@@ -165,6 +177,24 @@
       "path": "spec/nature-art.test.ts",
       "blob": "fa524691cf301daa1856d65a12dc75defb55451e",
       "sha256": "a05f3fcb05d68645464be8b05d8da5dc6ee83177c927b018b0ecd32b24a74735"
+    },
+    {
+      "action": "M",
+      "path": "spec/public-village.test.ts",
+      "blob": "f6c5c111d0d83f5995955c377dd800556a4b943c",
+      "sha256": "ac417888dd99c74e0cf2c4b14871e3013588ed84465d5ff60fe36a419056d5cb"
+    },
+    {
+      "action": "M",
+      "path": "spec/r7-physics.test.ts",
+      "blob": "d0dd5240788d5342db8c0d2dbf4ef69bde681a82",
+      "sha256": "e45e30365d6076e8180e5944cbcfc68e58ce7f9829849728423b97dcdf8c7d5f"
+    },
+    {
+      "action": "M",
+      "path": "spec/save-recovery.test.ts",
+      "blob": "9e48801c480f5ae609e7ae7d69e465ef26012b65",
+      "sha256": "f774404d350634e0a24081c23cecf45df8448014a5cdeff65e4c08e95c86be3c"
     },
     {
       "action": "A",
@@ -511,8 +541,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "907237af8ad18d6414090c620078291d1654ed7d",
-      "sha256": "3318ab367c34318e7baad1d5e5368229484ec9f2bef6ca59f2aaacb5e74588a1"
+      "blob": "01cf312f46a7f0ac7795a8146c05f1955aa0a0f2",
+      "sha256": "99e131d1d2f437f3712a7b9216af132d21b100eb91e3e91b2c1efd4aea6279a2"
     },
     {
       "action": "A",
@@ -529,8 +559,8 @@
     {
       "action": "A",
       "path": "src/client/courtyard-placement-impact.ts",
-      "blob": "9d62ae362f16bfab23ce36c0b7d68d6235c22364",
-      "sha256": "f26a81e7dfecb451685d8a92b6c7bf82605591d8fc3ecbaf61c7616bf8c20579"
+      "blob": "bb64953e339854be4c5da50faaffc324c3921335",
+      "sha256": "a587ddc259cd49281713374b49fc7c2048a22ee09d533c016c8d7ae05204f190"
     },
     {
       "action": "M",
@@ -565,8 +595,8 @@
     {
       "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "fab2a0364142b0a8c95f4bffda3f800cc565a3b9",
-      "sha256": "c0d4567ba303d7125a5eb121329ebcfc8f58bf38fbdacf7e13bd79b36e21a15c"
+      "blob": "8e164b713b68f9f65a0cb099e5918e27453f035e",
+      "sha256": "53f1a889d4f6d10afa8dd8f757965df78494db9098761b2d7cce5bf47f28f20e"
     },
     {
       "action": "M",
@@ -583,14 +613,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "deb6d54db704385d7913dbf5189c0d224d3aa894",
-      "sha256": "dcaf817daec69c5ed64e9b0a5461b913ba9b1a9fd7e5f921b665a4f28e7692f4"
+      "blob": "7e073b8f61d8e3db2b74db6a8201c04bc2097fbc",
+      "sha256": "8602aa5aa11be8ca464e7f568b5e243da9ca828ed8f5b087187eee2058d5a379"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "b01ec0d741f31618d5d87870bca1e0429743ffbb",
-      "sha256": "eae87e12581091f22ada3a77332352b47c3bbc053791f17486488ed6b5fa1646"
+      "blob": "03e0c59f9a3af8d8ad32ec09656af6e2e4fce47f",
+      "sha256": "105283ea0e20847ec8a44735416e6f4e209049f2440460ddc42afb87ddf28a19"
     },
     {
       "action": "A",
@@ -691,20 +721,32 @@
     {
       "action": "M",
       "path": "src/client/village-polish.ts",
-      "blob": "816c1c204c76a3f3dbd84d8fd3b52ec260a337e1",
-      "sha256": "e1513d417f149a76920e03a3e97b5732a611b9fabf1650893ac18b34165f2abc"
+      "blob": "bf4d8e88fe0c25f7f3003c3c214d217801d7039f",
+      "sha256": "7c0c17219dd76923d05b5e11f75224f471ef2b2c624519140f0a007e76e86d2b"
     },
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "2812e492c269da3b1dd4fa3a5bea969c3f385f55",
-      "sha256": "1b4233c364598bd79a49e2e1cb9bf285cb83cc657a1a2b8435d73422b620c22d"
+      "blob": "5ee81223aa28231b534cb01cc574194477ff2d43",
+      "sha256": "39c79bf6fdf71b84905e5588e98727abe8e5e9576d3ed3fe835cf826a3ec4803"
     },
     {
       "action": "A",
       "path": "src/server/app-residents.ts",
       "blob": "da3115fcd52c6cb413c300535fcf17394c3a6ed8",
       "sha256": "b1a476de82147ba109f79ad1ed683165c86b9620b572e2bb8086609ae96519ce"
+    },
+    {
+      "action": "M",
+      "path": "src/server/arrival-homes.ts",
+      "blob": "137d9ff162d8b02451631755f60574e48bfc52e7",
+      "sha256": "83571b2b112fb39bad10f2c129f8dc33de50e72d6c7b14acec1a7999167f686d"
+    },
+    {
+      "action": "M",
+      "path": "src/server/business-log.ts",
+      "blob": "56166825821eec9ea86ff97dbcf2675cffa4d4cd",
+      "sha256": "43ea05f6cdb0021b5426b270d2aa9e6c5ebef24fb689fa68cc1b9a17ed498bd2"
     },
     {
       "action": "A",
@@ -721,14 +763,20 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "b315c5a927de65d1a9c2ed2eff72974c3f74788f",
-      "sha256": "d58229916f1bb243d7e501f67e1cab784e3266d99d687195e8cf95f38752192c"
+      "blob": "e4d054a91c00d77aa2a9c17b150fda8a06a15475",
+      "sha256": "014113509c49f6e2616d5904c4a9224a31abd54006a3853ccd79b236dc5fc697"
     },
     {
       "action": "A",
       "path": "src/server/planet-residents.ts",
       "blob": "77ee8a3eda04736565ab716580c0c3c1aa0c8bf6",
       "sha256": "8b96f30e977b4f5724d63dcaf2957c1988e85eb6bbb375622e0ae03c5ffca7c1"
+    },
+    {
+      "action": "M",
+      "path": "src/server/planets.ts",
+      "blob": "b4fb62da4c54828ab8fd282430162c771bd0d2b4",
+      "sha256": "d0bbf37531cd37fee908f3971eaf4b7a7f295376b11d292cf4516d17566a6f73"
     },
     {
       "action": "A",
@@ -745,14 +793,26 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "c5e2c769335fc38daa8d5677c5ad2b6691998497",
-      "sha256": "b41d2aeff6b54a7f0e028f8b951dcaf885a4e8689943b9d054ff2a1d7e42ac3a"
+      "blob": "0a679fcba74b10ca6fedb33b0efb56c7e95afc92",
+      "sha256": "e2fac63f5ac814221f9436648a29afb6eb6f67585397fb6df1ce884328a18a71"
+    },
+    {
+      "action": "A",
+      "path": "src/shared/courtyard-arrival.ts",
+      "blob": "c3ff42a4c1edccdd15a868eeea00a4fc4bba1d93",
+      "sha256": "43565b441e61e0077903d884d39ae6c122df58f85afe997c0a736e3260b39b07"
     },
     {
       "action": "A",
       "path": "src/shared/planet-residents.ts",
       "blob": "1c8be445c6722ab637fa4854906855fc0b2d22a5",
       "sha256": "1411506c1344fd45609822e782bc05e1be3590e392c04130960bf3113a86f2bb"
+    },
+    {
+      "action": "M",
+      "path": "src/shared/planets.ts",
+      "blob": "289bee97e274cd249b0d48f3fa56855ec06e8e1a",
+      "sha256": "ee2337c3af7ec859ec1b66e90d9d407769484e8079b46b60c97b9282346d9af9"
     },
     {
       "action": "A",
@@ -769,14 +829,14 @@
     {
       "action": "M",
       "path": "src/shared/tutorial-navigation.ts",
-      "blob": "9b819f76e3b405fba91b96a5bcad156817531842",
-      "sha256": "80257f94dcfcc31fbaeb26d2a6ecc55c8c20fc6d517ecd789fc78fe968c2664f"
+      "blob": "662a9bbc697892dfee0d6abd25352bc5350d6333",
+      "sha256": "e5a31b9aaed1599dd3dc75f56f6b6ebe7c99dbd0629259c547f2fcc4e4966aae"
     },
     {
       "action": "M",
       "path": "src/shared/world-guide.ts",
-      "blob": "8263a829b4694ae05b8b53b2bc1e9217e9501bc9",
-      "sha256": "f80fcf2ea36fe034bf7d3f11bd6dfcef3d4140064bcc840b550e5818431c3d47"
+      "blob": "ecbaa0103d097bc35f7b86f77230b3c948b9b8b4",
+      "sha256": "a9a178a7e115787b52e2f2072bc5f10d5d3dc2b0587681701ae94e8fb00df49e"
     },
     {
       "action": "M",

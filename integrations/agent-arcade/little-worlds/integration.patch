@@ -375,7 +375,7 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d1654ed7d 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f1955aa0a0f2 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
 @@ -1,3 +1,5 @@
@@ -384,28 +384,41 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d
  import { makePlacementPreview } from './placement-preview.ts';
 +import { createCourtyardInspiration } from './courtyard-inspiration.ts';
  import { PlacedObjectShadows } from './placed-shadows.ts';
-@@ -12,2 +14,4 @@ import {RADIUS} from '../shared/world.ts';
+@@ -12,2 +14,6 @@ import {RADIUS} from '../shared/world.ts';
  import { builtObject, disposeGeometry } from './build-art.ts';
 +import { flowerPlacementHint } from './bothouse-resident-sites.ts';
 +import { courtyardPlacementImpact } from './courtyard-placement-impact.ts';
++import {planCourtyardArrival} from '../shared/courtyard-arrival.ts';
++import {GroundWorld} from '../shared/physics/world.ts';
  import type { Workshop } from './workshop.ts';
-@@ -34,4 +38,5 @@ export interface ColonyBridge {
+@@ -34,4 +40,5 @@ export interface ColonyBridge {
    ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
 +  ownerRosterSize?: (planet:PlanetView, epoch:number) => number|null;
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-@@ -55,2 +60,4 @@ export class Colony {
+@@ -55,2 +62,9 @@ export class Colony {
    private placing = false; private selected: string | null = null;
 +  private flowerHint: {key:string; text:string}|null=null;
 +  private courtyardImpact: {key:string; text:string|null}|null=null;
++  private pickingArrival=false;
++  private arrivalDraft:{position:Vec3;revision:number;problem:string|null}|null=null;
++  private readonly arrivalMarker=new T.Mesh(new T.RingGeometry(.38,.70,32),new T.MeshBasicMaterial({
++    color:0xf3d180,side:T.DoubleSide,depthTest:false,depthWrite:false,
++  }));
    private painted = ''; private cards = ''; private pointer: {id:number;x:number;y:number} | null = null;
-@@ -59,2 +66,3 @@ export class Colony {
+@@ -59,2 +73,3 @@ export class Colony {
    private loadWorkshop: () => Promise<Workshop>;
 +  private readonly courtyardInspiration: ReturnType<typeof createCourtyardInspiration>;
    private localParts: Record<string,PartPlacement[]> = {};
-@@ -67,3 +75,15 @@ export class Colony {
+@@ -64,2 +79,5 @@ export class Colony {
+     bridge.scene.add(this.pathPreview);
++    this.arrivalMarker.visible=false;
++    this.arrivalMarker.renderOrder=10;
++    bridge.scene.add(this.arrivalMarker);
+     const loadWorkshop=this.loadWorkshop=lazyPanel(async()=>{const {Workshop}=await import('./workshop.ts');return this.workshop = new Workshop({read:bridge.libraryRead,save:bridge.librarySave,allowed:()=>!!this.universe?.currentPlanet.mine&&this.universe.player.flight.mode==='ground'&&this.universe.player.location?.kind!=='interior'&&this.syncing,
+@@ -67,3 +85,15 @@ export class Colony {
      const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
 -    el('build-mode').after(workshopButton);
 +    const addCourtyardFlower=document.createElement('button');
@@ -422,17 +435,40 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d
 +      this.startCourtyardPlacement('flowers');
 +    };
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
-@@ -89,3 +109,3 @@ export class Colony {
+@@ -84,2 +114,20 @@ export class Colony {
+     el('save-object').onclick=()=>void this.save();
++    const chooseArrival=document.createElement('button');
++    chooseArrival.id='choose-courtyard-arrival';chooseArrival.className='quiet';
++    setText(chooseArrival,'Set courtyard arrival point');
++    el('object-tools').after(chooseArrival);
++    chooseArrival.onclick=()=>{
++      if(!this.canArrangeCourtyard()||!this.syncing||this.busy||!this.discardPlacement())return;
++      this.clearDraft();this.pickingArrival=true;this.setKitCollapsed(innerWidth<=700);this.editor();
++    };
++    const arrivalTools=document.createElement('div');arrivalTools.id='courtyard-arrival-tools';arrivalTools.hidden=true;
++    const arrivalStatus=document.createElement('p');arrivalStatus.id='courtyard-arrival-status';arrivalStatus.setAttribute('role','status');
++    const arrivalActions=document.createElement('div');arrivalActions.className='edit-row';
++    const saveArrival=document.createElement('button');saveArrival.id='save-courtyard-arrival';saveArrival.className='primary';
++    setText(saveArrival,'Save arrival point');
++    saveArrival.onclick=()=>void this.saveArrival();
++    const cancelArrival=document.createElement('button');cancelArrival.id='cancel-courtyard-arrival';cancelArrival.className='quiet';
++    setText(cancelArrival,'Cancel');
++    cancelArrival.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.editor();};
++    arrivalActions.append(saveArrival,cancelArrival);arrivalTools.append(arrivalStatus,arrivalActions);chooseArrival.after(arrivalTools);
+     el('remove-object').onclick=()=>void this.remove();
+@@ -89,3 +137,3 @@ export class Colony {
        const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
 -      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
 +      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
      }
-@@ -111,2 +131,3 @@ export class Colony {
+@@ -111,2 +159,3 @@ export class Colony {
    get paused() { return this.building || this.map.open || this.busy || this.workshop?.opened; }
 +  savedObjectModel(id: string) { return this.objects.get(id); }
    private setKitCollapsed(collapsed:boolean){
-@@ -118,2 +139,19 @@ export class Colony {
+@@ -118,4 +167,21 @@ export class Colony {
    }
+-  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
+-  private hasDraft(){const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
 +  private canArrangeCourtyard(){
 +    const world=this.universe;
 +    return !!world?.currentPlanet.mine&&world.player.flight.mode==='ground'&&world.player.location?.kind!=='interior';
@@ -450,8 +486,10 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d
 +    this.editor();
 +    this.setKitCollapsed(innerWidth<=700);
 +  }
-   private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
-@@ -226,3 +264,13 @@ export class Colony {
++  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;this.pickingArrival=false;this.arrivalDraft=null;this.arrivalMarker.visible=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
++  private hasDraft(){if(this.arrivalDraft&&!this.arrivalDraft.problem)return true;const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
+   private discardPlacement(){return !this.hasDraft()||window.confirm(translate('Discard the unsaved building placement or changes?'));}
+@@ -226,3 +292,13 @@ export class Colony {
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -466,7 +504,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d
 +      }
 +    }finally{this.pollBusy=false;}
    }
-@@ -277,3 +325,6 @@ export class Colony {
+@@ -277,3 +353,6 @@ export class Colony {
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
@@ -474,7 +512,52 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d
 +    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
 +    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
-@@ -320,3 +371,23 @@ export class Colony {
+@@ -293,2 +372,7 @@ export class Colony {
+     this.ray.setFromCamera(new T.Vector2(x/innerWidth*2-1,-y/innerHeight*2+1),this.bridge.camera);
++    if(this.pickingArrival){
++      const hit=this.ray.intersectObject(this.bridge.ground())[0];
++      if(hit)this.previewArrival(hit.point.normalize());
++      return;
++    }
+     if(this.placing&&this.draft){const hit=this.ray.intersectObject(this.bridge.ground())[0];if(hit){this.draft.position=hit.point.normalize().toArray() as Vec3;this.preview();this.editor();}return;}
+@@ -314,2 +398,24 @@ export class Colony {
+   }
++  private previewArrival(direction:T.Vector3){
++    const u=this.universe;
++    if(!u||!this.syncing||!this.canArrangeCourtyard())return;
++    const planet=u.currentPlanet, position=direction.toArray() as Vec3, world=new GroundWorld(planet);
++    const plan=planCourtyardArrival(planet,world,position,u.player.home?.door.position);
++    const problem='problem' in plan?plan.problem:null;
++    this.arrivalDraft={position,revision:planet.revision,problem};
++    this.arrivalMarker.visible=true;
++    this.arrivalMarker.material.color.set(problem?0xbb603f:0xf3d180);
++    this.arrivalMarker.position.copy(direction).multiplyScalar(world.radius(position)+.08);
++    this.arrivalMarker.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),direction);
++    this.editor();
++  }
++  private async saveArrival(){
++    const u=this.universe,draft=this.arrivalDraft;
++    if(!u||!draft||draft.problem||draft.revision!==u.currentPlanet.revision||!this.canArrangeCourtyard())return;
++    if(await this.command('courtyard/arrival',{
++      planetId:u.currentPlanet.id,position:draft.position,expectedRevision:draft.revision,visitEpoch:u.player.location?.visitEpoch??0,
++    })){
++      this.clearDraft();this.editor();this.bridge.notice('Courtyard arrival point saved.');
++    }
++  }
+   private async remove(){const d=this.draft;if(!d?.version||!this.universe)return;if(await this.command('objects/delete',{planetId:this.universe.currentPlanet.id,objectId:d.id,expectedVersion:d.version})){this.clearDraft();this.editor();this.bridge.notice('Removed from your planet.');}}
+@@ -317,6 +423,33 @@ export class Colony {
+     const d=this.draft;el('object-tools').hidden=!d;
+-    setText(el('build-instruction'), this.busy?'Saving your change…':!this.syncing?'Connection lost. Building is paused.':d?(this.placing?'Tap an open spot on the planet, then save.':'Object selected. Move, rotate or remove it.'):'Choose something to add, or tap an existing object.');
+-    setText(el('build-selection'), d?objectName(d):'Sunseed building kit');
++    const choose=el<HTMLButtonElement>('choose-courtyard-arrival'),arriving=this.pickingArrival,draft=this.arrivalDraft;
++    const stale=!!draft&&draft.revision!==this.universe?.currentPlanet.revision;
++    choose.hidden=arriving||!this.canArrangeCourtyard();choose.disabled=this.busy||!this.syncing;
++    el('courtyard-arrival-tools').hidden=!arriving;
++    el<HTMLButtonElement>('save-courtyard-arrival').disabled=this.busy||!this.syncing||!draft||stale||!!draft.problem;
++    el<HTMLButtonElement>('cancel-courtyard-arrival').disabled=this.busy;
++    setText(el('courtyard-arrival-status'),!draft?'':stale?'Your planet changed. Choose the arrival point again.':draft.problem??'Visitors will follow the arrows here after you save.');
++    setText(el('build-instruction'), this.busy?'Saving your change…':!this.syncing?'Connection lost. Building is paused.':arriving?'Tap clear ground near the courtyard.':d?(this.placing?'Tap an open spot on the planet, then save.':'Object selected. Move, rotate or remove it.'):'Choose something to add, or tap an existing object.');
++    setText(el('build-selection'), arriving?'Courtyard arrival point':d?objectName(d):'Sunseed building kit');
      const problem=d?.position?this.problem(d):null;
 -    setText(el('placement-status'), problem??(d?.position?`Turn: ${Math.round(d.rotation*180/Math.PI)}°`:''));
 +    let status=problem??(d?.position?`Turn: ${Math.round(d.rotation*180/Math.PI)}°`:'');
@@ -499,7 +582,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..907237af8ad18d6414090c620078291d
 +    }
 +    setText(el('placement-status'),status);
      el<HTMLButtonElement>('save-object').disabled=this.busy||!this.syncing||!d?.position||!!problem;
-@@ -340,2 +411,6 @@ export class Colony {
+@@ -340,2 +473,6 @@ export class Colony {
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
 +    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
 +    courtyardFlower.hidden=!this.canArrangeCourtyard();
@@ -612,9 +695,14 @@ index 5e243b9ac17c704ab24ecf75238869f6006af5f8..353faeb78c3b1508899eece2aebc32ed
 +   addTownExterior(model.object,parts,worldMaterials());
     if(village){
 diff --git a/src/client/home-interior.ts b/src/client/home-interior.ts
-index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800cc565a3b9 100644
+index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27453f035e 100644
 --- a/src/client/home-interior.ts
 +++ b/src/client/home-interior.ts
+@@ -13,3 +13,3 @@ import { emitPart } from '../shared/blueprint-parts.ts';
+ import type { PartId } from '../shared/blueprint-parts.ts';
+-import { HOME_ROOM, HOME_BODY_RADIUS, homeExit, homeNearDoor, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
++import { HOME_ROOM, HOME_BODY_RADIUS, HOME_ITEM_KINDS, homeExit, homeNearDoor, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
+ import type { HomeDescriptor, HomeInterior as InteriorData, HomeItem, HomeRoom } from '../shared/home.ts';
 @@ -21,2 +21,3 @@ import { createHomeDoor } from './home-door.ts';
  import { createHomeRoomArt, applyHomeRoomTheme } from './home-room-art.ts';
 +import {loadHomeFurniture} from './home-furniture-models.ts';
@@ -643,15 +731,20 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 -  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'],
 +  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'], undo: ['Undo last change', '撤销上一步'],
    move: ['MOVE', '移动'], hint: ['WASD / arrows · open the door, then E to leave', 'WASD / 方向键移动 · 门口开门后按 E 出门'],
-@@ -67,2 +84,3 @@ const translation: Record<string, [string, string]> = {
+@@ -64,2 +81,4 @@ const translation: Record<string, [string, string]> = {
+   retry: ['Reconnect', '重新连接'], pending: ['Opening the door…', '正在开门…'],
++  replace: ['Replace with', '更换为'],
++  replaceBlocked: ['This piece does not fit here. Move it or choose another.', '这里放不下这件家具，请先移动或换一种。'],
+   material: ['Wall colour', '墙面颜色'], furniture: ['Furniture', '家具'], rotate: ['Turn', '旋转'],
+@@ -67,2 +86,3 @@ const translation: Record<string, [string, string]> = {
    table: ['Low table', '矮桌'], chair: ['Stool', '木凳'], shelf: ['Shelf', '书架'], plant: ['Plant', '盆栽'],
 +  pickFurniture: ['Click or tap furniture, or choose it from the list', '点选家具，或从列表选择'],
    edited: ['Preview · save to keep your changes', '布置预览 · 保存后保留修改'],
-@@ -86,2 +104,3 @@ export class HomeInterior {
+@@ -86,2 +106,3 @@ export class HomeInterior {
    private furniture = new T.Group();
 +  private furnitureModels: Awaited<ReturnType<typeof loadHomeFurniture>> = new Map();
    private avatar = courier('clay');
-@@ -102,5 +121,7 @@ export class HomeInterior {
+@@ -102,5 +123,7 @@ export class HomeInterior {
    private editing = false;
 -  private dirty = false;
 +  private readonly undoHistory: InteriorData[] = [];
@@ -660,16 +753,16 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 +  private furniturePress: { pointerId: number; x: number; y: number; group: T.Group } | null = null;
 +  private readonly furnitureRay = new T.Raycaster();
    private lastSend = 0;
-@@ -130,3 +151,3 @@ export class HomeInterior {
+@@ -130,3 +153,3 @@ export class HomeInterior {
        <div class="home-room-tools"><button id="home-photo" data-home-text="photo"></button><button id="home-arrange" data-home-text="arrange"></button><button id="home-retry" data-home-text="retry" hidden></button><p id="home-room-hint"></p></div>
 -      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
-+      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-room-undo" data-home-text="undo"></button><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
++      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><label><span data-home-text="replace"></span> <select id="home-item-replace"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-room-undo" data-home-text="undo"></button><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
        <div id="home-joystick" class="home-joystick" role="group" aria-label="Move around the room"><span id="home-stick"></span><small data-home-text="move"></small></div>`;
-@@ -138,2 +159,3 @@ export class HomeInterior {
+@@ -138,2 +161,3 @@ export class HomeInterior {
      on('home-arrange', () => this.beginEditing());
 +    on('home-room-undo', () => this.undoDraft());
      on('home-cancel', () => this.cancelEditing());
-@@ -142,6 +164,33 @@ export class HomeInterior {
+@@ -142,6 +166,40 @@ export class HomeInterior {
      for (const material of ['warm', 'sage', 'blue'] as const) on(`home-material-${material}`, () => {
 -      if (!this.canChange() || !this.draft) return;
 -      this.draft.material = material; this.dirty = true; this.applyTheme(material); this.setStatus('edited'); this.updateControls();
@@ -680,6 +773,13 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 -    this.get<HTMLSelectElement>('home-item-select').addEventListener('change', e => { this.selected = (e.target as HTMLSelectElement).value; }, { signal: this.abort.signal });
 +    const itemSelect = this.get<HTMLSelectElement>('home-item-select');
 +    itemSelect.addEventListener('change', () => this.selectItem(itemSelect.value), { signal: this.abort.signal });
++    const replaceSelect = this.get<HTMLSelectElement>('home-item-replace');
++    replaceSelect.addEventListener('change', () => {
++      const kind = HOME_ITEM_KINDS.find(kind => kind === replaceSelect.value);
++      const item = this.selectedItem;
++      if (item && kind && kind !== item.kind) this.previewItem({ ...item, kind }, 'replaceBlocked');
++      replaceSelect.value = this.selectedItem?.kind ?? '';
++    }, { signal: this.abort.signal });
 +    const canvas = options.renderer.domElement;
 +    const pointerOptions = { signal: this.abort.signal };
 +    canvas.addEventListener('pointerdown', event => {
@@ -706,40 +806,45 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 +      }, pointerOptions);
 +    }
      on('home-item-left', () => this.changeItem(-.25, 0)); on('home-item-right', () => this.changeItem(.25, 0));
-@@ -152,3 +201,3 @@ export class HomeInterior {
+@@ -152,3 +210,3 @@ export class HomeInterior {
      window.addEventListener('blur', () => this.clearInput(), { signal: this.abort.signal });
 -    window.addEventListener('beforeunload', event => { if (this.active && this.dirty) event.preventDefault(); }, { signal: this.abort.signal });
 +    window.addEventListener('beforeunload', event => { if (this.active && this.undoHistory.length) event.preventDefault(); }, { signal: this.abort.signal });
      document.addEventListener('visibilitychange', () => { if (document.hidden) { this.clearInput(); if(!this.photoMode)void this.flush(); } }, { signal: this.abort.signal });
-@@ -171,3 +220,3 @@ export class HomeInterior {
+@@ -168,2 +226,3 @@ export class HomeInterior {
+     for (const direction of ['left', 'right', 'forward', 'back']) this.get(`home-item-${direction}`).setAttribute('aria-label', this.text(direction));
++    this.get<HTMLSelectElement>('home-item-replace').replaceChildren(...HOME_ITEM_KINDS.map(kind => new Option(this.text(kind), kind)));
+     this.populateItems(); this.setStatus(this.statusKey); this.updateControls();
+@@ -171,3 +230,3 @@ export class HomeInterior {
    private setStatus(key: string) { this.statusKey = key; this.get('home-room-status').textContent = this.text(key); }
 -  private clearInput() { this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
 +  private clearInput() { this.furniturePress = null; this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
    private keyDown = (event: KeyboardEvent) => {
-@@ -204,3 +253,3 @@ export class HomeInterior {
+@@ -204,3 +263,3 @@ export class HomeInterior {
        this.currentVisit = visit; this.position = [...location.position]; this.yaw = location.yaw;
 -      this.editing = false; this.dirty = false; this.clearInput();
 +      this.editing = false; this.undoHistory.length = 0; this.clearInput();
        this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; this.selected = this.draft.items[0]?.id ?? '';
-@@ -211,3 +260,3 @@ export class HomeInterior {
+@@ -211,3 +270,3 @@ export class HomeInterior {
      if (arriving || sourceKey !== this.sourceKey || this.preparation?.visit !== undefined && this.preparation.visit !== visit) {
 -      if (!this.editing || this.pendingAction) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
 +      if (!this.editing) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
        if(this.preparation?.key!==sourceKey||this.preparation.visit!==visit)void this.prepareRoom(sourceKey,visit);
-@@ -252,5 +301,7 @@ export class HomeInterior {
+@@ -252,5 +311,8 @@ export class HomeInterior {
        room=this.createRoom(interior);await next();
-+      const models=await loadHomeFurniture(interior.items.map(item=>item.kind));
++      const kinds = this.home?.canEdit && interior.items.length ? HOME_ITEM_KINDS : interior.items.map(item => item.kind);
++      const models = await loadHomeFurniture(kinds);
 +      if(!current())return;
        for(const [index,item] of interior.items.entries()){
          preparation.task.update('Preparing furniture…',index,interior.items.length);
 -        furniture.add(this.createFurnitureItem(item));await next();
 +        furniture.add(this.createFurnitureItem(item,models));await next();
        }
-@@ -265,2 +316,3 @@ export class HomeInterior {
+@@ -265,2 +327,3 @@ export class HomeInterior {
        disposeGeometry(this.room);disposeGeometry(this.furniture);
 +      this.furnitureModels=models;
        this.room=room;this.furniture=furniture;room=null;furniture=null;this.scene.add(this.room,this.furniture);
-@@ -299,12 +351,21 @@ export class HomeInterior {
+@@ -299,12 +362,21 @@ export class HomeInterior {
    }
 -  private createFurnitureItem(item:HomeItem) {
 -      const b = new PartBuilder('medium'), source = libraryMaterials(this.library), kit = makeKit(b, source);
@@ -771,7 +876,7 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 +    source.owned().forEach(material => { material.userData.ownedResource = true; });
 +    return group;
    }
-@@ -324,4 +385,26 @@ export class HomeInterior {
+@@ -324,4 +396,29 @@ export class HomeInterior {
    private canChange() { return this.active && !this.preparing && this.online && this.home?.canEdit && this.editing && !this.pendingAction; }
 +  private canPickFurniture() {
 +    return this.canChange() && !this.photoMode && !document.body.classList.contains('world-guide-talking') &&
@@ -779,6 +884,9 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 +  }
 +  private selectItem(id: string) {
 +    if (!this.draft?.items.some(item => item.id === id)) return;
++    if (id !== this.selected && (this.statusKey === 'blocked' || this.statusKey === 'replaceBlocked')) {
++      this.setStatus(this.undoHistory.length ? 'edited' : 'saved');
++    }
 +    this.selected = id;
 +    this.get<HTMLSelectElement>('home-item-select').value = id;
 +    this.updateControls();
@@ -797,13 +905,28 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 +  }
    private beginEditing() { if (this.preparing || !this.home?.canEdit || !this.online || this.pendingAction) return; this.clearInput(); this.editing = true; this.draft = copy(this.home.interior); this.draftVersion = this.draft.version; this.selected ||= this.draft.items[0]?.id ?? ''; this.populateItems(); this.updateControls(); }
 -  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.editing = false; this.dirty = false; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
-+  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.clearInput(); this.editing = false; this.undoHistory.length = 0; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
++  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.clearInput(); this.editing = false; this.undoHistory.length = 0; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.populateItems(); this.setStatus('saved'); this.updateControls(); }
    private populateItems() {
-@@ -338,3 +421,17 @@ export class HomeInterior {
-     if (!homeFurnitureFits(candidate.items, this.position, candidate.room, this.home!.interior.doorOpen, this.home!.door.partId)) { this.setStatus('blocked'); return; }
+@@ -333,8 +430,31 @@ export class HomeInterior {
+   }
++  private get selectedItem() { return this.draft?.items.find(item => item.id === this.selected); }
+   private changeItem(x: number, z: number, yaw = 0) {
+-    if (!this.canChange() || !this.draft) return;
+-    const candidate = copy(this.draft), item = candidate.items.find(i => i.id === this.selected); if (!item) return;
+-    item.position[0] += x; item.position[2] += z; item.yaw = (item.yaw + yaw) % (Math.PI * 2);
+-    if (!homeFurnitureFits(candidate.items, this.position, candidate.room, this.home!.interior.doorOpen, this.home!.door.partId)) { this.setStatus('blocked'); return; }
 -    this.draft = candidate; this.dirty = true; this.buildFurniture(); this.applyTheme(candidate.material); this.setStatus('edited'); this.updateControls();
++    const item = this.selectedItem;
++    if (!item) return;
++    const [left, floor, depth] = item.position;
++    this.previewItem({ ...item, position: [left + x, floor, depth + z], yaw: (item.yaw + yaw) % (Math.PI * 2) });
++  }
++  private previewItem(item: HomeItem, blocked = 'blocked') {
++    if (!this.canChange() || !this.draft || !this.home) return;
++    const items = this.draft.items.map(current => current.id === item.id ? item : current);
++    if (!homeFurnitureFits(items, this.position, this.draft.room, this.home.interior.doorOpen, this.home.door.partId)) { this.setStatus(blocked); return; }
 +    this.undoHistory.push(this.draft);
-+    this.previewDraft(candidate);
++    this.previewDraft({ ...this.draft, items });
 +  }
 +  private undoDraft() {
 +    if (!this.canChange()) return;
@@ -813,31 +936,39 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..fab2a0364142b0a8c95f4bffda3f800c
 +  private previewDraft(next: InteriorData) {
 +    const furnitureChanged = next.items !== this.draft?.items;
 +    this.draft = next;
-+    if (furnitureChanged) this.buildFurniture();
++    if (furnitureChanged) {
++      this.buildFurniture();
++      this.populateItems();
++    }
 +    this.applyTheme(next.material);
 +    this.setStatus(this.undoHistory.length ? 'edited' : 'saved');
 +    this.updateControls();
    }
-@@ -355,5 +452,6 @@ export class HomeInterior {
+@@ -355,6 +475,10 @@ export class HomeInterior {
      this.get('home-joystick').hidden = this.editing;
 -    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.dirty;
 +    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.undoHistory.length;
 +    this.get<HTMLButtonElement>('home-room-undo').disabled = !this.canChange() || !this.undoHistory.length;
      this.get<HTMLButtonElement>('home-cancel').disabled = this.pendingAction;
 -    this.get('home-room-hint').textContent = this.editing ? this.text('edited') : this.text(innerWidth < 700 ? 'phoneHint' : 'hint');
+-    const selected = this.draft?.items.find(item => item.id === this.selected);
 +    this.get('home-room-hint').textContent = this.editing ? this.text('pickFurniture') : this.text(innerWidth < 700 ? 'phoneHint' : 'hint');
-     const selected = this.draft?.items.find(item => item.id === this.selected);
-@@ -424,3 +522,3 @@ export class HomeInterior {
++    const selected = this.selectedItem;
++    const replaceSelect = this.get<HTMLSelectElement>('home-item-replace');
++    replaceSelect.disabled = !this.canChange() || !selected;
++    replaceSelect.value = selected?.kind ?? '';
+     this.selection.visible = this.editing && !!selected;
+@@ -424,3 +548,3 @@ export class HomeInterior {
    private async saveDraft() {
 -    if (!this.canChange() || !this.home || !this.draft || !this.dirty) return;
 +    if (!this.canChange() || !this.home || !this.draft || !this.undoHistory.length) return;
      this.clearInput(); this.pendingAction = true; this.updateControls(); this.setStatus('saving');
-@@ -429,3 +527,3 @@ export class HomeInterior {
+@@ -429,3 +553,3 @@ export class HomeInterior {
        const next = await this.options.save({ buildingId: this.home.buildingId, expectedVersion: this.draftVersion, material: this.draft.material, items: this.draft.items });
 -      this.editing = false; this.dirty = false; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
 +      this.editing = false; this.undoHistory.length = 0; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
      } catch (error) { this.get('home-room-status').textContent = error instanceof Error ? error.message : this.text('offline'); }
-@@ -471,3 +569,3 @@ export class HomeInterior {
+@@ -471,3 +595,3 @@ export class HomeInterior {
      this.photoMode=false;
 -    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.dirty = false;
 +    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.undoHistory.length = 0;
@@ -863,7 +994,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d224d3aa894 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..7e073b8f61d8e3db2b74db6a8201c04bc2097fbc 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
@@ -918,19 +1049,23 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +    ? {planet,world:groundWorld} : undefined;
 +  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
-@@ -546,2 +557,6 @@ window.addEventListener('keydown',event=> {
+@@ -364,2 +375,3 @@ function frameVillageGuide(){
+     const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
++      approvedCourtyard:!!courtyard,
+       visible:context.ready&&!photoPaused&&!colony?.paused&&!flight?.active&&!departure&&(!homeInterior?.active||!!room),enabled:context.ready&&online&&!photoPaused&&!colony?.paused&&!document.querySelector('dialog[open]'),
+@@ -546,2 +558,6 @@ window.addEventListener('keydown',event=> {
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
 +    if (benchRest && key !== 'shift') {
 +      benchRest = null;
 +      if (key === 'e') { event.preventDefault(); return; }
 +    }
      event.preventDefault();keys.add(key);target=null;
-@@ -599,3 +614,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
+@@ -599,3 +615,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
 -  if(flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
 +  if(benchRest || flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
-@@ -700,3 +715,35 @@ async function interact() {
+@@ -700,3 +716,35 @@ async function interact() {
  }
 -action.onclick=()=>void interact();
 +function canGreetVisitor() {
@@ -967,17 +1102,17 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +  if (canGreetVisitor()) bothouseResidents.greetVisitor(id,walker.up,renderCamera());
 +};
  setInterval(()=>void savePosition(),350);
-@@ -723,3 +770,3 @@ setInterval(async()=>{
+@@ -723,3 +771,3 @@ setInterval(async()=>{
    try {
 -    const next=await serial(()=>stateLoader.read());if(!accept(next))return;
 +    const next=await serial(()=>stateLoader.read());if(online||!accept(next))return;
      walker=new SurfaceWalker(next.position);lastSaved.copy(walker.up);clearInput();rebaseGroundCamera();ensureColony();notice('Back at your last saved spot. Welcome home.');
-@@ -727,4 +774,2 @@ setInterval(async()=>{
+@@ -727,4 +775,2 @@ setInterval(async()=>{
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
 
-@@ -734,2 +779,14 @@ function animate(now:number) {
+@@ -734,2 +780,14 @@ function animate(now:number) {
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
@@ -992,12 +1127,12 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +  if (measureCamera) renderer.domElement.dataset.benchRest = benchRest?.id ?? '';
 +  if (!visitVisible || photoPaused) interaction.removeAttribute('data-bench-rest');
    if(graphicsLost)return;
-@@ -781,3 +838,3 @@ function animate(now:number) {
+@@ -781,3 +839,3 @@ function animate(now:number) {
    if(groundWorld&&standing){
 -    if(paused){clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
 +    if(paused||benchRest){if(paused)clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
        physicsClock=Math.min(.05,physicsClock+dt);
-@@ -801,2 +858,7 @@ function animate(now:number) {
+@@ -801,2 +859,7 @@ function animate(now:number) {
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
 +  if (benchRest) {
 +    player.root.position.copy(benchRest.seat.position);
@@ -1005,21 +1140,21 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +    player.sit();
 +  }
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-@@ -873,3 +935,3 @@ function animate(now:number) {
+@@ -873,3 +936,3 @@ function animate(now:number) {
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
 -      player.root.visible=pose.playerVisible;
 +      player.root.visible=pose.playerVisible||!!benchRest;
        // Retain the baseline hub/craft geometry checks alongside static proxies.
-@@ -910,2 +972,4 @@ function animate(now:number) {
+@@ -910,2 +973,4 @@ function animate(now:number) {
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
 +  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused,true,
 +    {usedByPlayer:benchRest?.id,getModel:id=>colony?.savedObjectModel(id)});
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +979,3 @@ function animate(now:number) {
+@@ -915,2 +980,3 @@ function animate(now:number) {
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -966,3 +1031,9 @@ function animate(now:number) {
+@@ -966,3 +1032,9 @@ function animate(now:number) {
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
@@ -1030,7 +1165,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +    delete action.dataset.benchRest;
 +    action.hidden=(!near&&!nearResident&&(!greeting||greeting.greeted)&&!bench)||paused||nearDock||!!teleportStations?.canUse;
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
-@@ -978,2 +1049,20 @@ function animate(now:number) {
+@@ -978,2 +1050,20 @@ function animate(now:number) {
      }
 +    else if(greeting){
 +      delete action.dataset.residentPrompt;
@@ -1051,7 +1186,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +      setText($('nearby'),'');
 +    }
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
-@@ -1032,5 +1121,6 @@ function ensureColony() {
+@@ -1032,5 +1122,6 @@ function ensureColony() {
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
 +  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
@@ -1059,13 +1194,13 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
      applyPlayer:accept,
-@@ -1040,3 +1130,4 @@ function ensureColony() {
+@@ -1040,3 +1131,4 @@ function ensureColony() {
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1152,8 @@ photoMode=new PhotoMode({renderer,
+@@ -1061,3 +1153,8 @@ photoMode=new PhotoMode({renderer,
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
@@ -1075,7 +1210,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1065,4 +1161,23 @@ photoMode=new PhotoMode({renderer,
+@@ -1065,4 +1162,23 @@ photoMode=new PhotoMode({renderer,
  const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
 -$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 -window.addEventListener('open-photo-mode',()=>void photoMode?.open());
@@ -1102,7 +1237,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..deb6d54db704385d7913dbf5189c0d22
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..b01ec0d741f31618d5d87870bca1e0429743ffbb 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..03e0c59f9a3af8d8ad32ec09656af6e2e4fce47f 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
 @@ -3,2 +3,4 @@
@@ -1139,7 +1274,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..b01ec0d741f31618d5d87870bca1e042
 +  "Set it farther along the same side, leaving room to walk.": "沿同一侧往里放，留出行走空间。",
 +  "Set it opposite the lantern, facing the path.": "放在灯的对面，朝向石板路。",
    "Build on my planet": "在我的星球建造",
-@@ -1174,2 +1196,10 @@ export const messages: Record<string, string> = {
+@@ -1174,2 +1196,21 @@ export const messages: Record<string, string> = {
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
 +  "An idle resident may stop to admire this pot.": "居民空闲时可能会停下来欣赏这盆花。",
 +  "With this layout, residents won’t stop to admire this pot.": "按当前布置，居民不会欣赏这盆花。",
@@ -1149,12 +1284,23 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..b01ec0d741f31618d5d87870bca1e042
 +  "With this layout, visitors will not see the courtyard guide or landmark.": "保存后，访客将看不到院落向导入口和地标。",
 +  "The courtyard guide will be available, but the landmark has no clear spot.": "保存后仍有院落向导入口，地标因周围受阻无法显示。",
 +  "The courtyard guide and landmark will be available to visitors.": "保存后，访客可以看到院落向导入口和地标。",
++  "Set courtyard arrival point": "指定公共院落到达点",
++  "Courtyard arrival point": "公共院落到达点",
++  "Tap clear ground near the courtyard.": "点击院落附近空旷的地面。",
++  "Save arrival point": "保存到达点",
++  "Courtyard arrival point saved.": "已保存公共院落到达点。",
++  "Visitors will follow the arrows here after you save.": "保存后，访客可以沿向导箭头走到这里。",
++  "Your planet changed. Choose the arrival point again.": "星球布局已变更，请重新选择到达点。",
++  "Choose clear outdoor ground away from the dock and home entrance.": "请选择远离码头和小屋入口的室外空地。",
++  "No clear walking route from the dock. Choose a spot closer to the paths.": "码头到这里没有可步行的路线，请选靠近步道的位置。",
++  "Leave room for the courtyard landmark beside the walking route.": "请在步道旁留出地标的位置。",
++  "The current layout is incomplete. Reload before choosing an arrival point.": "当前布局资料不完整，请重新加载后再指定到达点。",
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
-@@ -1235,2 +1265,3 @@ export const messages: Record<string, string> = {
+@@ -1235,2 +1276,3 @@ export const messages: Record<string, string> = {
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
-@@ -1295,2 +1326,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1295,2 +1337,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
    ],
 +  [
 +    "Turn: {0}° · {1}",
@@ -1470,20 +1616,15 @@ index fe2d73710c28b3c18654ea14a8b1f377be925f85..fd93bd9dd610d8a1960b20fb987e8e92
 +  document.getElementById('travel-guidance')!.append(root);
    const get = <E extends HTMLElement = HTMLElement>(name: string) => root.querySelector<E>(name)!;
 diff --git a/src/client/village-polish.ts b/src/client/village-polish.ts
-index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..816c1c204c76a3f3dbd84d8fd3b52ec260a337e1 100644
+index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d217801d7039f 100644
 --- a/src/client/village-polish.ts
 +++ b/src/client/village-polish.ts
-@@ -3,3 +3,3 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
- import { mainPlanetNetwork, MAIN_PLANET_LEDGER } from '../shared/planet-plan/main-planet.ts';
--import { arc, fromLocal, heading } from '../shared/planet-plan/sphere.ts';
-+import { arc, cross, fromLocal, heading, unit, walk } from '../shared/planet-plan/sphere.ts';
- import { SPAWN } from '../shared/world.ts';
 @@ -7,3 +7,8 @@ import type { Vec3 } from '../shared/world.ts';
  import type { HomeDescriptor } from '../shared/home.ts';
 +import type { PlanetView } from '../shared/planets.ts';
 +import type { GroundWorld } from '../shared/physics/world.ts';
-+import { projectTutorialRoute } from '../shared/tutorial-navigation.ts';
-+import { courtyardTarget } from '../shared/world-guide.ts';
++import { courtyardLandmark } from '../shared/courtyard-arrival.ts';
++export { courtyardLandmark } from '../shared/courtyard-arrival.ts';
  import { ART_PALETTE, applyArtMaterial } from './art-profile.ts';
 +import { townMeshPieces } from './authored-town-mesh.ts';
  import type { TutorialSurface } from './tutorial-route.ts';
@@ -1491,55 +1632,28 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..816c1c204c76a3f3dbd84d8fd3b52ec2
    planetId: string; radius: number; quality: VillagePolishTier; home?: HomeDescriptor | null;
 +  courtyard?: { planet: PlanetView; world: GroundWorld };
    /** Visibility only; menus keep their scenery, interiors hide exterior art. */
-@@ -27,4 +33,31 @@ export function publicVillagePolishSites(): VillagePolishSite[] {
+@@ -27,4 +33,4 @@ export function publicVillagePolishSites(): VillagePolishSite[] {
  }
 -const labelRows = { post: 0, glasshouse: 1, gate: 2, home: 3 } as const;
 -const labelText = [['邮局', 'POST OFFICE'], ['温室', 'GLASSHOUSE'], ['回家 · 广场', 'HOME · SQUARE'], ['我的小屋', 'MY LITTLE HOME']];
 +const labelRows = { post: 0, glasshouse: 1, gate: 2, home: 3, courtyard: 4 } as const;
 +const labelText = [['邮局', 'POST OFFICE'], ['温室', 'GLASSHOUSE'], ['回家 · 广场', 'HOME · SQUARE'], ['我的小屋', 'MY LITTLE HOME'], ['公共院落', 'PUBLIC COURTYARD']];
-+
-+/** Reuse the guide's live destination and land the marker beside its approach.
-+ * The authored lanes and current collision proxies leave room for foot traffic. */
-+export function courtyardLandmark(planet: PlanetView, world: GroundWorld) {
-+  const destination = courtyardTarget(planet);
-+  if (destination?.kind !== 'courtyard') return null;
-+  const routes = planet.homeManifest!.routes;
-+  const route = routes.find(candidate => candidate.id === destination.routeId)!;
-+  const centre = destination.position, radius = world.baseRadius;
-+  const toward = route.points.at(-2)!;
-+  const entry = heading(centre, toward), right = unit(cross(centre, entry));
-+  const eyes = [toward, centre].map(point => new T.Vector3(...point).multiplyScalar(world.pose(point).radius + 1.35));
-+  for (const offset of [1.55, .9, 0, -.8]) {
-+    const approachSide = walk(centre, entry, offset, radius);
-+    for (const side of [1.85, -1.85, 2.45, -2.45]) {
-+      const position = walk(approachSide, right, side, radius);
-+      if (routes.some(lane => (projectTutorialRoute(lane.points, position, radius)?.distance ?? Infinity) < lane.width / 2 + .72)) continue;
-+      const feet = world.pose(position);
-+      if (world.blocked(feet)) continue;
-+      const board = new T.Vector3(...position).multiplyScalar(feet.radius + 1.12);
-+      if (eyes.some(eye => world.cameraDistance(eye, board, .08) + .10 < eye.distanceTo(board))) continue;
-+      const face = new T.Vector3(...heading(position, toward)).add(new T.Vector3(...heading(position, centre))).normalize();
-+      return { position, toward: walk(position, face.toArray(), 1, radius) };
-+    }
-+  }
-+  return null;
-+}
 
-@@ -48,3 +81,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -48,3 +54,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
    if (atlas) {
 -    atlas.width = 512; atlas.height = 512; const context = atlas.getContext('2d');
 +    atlas.width = 512; atlas.height = 128 * labelText.length; const context = atlas.getContext('2d');
      if (context) for (let row = 0; row < labelText.length; row++) {
-@@ -63,3 +96,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -63,3 +69,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
    let disposed = false, key = '';
 -  const diagnostics = { sites: 0, triangles: 0, detailTriangles: 0, drawCalls: 0, collision: false, animation: false };
 +  const diagnostics = { sites: 0, courtyardPosition: null as Vec3 | null, triangles: 0, detailTriangles: 0, drawCalls: 0, collision: false, animation: false };
    root.userData.villagePolish = diagnostics;
-@@ -67,2 +100,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -67,2 +73,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
    function rebuild(input: VillagePolishFrame) {
 +    diagnostics.courtyardPosition = null;
      const basic: T.BufferGeometry[] = [], fine: T.BufferGeometry[] = [], labels: T.BufferGeometry[] = [];
-@@ -78,7 +112,10 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -78,7 +85,10 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
      const box = (frame: T.Matrix4, color: string, w: number, h: number, d: number, x: number, y: number, z: number, detailed = false) => add(new T.BoxGeometry(w, h, d), color, local(frame, x, y, z), detailed);
 -    const doorTrim = (frame: T.Matrix4, label: keyof typeof labelRows) => {
 +    const doorTrim = (frame: T.Matrix4, label: keyof typeof labelRows, twoFaces = false) => {
@@ -1553,13 +1667,13 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..816c1c204c76a3f3dbd84d8fd3b52ec2
 +        add(geometry, slot === 'leaf' ? ART_PALETTE.sage : ART_PALETTE.wood, cap);
 +      }
        box(frame, ART_PALETTE.wood, 1.42, .43, .065, 0, 2.37, -.04);
-@@ -95,3 +132,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -95,3 +105,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
        const plane = new T.PlaneGeometry(1.25, .33), uv = plane.getAttribute('uv'), row = labelRows[label];
 -      for (let i = 0; i < uv.count; i++) uv.setY(i, (3 - row + uv.getY(i)) / 4);
 +      for (let i = 0; i < uv.count; i++) uv.setY(i, (labelText.length - 1 - row + uv.getY(i)) / labelText.length);
 +      if (twoFaces) labels.push(plane.clone().rotateY(Math.PI).applyMatrix4(local(frame, 0, 2.37, -.079)));
        plane.applyMatrix4(local(frame, 0, 2.37, .003)); labels.push(plane);
-@@ -117,6 +155,19 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -117,6 +128,19 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
        }
 -    } else if (input.home?.planetId === input.planetId && input.home.door.frame) {
 -      const frame = input.home.door.frame;
@@ -1583,41 +1697,46 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..816c1c204c76a3f3dbd84d8fd3b52ec2
 +      }
 +    }
      const finish = (mesh: T.Mesh, pieces: T.BufferGeometry[]) => {
-@@ -131,3 +182,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -131,3 +155,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
      if (disposed) return;
 -    const nextKey = JSON.stringify([input.planetId, input.radius, input.home?.buildingId, input.home?.door.frame]);
 +    const nextKey = JSON.stringify([input.planetId, input.radius, input.home?.buildingId, input.home?.door.frame,
 +      input.courtyard?.planet.revision]);
      if (nextKey !== key) { rebuild(input); key = nextKey; }
 diff --git a/src/client/world-guide.ts b/src/client/world-guide.ts
-index f533e71cfc73d2be94e83498c99214dc9d9a3057..2812e492c269da3b1dd4fa3a5bea969c3f385f55 100644
+index f533e71cfc73d2be94e83498c99214dc9d9a3057..5ee81223aa28231b534cb01cc574194477ff2d43 100644
 --- a/src/client/world-guide.ts
 +++ b/src/client/world-guide.ts
-@@ -8,3 +8,3 @@ import {distance,type Vec3} from '../shared/world.ts';
+@@ -8,3 +8,4 @@ import {distance,type Vec3} from '../shared/world.ts';
  import {BOARD_RADIUS,portPoint} from '../shared/ports.ts';
 -import { GUIDE_HELP, GUIDE_TOPICS, guideTarget } from '../shared/world-guide.ts';
 +import { courtyardTarget, GUIDE_HELP, GUIDE_TOPICS, guideTarget } from '../shared/world-guide.ts';
++import {courtyardRoutes,courtyardVisit} from '../shared/courtyard-arrival.ts';
  import type { GuideTopic } from '../shared/world-guide.ts';
-@@ -15,2 +15,6 @@ import {createGuideConversation} from './guide-conversation.ts';
+@@ -15,4 +16,9 @@ import {createGuideConversation} from './guide-conversation.ts';
  const names = { en: ['My planet', 'Place a module', 'Find ship', 'Return', 'People & saving'], zh: ['自己的星球', '放一个模块', '寻找飞船', '传送返回', '多人和保存'] };
 +type Topic = GuideTopic | 'courtyard';
 +const courtyardName = { en: 'Return to the courtyard', zh: '返回公共院落' };
-+const courtyardHelp = { en: 'Close the guide and follow the arrows to the paved courtyard with a flower bed and a bench.', zh: '关闭向导，沿地面箭头走到有花床和长椅的石板院落。' };
++const courtyardHelp = { en: 'Close the guide and follow the arrows to the public courtyard landmark.', zh: '关闭向导，沿地面箭头前往公共院落地标。' };
 +const topicName = (topic: Topic, lang: 'en' | 'zh') => topic === 'courtyard' ? courtyardName[lang] : names[lang][GUIDE_TOPICS.indexOf(topic)];
  interface Frame {
-@@ -22,3 +26,10 @@ interface Frame {
+   universe: Universe; position: Vec3; world: GroundWorld; enabled: boolean; visible: boolean; time: number; reducedMotion: boolean;
++  approvedCourtyard?: boolean;
+   scene: T.Scene; camera: T.Camera; feet: T.Vector3; up: T.Vector3; forward: T.Vector3;
+@@ -22,3 +28,11 @@ interface Frame {
  export function createWorldGuide(scene: T.Scene, release: () => void) {
 -  let current: Frame | null=null, topic:GuideTopic='home', selected:GuideTopic|null=null, routePlanet='', roomKey='', lastPaint='', talking=false;
 +  const entry = new URLSearchParams(location.search);
 +  const hostChat = entry.get('appChat') === 'bothouse';
 +  const embedded = hostChat || ['zh', 'en'].includes(entry.get('appLang') ?? '');
 +  const friendPlanet = entry.get('visit');
-+  let checkedPlanet: Universe['currentPlanet'] | undefined;
++  let checkedPlanet: Universe['currentPlanet'] | undefined, checkedWorld:GroundWorld|undefined;
++  let routes:ReturnType<typeof courtyardRoutes>=[];
 +  let courtyard: ReturnType<typeof courtyardTarget> = null, routeVisitEpoch: number | undefined;
 +  let canGuideToCourtyard = false;
 +  let current: Frame | null=null, topic:Topic='home', selected:Topic|null=null, routePlanet='', roomKey='', lastPaint='', talking=false;
    const actor=courier('fern');actor.root.name='world-guide';actor.root.visible=false;scene.add(actor.root);
-@@ -34,27 +45,52 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -34,27 +48,52 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    chat.innerHTML='<header><h2 id="world-guide-chat-title"></h2><button id="world-guide-chat-close" type="button" aria-label="Close chat">×</button></header><details id="world-guide-disclosure"><summary id="world-guide-disclosure-title"></summary><p id="world-guide-ai-status"></p></details><p id="world-guide-ai-quota"></p><div id="world-guide-messages" role="log" aria-live="polite"><p id="world-guide-ai-answer"></p></div><p id="world-guide-ai-result" role="status"></p><form id="world-guide-form"><label for="world-guide-question" id="world-guide-question-label"></label><div class="world-guide-input"><textarea id="world-guide-question" maxlength="500" rows="2"></textarea><button id="world-guide-ask" type="submit"></button></div></form><footer><button id="world-guide-ai-stop" type="button" hidden></button><button id="world-guide-refresh" type="button"></button><button id="world-guide-local" type="button"></button></footer>';
 -  document.body.append(chat);
 -  const chatOpen=document.createElement('button');chatOpen.id='world-guide-chat-open';chatOpen.type='button';document.querySelector('.minimal-bar')?.append(chatOpen);
@@ -1686,7 +1805,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..2812e492c269da3b1dd4fa3a5bea969c
 +  function show(panel:'help'|'chat'|'both'=embedded?'help':'both'){
 +    if(!current?.visible)return;release();document.querySelector<HTMLDialogElement>('#menu-dialog')?.close();skipTutorialOutsideFriendVisit();
      const p=nearbyGuidePoint(current.feet,current.up,current.forward,current.stand);talking=true;document.body.classList.add('world-guide-talking');if(panel!=='chat')bubble.hidden=false;if(panel!=='help')chat.hidden=false;roomKey=current.roomKey;
-@@ -62,8 +98,14 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -62,8 +101,14 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      if(p){actor.root.position.copy(p);const up=current.up.clone().normalize(),forward=current.feet.clone().sub(p).projectOnPlane(up).normalize(),right=new T.Vector3().crossVectors(up,forward).normalize();actor.root.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(right,up,forward));actor.greet(current.time);}
 -    lastPaint='';paint();if(panel!=='help')void ai.refresh();el(panel==='help'?'close':'question').focus({preventScroll:true});
 +    lastPaint='';paint();if(panel!=='help')void ai?.refresh();el(panel==='help'?'close':'question').focus({preventScroll:true});
@@ -1706,16 +1825,16 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..2812e492c269da3b1dd4fa3a5bea969c
 -  el('local').addEventListener('click',()=>show('help'));
 -  el('chat-close').onclick=()=>{ai.cancel();chat.hidden=true;if(bubble.hidden)close(true);else el('close').focus();};
    el('close').onclick=()=>{bubble.hidden=true;if(chat.hidden)close(true);else el('question').focus();};
-@@ -71,3 +113,2 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -71,3 +116,2 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    el('stop').onclick=()=>{selected=null;route.root.visible=false;hud.hidden=true;paint();};
 -  el('form').onsubmit=event=>{event.preventDefault();void ai.ask();};
    let shortcutHeld=false;
-@@ -77,3 +118,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -77,3 +121,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      if(shortcutHeld&&(event.code==='Space'||event.key===' ')){event.preventDefault();event.stopImmediatePropagation();return;}
 -    if(guideShortcut(event)&&current?.visible&&!document.querySelector('dialog[open]')){shortcutHeld=true;event.preventDefault();event.stopImmediatePropagation();if(talking)close(true);else show('both');}
 +    if(guideShortcut(event)&&current?.visible&&!document.querySelector('dialog[open]')){shortcutHeld=true;event.preventDefault();event.stopImmediatePropagation();if(talking)close(true);else show();}
    },{capture:true});
-@@ -81,8 +122,21 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -81,8 +125,23 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    return {get active(){return selected!==null;},get talking(){return talking;},close,findShip(){if(!current?.visible)return;select('visit');show();el<HTMLDetailsElement>('help').open=true;},frame(input:Frame){
 -    ai.tick(!chat.hidden);current=input;chatOpen.disabled=!input.visible;open.disabled=menuOpen.disabled=!input.visible;homeOpen.hidden=!input.visible||!input.indoor||!input.universe.player.location||input.universe.player.location.kind!=='interior';
 -    homeChat.hidden=homeOpen.hidden;
@@ -1724,29 +1843,32 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..2812e492c269da3b1dd4fa3a5bea969c
      if(talking&&(!input.visible||input.roomKey!==roomKey||!!document.querySelector('dialog[open]')))close();
      if(selected&&routePlanet!==input.universe.currentPlanet.id){selected=null;route.root.visible=false;}
 -    const target=selected?guideTarget(input.universe,selected):null;
+-    route.frame({position:input.position,target,planetId:input.universe.currentPlanet.id,radius:input.world.baseRadius,visible:!!selected&&input.visible&&!input.indoor,paused:!input.enabled,time:input.time,reducedMotion:input.reducedMotion,homeRoutes:input.universe.currentPlanet.homeManifest?.routes,routeRevision:input.universe.currentPlanet.revision,stationApproaches:tutorialStationApproaches(input.universe.currentPlanet),canConnect:(a,b)=>canWalkTutorialConnector(input.world,a,b)});
 +    const { currentPlanet, player } = input.universe;
-+    if (checkedPlanet !== currentPlanet) {
++    if (checkedPlanet !== currentPlanet||checkedWorld!==input.world) {
 +      checkedPlanet = currentPlanet;
-+      courtyard = currentPlanet.id === friendPlanet ? courtyardTarget(currentPlanet) : null;
++      checkedWorld=input.world;
++      courtyard = currentPlanet.id === friendPlanet ? courtyardVisit(currentPlanet,input.world)?.target??null : null;
++      routes=courtyardRoutes(currentPlanet);
 +    }
-+    canGuideToCourtyard = !!courtyard && !input.indoor && player.location?.kind !== 'interior' && player.flight.mode === 'ground'
++    canGuideToCourtyard = !!courtyard && !!input.approvedCourtyard && !input.indoor && player.location?.kind !== 'interior' && player.flight.mode === 'ground'
 +      && !document.querySelector('#friend-visit-closure:not([hidden])');
 +    if (selected === 'courtyard' && (!canGuideToCourtyard || routeVisitEpoch !== player.location?.visitEpoch)) selected = null;
 +    if (topic === 'courtyard' && !canGuideToCourtyard) topic = 'home';
 +    const target=selected?destination(selected):null;
-     route.frame({position:input.position,target,planetId:input.universe.currentPlanet.id,radius:input.world.baseRadius,visible:!!selected&&input.visible&&!input.indoor,paused:!input.enabled,time:input.time,reducedMotion:input.reducedMotion,homeRoutes:input.universe.currentPlanet.homeManifest?.routes,routeRevision:input.universe.currentPlanet.revision,stationApproaches:tutorialStationApproaches(input.universe.currentPlanet),canConnect:(a,b)=>canWalkTutorialConnector(input.world,a,b)});
++    route.frame({position:input.position,target,planetId:input.universe.currentPlanet.id,radius:input.world.baseRadius,visible:!!selected&&input.visible&&!input.indoor,paused:!input.enabled,time:input.time,reducedMotion:input.reducedMotion,homeRoutes:selected==='courtyard'?routes:currentPlanet.homeManifest?.routes,routeRevision:input.universe.currentPlanet.revision,stationApproaches:tutorialStationApproaches(input.universe.currentPlanet),canConnect:(a,b)=>canWalkTutorialConnector(input.world,a,b)});
 +    if (selected === 'courtyard' && route.root.visible && route.diagnostics.reason === 'arrived') {
 +      selected = null;
 +      route.root.visible = false;
 +    }
      hud.hidden=!selected||!input.visible||talking;
-@@ -93,3 +147,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -93,3 +152,3 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
      }
 -    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,aiEnabled:ai.enabled,actorVisible:actor.root.visible};
-+    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
++    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:target?.position??null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..b315c5a927de65d1a9c2ed2eff72974c3f74788f 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a06a15475 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
 @@ -3,3 +3,3 @@ import { createHash, randomBytes } from 'node:crypto';
@@ -1886,16 +2008,28 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..b315c5a927de65d1a9c2ed2eff72974c
 +        throw new RequestError(400,'Choose a resident connection action.');
 +      }
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
-@@ -170,3 +263,3 @@ const server = createServer(async (req, res) => {
+@@ -143,2 +236,3 @@ const server = createServer(async (req, res) => {
+       else if(url.pathname==='/api/planets/rename')send(200,store.renamePlanet(id,body));
++      else if(url.pathname==='/api/courtyard/arrival')send(200,store.saveCourtyardArrival(id,body));
+       else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
+@@ -170,3 +264,3 @@ const server = createServer(async (req, res) => {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
 -      if (!path.startsWith(root + '/')) throw new RequestError(404, 'Not found.');
 +      if (!path.startsWith(root + sep)) throw new RequestError(404, 'Not found.');
        try { body = await readFile(path); } catch { throw new RequestError(404, 'Not found.'); }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c5e2c769335fc38daa8d5677c5ad2b6691998497 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7e95afc92 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -210,2 +210,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -187,3 +187,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       migrateAppearances(db);
+-      db.exec('PRAGMA user_version=20; COMMIT;');
++      db.exec(`CREATE TABLE IF NOT EXISTS courtyard_arrivals (
++        planet_id TEXT PRIMARY KEY REFERENCES planets(id),
++        route TEXT NOT NULL
++      ); PRAGMA user_version=${STORE_SCHEMA}; COMMIT;`);
+     } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
+@@ -210,2 +213,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
    };
 +  function enrollArrival(id:string,now:number){
 +    db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
@@ -1903,21 +2037,21 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c5e2c769335fc38daa8d5677c5ad2b66
 +    appearances.enroll(id);
 +  }
    const state = (id: string): PlayerState => {
-@@ -330,2 +335,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -330,2 +338,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
 +    enrollFriendsPlayer(id:string){
 +      if(!integratedWorld||!db.isTransaction)throw new RequestError(409,'Open an integrated world to link Friends.');
 +      enrollArrival(id,Date.now());
 +    },
      /** Establish identity and Hub spawn before any expensive home generation. */
-@@ -336,4 +345,4 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -336,4 +348,4 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
        try{
 -        db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
 -        arrivalHomes.enroll(id,now);appearances.enroll(id);db.exec('COMMIT');
 +        enrollArrival(id,now);
 +        db.exec('COMMIT');
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
-@@ -362,4 +371,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -362,4 +374,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
       * home, its owner and the new player's place at the door in one transaction, then the station. */
 -    async createPrepared(id: string, now = Date.now(), attempt = 0): Promise<PlayerState> {
 -      const work=heavy;if(!homeEnabled||!work)return this.create(id,now);
@@ -1927,16 +2061,26 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c5e2c769335fc38daa8d5677c5ad2b66
 +        return this.create(id,now);
 +      }
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
-@@ -376,3 +388,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -376,3 +391,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
 -          homes.movedExterior(id);db.exec('COMMIT');
 +          homes.movedExterior(id);bind?.();db.exec('COMMIT');
          }catch(error){
-@@ -381,3 +393,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -381,3 +396,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
            if(error instanceof RequestError&&error.status===409&&!this.has(id)){
 -            if(attempt<2)return this.createPrepared(id,now,attempt+1);
 +            if(attempt<2)return this.createPrepared(id,now,attempt+1,bind);
              throw new RequestError(503,BUSY);
+@@ -449,2 +464,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
++    saveCourtyardArrival(id:string,body:Record<string,unknown>){
++      homes.exterior(id,body.visitEpoch);
++      if(row(id).planet_id!==body.planetId||navigation.flight(id).mode!=='ground')
++        throw new RequestError(409,'Land on your home planet first.');
++      planets.saveCourtyardArrival(id,body,homes.descriptor(id)?.door.position);
++      return universe(id);
++    },
+     claim(id: string, planetId: unknown) { row(id); planets.claim(id, planetId); if(homeSample){homes.initialise(String(planetId));teleport.ensureHomeStation(String(planetId));} return universe(id); },
 diff --git a/src/shared/town-resident-motion.ts b/src/shared/town-resident-motion.ts
 index 30b342267729476ac36ece59318dd512aa98f329..220d883f09acba1b6517ecd7d996b7b6399fe3c0 100644
 --- a/src/shared/town-resident-motion.ts
@@ -2024,7 +2168,7 @@ index 69e48150b5a650e1689245e91a516161b7282712..a7d4fbe55c76100d46625d59ccb3e9ea
 +  expect(blocked.points).toEqual([]);
 +});
 diff --git a/src/shared/tutorial-navigation.ts b/src/shared/tutorial-navigation.ts
-index 7b1ac05dd955d8f19f6023bb36130da81c6fb0f8..9b819f76e3b405fba91b96a5bcad156817531842 100644
+index 7b1ac05dd955d8f19f6023bb36130da81c6fb0f8..662a9bbc697892dfee0d6abd25352bc5350d6333 100644
 --- a/src/shared/tutorial-navigation.ts
 +++ b/src/shared/tutorial-navigation.ts
 @@ -11,4 +11,6 @@ import { GATE } from './village-kit/geometry.ts';
@@ -2036,16 +2180,27 @@ index 7b1ac05dd955d8f19f6023bb36130da81c6fb0f8..9b819f76e3b405fba91b96a5bcad1568
 +  { kind: Exclude<TutorialDestination, 'courtyard'> } | { kind: 'courtyard'; routeId: string }
 +);
  export interface TutorialNavigationInput {
-@@ -98,2 +100,3 @@ function targetRoute(input: TutorialNavigationInput): HomeSurfaceRoute | null {
+@@ -83,2 +85,10 @@ function connectorPath(from: Vec3, to: Vec3, input: TutorialNavigationInput): Ve
+ }
++/** Reuse the same bounded direct and lateral connections for map authoring. */
++export function walkableTutorialConnection(world: GroundWorld, from: Vec3, to: Vec3, stationApproaches: readonly Vec3[]) {
++  return connectorPath(from,to,{
++    position:from,target:{kind:'port',position:to,planetId:world.planetId},
++    planetId:world.planetId,radius:world.baseRadius,stationApproaches,
++    canConnect:(a,b)=>canWalkTutorialConnector(world,a,b),
++  });
++}
+ function targetRoute(input: TutorialNavigationInput): HomeSurfaceRoute | null {
+@@ -98,2 +108,3 @@ function targetRoute(input: TutorialNavigationInput): HomeSurfaceRoute | null {
    const routes = input.homeRoutes ?? [];
 +  if (target.kind === 'courtyard') return routes.find(route => route.id === target.routeId) ?? null;
    // Prefer the real home path. For the return gate, reverse that path toward
-@@ -152,3 +155,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+@@ -152,3 +163,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
      // is still allowed when the exact current world proves it, never guessed.
 -    if (input.planetId !== 'hub' && !(input.homeRoutes?.length)) {
 +    if (input.planetId !== 'hub' && input.target.kind !== 'courtyard' && !(input.homeRoutes?.length)) {
        const direct = connectorPath(input.position, input.target.position, input);
-@@ -170,5 +173,14 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+@@ -170,5 +181,14 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
      if (source.id === destination.id || arc(source.points[0], destination.points[0], input.radius) > .025) continue;
 -    appendCandidates({ ...source, points: [...source.points].reverse() }, destination.points.slice(1), [source.id, destination.id]);
 +    let junction = 0;
@@ -2061,17 +2216,17 @@ index 7b1ac05dd955d8f19f6023bb36130da81c6fb0f8..9b819f76e3b405fba91b96a5bcad1568
 +  const walkable = (points: Vec3[]) => input.target.kind !== 'courtyard'
 +    || points.every((point, i) => !i || connector(points[i - 1], point, input));
    // The nearest proven candidate is enough; do not replay every candidate
-@@ -178,2 +190,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+@@ -178,2 +198,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
      const points = compact([input.position, ...candidate.points], input.radius);
 +    if (!walkable(points)) continue;
      return { ...result, points, sourceRoutes: candidate.ids, connected: true, reason: 'route' };
-@@ -184,3 +197,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
+@@ -184,3 +205,3 @@ export function routeToTutorialTarget(input: TutorialNavigationInput): TutorialN
    const approach = connectorPath(input.position, destination.points[0], input);
 -  if (approach) return { ...result, points: compact([...approach, ...destination.points.slice(1)], input.radius), sourceRoutes: [destination.id], connected: true, reason: 'route' };
 +  if (approach && walkable(destination.points)) return { ...result, points: compact([...approach, ...destination.points.slice(1)], input.radius), sourceRoutes: [destination.id], connected: true, reason: 'route' };
    return deferred ? { ...result, reason: 'checking' } : result;
 diff --git a/src/shared/world-guide.ts b/src/shared/world-guide.ts
-index 2b433c5b22c99b234990f3ffbc8c32533f538d22..8263a829b4694ae05b8b53b2bc1e9217e9501bc9 100644
+index 2b433c5b22c99b234990f3ffbc8c32533f538d22..ecbaa0103d097bc35f7b86f77230b3c948b9b8b4 100644
 --- a/src/shared/world-guide.ts
 +++ b/src/shared/world-guide.ts
 @@ -1,2 +1,3 @@
@@ -2079,11 +2234,14 @@ index 2b433c5b22c99b234990f3ffbc8c32533f538d22..8263a829b4694ae05b8b53b2bc1e9217
 +import type { PlanetView, Universe } from './planets.ts';
 +import { distance } from './world.ts';
  import { portPoint } from './ports.ts';
-@@ -14,2 +15,21 @@ export const GUIDE_HELP: Record<GuideTopic, { en: string; zh: string }> = {
+@@ -14,2 +15,24 @@ export const GUIDE_HELP: Record<GuideTopic, { en: string; zh: string }> = {
  };
 +/** Older saves can lack a courtyard, and owners can move or remove its structure. */
-+export function courtyardTarget(planet: PlanetView): TutorialTarget | null {
-+  if (planet.mine || planet.kind !== 'garden' || !planet.homeManifest?.routes?.length || !planet.homeManifest.objects?.length) return null;
++export function courtyardTarget(planet: PlanetView): Extract<TutorialTarget,{kind:'courtyard'}> | null {
++  if (planet.mine || planet.kind !== 'garden') return null;
++  const custom=planet.courtyardArrival;
++  if(custom) return {kind:'courtyard',routeId:custom.id,position:custom.points.at(-1)!,planetId:planet.id};
++  if (!planet.homeManifest?.routes?.length || !planet.homeManifest.objects?.length) return null;
 +  const { routes, homeBuildingId } = planet.homeManifest;
 +  for (const object of planet.objects) {
 +    if (object.kind !== 'structure' || object.id === homeBuildingId || !object.blueprintHash) continue;
@@ -2392,3 +2550,137 @@ index dfb67eff73917c4c0465af233eace6eea4fdccd9..3f01aff3d6e6cb2437d48aa556ee1620
 +  });
 +
    it('allows moving a table into open space but refuses doorway, overlaps and a standing player', () => {
+diff --git a/spec/appearance.test.ts b/spec/appearance.test.ts
+index 47eebec2e586123c774e6808dbe0b233e0c58886..5792c50afcacc87a52e0d888c7c7128036994410 100644
+--- a/spec/appearance.test.ts
++++ b/spec/appearance.test.ts
+@@ -1 +1,2 @@
++import { STORE_SCHEMA } from '../src/server/arrival-homes.ts';
+ import {afterEach,expect,it} from 'vitest';
+@@ -35,3 +36,3 @@ it('rolls back both appearance and coat when a write fails',()=>{const s=open();
+ it('backs up schema 18 and adds an empty side table without rewriting old players',()=>{
+- const d=mkdtempSync(join(tmpdir(),'appearance-migration-'));dirs.push(d);const path=join(d,'test.sqlite'),s=open(path);s.create('old');const before=s.db.prepare('SELECT * FROM players').all();s.db.exec('DROP TABLE player_appearances; PRAGMA user_version=18');s.close();const migrated=open(path);expect(migrated.db.prepare('PRAGMA user_version').get()!.user_version).toBe(20);expect(migrated.migrationBackup&&existsSync(migrated.migrationBackup)).toBeTruthy();expect(migrated.db.prepare('SELECT * FROM players').all()).toEqual(before);expect(migrated.db.prepare('SELECT count(*) AS n FROM player_appearances').get()!.n).toBe(0);
++ const d=mkdtempSync(join(tmpdir(),'appearance-migration-'));dirs.push(d);const path=join(d,'test.sqlite'),s=open(path);s.create('old');const before=s.db.prepare('SELECT * FROM players').all();s.db.exec('DROP TABLE player_appearances; PRAGMA user_version=18');s.close();const migrated=open(path);expect(migrated.db.prepare('PRAGMA user_version').get()!.user_version).toBe(STORE_SCHEMA);expect(migrated.migrationBackup&&existsSync(migrated.migrationBackup)).toBeTruthy();expect(migrated.db.prepare('SELECT * FROM players').all()).toEqual(before);expect(migrated.db.prepare('SELECT count(*) AS n FROM player_appearances').get()!.n).toBe(0);
+ });
+diff --git a/spec/compact-worlds.test.ts b/spec/compact-worlds.test.ts
+index 7166aee75f9563d515102a4b901af18bbec6d78d..c20e3a441c8cc95bf1149eb94eb9c7bb8a576fcc 100644
+--- a/spec/compact-worlds.test.ts
++++ b/spec/compact-worlds.test.ts
+@@ -1 +1,2 @@
++import { STORE_SCHEMA } from '../src/server/arrival-homes.ts';
+ import { expect,it } from 'vitest';
+@@ -63,3 +64,3 @@ it('migrates version 10 without resizing owned, built or occupied worlds or rewr
+   const before=store.db.prepare('SELECT * FROM planet_objects').all(),history=store.db.prepare('SELECT * FROM history_events').all();store.db.close();store=openStore(path);
+-  expect(store.migrationBackup).toContain('.v10-');expect(store.db.prepare('PRAGMA user_version').get()!.user_version).toBe(20);
++  expect(store.migrationBackup).toContain('.v10-');expect(store.db.prepare('PRAGMA user_version').get()!.user_version).toBe(STORE_SCHEMA);
+   expect(store.db.prepare('SELECT * FROM planet_objects').all()).toEqual(before);expect(store.db.prepare('SELECT * FROM history_events').all()).toEqual(history);
+diff --git a/spec/public-village.test.ts b/spec/public-village.test.ts
+index 112b0737b6c25bec0b0d7e2b97f1144334ef59aa..f6c5c111d0d83f5995955c377dd800556a4b943c 100644
+--- a/spec/public-village.test.ts
++++ b/spec/public-village.test.ts
+@@ -1 +1,2 @@
++import { STORE_SCHEMA } from '../src/server/arrival-homes.ts';
+ import {expect,it} from 'vitest';
+@@ -52,3 +53,3 @@ it('fences the released v7 public client without changing private ground, names,
+   expect(snapshot()).toEqual(beforeRejected);expect(s.library('private')[0].blueprint).toEqual(blueprint);
+-  expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(20);
++  expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(STORE_SCHEMA);
+  }finally{s.close();}
+diff --git a/spec/r7-physics.test.ts b/spec/r7-physics.test.ts
+index 88beccf995737fc104f1e7b2b7ebef3c31fad455..d0dd5240788d5342db8c0d2dbf4ef69bde681a82 100644
+--- a/spec/r7-physics.test.ts
++++ b/spec/r7-physics.test.ts
+@@ -1 +1,2 @@
++import { STORE_SCHEMA } from '../src/server/arrival-homes.ts';
+ import { expect, it } from 'vitest';
+@@ -99,3 +100,3 @@ it('backs up schema 9 and lazily recovers the old standing height; rejects old p
+     s.close();s=openStore(path);
+-    expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(20);
++    expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(STORE_SCHEMA);
+     const backup=new DatabaseSync(s.migrationBackup!);try{
+diff --git a/spec/save-recovery.test.ts b/spec/save-recovery.test.ts
+index 71ed1e58ea13b6067bfea1fced2e5eb87b00235b..9e48801c480f5ae609e7ae7d69e465ef26012b65 100644
+--- a/spec/save-recovery.test.ts
++++ b/spec/save-recovery.test.ts
+@@ -1 +1,2 @@
++import { STORE_SCHEMA } from '../src/server/arrival-homes.ts';
+ import { expect, inject, it } from 'vitest';
+@@ -108,3 +109,3 @@ for (const write of writes) {
+       expect(rows(s)).toEqual(saved);
+-      expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(20);
++      expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(STORE_SCHEMA);
+       expect(s.db.prepare('PRAGMA integrity_check').get()!.integrity_check).toBe('ok');
+diff --git a/src/server/arrival-homes.ts b/src/server/arrival-homes.ts
+index 441fc1bc451816aea76c162e01ff16dc58e762d7..137d9ff162d8b02451631755f60574e48bfc52e7 100644
+--- a/src/server/arrival-homes.ts
++++ b/src/server/arrival-homes.ts
+@@ -5,3 +5,3 @@ import {RequestError} from './errors.ts';
+
+-export const STORE_SCHEMA=20;
++export const STORE_SCHEMA=21;
+ export function migrateArrivalHomes(db:DatabaseSync){
+diff --git a/src/server/business-log.ts b/src/server/business-log.ts
+index 3419b40c794c32ee5d9a99e69f5be3fb3eb798bd..56166825821eec9ea86ff97dbcf2675cffa4d4cd 100644
+--- a/src/server/business-log.ts
++++ b/src/server/business-log.ts
+@@ -22,2 +22,3 @@ const routes: Record<string, string> = {
+   'objects/create': 'object.created', 'objects/update': 'object.updated', 'objects/delete': 'object.deleted',
++  'courtyard/arrival': 'courtyard.arrival.saved',
+ };
+diff --git a/src/server/planets.ts b/src/server/planets.ts
+index 58abbc123c08374e6d02e3c5a795ed67338760b5..b4fb62da4c54828ab8fd282430162c771bd0d2b4 100644
+--- a/src/server/planets.ts
++++ b/src/server/planets.ts
+@@ -1,2 +1,3 @@
+ import { occupiedExteriorDoor } from './home-door-safety.ts';
++import {planCourtyardArrival} from '../shared/courtyard-arrival.ts';
+ import { isOpenDoorPartId, isWideDoorPartId } from '../shared/blueprint-parts.ts';
+@@ -26,3 +27,3 @@ import { isBuildKind, MAX_OBJECTS, placementProblem } from '../shared/planets.ts
+ import type { PlanetSummary, PlanetView, PlacedObject } from '../shared/planets.ts';
+-import { normalize } from '../shared/world.ts';
++import { normalize, validPosition } from '../shared/world.ts';
+ import type { Vec3 } from '../shared/world.ts';
+@@ -147,3 +148,3 @@ export function planetStore(db: DatabaseSync, blueprints = blueprintStore(db), h
+   };
+-  return { rename,
++  const api = { rename,
+     /** `reserved` planets are being prepared for another new player and are skipped. */
+@@ -169,4 +170,20 @@ export function planetStore(db: DatabaseSync, blueprints = blueprintStore(db), h
+       const manifest=db.prepare('SELECT document FROM home_manifests WHERE planet_id=?').get(planetId);
++      const arrival=db.prepare('SELECT route FROM courtyard_arrivals WHERE planet_id=?').get(planetId);
+       const home=db.prepare('SELECT building_id,document,door_part FROM home_interiors WHERE planet_id=?').get(planetId),room=home?normalizeHomeInterior(JSON.parse(String(home.document))):null;
+-      return { ...summary(planet(planetId), id), objects: placed, ...(home&&room?{homeDoor:{buildingId:String(home.building_id),partNumber:Number(home.door_part??HOME_DOOR_PART),open:room.doorOpen,version:room.doorVersion}}:{}), ...(manifest?{homeManifest:JSON.parse(String(manifest.document))}:{}), ...(hashes.length ? {blueprints: Object.fromEntries(hashes.map(h => [h, blueprints.parts(h)]))} : {}) };
++      return { ...summary(planet(planetId), id), objects: placed, ...(home&&room?{homeDoor:{buildingId:String(home.building_id),partNumber:Number(home.door_part??HOME_DOOR_PART),open:room.doorOpen,version:room.doorVersion}}:{}), ...(manifest?{homeManifest:JSON.parse(String(manifest.document))}:{}), ...(hashes.length ? {blueprints: Object.fromEntries(hashes.map(h => [h, blueprints.parts(h)]))} : {}), ...(arrival?{courtyardArrival:JSON.parse(String(arrival.route))}:{}) };
++    },
++    saveCourtyardArrival(id:string,body:Record<string,unknown>,door?:Vec3){
++      return transaction(()=>{
++        const p=owns(id,body.planetId);
++        strict(body,['planetId','position','expectedRevision','visitEpoch']);
++        if(p.revision!==body.expectedRevision)throw new RequestError(409,'Your planet changed. Choose the arrival point again.');
++        if(!validPosition(body.position))throw new RequestError(400,'Choose a point on the planet.');
++        const current=api.view(id,p.id);
++        const plan=planCourtyardArrival(current,new GroundWorld(current),body.position,door);
++        if('problem' in plan)throw new RequestError(409,plan.problem);
++        if(JSON.stringify(current.courtyardArrival)===JSON.stringify(plan.route))return;
++        db.prepare('INSERT INTO courtyard_arrivals(planet_id,route) VALUES(?,?) ON CONFLICT(planet_id) DO UPDATE SET route=excluded.route')
++          .run(p.id,JSON.stringify(plan.route));
++        bump(p.id);
++      });
+     },
+@@ -253,2 +270,3 @@ export function planetStore(db: DatabaseSync, blueprints = blueprintStore(db), h
+   };
++  return api;
+ }
+diff --git a/src/shared/planets.ts b/src/shared/planets.ts
+index c604ffe65eb1aa58f611c58decadadfbe3b363dd..289bee97e274cd249b0d48f3fa56855ec06e8e1a 100644
+--- a/src/shared/planets.ts
++++ b/src/shared/planets.ts
+@@ -11,2 +11,3 @@ import type { HomeDoorState } from './home-door.ts';
+ import type { HomeDescriptor, HomeInfrastructureManifest } from './home.ts';
++import type { HomeSurfaceRoute } from './home-layout.ts';
+
+@@ -28,3 +29,3 @@ export const objectHeight = (o: Pick<PlacedObject, 'kind' | 'height' | 'assetVer
+ export interface PlanetSummary { id: string; name: string; kind: 'hub' | 'garden'; claimed: boolean; mine: boolean; revision: number; objectCount: number; center:Vec3; slot:number; radius?:number; environment?:string|null; publicTown?: { objects:number; structures:number; districts:number; version:number } }
+-export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest }
++export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest; courtyardArrival?: HomeSurfaceRoute }
+ export interface Universe { player: PlayerState; planets: PlanetSummary[]; ownedPlanetId: string | null; currentPlanet: PlanetView }
