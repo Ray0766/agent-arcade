@@ -765,7 +765,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..305ba0e7f15c934332e7cc7ab586bba93c94e58a 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..305c837531d415ac75e29f89af294cbb5dffa6f0 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
@@ -976,8 +976,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..305ba0e7f15c934332e7cc7ab586bba9
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1066,2 +1161,17 @@ const photoButton=document.createElement('button');photoButton.id='open-photo';s
- $('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
+@@ -1065,4 +1160,23 @@ photoMode=new PhotoMode({renderer,
+ const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
+-$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
+-window.addEventListener('open-photo-mode',()=>void photoMode?.open());
++$('view-mode').after(photoButton);photoButton.onclick=()=>openWorldPhoto('overview');
 +const visitPhotoButton=document.createElement('button');visitPhotoButton.id='open-visit-photo';visitPhotoButton.hidden=true;
 +setText(visitPhotoButton,'Photograph this view');
 +photoButton.after(visitPhotoButton);
@@ -989,13 +992,18 @@ index 0639a7b2e636be2963ca2599618308f12632025a..305ba0e7f15c934332e7cc7ab586bba9
 +    && groundWorld?.planetId===planet.id&&groundWorld.revision===planet.revision
 +    && bothouseResidents.canPhotographVisit(groundWorld,state.location?.visitEpoch??0));
 +}
-+visitPhotoButton.onclick=()=>{
++function openWorldPhoto(framing:'follow'|'overview'){
++  if(framing==='overview'&&!(canTakeVisitPhoto()&&typeof window.arcadeVisitPhoto?.bringBack==='function')){
++    void photoMode?.open();return;
++  }
 +  const planet=activePlanet,epoch=state?.location?.visitEpoch??0;
-+  void photoMode?.open('follow',()=>activePlanet===planet&&(state?.location?.visitEpoch??0)===epoch&&canTakeVisitPhoto());
-+};
- window.addEventListener('open-photo-mode',()=>void photoMode?.open());
++  void photoMode?.open(framing,()=>activePlanet===planet&&(state?.location?.visitEpoch??0)===epoch&&canTakeVisitPhoto());
++}
++visitPhotoButton.onclick=()=>openWorldPhoto('follow');
++window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
+ requestAnimationFrame(animate);
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..76a6110fbd45db5b3236d1fab20f16ff8367bc28 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..d408fbd1698d9aa116041f25c5d8716f16705564 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
 @@ -3,2 +3,4 @@
@@ -1008,7 +1016,17 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..76a6110fbd45db5b3236d1fab20f16ff
 +  "Show resident nameplates": "显示居民名牌",
 +  "Photograph this view": "拍下当前画面",
    "Back to exploring": "返回探索",
-@@ -1033,2 +1037,13 @@ export const messages: Record<string, string> = {
+@@ -234,2 +238,9 @@ export const messages: Record<string, string> = {
+   "Photo saved. Keep exploring or try another view.": "照片已保存，可以继续探索或换个角度。",
++  "Bring back to chat": "带回私聊",
++  "This photo is too large for chat. Choose 2K or save the PNG locally.": "照片太大，无法带回私聊。请选择 2K 或把 PNG 保存到本机。",
++  "Chat could not read the photo. Try again or save the PNG locally.": "私聊无法读取这张照片。可以重试或把 PNG 保存到本机。",
++  "Could not bring the photo back. Try again or save the PNG locally.": "未能带回照片。可以重试或把 PNG 保存到本机。",
++  "The original chat visit has expired. Save the PNG locally or reopen the visit from chat.": "原私聊访程已失效。可以把 PNG 保存到本机，或从私聊重新发起拜访。",
++  "Preparing the photo for your chat…": "正在准备把照片带回私聊…",
++  "Returning to your chat…": "正在返回原私聊…",
+   "Could not open photo mode.": "暂时无法进入照片模式。",
+@@ -1033,2 +1044,13 @@ export const messages: Record<string, string> = {
    "Make this my planet": "认领这颗星球",
 +  "Place a courtyard flower pot": "在院落放花盆",
 +  "Rest on the bench": "坐下休息",
@@ -1022,18 +1040,18 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..76a6110fbd45db5b3236d1fab20f16ff
 +  "Set it farther along the same side, leaving room to walk.": "沿同一侧往里放，留出行走空间。",
 +  "Set it opposite the lantern, facing the path.": "放在灯的对面，朝向石板路。",
    "Build on my planet": "在我的星球建造",
-@@ -1174,2 +1189,6 @@ export const messages: Record<string, string> = {
+@@ -1174,2 +1196,6 @@ export const messages: Record<string, string> = {
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
 +  "An idle resident may stop to admire this pot.": "居民空闲时可能会停下来欣赏这盆花。",
 +  "With this layout, residents won’t stop to admire this pot.": "按当前布置，居民不会欣赏这盆花。",
 +  "No residents here to watch flowers yet.": "这里暂时没有居民赏花。",
 +  "Flower watching cannot be predicted here yet.": "暂时无法判断居民能否在这里赏花。",
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
-@@ -1235,2 +1254,3 @@ export const messages: Record<string, string> = {
+@@ -1235,2 +1261,3 @@ export const messages: Record<string, string> = {
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
-@@ -1295,2 +1315,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1295,2 +1322,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
    ],
 +  [
 +    "Turn: {0}° · {1}",
@@ -2005,13 +2023,26 @@ index 2397a4bbd91144e845c1c8a6d9112c5559508622..518a41790130ba41a6ad6ae44a698f27
 +  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},sit(){body.sit();},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
   };
 diff --git a/src/client/photo-mode.ts b/src/client/photo-mode.ts
-index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..30e02e6adadcd153e752810f65b12812ccd25089 100644
+index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..c3126e8404a12f4dd599b935c468d9e3cfc706b7 100644
 --- a/src/client/photo-mode.ts
 +++ b/src/client/photo-mode.ts
-@@ -6,3 +6,9 @@ import {createVillageDrawing} from './village-drawing.ts';
+@@ -6,3 +6,22 @@ import {createVillageDrawing} from './village-drawing.ts';
  export type PhotoCamera = T.PerspectiveCamera | T.OrthographicCamera;
 -export interface PhotoView {scene:T.Scene;camera:PhotoCamera;target:T.Vector3;fixedAngle?:boolean;fixedLabel?:string;finish?:()=>void;prepare?:(camera:PhotoCamera)=>void}
 +type Framing = 'follow'|'overview';
++type VisitPhotoResult = {ok:true} | {ok:false;reason:string};
++declare global {
++  interface Window {
++    arcadeVisitPhoto?: {bringBack(png:ArrayBuffer):Promise<VisitPhotoResult>};
++  }
++}
++const CHAT_PHOTO_LIMIT=4_194_304;
++const chatPhotoErrors:Record<string,string>={
++  too_large:'This photo is too large for chat. Choose 2K or save the PNG locally.',
++  invalid_image:'Chat could not read the photo. Try again or save the PNG locally.',
++  unavailable:'Could not bring the photo back. Try again or save the PNG locally.',
++  expired:'The original chat visit has expired. Save the PNG locally or reopen the visit from chat.',
++};
 +export interface PhotoView {
 +  scene:T.Scene;camera:PhotoCamera;target:T.Vector3;
 +  fixedAngle?:boolean;fixedLabel?:string;residentNames?:boolean;
@@ -2019,18 +2050,21 @@ index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..30e02e6adadcd153e752810f65b12812
 +  prepare?:(camera:PhotoCamera,showResidentNames:boolean)=>void;
 +}
  interface PhotoBridge {
-@@ -11,3 +17,3 @@ interface PhotoBridge {
+@@ -11,3 +30,3 @@ interface PhotoBridge {
    flush():Promise<void>;
 -  view(mode:'follow'|'overview',width:number,height:number):PhotoView;
 +  view(mode:Framing,width:number,height:number):PhotoView;
    pause(active:boolean):void;
-@@ -33,3 +39,4 @@ export class PhotoMode {
+@@ -33,5 +52,7 @@ export class PhotoMode {
    private priorFocus:HTMLElement|null=null;
 -  private mode:'follow'|'overview'='overview';
 +  private mode:Framing='overview';
 +  private visitAllowed:(()=>boolean)|undefined;
    private drag:{id:number;x:number;y:number}|null=null;
-@@ -45,2 +52,8 @@ export class PhotoMode {
+   private saving=false;
++  private returnAccepted=false;
+   private opening=false;
+@@ -45,3 +66,14 @@ export class PhotoMode {
      document.body.append(this.root);
 +    const names=document.createElement('label');
 +    names.className='photo-resident-names';names.hidden=true;
@@ -2039,12 +2073,18 @@ index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..30e02e6adadcd153e752810f65b12812
 +    const options=document.createElement('div');options.className='photo-options';
 +    zoomLabel.before(options);options.append(zoomLabel,names);
      this.get('close').onclick=()=>this.close();this.get('save').onclick=()=>void this.capture();
-@@ -63,8 +76,12 @@ export class PhotoMode {
++    const bringBack=document.createElement('button');
++    bringBack.id='photo-bring-back';bringBack.hidden=true;
++    setText(bringBack,'Bring back to chat');
++    this.get('save').after(bringBack);
++    bringBack.onclick=()=>void this.capture('chat');
+     this.get('follow').onclick=()=>this.reframe('follow');this.get('overview').onclick=()=>this.reframe('overview');this.get('reset').onclick=()=>this.reframe(this.mode);
+@@ -63,8 +95,13 @@ export class PhotoMode {
    private get<E extends HTMLElement=HTMLButtonElement>(id:string){return this.root.querySelector<E>('#photo-'+id)!;}
 -  async open(){
 -    if(this.active||this.opening||!this.bridge.ready())return;
 +  async open(initial:Framing='overview',visitAllowed?:()=>boolean){
-+    if(this.active||this.opening||!this.bridge.ready()||visitAllowed?.()===false)return;
++    if(this.active||this.opening||this.saving||!this.bridge.ready()||visitAllowed?.()===false)return;
      this.opening=true;this.priorFocus=document.activeElement as HTMLElement;
      try{
 +      const current=initial==='follow'?this.bridge.view(initial,innerWidth,innerHeight):undefined;
@@ -2052,12 +2092,15 @@ index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..30e02e6adadcd153e752810f65b12812
 -      this.root.hidden=false;document.body.classList.add('photo-mode');this.reframe('overview');this.get('close').focus();
 +      if(visitAllowed?.()===false){this.bridge.pause(false);return;}
 +      this.visitAllowed=visitAllowed;
++      this.returnAccepted=false;
 +      this.get<HTMLInputElement>('resident-names').checked=false;
-+      this.reframe(initial,current);this.root.hidden=false;document.body.classList.add('photo-mode');this.get('close').focus();
++      this.reframe(initial,current);this.frame();this.root.hidden=false;document.body.classList.add('photo-mode');this.get('close').focus();
      }catch(error){this.bridge.pause(false);this.bridge.notice(error instanceof Error?error.message:'Could not open photo mode.');}
-@@ -74,8 +91,9 @@ export class PhotoMode {
-     if(!this.active||this.saving)return;
+@@ -73,9 +110,10 @@ export class PhotoMode {
+   close(){
+-    if(!this.active||this.saving)return;
 -    this.restoreScene();this.current=null;this.drag=null;this.root.hidden=true;document.body.classList.remove('photo-mode');this.bridge.pause(false);this.priorFocus?.focus();
++    if(!this.active||(this.saving&&this.visitAllowed?.()!==false))return;
 +    this.restoreScene();this.current=null;this.visitAllowed=undefined;this.drag=null;this.root.hidden=true;document.body.classList.remove('photo-mode');this.bridge.pause(false);this.priorFocus?.focus();
    }
    private restoreScene(){this.drawing?.dispose();this.drawing=null;if(this.original){this.original.scene.fog=this.original.fog;this.original.scene.background=this.original.background;this.original=null;}}
@@ -2068,30 +2111,107 @@ index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..30e02e6adadcd153e752810f65b12812
 +    this.current=view??this.bridge.view(mode,innerWidth,innerHeight);const {scene,camera}=this.current;
 +    this.get('resident-names').closest('label')!.hidden=!this.current.residentNames;
      this.drawing=createVillageDrawing(this.bridge.renderer,scene,camera);
-@@ -102,6 +120,9 @@ export class PhotoMode {
+@@ -102,21 +140,30 @@ export class PhotoMode {
    frame(){
 +    if(this.visitAllowed?.()===false){this.close();return;}
      if(!this.current||this.saving)return;
 -    this.current.prepare?.(this.current.camera);try{this.drawing?.render(this.current.target,this.mode==='overview');}finally{this.current.finish?.();}
++    this.get('bring-back').hidden=!this.canBringBack();
 +    this.current.prepare?.(this.current.camera,this.get<HTMLInputElement>('resident-names').checked);
 +    try{this.drawing?.render(this.current.target,this.mode==='overview');}finally{this.current.finish?.();}
    }
-   async capture(){
+-  async capture(){
+-    const view=this.current;if(!view||this.saving)return;this.saving=true;
+-    const renderer=this.bridge.renderer,size=renderer.getSize(new T.Vector2()),ratio=renderer.getPixelRatio(),pixelLimit=Math.min(renderer.capabilities.maxTextureSize,4096);
+-    const dimensions=photoDimensions(innerWidth/innerHeight,Number(this.get<HTMLSelectElement>('size').value),pixelLimit);
+-    const factor=Math.min(2,Math.floor(pixelLimit/Math.max(dimensions.width,dimensions.height)));
+-    const photoCamera=view.camera.clone() as PhotoCamera;resizeCamera(photoCamera,dimensions.width/dimensions.height);
+-    for(const control of this.root.querySelectorAll<HTMLButtonElement|HTMLInputElement|HTMLSelectElement>('button,input,select'))control.disabled=true;
++  private canBringBack(){
++    return !!this.visitAllowed?.() && !this.returnAccepted
++      && typeof window.arcadeVisitPhoto?.bringBack==='function';
++  }
++  async capture(destination:'local'|'chat'='local'){
 +    if(this.visitAllowed?.()===false){this.close();return;}
-     const view=this.current;if(!view||this.saving)return;this.saving=true;
-@@ -111,2 +132,3 @@ export class PhotoMode {
-     const photoCamera=view.camera.clone() as PhotoCamera;resizeCamera(photoCamera,dimensions.width/dimensions.height);
-+    const showResidentNames=this.get<HTMLInputElement>('resident-names').checked;
-     for(const control of this.root.querySelectorAll<HTMLButtonElement|HTMLInputElement|HTMLSelectElement>('button,input,select'))control.disabled=true;
-@@ -115,3 +137,3 @@ export class PhotoMode {
++    const view=this.current;
++    if(!view||this.saving||(destination==='chat'&&!this.canBringBack()))return;
++    this.saving=true;
++    const controls=this.root.querySelectorAll<HTMLButtonElement|HTMLInputElement|HTMLSelectElement>('button,input,select');
++    for(const control of controls)control.disabled=true;
+     setText(this.get('status'),'Rendering your photo…');
+-    let exportDrawing:ReturnType<typeof createVillageDrawing>|null=null;
      try{
 -      renderer.setPixelRatio(factor);renderer.setSize(dimensions.width,dimensions.height,false);view.prepare?.(photoCamera);exportDrawing=createVillageDrawing(renderer,view.scene,photoCamera);exportDrawing.render(view.target,this.mode==='overview');
-+      renderer.setPixelRatio(factor);renderer.setSize(dimensions.width,dimensions.height,false);view.prepare?.(photoCamera,showResidentNames);exportDrawing=createVillageDrawing(renderer,view.scene,photoCamera);exportDrawing.render(view.target,this.mode==='overview');
-       const canvas=document.createElement('canvas');canvas.width=dimensions.width;canvas.height=dimensions.height;
-@@ -120,2 +142,3 @@ export class PhotoMode {
-       const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(Error('Photo export failed.')),'image/png'));
-+      if(this.visitAllowed?.()===false)return;
-       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`little-worlds-${new Date().toISOString().replace(/[:.]/g,'-')}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+-      const canvas=document.createElement('canvas');canvas.width=dimensions.width;canvas.height=dimensions.height;
+-      const context=canvas.getContext('2d');if(!context)throw Error('Photo export is unavailable.');
+-      context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(renderer.domElement,0,0,canvas.width,canvas.height);
+-      const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(Error('Photo export failed.')),'image/png'));
+-      const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`little-worlds-${new Date().toISOString().replace(/[:.]/g,'-')}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
++      const {blob,dimensions,factor}=await this.encodePng(view);
++      if(this.current!==view||this.visitAllowed?.()===false)return;
++      if(destination==='chat'){
++        await this.bringBack(view,blob);
++        return;
++      }
++      const url=URL.createObjectURL(blob),link=document.createElement('a');
++      link.href=url;link.download=`little-worlds-${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
++      link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+       this.root.dataset.lastExport=JSON.stringify({...dimensions,bytes:blob.size,supersampling:factor,source:'local geometry'});
+@@ -125,4 +172,4 @@ export class PhotoMode {
+     finally{
+-      view.finish?.();exportDrawing?.dispose();renderer.setPixelRatio(ratio);renderer.setSize(size.x,size.y,false);resizeCamera(view.camera,innerWidth/innerHeight);this.saving=false;
+-      for(const control of this.root.querySelectorAll<HTMLButtonElement|HTMLInputElement|HTMLSelectElement>('button,input,select'))control.disabled=false;
++      this.saving=false;
++      for(const control of controls)control.disabled=false;
+       this.frame();
+@@ -130,2 +177,47 @@ export class PhotoMode {
+   }
++  private async bringBack(view:PhotoView,blob:Blob){
++    if(blob.size>CHAT_PHOTO_LIMIT){
++      setText(this.get('status'),chatPhotoErrors.too_large);return;
++    }
++    const png=await blob.arrayBuffer();
++    if(this.current!==view||this.visitAllowed?.()===false)return;
++    const host=window.arcadeVisitPhoto;
++    if(!png.byteLength||typeof host?.bringBack!=='function'){
++      setText(this.get('status'),chatPhotoErrors.unavailable);return;
++    }
++    setText(this.get('status'),'Preparing the photo for your chat…');
++    let result:VisitPhotoResult;
++    try{result=await host.bringBack(png);}
++    catch{result={ok:false,reason:'unavailable'};}
++    if(this.current!==view||this.visitAllowed?.()===false)return;
++    if(result?.ok===true){
++      this.returnAccepted=true;
++      setText(this.get('status'),'Returning to your chat…');
++    }else{
++      const reason=result?.reason;
++      setText(this.get('status'),reason&&Object.hasOwn(chatPhotoErrors,reason)?chatPhotoErrors[reason]:chatPhotoErrors.unavailable);
++    }
++  }
++  private async encodePng(view:PhotoView){
++    const renderer=this.bridge.renderer,size=renderer.getSize(new T.Vector2()),ratio=renderer.getPixelRatio(),pixelLimit=Math.min(renderer.capabilities.maxTextureSize,4096);
++    const dimensions=photoDimensions(innerWidth/innerHeight,Number(this.get<HTMLSelectElement>('size').value),pixelLimit);
++    const factor=Math.min(2,Math.floor(pixelLimit/Math.max(dimensions.width,dimensions.height)));
++    const photoCamera=view.camera.clone() as PhotoCamera;resizeCamera(photoCamera,dimensions.width/dimensions.height);
++    const showResidentNames=this.get<HTMLInputElement>('resident-names').checked;
++    let exportDrawing:ReturnType<typeof createVillageDrawing>|null=null;
++    const canvas=document.createElement('canvas');canvas.width=dimensions.width;canvas.height=dimensions.height;
++    const context=canvas.getContext('2d');if(!context)throw Error('Photo export is unavailable.');
++    try{
++      renderer.setPixelRatio(factor);renderer.setSize(dimensions.width,dimensions.height,false);
++      view.prepare?.(photoCamera,showResidentNames);
++      exportDrawing=createVillageDrawing(renderer,view.scene,photoCamera);
++      exportDrawing.render(view.target,this.mode==='overview');
++      context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(renderer.domElement,0,0,canvas.width,canvas.height);
++    }finally{
++      view.finish?.();exportDrawing?.dispose();renderer.setPixelRatio(ratio);renderer.setSize(size.x,size.y,false);
++      resizeCamera(view.camera,innerWidth/innerHeight);
++    }
++    const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(Error('Photo export failed.')),'image/png'));
++    return {blob,dimensions,factor};
++  }
+ }
 diff --git a/src/client/photo-mode.css b/src/client/photo-mode.css
 index 37ae003931fd121bb03bef8214204195d3d5faf0..2e44da8cc037900e2f2cfbad0c57a04420d83cb8 100644
 --- a/src/client/photo-mode.css
