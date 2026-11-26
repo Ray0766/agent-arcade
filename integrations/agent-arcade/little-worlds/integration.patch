@@ -368,18 +368,25 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..a614b875aadb91c3d2e23932784dfa2f
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..0ec4a3420589089e145442c9b3eb9e1fc0172fe4 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..2757940985809b1fb0eb184492bcba4c4316339b 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
-@@ -1 +1,2 @@
+@@ -1,3 +1,5 @@
 +import {addTownExterior} from './town-exterior.ts';
  import { localizedOption, setAttribute, setText, translate } from './i18n.ts';
-@@ -35,3 +36,3 @@ export interface ColonyBridge {
+ import { makePlacementPreview } from './placement-preview.ts';
++import { createCourtyardInspiration } from './courtyard-inspiration.ts';
+ import { PlacedObjectShadows } from './placed-shadows.ts';
+@@ -35,3 +37,3 @@ export interface ColonyBridge {
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-@@ -67,3 +68,12 @@ export class Colony {
+@@ -59,2 +61,3 @@ export class Colony {
+   private loadWorkshop: () => Promise<Workshop>;
++  private readonly courtyardInspiration: ReturnType<typeof createCourtyardInspiration>;
+   private localParts: Record<string,PartPlacement[]> = {};
+@@ -67,3 +70,15 @@ export class Colony {
      const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
 -    el('build-mode').after(workshopButton);
 +    const addCourtyardFlower=document.createElement('button');
@@ -387,22 +394,31 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..0ec4a3420589089e145442c9b3eb9e1f
 +    addCourtyardFlower.hidden=true;
 +    setText(addCourtyardFlower,'Place a courtyard flower pot');
 +    el('build-mode').after(addCourtyardFlower,workshopButton);
++    this.courtyardInspiration=createCourtyardInspiration(addCourtyardFlower,kind=>{
++      if(!this.startCourtyardPlacement(kind))return;
++      this.courtyardInspiration.close();
++      bridge.canvas.focus({preventScroll:true});
++    });
 +    addCourtyardFlower.onclick=()=>{
-+      if(!this.canPlaceCourtyardFlower()||!this.syncing||this.busy||!this.discardPlacement())return;
-+      this.setBuilding(true);
-+      this.startPlacement('flowers');
++      this.startCourtyardPlacement('flowers');
 +    };
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
-@@ -89,3 +99,3 @@ export class Colony {
+@@ -89,3 +104,3 @@ export class Colony {
        const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
 -      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
 +      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
      }
-@@ -118,2 +128,13 @@ export class Colony {
+@@ -118,2 +133,19 @@ export class Colony {
    }
-+  private canPlaceCourtyardFlower(){
++  private canArrangeCourtyard(){
 +    const world=this.universe;
 +    return !!world?.currentPlanet.mine&&world.player.flight.mode==='ground'&&world.player.location?.kind!=='interior';
++  }
++  private startCourtyardPlacement(kind: BuildKind) {
++    if (!this.canArrangeCourtyard() || !this.syncing || this.busy || !this.discardPlacement()) return false;
++    this.setBuilding(true);
++    this.startPlacement(kind);
++    return true;
 +  }
 +  private startPlacement(kind:BuildKind){
 +    this.clearDraft();
@@ -412,7 +428,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..0ec4a3420589089e145442c9b3eb9e1f
 +    this.setKitCollapsed(innerWidth<=700);
 +  }
    private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
-@@ -226,3 +247,13 @@ export class Colony {
+@@ -226,3 +258,13 @@ export class Colony {
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -427,7 +443,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..0ec4a3420589089e145442c9b3eb9e1f
 +      }
 +    }finally{this.pollBusy=false;}
    }
-@@ -277,3 +308,6 @@ export class Colony {
+@@ -277,3 +319,6 @@ export class Colony {
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
@@ -435,11 +451,12 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..0ec4a3420589089e145442c9b3eb9e1f
 +    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
 +    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
-@@ -340,2 +374,5 @@ export class Colony {
+@@ -340,2 +385,6 @@ export class Colony {
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
 +    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
-+    courtyardFlower.hidden=!this.canPlaceCourtyardFlower();
++    courtyardFlower.hidden=!this.canArrangeCourtyard();
 +    courtyardFlower.disabled=this.busy||!this.syncing;
++    this.courtyardInspiration.update(!courtyardFlower.hidden,!courtyardFlower.disabled);
      el<HTMLButtonElement>('open-workshop').hidden=!p.mine||u.player.flight.mode!=='ground';el<HTMLButtonElement>('open-workshop').disabled=this.busy||!this.syncing;
 diff --git a/src/client/flight.css b/src/client/flight.css
 index e56a89e92190efaab22096861abb75c51ac8688a..044eb69124dbd394fcdf96bfbdd5145f969e5101 100644
@@ -827,28 +844,30 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b629b9dce1c96e1e378fe2914c85352f
 +    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');bothouseResidents.animate(0,walker.up.toArray() as Vec3,photo,false);residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
    },notice,
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..aad811ec2c14fcc94cac02e0566828976911d6f9 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..3055602c69b20a71156bfeaa40b4ef4b708a4ce2 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
-@@ -2,4 +2,6 @@
- // Saved names, IDs, resource snapshots and server payloads are not translated.
+@@ -3,2 +3,4 @@
  export const messages: Record<string, string> = {
 +  'This friend’s planet is unavailable.': '暂时无法拜访这位好友的星球。',
 +  'You are on your friend’s planet.': '已到达好友的星球。',
    'Show kit': '展开建造工具',
-   'Hide kit': '收起建造工具',
-@@ -1032,4 +1034,5 @@ export const messages: Record<string, string> = {
-   "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
+@@ -1033,2 +1035,11 @@ export const messages: Record<string, string> = {
    "Make this my planet": "认领这颗星球",
 +  "Place a courtyard flower pot": "在院落放花盆",
++  "Courtyard inspiration": "院落布置灵感",
++  "Close courtyard inspiration": "关闭院落布置灵感",
++  "Leave the stone path clear. Choose one object to preview it before placing it.": "留出石板路。点一件物品，先预览再放置。",
++  "A flower pot and lantern beside the stone path, with a bench across the path.": "花盆和灯在石板路一侧，长椅在另一侧。",
++  "Lantern": "庭院灯",
++  "Set it on the grass beside the path entrance.": "放在路口旁的草地上。",
++  "Set it farther along the same side, leaving room to walk.": "沿同一侧往里放，留出行走空间。",
++  "Set it opposite the lantern, facing the path.": "放在灯的对面，朝向石板路。",
    "Build on my planet": "在我的星球建造",
-   "Mark my planet ↗": "标记我的星球 ↗",
-@@ -1234,4 +1237,5 @@ export const messages: Record<string, string> = {
- // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
+@@ -1235,2 +1246,3 @@ export const messages: Record<string, string> = {
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
-   ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
 diff --git a/src/client/public-town-art.ts b/src/client/public-town-art.ts
 index e31b823b5a69a8875885e1cde20d0b3ecb36b77b..2c01445b7080b652b279186f4250be714ecedaf0 100644
 --- a/src/client/public-town-art.ts

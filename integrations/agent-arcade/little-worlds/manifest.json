@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "763c0250d4353935f1ce7c6394c4427504fe606d",
-  "worldTree": "af03226c0fc5b5e9c416281b8de453d16d3a28ab",
-  "patchSHA256": "b80cdf34db40df9ce85262a08b76cb9209079e16246f68d68a2a0f2fe26ae713",
+  "worldRevision": "ef4a97c9b4c2975ec670b4cd065914d66e19c436",
+  "worldTree": "b382fe3abd3b0acd61cbb1fe14deca6fcbe79724",
+  "patchSHA256": "1ef2d4275787a07da6dd81c4e60a78e8fbba7f24291fd878b976570d8a1a0b3e",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -177,6 +177,12 @@
       "path": "spec/window-boxes.test.ts",
       "blob": "e2c9149c3359a564244b0bb979827c672eddaa71",
       "sha256": "4a044e22b82510b253257c47d13541a876159c4205584ed481627982b614c688"
+    },
+    {
+      "action": "A",
+      "path": "src/assets/courtyard-inspiration.webp",
+      "blob": "3321f15bdc5b7689473957566d30e0c1befdb484",
+      "sha256": "ca42e181c93dcefa9844457d5a01fc8e8d44767c174c50c596d1efa77c3937b2"
     },
     {
       "action": "A",
@@ -475,8 +481,20 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "0ec4a3420589089e145442c9b3eb9e1fc0172fe4",
-      "sha256": "04d240ab1afd990a72a72358c8c874ee14679eb2dd45898d42f3601d68e26603"
+      "blob": "2757940985809b1fb0eb184492bcba4c4316339b",
+      "sha256": "e9db9ed01e6b90d20579941dc4a6ac19d334f61470314097739b062d5b9ffeeb"
+    },
+    {
+      "action": "A",
+      "path": "src/client/courtyard-inspiration.css",
+      "blob": "c64e2e289d70370ca339dfedb5563699a0071f27",
+      "sha256": "fc4e5565affb7e7df1693eaf0ec8a0f2af9dd04209841c289aac9256906bc0da"
+    },
+    {
+      "action": "A",
+      "path": "src/client/courtyard-inspiration.ts",
+      "blob": "167d266c8a6dd078a0f8a112bda0b079733141ab",
+      "sha256": "f7542f2ba2e3e820869165f108b90ca8f5390aead3e814f655ed3a39b1b19f0d"
     },
     {
       "action": "M",
@@ -535,8 +553,8 @@
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "aad811ec2c14fcc94cac02e0566828976911d6f9",
-      "sha256": "3ea346883bcb1a112925583bb522010b203309ad5d65eb1c566193eab9ebccea"
+      "blob": "3055602c69b20a71156bfeaa40b4ef4b708a4ce2",
+      "sha256": "98c9e351fd21a09f6ff8330f2fcf230244e0f3e14d33a406fd74596605a8c597"
     },
     {
       "action": "A",

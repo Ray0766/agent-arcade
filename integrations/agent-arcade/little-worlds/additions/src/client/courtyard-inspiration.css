@@ -1,0 +1,42 @@
+#courtyard-inspiration {
+  width: min(790px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  padding: clamp(16px, 3vw, 24px);
+}
+#courtyard-inspiration header { padding-inline-end: 42px; }
+#courtyard-inspiration h2 { margin: 0 0 6px; }
+#courtyard-inspiration header p { margin: 0 0 16px; line-height: 1.5; }
+#courtyard-inspiration .close { min-width: 44px; min-height: 44px; }
+body:has(#courtyard-inspiration[open]) #menu-dialog { visibility: hidden; }
+body:has(#courtyard-inspiration[open]) #menu-dialog::backdrop { background: transparent; }
+.courtyard-inspiration-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+.courtyard-inspiration-layout img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.courtyard-inspiration-items { display: grid; gap: 8px; }
+.courtyard-inspiration-items button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: var(--ui-choice);
+  color: var(--ui-dialog-text);
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 6px;
+  text-align: start;
+}
+.courtyard-inspiration-items button:hover:not(:disabled) { background: var(--ui-selected); }
+.courtyard-inspiration-items span { font-size: 12px; line-height: 1.45; }
+@media (max-width: 620px) {
+  .courtyard-inspiration-layout { grid-template-columns: 1fr; gap: 12px; }
+}
