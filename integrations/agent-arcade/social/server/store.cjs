@@ -477,9 +477,11 @@ class SocialStore {
       voice?{type:'voice',mime:'audio/wav',...voice}:file&&{type:'file',...file};
     const webResults=!r.removed&&r.nonce.startsWith('ai-reply-')&&
       this.one('SELECT sources FROM message_web_results WHERE message=?',r.id)?.sources;
+    const recalled=r.removed&&this.one('SELECT 1 FROM recalled_message_text WHERE message=?',r.id);
     return {id:r.id, conversationId:r.chat, sender:this.messagePerson(r.sender), clientId:r.nonce,
+      ...(recalled&&{recalled:true}),
       ...(webResults&&{webResults:JSON.parse(webResults)}),
-      text:r.removed ? '[已移除]' : image?(drawing!==null?'[AI 绘图]':label?'[表情图]':'[图片]'):voice?'[语音]':file?'[文件] '+file.name:r.body,
+      text:r.removed ? (recalled?'[已撤回]':'[已移除]') : image?(drawing!==null?'[AI 绘图]':label?'[表情图]':'[图片]'):voice?'[语音]':file?'[文件] '+file.name:r.body,
       createdAt:r.created, removed:Boolean(r.removed),
       ...(aiReply && {aiReply}), ...(task&&{task}),
       ...(!r.removed&&pictureQuestion&&{imageQuestion:{image:pictureQuestion.image,role:this.user(pictureQuestion.ai)}}),
@@ -757,17 +759,20 @@ class SocialStore {
     // removal is then reflected in the bodies or picked up on the next poll.
     let moderation;
     if (params.has('removedAfter')) {
-      let cursor, removedIds = [];
+      let cursor, removedIds = [], recalledIds = [];
       if (params.get('removedAfter') === 'latest') {
         cursor = this.one('SELECT coalesce(max(id),0) AS cursor FROM message_removals WHERE chat=? AND message>?',id,chat.since).cursor;
       } else {
         const after = integer('removedAfter',0,0,Number.MAX_SAFE_INTEGER);
-        const events = this.all('SELECT id,message FROM message_removals WHERE chat=? AND id>? AND message>? ORDER BY id LIMIT 100',
+        const events = this.all(`SELECT r.id,r.message,t.message IS NOT NULL AS recalled FROM message_removals r
+          LEFT JOIN recalled_message_text t ON t.message=r.message
+          WHERE r.chat=? AND r.id>? AND r.message>? ORDER BY r.id LIMIT 100`,
           id,after,chat.since);
         cursor = events.at(-1)?.id ?? after;
         removedIds = events.map(event => event.message);
+        recalledIds = events.filter(event=>event.recalled).map(event=>event.message);
       }
-      moderation = {cursor,removedIds,historyFloor:chat.since,membershipRevision:chat.membershipRevision};
+      moderation = {cursor,removedIds,...(recalledIds.length&&{recalledIds}),historyFloor:chat.since,membershipRevision:chat.membershipRevision};
     }
     const rows = this.all('SELECT * FROM messages WHERE chat=? AND id>? AND id<? ORDER BY id ' + (forward ? 'ASC' : 'DESC') + ' LIMIT ?',id,start,end,limit);
     const messages = (forward ? rows : rows.reverse()).map(r => this.message(r));
@@ -822,8 +827,42 @@ class SocialStore {
       {id:row.id,name:row.name,text:row.text}]));
     return messages.map(message=>quotes.has(message.id)?{...message,quote:quotes.get(message.id)}:message);
   }
+  messageRecallSource(a,id,message,{expectedAccount,revision}){
+    if(expectedAccount!==a)fail(409,'recall_session','账号或会话权限已变更，请重新打开会话');
+    const chat=this.writableChat(a,id);
+    if(revision!==chat.membershipRevision)fail(409,'recall_session','账号或会话权限已变更，请重新打开会话');
+    if(this.user(a).kind!=='human'||chat.type==='direct'&&this.user(chat.first_user===a?chat.second_user:chat.first_user).kind!=='human')
+      fail(403,'recall_unavailable','此会话不支持撤回文字消息');
+    const source=Number.isSafeInteger(message)&&this.one(
+      'SELECT * FROM messages WHERE chat=? AND sender=? AND id=? AND id>?',id,a,message,chat.since);
+    if(!source)fail(404,'unknown_message','没有找到该消息');
+    return source;
+  }
+  recallMessage(a,id,message,body){
+    const source=this.messageRecallSource(a,id,message,body);
+    if(!source.removed){
+      const view=this.message(source);
+      if(!source.body.trim()||view.attachment||view.task||view.imageQuestion)
+        fail(403,'recall_unavailable','仅支持撤回本人发送的普通文字消息');
+      this.run('INSERT INTO recalled_message_text(message,body) VALUES(?,?)',message,source.body);
+      this.run("UPDATE messages SET removed=1,body='' WHERE id=?",message);
+      source.removed=1;
+      source.body='';
+    }
+    const recalledMessage=this.message(source);
+    if(!recalledMessage.recalled)fail(404,'unknown_message','没有找到该消息');
+    return {recalledMessage};
+  }
+  recalledMessageText(a,id,message,body){
+    this.messageRecallSource(a,id,message,body);
+    const row=this.one('SELECT body AS text FROM recalled_message_text WHERE message=?',message);
+    if(!row)fail(404,'unknown_message','没有找到该消息');
+    return row;
+  }
   send(a,id,body,onInsert) {
     const chat = this.writableChat(a,id);
+    if(body.membershipRevision!==undefined&&body.membershipRevision!==chat.membershipRevision)
+      fail(409,'recall_session','账号或会话权限已变更，请重新打开会话');
     if (typeof body.clientId !== 'string' || !/^[a-zA-Z0-9_-]{8,100}$/.test(body.clientId)) fail(400,'client_id','消息重试编号无效');
     // Only a trusted AI sender may add a brief delivery note to the original reply.
     const text = string(body.text,body.text?.length>4000&&this.user(a).kind==='ai'?4096:4000,'消息');

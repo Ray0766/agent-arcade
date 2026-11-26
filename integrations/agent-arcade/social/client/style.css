@@ -126,6 +126,10 @@ dialog:has(.ai-role-library) #dialog-body > button {
 .bubble .meta{display:flex;align-items:center;gap:3px;color:var(--muted);font-size:.72rem;overflow-wrap:anywhere}.bubble.mine .meta{justify-content:flex-end;text-align:right}
 .message-action-trigger{min-width:36px;min-height:30px;padding:0 .28rem;line-height:1;color:var(--muted);font-size:1.12rem;font-weight:700}
 .message-action-trigger:hover,.message-action-trigger[aria-expanded=true]{color:var(--plum);background:var(--select)}
+.message-recalled{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;padding:.36rem 0;color:var(--muted);font-size:.84rem}
+.bubble.mine .message-recalled{justify-content:flex-end}
+.recall-editor label{display:grid;gap:.4rem}
+.recall-editor textarea{width:100%;resize:vertical}
 .bubble .body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.57;background:var(--paper);padding:.58rem .8rem;border-radius:4px 14px 14px 14px}.bubble.mine .body{background:var(--tint);border-radius:14px 4px 14px 14px}
 .composer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:end;gap:8px;background:var(--paper);border-top:1px solid var(--line);padding:11px clamp(11px,3vw,38px) max(11px,env(safe-area-inset-bottom))}.composer:has(#composer-media[hidden]){grid-template-columns:minmax(0,1fr) auto}.composer textarea{resize:vertical;max-height:135px;background:var(--wash);border-color:var(--line)}.composer .feedback{grid-column:1/-1}
 .composer-media{display:flex;gap:2px}.composer-media button{border-color:transparent;padding-inline:.55rem}.composer-media button:hover{background:var(--select)}
