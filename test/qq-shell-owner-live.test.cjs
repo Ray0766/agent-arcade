@@ -1,7 +1,7 @@
 'use strict';
 // Actual Windows processes. Synthetic prepared metadata; no QQ implementation.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process');
-const {fixture,hash,same}=require('./helpers/qq-shell-owner-live-fixture.cjs');
+const {fixture,hash,same,privateControl}=require('./helpers/qq-shell-owner-live-fixture.cjs');
 const options={skip:process.platform!=='win32',timeout:180000};
 function retained(f,marker,lock){assert(fs.readFileSync(f.marker).equals(marker));if(lock)assert(fs.readFileSync(f.selection.lockFile).equals(lock));assert.equal(fs.readFileSync(path.join(f.descriptor.qqDataDir,'sentinel'),'utf8'),'DATA_UNCHANGED');}
 async function absent(f,rows){assert.equal((await f.observer.inspect(rows.map(x=>x.pid))).length,0);}
@@ -15,9 +15,10 @@ test('real same-manager marker-blocked tree stops once without changing the upda
  await finish(t,f);
 });
 test('real crashed manager leaves surviving launcher and child: explicit adopt then separate stop',options,async t=>{
- const f=await fixture(t,{detached:true}),w=await f.worker();assert.equal(w.ready.leaseVersion,2);const before=JSON.parse(fs.readFileSync(f.leasePath)),marker=f.addMarker(),lock=f.addDeadComponentLock(w.proof);await w.crash();const live=await f.observer.inspect(w.ready.rows.map(x=>x.pid));assert.equal(live.length,2,'must exercise surviving tree, never accept dead clear instead');
+ const f=await fixture(t,{detached:true}),w=await f.worker();assert.equal(w.ready.leaseVersion,2);const before=JSON.parse(fs.readFileSync(f.leasePath)),marker=f.addMarker(),lock=f.addDeadComponentLock(w.proof);
+ const control=await privateControl(f,{worker:w});await w.crash();const live=await f.observer.inspect(w.ready.rows.map(x=>x.pid));assert.equal(live.length,2,'must exercise surviving tree, never accept dead clear instead');
  const next=f.reload(),observation=await next.manager.inspectOwnerControl(f.config.expectedQQ);assert.equal(observation.row.canRecover,true);assert.equal(observation.row.canStart,false);assert.equal(next.manager.runs.size,0);const adopted=await next.manager.recover(f.config.expectedQQ);assert.equal(adopted.recovery,'adopted');assert.equal(adopted.canStop,true);assert.equal(adopted.canStart,false);const after=JSON.parse(fs.readFileSync(f.leasePath));assert.deepEqual(after.spawnManager,before.spawnManager);assert.deepEqual(after.binding,before.binding);assert.notEqual(after.token,before.token);assert.equal((await f.observer.inspect(live.map(x=>x.pid))).length,2);retained(f,marker,lock);
- const stopped=await next.manager.stop(f.config.expectedQQ);assert.equal(stopped.management,'stopped');assert.equal(stopped.canStart,false);await absent(f,live);assert.equal(fs.existsSync(f.leasePath),false);retained(f,marker,lock);await finish(t,f);
+ const stopped=await next.manager.stop(f.config.expectedQQ);assert.equal(stopped.management,'stopped');assert.equal(stopped.canStart,false);await absent(f,live);assert.equal(fs.existsSync(f.leasePath),false);retained(f,marker,lock);assert(same((await f.observer.inspect([control.pid]))[0],control));await finish(t,f);
 });
 test('default production launch after manager exit leaves an incomplete tree and refuses adoption',options,async t=>{
  const f=await fixture(t),w=await f.worker(),marker=f.addMarker();await w.crash();const live=await f.observer.inspect(w.ready.rows.map(x=>x.pid)),lease=fs.readFileSync(f.leasePath),root=JSON.parse(lease).runtime;assert.equal(live.length,1,'records actual default launch lifetime, not detached lifetime');assert.equal(live.some(x=>x.pid===root.pid),false,'launcher must be absent for this orphan-child case');const next=f.reload();await assert.rejects(next.manager.recover(f.config.expectedQQ),e=>{f.evidence.defaultOrphanRefusalCode=e.code;return e.code==='orphaned_children';});assert(fs.readFileSync(f.leasePath).equals(lease));assert.equal((await f.observer.inspect(live.map(x=>x.pid))).length,1);retained(f,marker);Object.assign(f.evidence,{leaseRetainedBeforeTestCleanup:true,markerRetainedBeforeTestCleanup:true,productOrphanCleanupExercised:false});
