@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "ef4a97c9b4c2975ec670b4cd065914d66e19c436",
-  "worldTree": "b382fe3abd3b0acd61cbb1fe14deca6fcbe79724",
-  "patchSHA256": "1ef2d4275787a07da6dd81c4e60a78e8fbba7f24291fd878b976570d8a1a0b3e",
+  "worldRevision": "417d6160d929a62c13a437e5f1bfac5f13ce214d",
+  "worldTree": "d0885242a1fc17144d11c6f9b6c4da012695cd2c",
+  "patchSHA256": "24ca50d5767193b4c61862a648483309af6c09bffbaa3088270b921b553f755e",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -451,14 +451,14 @@
     {
       "action": "A",
       "path": "src/client/bothouse-resident-sites.ts",
-      "blob": "d95ca5e6583230b11a975526419b86c7eb646671",
-      "sha256": "7c8bae8bee337ce7743b3da5b6d37fe8f0d7aa588687816d63509b79a9a2c347"
+      "blob": "e8bcc21c1ef8618c691bb50051ac7d6e54ffff54",
+      "sha256": "fecf7e0127e4d645d71d8e650d11be5b4733a86ee4d5093965d5c5ec38dde45d"
     },
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "97cf82ead72c5b301e2ec7dec3ba41f883e2bfb2",
-      "sha256": "8339b615f4c3890cdb14b9edc3610b7181fb125d91e1b3a3281254d378d0e82c"
+      "blob": "dc68dc9fd2c102f4dfda34d2052eac143cb7e18a",
+      "sha256": "16feddb620ba1b83d5ad5229b0391bc488a61aa5b9808731afe1a61b1650be86"
     },
     {
       "action": "A",
@@ -481,8 +481,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "2757940985809b1fb0eb184492bcba4c4316339b",
-      "sha256": "e9db9ed01e6b90d20579941dc4a6ac19d334f61470314097739b062d5b9ffeeb"
+      "blob": "7863627dff74413987e8da3a602b979d1fd02834",
+      "sha256": "d3145a680eb70842745f04a73a6990dc9078e2e4e006ff4a80133a33fb3d12b1"
     },
     {
       "action": "A",
@@ -547,14 +547,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "b629b9dce1c96e1e378fe2914c85352fcb2228ac",
-      "sha256": "807b53ed331ffacae777c0e132883ff9a3da68c30f659c4e029cb7e5eceeb673"
+      "blob": "1368ac78278b493493e8080ebf69085893f4590e",
+      "sha256": "341a3ffdd67d5fc88909023db813961696fb02c8aab9cf458e50e745fbc84d46"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "3055602c69b20a71156bfeaa40b4ef4b708a4ce2",
-      "sha256": "98c9e351fd21a09f6ff8330f2fcf230244e0f3e14d33a406fd74596605a8c597"
+      "blob": "d9735c9227aad96f9bcf6ed644dcf074336fe561",
+      "sha256": "655b8bbcd35a2b4e1b08932dca894431637f42ed10d3df749e05e38a45f11b5f"
     },
     {
       "action": "A",
