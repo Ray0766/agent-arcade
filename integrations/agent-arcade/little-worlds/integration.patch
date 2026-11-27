@@ -1155,7 +1155,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..b1b78bf93bede8bdb78fc6d6dade3056733fc24d 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..d2673b6b4321b360a41e66ccf206c3ea83e09142 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -30,6 +30,9 @@ import { createTutorialRoute } from './tutorial-route.ts';
@@ -1394,7 +1394,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1b78bf93bede8bdb78fc6d6dade3056
 +  const stampVisible = !!stampScope && !flight?.active && !photoPaused && !overview && !colony?.paused &&
 +    !worldGuide.talking && !document.querySelector('dialog[open]') && !homeInterior?.active && !homeInterior?.preparing;
 +  courtyardStampCard.frame(stampScope, stampVisible && garden && groundWorld && standing ? {
-+    planet: garden, world: groundWorld, pose: standing, waterScope: wateringScope, waterHere: watering.canWaterHere,
++    planet: garden, world: groundWorld, pose: standing, waterScope: wateringScope, waterHere: watering.canWaterPotHere,
 +  } : null);
 +  if (measureCamera) renderer.domElement.dataset.visitorWatering = JSON.stringify(watering.snapshot());
 +  visitPhotoButton.hidden=!canTakeVisitPhoto();

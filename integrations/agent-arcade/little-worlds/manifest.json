@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "a67dc2d788b83cfad9021b6f0c64cd2741b396d2",
-  "worldTree": "1e12a5fb372d8aca2bcba100a51c0e03eb779652",
-  "patchSHA256": "98c0e3eb920c1202e28cdeb67c2c59359bc6e3fae4efe806e18f571d5b3d91e2",
+  "worldRevision": "506ac54ff836ab59c54bc93d888e9510d89669eb",
+  "worldTree": "a10bdf307477fae6210daa1d2d95866714efc731",
+  "patchSHA256": "7f547f5deb2e09f731741691f51149d0b326c044a14acb1e0bc12aedf8963692",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -637,8 +637,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "b1b78bf93bede8bdb78fc6d6dade3056733fc24d",
-      "sha256": "b4342f05e2d23c295183db5dcf5b5fe65a9975541610b29ea15bf5068b2efd35"
+      "blob": "d2673b6b4321b360a41e66ccf206c3ea83e09142",
+      "sha256": "e967466b7e9160e30b48ee583dfc384cae4ce68efb01a61c065c459acccd1c6a"
     },
     {
       "action": "M",
@@ -757,8 +757,8 @@
     {
       "path": "src/client/visitor-watering.ts",
       "action": "A",
-      "blob": "3c1b606eeb53158eda88d9ac41fc27f97ba14f4f",
-      "sha256": "bed1a5dc94d790f6533bf0dfec2209ea48cf067feffcb10d408ba44562a5ee25"
+      "blob": "446b6989cc15d3395de6976594b72dca1ee2a1b9",
+      "sha256": "bb0cdb0e1d8af91c50a2dfa3b4b36f271aff41e007061b3b628d5826b21e6303"
     },
     {
       "path": "src/client/watering-tool.ts",
