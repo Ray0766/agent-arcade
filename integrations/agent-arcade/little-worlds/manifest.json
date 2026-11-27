@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "37e90a72a71fea23588842d0417ef8bcca458733",
-  "worldTree": "dce2477ad37ae23f146b0cc5e436c247e7ec91fe",
-  "patchSHA256": "94402fb6e6f71bba56e9cf491b35babdbdd96d106aa2c96dbe182ad01980246e",
+  "worldRevision": "53b0ae43a778cdba923cef7cb99fe5d038aa70f7",
+  "worldTree": "91ca4a3383d78f0269ad6ac23bebd6d28244b2af",
+  "patchSHA256": "50c9d82d0e63cd135f01622902745bcb70962448febfcb093ddd31027a586f41",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -613,14 +613,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "6cb75513bb4a75f5c2e8ff5897ebe2d52e0d45dd",
-      "sha256": "0088adc62e0a06df7895268425103fff033b5a156eabd12a9cb33cd6794ac27b"
+      "blob": "f4722dfddb32f06f19fd7c7d3ca652ad4cc5f233",
+      "sha256": "2d35d42cf6becb44d83b6fefe775b4978b6088a8217d8b07b4e31bcc296e96e3"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920",
-      "sha256": "02ded8106e7ee55083be9ab8b2a508585ee17b0a89d83ec17d31a2761e882c60"
+      "blob": "20e5e7e74441c7e72a4c0963ae427f851cd4a6ea",
+      "sha256": "9af5dc4e7f24ac559d9674b4e4d8a1bae50cb914e44c0d67f701bd7f7deb8f35"
     },
     {
       "action": "A",

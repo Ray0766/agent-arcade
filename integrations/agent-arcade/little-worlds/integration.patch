@@ -1043,7 +1043,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d52e0d45dd 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..f4722dfddb32f06f19fd7c7d3ca652ad4cc5f233 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -30,6 +30,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
@@ -1062,7 +1062,25 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
  import { HomeSetup } from './home-setup.ts';
  import { TeleportStations } from './teleport-station.ts';
  import { SaveProgress } from './save-progress.ts';
-@@ -144,6 +146,9 @@ let residentConversationKey='';
+@@ -91,12 +93,17 @@ const keys = new Set<string>();
+ const joy = new T.Vector2();
+ let state: PlayerState;
+ let initialStateReady=false,welcomeFirstVisit=true,welcomeCommitted=false,qualityApplyPending=false,graphicsLost=false;
++const friendWelcomePlanet=new URLSearchParams(location.search).get('visit');
++let friendWelcomePending=false;
+ const welcomeQualityHost=document.createElement('div');
+ const welcomeQuality=mountQualitySettings(welcomeQualityHost,{compact:true});
+ const welcome=mountWelcome({qualityControl:welcomeQualityHost,onRetry:()=>void startInitialVisit(),onStart:()=>{
+   try{localStorage.setItem(welcomeKey(state),'1');}catch{/* Optional preference, never an identity reset. */}
++  friendWelcomePending=!!friendWelcomePlanet;
+   welcomeQuality.dispose();
+   if(state.appearanceRequired){void characterEntry.start();return;}
++  if(state.flight.mode==='ground'&&state.location?.kind!=='interior'&&state.planetId===friendWelcomePlanet
++    &&!colony?.universe?.currentPlanet.mine)return;
+   notice(state.flight.mode==='space'?'Choose a destination. Takeoff, flight and landing are automatic. Drag to look around. Click a planet to confirm a new destination. Skip waits for preparation; Cancel returns to departure.':state.arrival&&state.quest!=='delivered'?'Follow the village guide to meet Mica. You can skip it at any time.':'A familiar little planet. Welcome back.',6500);
+ }});
+ function readyWelcome(){if(initialStateReady&&!welcomeCommitted){welcomeCommitted=true;welcome.ready({firstVisit:welcomeFirstVisit});}}
+@@ -144,6 +151,9 @@ let residentConversationKey='';
  let queue: Promise<unknown> = Promise.resolve();
  const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
@@ -1072,7 +1090,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
  function renderSaveProgress(){
    if(!state||physicsMismatch)return;
-@@ -268,16 +273,20 @@ function accept(next: PlayerState) {
+@@ -268,16 +278,20 @@ function accept(next: PlayerState) {
    const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
    flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
@@ -1098,7 +1116,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
  }
  function renderTask() {
-@@ -317,6 +326,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+@@ -317,6 +331,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
  setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
  worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
@@ -1106,7 +1124,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
  const practical=createWorldPracticalLights();scene.add(practical.group);
  const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
-@@ -341,7 +351,7 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
+@@ -341,7 +356,7 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
    return point;
  }});
  const villagePolish=createVillagePolish(scene,{surfacePoint});
@@ -1115,7 +1133,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
  function tutorialContext(){
    const u=colony?.universe;if(!u||!state||u.currentPlanet.id!==state.planetId)return null;
    return {universe:u.player===state?u:{...u,player:state},online:online&&colony!.syncing,
-@@ -349,11 +359,15 @@ function tutorialContext(){
+@@ -349,11 +364,24 @@ function tutorialContext(){
      paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
  }
  function frameVillageGuide(){
@@ -1131,11 +1149,20 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
 +    ? {planet,world:groundWorld} : undefined;
 +  const courtyardName=courtyard&&context?.online&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'
 +    &&bothouseResidents.hasCurrentFriendVisit(courtyard.world,state.location?.visitEpoch??0)?courtyard.planet.name:undefined;
++  if(friendWelcomePending&&visible&&context?.ready&&context.online&&planet&&!planet.mine&&planet.id===activePlanet
++    &&planet.id===friendWelcomePlanet&&groundWorld&&state.flight.mode==="ground"&&state.location?.kind!=="interior"
++    &&bothouseResidents.hasCurrentFriendVisit(groundWorld,state.location?.visitEpoch??0)&&standing?.grounded
++    &&!flight?.active&&!sceneLoadingActive()){
++    friendWelcomePending=false;
++    const name=planet.name?.trim();
++    notice(name?`You landed on “${name}”. Open the guide to find the public courtyard or residents.`
++      :'You are on your friend’s planet. Open the guide to find the public courtyard or residents.',6500);
++  }
 +  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard,courtyardName});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
      visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
      homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
-@@ -362,12 +376,15 @@ function frameVillageGuide(){
+@@ -362,12 +390,15 @@ function frameVillageGuide(){
    if(context&&planet&&groundWorld&&walker){
      const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
@@ -1152,7 +1179,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
-@@ -544,6 +561,10 @@ window.addEventListener('keydown',event=> {
+@@ -544,6 +575,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
@@ -1163,7 +1190,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
      event.preventDefault();keys.add(key);target=null;
      if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
    }
-@@ -597,7 +618,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+@@ -597,7 +632,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
  renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
  renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
@@ -1172,7 +1199,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +719,50 @@ async function interact() {
+@@ -698,7 +733,50 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1224,7 +1251,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +785,34 @@ setInterval(async()=>{
+@@ -721,17 +799,34 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1262,7 +1289,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +860,7 @@ function animate(now:number) {
+@@ -779,7 +874,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1271,7 +1298,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -799,6 +880,11 @@ function animate(now:number) {
+@@ -799,6 +894,11 @@ function animate(now:number) {
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
@@ -1283,7 +1310,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +957,7 @@ function animate(now:number) {
+@@ -871,7 +971,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1292,7 +1319,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +994,14 @@ function animate(now:number) {
+@@ -908,11 +1008,14 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1307,7 +1334,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1053,18 @@ function animate(now:number) {
+@@ -964,7 +1067,18 @@ function animate(now:number) {
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
@@ -1327,7 +1354,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1076,24 @@ function animate(now:number) {
+@@ -976,6 +1090,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1352,7 +1379,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1148,17 @@ function ensureColony() {
+@@ -1030,15 +1162,17 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1372,7 +1399,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1179,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1193,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -1413,19 +1440,20 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6cb75513bb4a75f5c2e8ff5897ebe2d5
  async function startInitialVisit(){
    initialStateReady=false;welcomeCommitted=false;welcome.stage('connecting');
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..20e5e7e74441c7e72a4c0963ae427f851cd4a6ea 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
-@@ -1,6 +1,8 @@
+@@ -1,6 +1,9 @@
  // Host-owned UI translations. English source strings are the stable fallback.
  // Saved names, IDs, resource snapshots and server payloads are not translated.
  export const messages: Record<string, string> = {
++  'You are on your friend’s planet. Open the guide to find the public courtyard or residents.': '已到好友的星球，可打开「向导」找公共院落或居民。',
 +  'This friend’s planet is unavailable.': '暂时无法拜访这位好友的星球。',
 +  'You are on your friend’s planet.': '已到达好友的星球。',
    'Show kit': '展开建造工具',
    'Hide kit': '收起建造工具',
    "Your traveller": "我的旅人",
-@@ -219,6 +221,8 @@ export const messages: Record<string, string> = {
+@@ -219,6 +222,8 @@ export const messages: Record<string, string> = {
    "Your home is ready. Walk to its door to enter.": "家已经准备好了，走到门口即可进入。",
    "Could not set up this home.": "暂时无法设置家园。",
    "Photo mode": "照片模式",
@@ -1434,7 +1462,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..28e1802e36cf4c2f4de4f06f9ea4f1e2
    "Back to exploring": "返回探索",
    "Current view": "当前视角",
    "Whole scene": "全景",
-@@ -232,6 +236,13 @@ export const messages: Record<string, string> = {
+@@ -232,6 +237,13 @@ export const messages: Record<string, string> = {
    "Drag to orbit. Your world stays as you left it.": "拖动环绕取景，世界保持原样。",
    "Rendering your photo\u2026": "正在生成照片…",
    "Photo saved. Keep exploring or try another view.": "照片已保存，可以继续探索或换个角度。",
@@ -1448,7 +1476,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..28e1802e36cf4c2f4de4f06f9ea4f1e2
    "Could not open photo mode.": "暂时无法进入照片模式。",
    "Photo export is unavailable.": "当前无法导出照片。",
    "Photo export failed.": "照片导出失败。",
-@@ -1031,6 +1042,17 @@ export const messages: Record<string, string> = {
+@@ -1031,6 +1043,17 @@ export const messages: Record<string, string> = {
    "A little world awaits": "一颗小星球在等你",
    "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
    "Make this my planet": "认领这颗星球",
@@ -1466,7 +1494,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..28e1802e36cf4c2f4de4f06f9ea4f1e2
    "Build on my planet": "在我的星球建造",
    "Mark my planet ↗": "标记我的星球 ↗",
    "Try a delivery": "体验投递任务",
-@@ -1172,6 +1194,26 @@ export const messages: Record<string, string> = {
+@@ -1172,6 +1195,26 @@ export const messages: Record<string, string> = {
    "Saving your change…": "正在保存改动…",
    "Connection lost. Building is paused.": "连接已断开，建造已暂停。",
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
@@ -1493,15 +1521,16 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..28e1802e36cf4c2f4de4f06f9ea4f1e2
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
    "Saving…": "正在保存…",
    "Save changes": "保存改动",
-@@ -1233,6 +1275,7 @@ export const messages: Record<string, string> = {
+@@ -1233,6 +1276,8 @@ export const messages: Record<string, string> = {
  
  // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
++  ['You landed on “{0}”. Open the guide to find the public courtyard or residents.', '已到「{0}」，可打开「向导」找公共院落或居民。'],
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
    ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
    ["{0} · Your saved home","{0} · 你保存的家园"], ["{0} · Public starport","{0} · 公共星港"], ["{0} · Visit only · building belongs to its owner","{0} · 可参观，建筑由主人管理"], ["{0} · An unclaimed world to explore","{0} · 可探索的未认领星球"],
-@@ -1293,6 +1336,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1293,6 +1338,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
      "Turn: {0}°",
      "朝向：{0}°"
    ],
