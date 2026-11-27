@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "bd6ea7a07a95af3ed1bf3c467e5c1b77a95b8a2e",
-  "worldTree": "f2a6b415470171e18618669b53556bde1273d275",
-  "patchSHA256": "151278fdfe393fcb2b985b6ba5c989d048a5560b8f4bc6097ce2000621c2da21",
+  "worldRevision": "8e0d661aeb38ceb7e8675a5c56d67a500e846215",
+  "worldTree": "6596215c66f2c2b6a99a176161d1abc06d66d9d7",
+  "patchSHA256": "0f80f8e6ea9d5e98b23e3b82451e0334e6d0f6a6ca65661032fa01f6c2006e95",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -193,8 +193,8 @@
     {
       "action": "M",
       "path": "spec/guide-interaction.test.ts",
-      "blob": "0b8075cbf1ad03e99e9bcb5d43d02c256131269b",
-      "sha256": "bf17ac96efe675beff42d88799a2c9883a43105ee744d751555a5bcc4729c778"
+      "blob": "0bb862231fbe008ffa4dd4c7935c3aed6be129d5",
+      "sha256": "113c7ea2a6b50c9148d525a7eb2ee21336bc2bfa3e89c6d54604a5055120e27e"
     },
     {
       "action": "M",
@@ -547,8 +547,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "c82eb022be1dc62767abe6df9a3ecadd7725af59",
-      "sha256": "e9ea1ee4f75c08a59644692d4efcaa43342d8cb30a06abdced7d232241250794"
+      "blob": "d6adcd895cc9da54a7287ab44e03bcb0fb397998",
+      "sha256": "7daa12b4896a7d7265d3057a886ac04a5435382a23cace0872f01f793ed69484"
     },
     {
       "action": "A",
@@ -775,8 +775,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "612dcf308581b61e009081819d9a602fa42a3484",
-      "sha256": "c1b27aa995a373b0a27d4372ad13e948a5794132d32075ebda5b61650696b7d4"
+      "blob": "f3782ed473efa789704b2e9f255dee9288f539b7",
+      "sha256": "d164d4c039040e0fe6b917ba89c0094edeaa9ea85d5bf21dd0a66fb8f6c20421"
     },
     {
       "action": "A",

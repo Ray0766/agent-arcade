@@ -11,7 +11,7 @@ import { ResidentBodySettings } from './resident-body-settings.ts';
 import { landingSites, nearbyDoorstepFlower, residentWalkEnd } from './bothouse-resident-sites.ts';
 import { planResidentBench, type ResidentBenchPlan } from './resident-bench-rest.ts';
 import { distance } from '../shared/world.ts';
-import type { ResidentGuideEntry } from './resident-guide-target.ts';
+import type { ResidentGuideRow } from './world-guide.ts';
 
 type Resident = PlanetResident & Parameters<typeof residentPortrait>[1];
 type Portrait = ReturnType<typeof residentPortrait>;
@@ -268,7 +268,7 @@ export class BothouseResidents {
   private frustum=new T.Frustum();
   private projection=new T.Matrix4();
   private rosterSize:number|null=null;
-  private publicRoster: Pick<PlanetResident, 'id' | 'displayName'>[] = [];
+  private publicRoster: Pick<PlanetResident, 'id' | 'displayName' | 'activity'>[] = [];
   private bounds=new T.Sphere(new T.Vector3(),1.5);
   private figures=new Map<string,ResidentFigure>();
   private benchIds: string[] = [];
@@ -330,12 +330,14 @@ export class BothouseResidents {
   hasApprovedVisit(world: GroundWorld) {
     return world === this.visitorWorld && this.visitorAllowed;
   }
-  guideRoster(world: GroundWorld, epoch: number): ResidentGuideEntry[] {
+  guideRoster(world: GroundWorld, epoch: number): ResidentGuideRow[] {
     if (world !== this.visitorWorld || !this.friendVisitAllowed || !this.closure.hidden ||
         this.visit !== world.planetId+'/'+epoch+'/'+world.revision) return [];
-    return this.publicRoster.map(({ id, displayName }) => {
+    const language = zh() ? 1 : 0;
+    return this.publicRoster.map(({ id, displayName, activity }) => {
       const motion = this.figures.get(id)?.motion;
-      return { id, name: displayName, pose: motion?.valid ? motion.pose : null };
+      const activityLabel = activity === 'working' || activity === 'idle' ? actions[activity][language] : undefined;
+      return { id, name: displayName, pose: motion?.valid ? motion.pose : null, activityLabel };
     });
   }
   private greetingDistance(figure: ResidentFigure, viewer: T.Vector3, camera: T.Camera) {
@@ -518,7 +520,7 @@ export class BothouseResidents {
       }
       this.summary.replaceChildren(...cards);this.summary.hidden=!cards.length;
       this.rosterSize=residents.length;
-      this.publicRoster=residents.map(({id,displayName})=>({id,displayName}));
+      this.publicRoster=residents.map(({id,displayName,activity})=>({id,displayName,activity}));
     }catch{
       if(request!==this.request)return;
       this.clear();
