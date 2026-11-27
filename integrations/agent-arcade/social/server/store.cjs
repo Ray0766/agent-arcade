@@ -742,23 +742,31 @@ class SocialStore {
     const cursor=params.get('before');
     if(cursor!==null&&!isPostId(cursor))fail(400,'cursor','消息位置无效');
     const before=cursor===null?Number.MAX_SAFE_INTEGER:Number(cursor),limit=20;
+    const canReadVideo=this.user(account).kind==='human';
     const rows=this.all(`WITH searchable AS (
-      SELECT m.id,m.chat,m.sender,m.created,coalesce(f.name,m.body) AS text,
-        CASE WHEN f.message IS NOT NULL THEN 'file' END AS attachmentKind
+      SELECT m.id,m.chat,m.sender,m.created,coalesce(video.name,f.name,m.body) AS text,
+        CASE WHEN video.message IS NOT NULL THEN 'video' WHEN f.message IS NOT NULL THEN 'file' END AS attachmentKind,
+        CASE WHEN video.message IS NOT NULL THEN m.body END AS videoLabel,
+        video.mime,video.duration_ms AS durationMs
       FROM members viewer CROSS JOIN messages m
       LEFT JOIN message_files f ON f.message=m.id AND m.body=''
+      LEFT JOIN message_videos video ON video.message=m.id
       WHERE viewer.account=? AND m.chat=viewer.chat AND m.id>viewer.since AND m.id<? AND m.removed=0
         AND NOT EXISTS (SELECT 1 FROM message_voices v WHERE v.message=m.id)
+        AND (video.message IS NULL OR (video.bytes IS NOT NULL AND ?))
     ), hits AS MATERIALIZED (
-      SELECT * FROM searchable WHERE instr(lower(text),lower(?))>0 ORDER BY id DESC LIMIT ?
+      SELECT * FROM searchable
+      WHERE instr(lower(text),lower(?))>0 OR instr(lower(videoLabel),lower(?))>0
+      ORDER BY id DESC LIMIT ?
     )
     SELECT h.id,h.chat AS chatId,c.type AS chatType,coalesce(r.remark,peer.name,c.title) AS chatTitle,
-      peer.number AS peerNumber,h.text,h.attachmentKind,h.created AS createdAt,u.name AS sender
+      peer.number AS peerNumber,h.text,h.attachmentKind,h.created AS createdAt,u.name AS sender,h.mime,h.durationMs
     FROM hits h JOIN chats c ON c.id=h.chat JOIN users u ON u.number=h.sender
     LEFT JOIN users peer ON c.type='direct' AND peer.number=CASE WHEN c.first_user=? THEN c.second_user ELSE c.first_user END
     LEFT JOIN friend_remarks r ON r.account=? AND r.friend=peer.number
-    ORDER BY h.id DESC`,account,before,query,limit+1,account,account);
-    const results=rows.slice(0,limit);
+    ORDER BY h.id DESC`,account,before,Number(canReadVideo),query,query,limit+1,account,account);
+    const results=rows.slice(0,limit).map(({mime,durationMs,...hit})=>
+      hit.attachmentKind==='video'?{...hit,mime,durationMs}:hit);
     return {results,next:rows.length>limit?results.at(-1).id:null};
   }
   history(a,id,params) {
