@@ -2126,6 +2126,7 @@ function showMessageActions(id,control){
   $('#copy-message').hidden=!!row.attachment;
   $('#forward-own-photo').hidden=!membershipRevision||conversation?.friendRemoved||!isOwnPhoto(row,user?.number);
   $('#forward-own-file').hidden=!membershipRevision||conversation?.friendRemoved||!isOwnFile(row,user?.number);
+  $('#forward-received-video').hidden=!canForwardReceivedVideo(row);
   const select=$('#select-messages');
   if(select)select.hidden=!messageSelectionBar||!canSelectMessage(row);
   const favorite=$('#save-message-sticker');
@@ -2239,17 +2240,28 @@ $('#forward-own-photo').addEventListener('click',()=>{
 function isOwnFile(row,account){
   return Boolean(account&&!row?.removed&&row?.sender?.number===account&&row.sender.kind==='human'&&row.attachment?.type==='file');
 }
+function canForwardReceivedVideo(row){
+  return canSendChatVideo(conversation)&&!row?.removed&&row?.attachment?.type==='video'&&
+    row.conversationId===chat&&row.sender.kind==='human'&&row.sender.number!==user.number;
+}
 $('#forward-own-file').addEventListener('click',()=>{
   const row=resolveMessageAction();
   if(!isOwnFile(row,user?.number)||conversation?.friendRemoved||!membershipRevision)return;
   messageActions.hidePopover();
   showForwardPicker(row);
 });
+$('#forward-received-video').addEventListener('click',()=>{
+  const row=resolveMessageAction();
+  if(!canForwardReceivedVideo(row))return;
+  messageActions.hidePopover();
+  showForwardPicker(row);
+});
 function showForwardPicker(singleMessage,{onCancel}={}){
   const selection=messageSelection,source=chat,sourceRevision=membershipRevision,account=user.number,epoch=generation;
   const file=singleMessage?.attachment?.type==='file';
-  const photo=!file&&Boolean(singleMessage);
-  const kind=file?'file':photo?'photo':undefined;
+  const video=singleMessage?.attachment?.type==='video';
+  const photo=!file&&!video&&Boolean(singleMessage);
+  const kind=video?'video':file?'file':photo?'photo':undefined;
   const ids=singleMessage?[singleMessage.id]:Array.from(selection?.ids??[]).sort((a,b)=>a-b);
   if(selection?.unavailable)return;
   if(!ids.length||!sourceRevision)return;
@@ -2258,8 +2270,8 @@ function showForwardPicker(singleMessage,{onCancel}={}){
     return;
   }
   const panel=el('div',null,'forward-panel');
-  const scope=openDialog(file?'转发文件':photo?'转发照片':'转发消息',[panel],source);
-  const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&chat===source&&
+  const scope=openDialog(video?'转发短视频':file?'转发文件':photo?'转发照片':'转发消息',[panel],source);
+  const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&user?.number===account&&chat===source&&
     membershipRevision===sourceRevision&&messageSelection===selection;
   let confirming=false;
   const cancelPicker=()=>{
@@ -2269,9 +2281,11 @@ function showForwardPicker(singleMessage,{onCancel}={}){
     closeDialog();
   };
   if(kind)forwardPickerDismiss=cancelPicker;
+  if(video)dialogMessage={chatId:source,messageId:singleMessage.id};
   function choose(selectedTarget){
+    if(video)clearDialogResources();
     const targets=conversations.filter(item=>{
-      if(item.friendRemoved||photo&&item.id===source)return false;
+      if(item.friendRemoved||(photo||video)&&item.id===source)return false;
       const allHuman=item.members.every(member=>member.kind==='human');
       return item.type==='group'?(!kind||allHuman):item.type==='direct'&&item.members.length===2&&allHuman;
     });
@@ -2313,7 +2327,10 @@ function showForwardPicker(singleMessage,{onCancel}={}){
     if(targets.length){
       panel.replaceChildren(form);
       select.focus();
-    }else panel.replaceChildren(el('p',photo?'暂无其他可接收照片的真人好友或全真人群聊。':'暂无可转发的真人私聊或群聊。'));
+    }else{
+      panel.replaceChildren(el('p',photo?'暂无其他可接收照片的真人好友或全真人群聊。':'暂无可转发的真人私聊或群聊。'));
+      if(video)panel.append(button('取消',cancelPicker));
+    }
   }
   function showPreview(request,{recipient,entries,review}){
     const heading=el('h3','发给 '+recipient.title);
@@ -2321,10 +2338,10 @@ function showForwardPicker(singleMessage,{onCancel}={}){
     const audience=el('p',recipient.type==='direct'?'私聊 · '+recipient.members[0].number:
       '群聊 · '+(recipient.members.length+1)+' 位成员','minor');
     const multiplePhotos=photo&&entries.length>1;
-    const list=file?el('div',null,'forward-entries forward-file-preview'):
+    const list=file||video?el('div',null,'forward-entries forward-file-preview'):
       multiplePhotos?el('ol',null,'forward-photo-list'):
       photo?el('figure',null,'forward-photo-preview'):el('ol',null,'forward-entries');
-    const confirmLabel=file?'确认转发文件':multiplePhotos?'确认转发 '+entries.length+' 张':photo?'确认转发照片':'确认转发 '+entries.length+' 条';
+    const confirmLabel=video?'确认转发短视频':file?'确认转发文件':multiplePhotos?'确认转发 '+entries.length+' 张':photo?'确认转发照片':'确认转发 '+entries.length+' 条';
     const confirm=button(confirmLabel,()=>void perform(async()=>{
       if(!current())return;
       const key='arcade.forward.pending:'+account+':'+review;
@@ -2344,11 +2361,12 @@ function showForwardPicker(singleMessage,{onCancel}={}){
         if(!current())return;
         closeDialog();
         exitMessageSelection();
-        $('#send-error').textContent='已向「'+recipient.title+'」转发 '+count+(file?' 份文件。':photo?' 张照片。':' 条消息。');
+        $('#send-error').textContent='已向「'+recipient.title+'」转发 '+count+(video?' 段短视频。':file?' 份文件。':photo?' 张照片。':' 条消息。');
         void sync();
       }catch(error){
         if(error.status>=400&&error.status<500)clearPending();
         if(current()&&(file&&error.message==='forward_changed'||
+          video&&[403,404,409].includes(error.status)||
           kind&&recipient.type==='group'&&['forward_changed','forward_target','unknown_chat'].includes(error.message))){
           choose(request.target);
         }
@@ -2378,6 +2396,43 @@ function showForwardPicker(singleMessage,{onCancel}={}){
           if(entry.caption)list.append(el('figcaption',entry.caption));
         }
       }
+    }else if(video){
+      const entry=entries[0];
+      list.append(el('strong',entry.name,'chat-video-name'),
+        el('small',chatVideoLength(entry.durationMs)+' · '+fileSize(entry.bytes),'minor'),
+        el('p','收件方会收到一份独立副本。之后撤回原片，已发出的副本仍可播放。','minor'));
+      const controller=new AbortController(),player=chatVideoPlayer('转发短视频预览');
+      const status=el('p',null,'feedback');
+      status.setAttribute('role','status');
+      player.hidden=true;
+      let release;
+      dialogCleanup=()=>{controller.abort();release?.();};
+      const play=button('播放预览',()=>void perform(async()=>{
+        if(!current()||controller.signal.aborted)return;
+        status.textContent='正在读取短视频…';
+        try{
+          const blob=await readChatVideo(source,entry.id,account,entry.mime,controller.signal);
+          if(!current()||controller.signal.aborted)return;
+          release=useChatVideo(player,blob);
+          stopVoicePlayback();
+          player.hidden=false;
+          play.hidden=true;
+          status.textContent='';
+          player.focus({preventScroll:true});
+          void player.play().catch(()=>{});
+        }catch{
+          if(current()&&!controller.signal.aborted)status.textContent='无法播放原片，可重试。';
+        }
+      },play,scope));
+      player.addEventListener('error',()=>{
+        if(!current()||controller.signal.aborted)return;
+        release?.();
+        release=undefined;
+        player.hidden=true;
+        play.hidden=false;
+        status.textContent='无法播放原片，可重试。';
+      });
+      list.append(play,player,status);
     }else if(file){
       const {name,bytes}=entries[0];
       list.append(el('strong',name,'chat-file-name'),el('small',fileSize(bytes),'minor'));
@@ -3427,6 +3482,16 @@ function useChatVideo(player,blob){
     URL.revokeObjectURL(url);
   };
 }
+async function readChatVideo(chatId,messageId,account,mime,signal){
+  const response=await fetch('./api/v1'+thread(chatId)+'/messages/'+messageId+'/video',{
+    headers:{'X-Social-Account':account},cache:'no-store',
+    signal:AbortSignal.any([signal,AbortSignal.timeout(30000)]),
+  });
+  if(!response.ok)throw Error('video_unavailable');
+  const blob=await response.blob();
+  if(!Array.from(chatVideoFormats.values()).includes(blob.type)||mime&&mime!==blob.type)throw Error('video_unavailable');
+  return blob;
+}
 $('#attach-video')?.addEventListener('click',()=>chatVideoDialog());
 function chatVideoDialog(){
   if(!canSendChatVideo(conversation))return;
@@ -3568,14 +3633,7 @@ async function openChatVideo(message){
     status.textContent='这段视频暂时无法播放。';
   }
   try{
-    const response=await fetch('./api/v1'+thread(id)+'/messages/'+message.id+'/video',{
-      headers:{'X-Social-Account':account},cache:'no-store',
-      signal:AbortSignal.any([abort.signal,AbortSignal.timeout(30000)])
-    });
-    if(!response.ok)throw Error('video_unavailable');
-    const blob=await response.blob();
-    if(!Array.from(chatVideoFormats.values()).includes(blob.type)||
-       (message.attachment.mime&&message.attachment.mime!==blob.type))throw Error('video_unavailable');
+    const blob=await readChatVideo(id,message.id,account,message.attachment.mime,abort.signal);
     if(current())release=useChatVideo(player,blob);
   }catch{unavailable();}
 }
