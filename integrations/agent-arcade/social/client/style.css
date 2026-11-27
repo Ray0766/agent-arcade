@@ -459,3 +459,11 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .message-quote strong { display:block; font-size:.85em; }
 .reply-target:not([hidden]) { display:flex; align-items:center; gap:.5rem; grid-column:1/-1; }
 .reply-target span { flex:1; }
+
+.direct-photo-album { display: grid; gap: 12px; }
+.direct-photo-day { display: grid; gap: 6px; min-width: 0; }
+.direct-photo-day h3 { margin: 0; font-size: 0.875rem; }
+.direct-photo-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
+.direct-photo-tile { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; padding: 2px; overflow: hidden; }
+.direct-photo-tile img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
+.direct-photo-tile .minor { padding: 6px; }

@@ -1411,6 +1411,8 @@ function showChatHeader() {
   $('#ai-cloud').textContent=awaitingAiConsent?'开启云聊天':paused?'恢复云聊天':'关闭云聊天';
   const cloudAction=$('#ai-cloud'),cloudHolder=paused||awaitingAiConsent?$('#chat-consent-action'):chatSettings;
   if(cloudAction.parentElement!==cloudHolder)cloudHolder.prepend(cloudAction);
+  if(directPhotoAlbumButton)directPhotoAlbumButton.hidden=!humanPeer||Boolean(meta.friendRemoved);
+  if(meta.friendRemoved&&directPhotoAlbumScope===dialogGeneration)closeDialog();
   const hasSettings=!!chatSettings.querySelector('button:not([hidden])');
   $('#chat-settings-toggle').hidden=!hasSettings;
   if(!hasSettings)chatSettings.hidePopover();
@@ -3030,8 +3032,8 @@ $('#record-voice').addEventListener('click',async()=>{
       error.message==='voice_duration'?'录音太短。请取消后重新录一句。':'无法录音。请检查麦克风后重新录音。';
   }
 });
-function showOriginalImage(message) {
-  if(chat!==message.conversationId||!visibleHistory().some(row=>row.id===message.id&&!row.removed))return;
+function showOriginalImage(message,album) {
+  if(chat!==message.conversationId||removedMessages.has(message.id)||!album&&!visibleHistory().some(row=>row.id===message.id&&!row.removed))return;
   const image=el('img',null,'original-image');
   image.alt='聊天原图';
   const status=el('p',null,'feedback');status.setAttribute('role','status');
@@ -3073,7 +3075,10 @@ function showOriginalImage(message) {
   resend.hidden=true;
   image.addEventListener('load',()=>{loaded=true;save.hidden=false;resend.hidden=!available;},{once:true});
   image.addEventListener('error',()=>{loaded=false;image.hidden=save.hidden=ask.hidden=resend.hidden=true;status.textContent='原图目前不可查看。';});
-  const scope=openDialog('原图',[image,save,ask,resend,note,status],chat);
+  const albumActions=album?[button('返回共享照片',()=>void album.back(),'text-button'),
+    button('查看原消息',()=>void album.locate(),'outline')]:[];
+  const scope=openDialog('原图',[...albumActions,image,save,ask,resend,note,status],chat);
+  albumActions[0]?.focus();
   const current=()=>scope===dialogGeneration&&generation===epoch&&chat===group&&membershipRevision===revision&&
     (!direct||conversation?.cloudChat?.revision===aiConsentRevision);
   if(message.attachment.drawing&&revision&&(!direct||aiConsentRevision!==undefined)){
@@ -3107,6 +3112,116 @@ function showOriginalImage(message) {
     }else details.append(el('p',sticker.label==='收藏表情'?'聊天中收藏的图片。':sticker.label+'。Agent Arcade 原创素材。','minor'));
   }
 }
+const directPhotoAlbumButton=$('#direct-photo-album');
+let directPhotoAlbumScope;
+directPhotoAlbumButton?.addEventListener('click',showDirectPhotoAlbum);
+
+function showDirectPhotoAlbum(){
+  if(!user||!chat||conversation?.type!=='direct'||conversation.friendRemoved||
+    conversation.members.some(member=>member.kind!=='human')||!membershipRevision)return;
+  const id=chat,account=user.number,epoch=generation,visit=chatVisit,revision=membershipRevision;
+  const list=el('div',null,'direct-photo-album');
+  const status=el('p',null,'minor');
+  status.setAttribute('role','status');
+  const more=button('加载更多',()=>void load(),'outline');
+  more.hidden=true;
+  const sections=new Map();
+  let scope,before=null,loading=false,opening=false;
+  const sameConversation=()=>generation===epoch&&chatVisit===visit&&chat===id&&user?.number===account&&
+    membershipRevision===revision&&!conversation?.friendRemoved;
+  const current=()=>scope===dialogGeneration&&sameConversation();
+  function openAlbum(){
+    scope=directPhotoAlbumScope=openDialog('共享照片',[list,status,more],id);
+  }
+  async function verifyAccess(active){
+    try{
+      const {conversation:latest}=await api(thread(id),undefined,{expectedAccount:account});
+      if(!active())return false;
+      if(latest?.id===id&&!latest.friendRemoved)return true;
+    }catch{if(!active())return false;}
+    closeDialog();
+    $('#send-error').textContent='这段私聊的共享照片已不可查看。';
+    return false;
+  }
+  function appendPhoto(message){
+    const date=time(message.createdAt,dayStamp);
+    const day=new Date(message.createdAt).toDateString();
+    if(!sections.has(day)){
+      const section=el('section',null,'direct-photo-day'),grid=el('div',null,'direct-photo-grid');
+      section.append(el('h3',date),grid);
+      list.append(section);
+      sections.set(day,grid);
+    }
+    const photo=el('img');
+    photo.alt='';
+    photo.loading='lazy';
+    const tile=button('',async()=>{
+      if(!current()||opening||removedMessages.has(message.id))return;
+      opening=true;
+      try{
+        if(!await verifyAccess(current)||removedMessages.has(message.id))return;
+        const position=dialog.scrollTop;
+        const fromOriginal=()=>originalScope===dialogGeneration&&sameConversation();
+        showOriginalImage(message,{
+          async back(){
+            if(!await verifyAccess(fromOriginal))return;
+            openAlbum();
+            dialog.scrollTop=position;
+            tile.focus({preventScroll:true});
+          },
+          async locate(){
+            if(!await verifyAccess(fromOriginal))return;
+            closeDialog();
+            await locateQuotedMessage(message.id);
+          }
+        });
+        const originalScope=directPhotoAlbumScope=dialogGeneration;
+      }finally{opening=false;}
+    },'direct-photo-tile');
+    tile.setAttribute('aria-label','查看原图，'+message.sender.displayName+'，'+date+' '+time(message.createdAt,clockTime));
+    photo.addEventListener('error',()=>{
+      tile.replaceChildren(el('span','缩略图不可用','minor'));
+    },{once:true});
+    tile.append(photo);
+    sections.get(day).append(tile);
+    photo.src='./api/v1'+thread(id)+'/messages/'+message.id+'/album-thumbnail?'+new URLSearchParams({account,revision});
+  }
+  async function load(){
+    if(!current()||loading)return;
+    loading=true;
+    more.disabled=true;
+    status.textContent='正在读取照片…';
+    try{
+      const params=new URLSearchParams({expectedAccount:account});
+      if(before!==null)params.set('before',before);
+      const page=await api(thread(id)+'/shared-media/direct-photos?'+params,undefined,{expectedAccount:account});
+      if(!current())return;
+      if(page.membershipRevision!==revision)throw Error('membership_changed');
+      for(const message of page.items)appendPhoto(message);
+      before=page.nextBefore;
+      more.hidden=before===null;
+      status.textContent=list.childElementCount?'':'暂无双方共享的照片。';
+    }catch(error){
+      if(!current())return;
+      if([403,404,409].includes(error.status)||error.message==='membership_changed'){
+        list.replaceChildren();
+        sections.clear();
+        more.hidden=true;
+        status.textContent='这段私聊的共享照片已不可查看。';
+      }else{
+        status.textContent=textError(error);
+        more.hidden=false;
+      }
+    }finally{
+      loading=false;
+      more.disabled=false;
+    }
+  }
+  openAlbum();
+  void load();
+}
+
+
 function fileSize(bytes){
   return bytes.toLocaleString()+' 字节';
 }
