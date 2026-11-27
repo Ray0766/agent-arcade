@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "37e90a72a71fea23588842d0417ef8bcca458733",
-  "worldTree": "dce2477ad37ae23f146b0cc5e436c247e7ec91fe",
-  "patchSHA256": "94402fb6e6f71bba56e9cf491b35babdbdd96d106aa2c96dbe182ad01980246e",
+  "worldRevision": "a78b83a338c0f3133e9ca621584a78c656509263",
+  "worldTree": "93ef52842ca566d23b685782eb666014a86ebdd1",
+  "patchSHA256": "dba11020fd1cc8f8686fcd17249afe79bc9e48d71c4abb4dc3bf29827530c028",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -613,8 +613,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "6cb75513bb4a75f5c2e8ff5897ebe2d52e0d45dd",
-      "sha256": "0088adc62e0a06df7895268425103fff033b5a156eabd12a9cb33cd6794ac27b"
+      "blob": "8b53dbabf1ba9ce8ad45480cc5c2782075fcb8c9",
+      "sha256": "da17678f5e45637f78a73e8986320a50054ae29496a455f833bd9efac48e5b28"
     },
     {
       "action": "M",
@@ -639,6 +639,24 @@
       "path": "src/client/photo-mode.ts",
       "blob": "b827ccc218a09106f5a68c9da855fa10b73cc7eb",
       "sha256": "c1ede7c5fe6c639d06bd755e1a042187d68a7e0ddd4fdd0717b3ffba99ebe63c"
+    },
+    {
+      "action": "A",
+      "path": "src/client/planet-minimap-contract.ts",
+      "blob": "a29adbef1207f38809e8e32e4ba7344e473562e9",
+      "sha256": "ce134cd24c6a9562a3127484bd9cb08c80d714b86f72963eee30c5466a5477c9"
+    },
+    {
+      "action": "A",
+      "path": "src/client/planet-minimap.css",
+      "blob": "df3db6770693991d8f71b5b7224a77ac38d416fa",
+      "sha256": "08a1c5749baf58fc019f8cb1e9b5e6c90a54199ef4f3078dc2e91d24e2953cc9"
+    },
+    {
+      "action": "A",
+      "path": "src/client/planet-minimap.ts",
+      "blob": "73a750f6786ff3e3cb797797581d9c8372cfba2d",
+      "sha256": "59bbc0dd360eda1412cb4082cdd23917dfa9f5cd62ffb9e2a304a31eef702861"
     },
     {
       "action": "M",
@@ -739,8 +757,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "479e67a0d45fd7307d2ef6675d52340e6200c0c2",
-      "sha256": "3b48c1b5a98a08e2f1f2735221d4dd4ad31d4182c6a0047a2dfc57bf8a353e91"
+      "blob": "d6f41445b3f7fd323b561f81a5baafa83c4b2e16",
+      "sha256": "f06d7b1cd61d548e7659bbd7a2ffc52aad340b962d1d5e1a01a82de214dde0fa"
     },
     {
       "action": "A",
