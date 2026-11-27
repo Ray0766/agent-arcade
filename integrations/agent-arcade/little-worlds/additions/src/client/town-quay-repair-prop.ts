@@ -69,19 +69,24 @@ export function drawQuayRepair(camera: PerspectiveCamera, work: Group, world: Gr
     const narrow=width<=650;
     shot.setViewOffset(width,height,narrow?0:width*.14,narrow?height*.14:0,width,height);
     shot.lookAt(target);
-    const position=camera.position.clone(), quaternion=camera.quaternion.clone();
-    const projection=camera.projectionMatrix.clone(), inverse=camera.projectionMatrixInverse.clone();
-    try{
-      camera.position.copy(shot.position); camera.quaternion.copy(shot.quaternion);
-      camera.projectionMatrix.copy(shot.projectionMatrix); camera.projectionMatrixInverse.copy(shot.projectionMatrixInverse);
-      camera.updateMatrixWorld(true);
-      draw();
-    } finally{
-      camera.position.copy(position); camera.quaternion.copy(quaternion);
-      camera.projectionMatrix.copy(projection); camera.projectionMatrixInverse.copy(inverse);
-      camera.updateMatrixWorld(true);
-    }
+    drawWithActivityCamera(camera,shot,draw);
     return;
   }
   draw();
+}
+
+/** Submit a temporary activity view without changing exploration input or saved position. */
+export function drawWithActivityCamera(camera:PerspectiveCamera,shot:PerspectiveCamera,draw:()=>void) {
+  const position=camera.position.clone(), quaternion=camera.quaternion.clone();
+  const projection=camera.projectionMatrix.clone(), inverse=camera.projectionMatrixInverse.clone();
+  try{
+    camera.position.copy(shot.position); camera.quaternion.copy(shot.quaternion);
+    camera.projectionMatrix.copy(shot.projectionMatrix); camera.projectionMatrixInverse.copy(shot.projectionMatrixInverse);
+    camera.updateMatrixWorld(true);
+    draw();
+  } finally{
+    camera.position.copy(position); camera.quaternion.copy(quaternion);
+    camera.projectionMatrix.copy(projection); camera.projectionMatrixInverse.copy(inverse);
+    camera.updateMatrixWorld(true);
+  }
 }
