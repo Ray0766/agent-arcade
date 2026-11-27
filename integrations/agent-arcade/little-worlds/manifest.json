@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "b4e7a2d811b4469edb5da3dd8b03409289b71073",
-  "worldTree": "ffeec7261ab4bd0c397b173e589a7f7e30abb26d",
-  "patchSHA256": "eeead81e320ad8b28290d2b993c8c0f056629f9ffcd76d39cd7c3e70f71025cd",
+  "worldRevision": "a67dc2d788b83cfad9021b6f0c64cd2741b396d2",
+  "worldTree": "1e12a5fb372d8aca2bcba100a51c0e03eb779652",
+  "patchSHA256": "98c0e3eb920c1202e28cdeb67c2c59359bc6e3fae4efe806e18f571d5b3d91e2",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -227,6 +227,12 @@
       "sha256": "4a044e22b82510b253257c47d13541a876159c4205584ed481627982b614c688"
     },
     {
+      "path": "src/assets/courtyard-flower-corner.webp",
+      "action": "A",
+      "blob": "1d327aa4ecb1ccd596d847a51c5c5ee02a7fc66e",
+      "sha256": "dd7123c0237e895554db38d11a2cf91d88b03ff303afd6e6c511a4156237ac8b"
+    },
+    {
       "action": "A",
       "path": "src/assets/courtyard-inspiration.webp",
       "blob": "3321f15bdc5b7689473957566d30e0c1befdb484",
@@ -325,8 +331,8 @@
     {
       "action": "A",
       "path": "src/assets/nature/README.md",
-      "blob": "41f7687ddedc8fac3014537d3c337ef9a1f537c2",
-      "sha256": "74676e124967750703f2b0f14e1fd44b3bcf2874b516e2507c77dc9adfa2531c"
+      "blob": "20abbf422f2e1b27ae1fe0c94cee4b5b86c835fb",
+      "sha256": "8c79ac1a1b620611db13c939f2657a77bac8dd45d7b9b00e59ae9cff983cca5f"
     },
     {
       "action": "A",
@@ -541,26 +547,32 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "01cf312f46a7f0ac7795a8146c05f1955aa0a0f2",
-      "sha256": "99e131d1d2f437f3712a7b9216af132d21b100eb91e3e91b2c1efd4aea6279a2"
+      "blob": "c87199f83150689967c763079550b8c63ae9a336",
+      "sha256": "e4bce38843b9f16d421377f8c3ed359c99bc95cb04782060207fcad1265403d1"
     },
     {
       "action": "A",
       "path": "src/client/courtyard-inspiration.css",
-      "blob": "c64e2e289d70370ca339dfedb5563699a0071f27",
-      "sha256": "fc4e5565affb7e7df1693eaf0ec8a0f2af9dd04209841c289aac9256906bc0da"
+      "blob": "7dc31333cbd3dd9923646ca2d3355b149b664e2d",
+      "sha256": "b6e9ab8a8df476e04d3bd0c37f8ac0529137b2560047b22ca5189558e3090c65"
     },
     {
       "action": "A",
       "path": "src/client/courtyard-inspiration.ts",
-      "blob": "167d266c8a6dd078a0f8a112bda0b079733141ab",
-      "sha256": "f7542f2ba2e3e820869165f108b90ca8f5390aead3e814f655ed3a39b1b19f0d"
+      "blob": "4da34d08a8957d36a40e654414f6a4403b1ffd1c",
+      "sha256": "8106112730c4b091524a89d9be8f851921d3e4f53be5a86f19bf41351b83febe"
     },
     {
       "action": "A",
       "path": "src/client/courtyard-placement-impact.ts",
       "blob": "bb64953e339854be4c5da50faaffc324c3921335",
       "sha256": "a587ddc259cd49281713374b49fc7c2048a22ee09d533c016c8d7ae05204f190"
+    },
+    {
+      "path": "src/client/courtyard-planting-art.ts",
+      "action": "A",
+      "blob": "8b970e1affd7f27dc20086a00eb9db55e8b4b295",
+      "sha256": "b4e0c7b01df88fb5e87f1ff6a9120283173e2e5611a3b8cada8a52f744c02c76"
     },
     {
       "path": "src/client/courtyard-stamp-card.css",
@@ -631,14 +643,14 @@
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920",
-      "sha256": "02ded8106e7ee55083be9ab8b2a508585ee17b0a89d83ec17d31a2761e882c60"
+      "blob": "d98e8c21d17f2028cbf9de7e6ba1b1c7aa2d8678",
+      "sha256": "b7af9c15f973c350d925f3e44047843d66770c112d8b0d49c59d4168b22bb6e9"
     },
     {
       "action": "A",
       "path": "src/client/nature-art.ts",
-      "blob": "cafc0f18826c98d5debf73fb5ff14c6c1b00042b",
-      "sha256": "9ef6d4f912fc91c7814e5bbb6bf6e1695638540b40f70a1472e5a87b046a7739"
+      "blob": "404fe98ac5b8e8b5f80a1f8b5b796c6d55a7c76c",
+      "sha256": "061c4b4e2b7609074bb286172b96a0662561172c1e43679b23c8c8f5f602e474"
     },
     {
       "action": "M",
@@ -779,6 +791,12 @@
       "sha256": "83571b2b112fb39bad10f2c129f8dc33de50e72d6c7b14acec1a7999167f686d"
     },
     {
+      "path": "src/server/blueprints.ts",
+      "action": "M",
+      "blob": "9196a7583c518d674eb3399ab52b6a167e8126d1",
+      "sha256": "f582edfd8bc442e9e64e430d3e1b51b82a595534b43d388eaf46dc6ff053e903"
+    },
+    {
       "action": "M",
       "path": "src/server/business-log.ts",
       "blob": "56166825821eec9ea86ff97dbcf2675cffa4d4cd",
@@ -837,6 +855,12 @@
       "path": "src/shared/courtyard-arrival.ts",
       "blob": "c3ff42a4c1edccdd15a868eeea00a4fc4bba1d93",
       "sha256": "43565b441e61e0077903d884d39ae6c122df58f85afe997c0a736e3260b39b07"
+    },
+    {
+      "path": "src/shared/courtyard-plantings.ts",
+      "action": "A",
+      "blob": "2cf0fe32a44b63470179bd492ada8ca03b30dd01",
+      "sha256": "7730d4f9aa1ba5a38470e3deb39d6666a89f03efe39681e1a1c756c7fd21472c"
     },
     {
       "action": "A",
