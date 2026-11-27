@@ -14,8 +14,8 @@ test('explicit text corrections follow author, conversation and both history bou
   t.after(async()=>{await new Promise(resolve=>server.close(resolve));store.db.close();});
   await once(server,'listening');
   const origin='http://127.0.0.1:'+server.address().port+'/api/v1';
-  const lin='lin_xiao',zhou='zhou_ning',chen='chen_yu',cookies=new Map();
-  for(const [number,displayName] of [[lin,'林晓'],[zhou,'周宁'],[chen,'陈屿']]){
+  const lin='lin_xiao',zhou='zhou_ning',chen='chen_yu',he='he_yu',cookies=new Map();
+  for(const [number,displayName] of [[lin,'林晓'],[zhou,'周宁'],[chen,'陈屿'],[he,'何雨']]){
     const response=await fetch(origin+'/register',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({number,displayName,password:'synthetic-correction'})});
     assert.equal(response.status,200);
@@ -23,6 +23,7 @@ test('explicit text corrections follow author, conversation and both history bou
   }
   const direct=store.decide(zhou,store.request(lin,zhou).id,true).conversation.id;
   store.decide(chen,store.request(lin,chen).id,true);
+  store.decide(he,store.request(lin,he).id,true);
   const group=store.createGroup(lin,'周末河边散步',[zhou]).id;
   async function request(account,path,body,status=200){
     const response=await fetch(origin+path,{method:body?'POST':'GET',headers:{Cookie:cookies.get(account),
@@ -45,6 +46,8 @@ test('explicit text corrections follow author, conversation and both history bou
   });
   const total=chat=>store.one('SELECT count(*) AS n FROM messages WHERE chat=?',chat).n;
   const updates=async (account,chat,...ids)=>(await messages(account,chat,'?correctionIds='+ids.join(','))).correctionUpdates;
+  const followReply=(account,chat,id,status)=>messages(account,chat,'/'+id+'/reply-correction?account='+account,undefined,status);
+  const replyUpdates=async (account,chat,id)=>(await messages(account,chat,'?replyCorrectionIds='+id)).replyCorrectionUpdates;
 
   const original=await post(lin,direct,'old-agreement','十点半北门蓝色长椅集合');
   const reply=await post(zhou,direct,'ordinary-reply','我带纸杯',{replyTo:original.id});
@@ -85,6 +88,8 @@ test('explicit text corrections follow author, conversation and both history bou
   assert.equal(old.text,'[已撤回]');
   assert.equal(old.correctionId,target);
   assert.deepEqual(around.messages.find(m=>m.id===reply.id).quote,{unavailable:true});
+  assert.equal(around.messages.find(m=>m.id===reply.id).hasReplyCorrection,undefined);
+  await followReply(zhou,direct,reply.id,400);
   assert.deepEqual((await search(zhou,direct,{q:'北门'})).results,[]);
   assert.deepEqual((await search(zhou,direct,{q:'东桥'})).results.map(row=>[row.id,row.isCorrection]),[[target,true]]);
   await recall(lin,direct,target);
@@ -95,19 +100,52 @@ test('explicit text corrections follow author, conversation and both history bou
   assert.deepEqual(await updates(zhou,direct,original.id,target),{[target]:next.id});
 
   const groupOld=await post(lin,group,'old-group-message','十点半北门集合');
+  await request(lin,'/groups/'+group+'/members',{memberNumbers:[he]});
+  const groupReply=await post(zhou,group,'old-group-reply','我带纸杯',{replyTo:groupOld.id});
+  const unrelated=await post(zhou,group,'old-group-unrelated','今天带了保温壶');
+  assert.deepEqual(await followReply(zhou,group,groupReply.id),{targetId:null});
+  for(let index=0;index<26;index++){
+    store.send(lin,group,{clientId:'between-reply-and-correction-'+index,text:'群内讨论 '+index});
+  }
   await recall(lin,group,groupOld.id);
   await request(lin,'/groups/'+group+'/members',{memberNumbers:[chen]});
   const groupNew=(await messages(lin,group,'',draft(lin,group,groupOld.id,'correct-group','十一点东桥等你'))).message;
+  const paperCups=await search(zhou,group,{q:'纸杯'});
+  assert.deepEqual(paperCups.results.map(row=>row.id),[groupReply.id]);
+  const replyContext=await search(zhou,group,{around:groupReply.id});
+  assert(!replyContext.messages.some(row=>row.id===groupNew.id));
+  const visibleReply=replyContext.messages.find(row=>row.id===groupReply.id);
+  assert.deepEqual(visibleReply.quote,{unavailable:true});
+  assert.equal(visibleReply.hasReplyCorrection,true);
+  assert(!('correctionId' in visibleReply));
+  const readSnapshot=store.one('SELECT total_changes() AS n').n;
+  assert.deepEqual(await followReply(zhou,group,groupReply.id),{targetId:groupNew.id});
+  assert.deepEqual(await followReply(lin,group,groupReply.id),{targetId:groupNew.id});
+  assert.deepEqual(await followReply(zhou,group,unrelated.id),{targetId:null});
+  assert.deepEqual(await followReply(zhou,group,groupOld.id),{targetId:null});
+  await messages(zhou,group,'/'+groupReply.id+'/reply-correction?account='+lin,undefined,409);
+  assert.deepEqual(await replyUpdates(zhou,group,groupReply.id),{[groupReply.id]:true});
+  const visibleWithoutOriginal=await search(he,group,{around:groupReply.id});
+  const replyWithoutOriginal=visibleWithoutOriginal.messages.find(row=>row.id===groupReply.id);
+  assert.deepEqual(replyWithoutOriginal.quote,{unavailable:true});
+  assert.equal(replyWithoutOriginal.hasReplyCorrection,undefined);
+  assert.deepEqual(await followReply(he,group,groupReply.id),{targetId:null});
+  assert.equal(store.one('SELECT total_changes() AS n').n,readSnapshot);
   const late=await search(chen,group,{around:groupNew.id});
   assert.deepEqual(late.messages.map(m=>m.id),[groupNew.id]);
   assert.equal(late.messages[0].isCorrection,true);
   assert(!('quote' in late.messages[0])&&!('correctionOf' in late.messages[0])&&!('correctionId' in late.messages[0]));
   assert.deepEqual(await updates(chen,group,groupOld.id),{});
+  assert.deepEqual(await followReply(chen,group,groupReply.id),{targetId:null});
+  assert.deepEqual(await replyUpdates(chen,group,groupReply.id),{});
+  await search(chen,group,{around:groupReply.id},404);
   await messages(chen,group,'/'+groupOld.id+'/recall-text',context(chen,group),404);
   await request(zhou,'/groups/'+group+'/leave',{});
   await messages(zhou,group,'?correctionIds='+groupOld.id,undefined,404);
+  await followReply(zhou,group,groupReply.id,404);
   await request(lin,'/groups/'+group+'/members',{memberNumbers:[zhou]});
   assert.deepEqual(await updates(zhou,group,groupOld.id),{});
+  assert.deepEqual(await followReply(zhou,group,groupReply.id),{targetId:null});
   await search(zhou,group,{around:groupNew.id},404);
   // Simulate a card retained from a database with the preparation feature.
   const card=await post(lin,group,'prepare-group','出发前准备');
@@ -115,6 +153,13 @@ test('explicit text corrections follow author, conversation and both history bou
   store.run('INSERT INTO group_preparations(message) VALUES(?)',card.id);
   await recall(lin,group,card.id);
   await messages(lin,group,'',draft(lin,group,card.id,'structured-not-text','不能将卡片按普通文字订正'),404);
+  await recall(lin,group,groupNew.id);
+  assert.deepEqual(await followReply(lin,group,groupReply.id),{targetId:null});
+  assert.deepEqual(await replyUpdates(lin,group,groupReply.id),{});
+  const withdrawnContext=await search(lin,group,{around:groupReply.id});
+  const withdrawnReply=withdrawnContext.messages.find(row=>row.id===groupReply.id);
+  assert.equal(withdrawnReply.hasReplyCorrection,undefined);
+  assert.deepEqual(withdrawnReply.quote,{unavailable:true});
 });
 
 test('additive correction schema preserves legacy recalled messages and unlinked re-sends',t=>{

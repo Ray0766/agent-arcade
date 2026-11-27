@@ -43,6 +43,12 @@ const savedStickerVisibility=`FROM saved_stickers s JOIN messages m ON m.id=s.me
   JOIN members viewer ON viewer.chat=m.chat AND viewer.account=s.account
   WHERE s.account=? AND m.removed=0 AND m.id>viewer.since`;
 
+const readableCorrections=`FROM message_corrections relation
+  JOIN messages old ON old.id=relation.original AND old.removed=1
+  JOIN members viewer ON viewer.account=? AND viewer.chat=old.chat AND old.id>viewer.since
+  JOIN messages replacement ON replacement.id=relation.message AND replacement.chat=old.chat
+    AND replacement.sender=old.sender AND replacement.id>viewer.since AND replacement.removed=0`;
+
 class SocialStore {
   constructor(filename) {
     this.db = new DatabaseSync(filename);
@@ -814,7 +820,7 @@ class SocialStore {
   // and turn staging continue to receive the original, unexpanded message bodies.
   withReplyPreviews(a,id,messages) {
     if(!messages.length)return messages;
-    const {since}=this.access(a,id);
+    const chat=this.access(a,id),{since}=chat;
     const slots=messages.map(()=>'?').join(',');
     const rows=this.all(`SELECT r.message,m.id,u.name,
       CASE WHEN v.message IS NOT NULL THEN '[语音]' WHEN i.message IS NOT NULL THEN '[图片]'
@@ -827,10 +833,12 @@ class SocialStore {
       since,id,since,...messages.map(message=>message.id));
     const quotes=new Map(rows.map(row=>[row.message,row.id===null?{unavailable:true}:
       {id:row.id,name:row.name,text:row.text}]));
+    const replyCorrections=chat.type==='group'&&this.replyCorrectionTargets(a,id,
+      rows.filter(row=>row.id===null).map(row=>row.message));
     const corrections=this.correctionTargets(a,id,messages.filter(row=>row.recalled).map(row=>row.id));
     return messages.map(message=>{
       if(corrections[message.id])return {...message,correctionId:corrections[message.id]};
-      return quotes.has(message.id)?{...message,quote:quotes.get(message.id)}:message;
+      return quotes.has(message.id)?{...message,quote:quotes.get(message.id),...(replyCorrections&&replyCorrections[message.id]&&{hasReplyCorrection:true})}:message;
     });
   }
   messageRecallSource(a,id,message,{expectedAccount,revision}){
@@ -868,14 +876,23 @@ class SocialStore {
   correctionTargets(account,id,originals){
     if(!originals.length)return {};
     const rows=this.all(`SELECT old.id AS original,max(replacement.id) AS correction
-      FROM message_corrections relation
-      JOIN messages old ON old.id=relation.original AND old.removed=1
-      JOIN members viewer ON viewer.account=? AND viewer.chat=old.chat AND old.id>viewer.since
-      JOIN messages replacement ON replacement.id=relation.message AND replacement.chat=old.chat
-        AND replacement.sender=old.sender AND replacement.id>viewer.since AND replacement.removed=0
+      ${readableCorrections}
       WHERE old.chat=? AND old.id IN (${originals.map(()=>'?').join(',')})
       GROUP BY old.id`,account,id,...originals);
     return Object.fromEntries(rows.map(({original,correction})=>[original,correction]));
+  }
+  replyCorrectionTargets(account,id,replies){
+    if(!replies.length)return {};
+    const preparations=this.one("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='group_preparations'");
+    const rows=this.all(`SELECT child.id AS reply,max(replacement.id) AS correction
+      ${readableCorrections}
+      JOIN chats c ON c.id=old.chat AND c.type='group'
+      JOIN message_replies link ON link.original=old.id
+      JOIN messages child ON child.id=link.message AND child.chat=old.chat AND child.id>viewer.since AND child.removed=0
+      WHERE old.chat=? AND child.id IN (${replies.map(()=>'?').join(',')})
+        ${preparations?'AND NOT EXISTS (SELECT 1 FROM group_preparations WHERE message=child.id)':''}
+      GROUP BY child.id`,account,id,...replies);
+    return Object.fromEntries(rows.map(({reply,correction})=>[reply,correction]));
   }
   requireCorrectionSource(account,id,body){
     const {correctionOf,expectedAccount,membershipRevision}=body;

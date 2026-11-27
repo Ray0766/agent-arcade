@@ -1,11 +1,20 @@
 // Native DOM port of Bothouse ChannelsPage.Quote and Tinode handleQuoteClick.
 // The server supplies a viewer-scoped preview. See THIRD_PARTY_NOTICES.md.
-export function quoteControl(quote, locate) {
+export function quoteControl(quote, locate, correctionAction) {
   if(quote.unavailable){
     const label=document.createElement('p');
     label.className='message-quote minor';
     label.textContent='原消息已移除或不可查看';
-    return label;
+    if(!correctionAction)return label;
+    const wrapper=document.createElement('div');
+    const correction=document.createElement('button');
+    correction.type='button';
+    correction.className='outline reply-return';
+    correction.textContent='查看订正';
+    correction.dataset.replyCorrection=correctionAction.replyId;
+    correction.addEventListener('click',()=>correctionAction.open(correction));
+    wrapper.append(label,correction);
+    return wrapper;
   }
   const control=document.createElement('button');
   control.type='button';

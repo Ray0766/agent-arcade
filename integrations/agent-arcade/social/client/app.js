@@ -1841,6 +1841,7 @@ function sameRun(a,b){
 }
 function renderHistory(scroll) {
   const oldTop=historyView.scrollTop, oldHeight=historyView.scrollHeight;
+  const focusedReplyCorrection=document.activeElement?.dataset?.replyCorrection;
   const focusedCorrection=document.activeElement?.dataset?.viewCorrection;
   const focusedReplyReturn=document.activeElement?.dataset?.replyReturn;
   const imageButtons=new Map([...historyView.querySelectorAll('[data-image-id]')]
@@ -1958,7 +1959,18 @@ function renderHistory(scroll) {
       back.dataset.replyReturn=String(source.id);
       content.append(back);
     }
-    if(message.quote&&!message.removed)meta.after(quoteControl(message.quote,locateQuotedMessage));
+    if(historyContext?.anchor===message.id&&historyContext.replySource?.kind==='replyCorrection'){
+      const source=historyContext.replySource;
+      const back=button('返回旧回复',()=>void locateQuotedMessage(source.id),'outline reply-return');
+      back.dataset.replyReturn=String(source.id);
+      content.append(back);
+    }
+    if(message.quote&&!message.removed){
+      const correctionAction=conversation?.type==='group'&&message.hasReplyCorrection===true?
+        {replyId:message.id,open:control=>void locateQuotedMessage(undefined,{id:message.id,kind:'replyCorrection'},
+          row=>row.isCorrection===true&&!row.removed,control)}:undefined;
+      meta.after(quoteControl(message.quote,locateQuotedMessage,correctionAction));
+    }
     if(mine&&!message.removed&&message.personalVoiceOffer)content.append(voiceOfferControls(message));
     if(message.imageQuestion){
       const photo=rows.find(row=>row.id===message.imageQuestion.image&&row.attachment?.type==='image'&&!row.removed);
@@ -1977,6 +1989,13 @@ function renderHistory(scroll) {
   if(focusedVoice?.isConnected)focusedVoice.focus({preventScroll:true});
   if(focusedAction)historyView.querySelector('[data-message-action="'+focusedAction+'"]')?.focus({preventScroll:true});
   if(focusedReplyReturn)historyView.querySelector('[data-reply-return="'+focusedReplyReturn+'"]')?.focus({preventScroll:true});
+  if(focusedReplyCorrection){
+    const reply=historyView.querySelector('[data-history-message="'+focusedReplyCorrection+'"]');
+    if(reply){
+      reply.tabIndex=-1;
+      (reply.querySelector('[data-reply-correction]')??reply).focus({preventScroll:true});
+    }
+  }
   if(focusedCorrection)historyView.querySelector('[data-view-correction="'+focusedCorrection+'"]')?.focus({preventScroll:true});
   if(focusedReaction){
     const action=focusedReaction.split('/')[0];
@@ -2316,6 +2335,30 @@ function applyCorrectionUpdates(ids,updates){
   if(historyContext)historyContext.messages=apply(historyContext.messages);
   return changed;
 }
+let replyCorrectionPollVisit, replyCorrectionPollAfter=0, replyCorrectionChange=0;
+function replyCorrectionPollIds(){
+  if(conversation?.type!=='group')return [];
+  if(replyCorrectionPollVisit!==chatVisit){replyCorrectionPollVisit=chatVisit;replyCorrectionPollAfter=0;}
+  const ids=visibleHistory().filter(row=>row.quote?.unavailable&&!row.removed).map(row=>row.id);
+  const start=ids.findIndex(id=>id>replyCorrectionPollAfter);
+  const batch=(start>0?[...ids.slice(start),...ids.slice(0,start)]:ids).slice(0,100);
+  replyCorrectionPollAfter=batch.at(-1)??0;
+  return batch;
+}
+function applyReplyCorrectionUpdates(ids,updates){
+  if(!updates)return false;
+  const requested=new Set(ids);
+  let changed=false;
+  const apply=rows=>rows.map(row=>{
+    const available=updates[row.id]===true;
+    if(!requested.has(row.id)||Boolean(row.hasReplyCorrection)===available)return row;
+    changed=true;
+    return {...row,hasReplyCorrection:available};
+  });
+  messages=apply(messages);
+  if(historyContext)historyContext.messages=apply(historyContext.messages);
+  return changed;
+}
 async function syncHistory(loadOlder=false) {
   const context=historyContext;
   if(!chat||!conversation||loadOlder&&!(context?.older??older)) return true;
@@ -2332,7 +2375,9 @@ async function syncHistory(loadOlder=false) {
     const cursor=loadOlder?'before='+(context?.messages??messages)[0].id:'after='+after;
     const reactionIds=loadOlder?'':visibleReactionIds(), reactionAtStart=reactionMutation;
     const correctionIds=loadOlder?[]:correctionPollIds();
+    const replyCorrectionIds=loadOlder?[]:replyCorrectionPollIds(), replyCorrectionAtStart=replyCorrectionChange;
     const data=await api(thread(id)+'/messages?'+cursor+'&limit='+pageSize+'&removedAfter='+moderationCursor+(correctionIds.length?'&correctionIds='+correctionIds.join(','):'')+
+      (replyCorrectionIds.length?'&replyCorrectionIds='+replyCorrectionIds.join(','):'')+
       (reactionIds?'&reactionIds='+reactionIds:''),undefined,{expectedAccount:user.number});
     if(generation!==epoch||chatVisit!==visit||loadOlder&&historyContext!==context) return false;
     if(data.moderation&&(data.moderation.historyFloor!==historyFloor||
@@ -2352,7 +2397,10 @@ async function syncHistory(loadOlder=false) {
     const nearEnd=historyView.scrollHeight-historyView.scrollTop-historyView.clientHeight<100;
     merge(data.messages,loadOlder?'prepend':nearEnd?'end':'keep',data.moderation?.removedIds,loadOlder&&!!context,data.moderation?.recalledIds);
     if(reactionAtStart===reactionMutation)applyReactionUpdates(data.reactionUpdates);
-    if(applyCorrectionUpdates(correctionIds,data.correctionUpdates))renderHistory('keep');
+    const correctionsChanged=applyCorrectionUpdates(correctionIds,data.correctionUpdates);
+    const replyCorrectionsChanged=replyCorrectionAtStart===replyCorrectionChange&&
+      applyReplyCorrectionUpdates(replyCorrectionIds,data.replyCorrectionUpdates);
+    if(correctionsChanged||replyCorrectionsChanged)renderHistory('keep');
     if(!loadOlder&&nearEnd)void acknowledgeRead();
     return true;
   } catch(error) {
@@ -2777,23 +2825,44 @@ async function returnToRecalledMessage(messageId){
       '原撤回位置已不可查看。':textError(error);
   }
 }
-async function locateQuotedMessage(messageId,replySource,isTarget){
+function clearReplyCorrection(replyId){
+  replyCorrectionChange++;
+  applyReplyCorrectionUpdates([replyId],{});
+  renderHistory('keep');
+  const reply=historyView.querySelector('[data-history-message="'+replyId+'"]');
+  if(reply){reply.tabIndex=-1;reply.focus({preventScroll:true});}
+  $('#send-error').textContent='这条订正已不可查看。';
+}
+async function locateQuotedMessage(messageId,replySource,isTarget,correctionControl){
   const account=user?.number,id=chat,visit=chatVisit,epoch=generation,serial=++quoteNavigation;
   if(!account||!id)return;
   const current=()=>visit===chatVisit&&epoch===generation&&serial===quoteNavigation&&chat===id&&user?.number===account;
+  if(correctionControl){
+    if(!correctionControl.isConnected)return;
+    correctionControl.disabled=true;
+  }
   try{
-    const params=new URLSearchParams({account:user.number,around:messageId});
-    const page=await api(thread(chat)+'/history-search?'+params);
+    if(correctionControl){
+      const relation=await api(thread(id)+'/messages/'+replySource.id+'/reply-correction?'+new URLSearchParams({account}),
+        undefined,{expectedAccount:account});
+      if(!current())return;
+      if(relation.targetId===null)throw Error('unknown_message');
+      messageId=relation.targetId;
+    }
+    const params=new URLSearchParams({account,around:messageId});
+    const page=await api(thread(id)+'/history-search?'+params,undefined,{expectedAccount:account});
     if(!current())return;
     const target=page.messages.find(row=>row.id===messageId);
     if(page.anchor!==messageId||page.historyFloor!==historyFloor||page.membershipRevision!==membershipRevision||
-      (isTarget?!target||!isTarget(target):removedMessages.has(messageId)))throw Error('unknown_message');
+      removedMessages.has(messageId)||isTarget&&(!target||!isTarget(target)))throw Error('unknown_message');
     displayOriginal(page,messageId,replySource);
     return target;
   }catch(error){
-    if(current())$('#send-error').textContent=error.status===404||error.message==='unknown_message'?
-      '原消息已移除或不可查看。':textError(error);
-  }
+    if(!current())return;
+    const unavailable=error.status===404||error.message==='unknown_message';
+    if(correctionControl&&unavailable)clearReplyCorrection(replySource.id);
+    else $('#send-error').textContent=unavailable?'原消息已移除或不可查看。':textError(error);
+  }finally{if(correctionControl)correctionControl.disabled=false;}
 }
 const historySearchButton=$('#history-search');
 // A cached page can load this script before it has the search control.
