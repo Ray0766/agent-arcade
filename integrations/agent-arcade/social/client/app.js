@@ -2069,6 +2069,7 @@ function showMessageActions(id,control){
   const row=resolveMessageAction();
   if(!row)return;
   $('#task-from-group-message').hidden=!canDraftGroupMessageTask(row);
+  $('#task-from-group-material').hidden=!canDraftGroupMaterialTask(row);
   historyView.querySelector('[aria-expanded="true"][data-message-action]')?.setAttribute('aria-expanded','false');
   control.setAttribute('aria-expanded','true');
   paintReactionChoices(row);
@@ -2157,6 +2158,159 @@ $('#task-from-group-message').addEventListener('click',()=>{
     showGroupMessageTaskDraft(ready,text);
   });
 });
+function canDraftGroupMaterialTask(row){
+  return socialVisible&&routeId()===chat&&user?.kind==='human'&&conversation?.type==='group'&&
+    Boolean(membershipRevision)&&row?.conversationId===chat&&!row.removed&&row.sender.kind==='human'&&
+    row.sender.number!==user.number&&!row.attachment&&!row.task&&!row.imageQuestion&&Boolean(row.text.trim());
+}
+$('#task-from-group-material').addEventListener('click',()=>{
+  const background=resolveMessageAction();
+  if(!canDraftGroupMaterialTask(background))return;
+  const id=chat,account=user.number,revision=membershipRevision,epoch=generation,visit=chatVisit;
+  const inGroup=()=>socialVisible&&generation===epoch&&chatVisit===visit&&user?.number===account&&
+    routeId()===id&&chat===id&&membershipRevision===revision&&!removedMessages.has(background.id);
+  const status=el('p',null,'minor');
+  status.setAttribute('role','status');
+  const input=el('input');
+  input.type='search';
+  input.maxLength=100;
+  const searchLabel=el('label','按文件名查找');
+  searchLabel.append(input);
+  const files=el('select');
+  const fileLabel=el('label','选择一份 UTF-8 文本文件');
+  fileLabel.append(files);
+  const search=button('查找',()=>void load(true));
+  const more=button('加载更多',()=>void load(false));
+  const next=button('选择交办角色',()=>{
+    if(!current()||!files.value)return;
+    const source={chatId:id,messageId:background.id,fileMessageId:Number(files.value),membershipRevision:revision};
+    showGroupTaskRolePicker(source,showGroupMaterialDraft);
+  },'primary');
+  const controls=el('div',null,'actions');
+  controls.append(button('取消',closeDialog),more,next);
+  messageActions.hidePopover();
+  const scope=openDialog('选择交办材料',[
+    el('strong','群背景 · '+background.sender.displayName),el('p',background.text,'history-search-snippet'),
+    searchLabel,search,fileLabel,status,controls,
+  ],id);
+  const current=()=>inGroup()&&scope===dialogGeneration&&dialog.open;
+  let before=null,query='',request=0;
+  function reset(){files.replaceChildren(new Option('请选择文件',''));next.disabled=true;}
+  files.addEventListener('change',()=>{next.disabled=!files.value;});
+  input.addEventListener('keydown',event=>{
+    if(event.key==='Enter'&&!event.isComposing){event.preventDefault();void load(true);}
+  });
+  async function load(replace){
+    if(!current())return;
+    const serial=++request;
+    const active=()=>current()&&serial===request;
+    if(replace){before=null;query=input.value.trim();reset();}
+    status.textContent='正在读取群文件…';
+    more.hidden=true;
+    const params=new URLSearchParams({...(query&&{q:query}),...(before&&{before})});
+    try{
+      const page=await api(thread(id)+'/shared-media/files?'+params,undefined,{expectedAccount:account});
+      if(!active())return;
+      if(page.membershipRevision!==revision)throw Error('membership_changed');
+      for(const file of page.items)if(file.attachment?.type==='file'&&!removedMessages.has(file.id)){
+        files.add(new Option(file.attachment.name+' · '+file.sender.displayName+' · #'+file.id,file.id));
+      }
+      before=page.nextBefore;
+      more.hidden=!before;
+      status.textContent=files.options.length>1?'请选择要交办的文件。':'暂无匹配的群文件。';
+    }catch(error){
+      if(!active())return;
+      reset();
+      status.textContent=error.message==='membership_changed'?'群权限已变化，请重新打开。':textError(error);
+    }
+  }
+  void load(true);
+});
+
+function showGroupMaterialDraft({account,conversation:target,number,source}){
+  const id=target.id,epoch=generation,visit=chatVisit,revision=membershipRevision;
+  const targetPeer=groupTaskPeer(target,account);
+  const inTarget=()=>{
+    const peer=groupTaskPeer(conversation,account);
+    return socialVisible&&generation===epoch&&chatVisit===visit&&chat===id&&routeId()===id&&
+      user?.number===account&&membershipRevision===revision&&peer?.number===targetPeer?.number&&Boolean(targetPeer);
+  };
+  if(!inTarget()||messageBox.readOnly)return;
+  const panel=el('div',null,'group-message-task-form');
+  const scope=openDialog('群材料交办',[panel]);
+  const active=()=>scope===dialogGeneration&&dialog.open&&inTarget();
+  const error=$('#dialog-error');
+  const label=el('label','交办要求');
+  const requirement=el('textarea');
+  requirement.rows=3;
+  requirement.required=true;
+  requirement.maxLength=messageBox.maxLength;
+  label.append(requirement);
+  const who=el('p',null,'group-message-task-recipient');
+  who.append(el('strong',targetPeer.displayName),el('span',number,'minor'));
+  const cancel=button('取消',closeDialog);
+  const reviewButton=button('核对实际送达正文',()=>void perform(async()=>{
+    const text=requirement.value.trim();
+    if(!active()||!text)return;
+    const request={expectedAccount:account,membershipRevision:revision,taskSource:source,taskRole:number,
+      requirement:text,aiConsentRevision:target.cloudChat?.revision};
+    requirement.readOnly=true;
+    try{
+      const result=await api(thread(id)+'/task-material-preview',request,{expectedAccount:account});
+      if(active())showReview(request,result);
+    }finally{requirement.readOnly=false;}
+  },reviewButton,scope),'primary');
+  const updateReview=()=>{reviewButton.disabled=!requirement.value.trim();};
+  requirement.addEventListener('input',updateReview);
+  function draft(){
+    panel.replaceChildren(who,label,reviewButton,cancel);
+    updateReview();
+    requirement.focus();
+  }
+  function showReview(request,result){
+    if(result.recipient?.number!==number||result.background?.id!==source.messageId||
+       result.file?.id!==source.fileMessageId||typeof result.text!=='string'||!result.review)
+      throw Error('无法核对预览，请重新选择群材料。');
+    const attempt={...request,materialReview:result.review,clientId:clientNonce()};
+    const change=button('修改要求',()=>{
+      error.textContent='';
+      draft();
+    });
+    const confirm=button('确认交办',()=>void perform(async()=>{
+      if(!active())return;
+      change.disabled=cancel.disabled=true;
+      try{
+        const response=await api(thread(id)+'/messages',attempt,{expectedAccount:account,timeoutMs:30000});
+        if(!inTarget())return;
+        if(active())closeDialog();
+        merge([response.message,...(response.reply?[response.reply]:[])],'end');
+        void sync();
+      }catch(failure){
+        if(active()&&[403,404,409].includes(failure.status)){
+          draft();
+          error.textContent='材料或授权已变化，请重新核对。';
+          return;
+        }
+        throw failure;
+      }finally{
+        change.disabled=cancel.disabled=false;
+      }
+    },confirm,scope),'primary');
+    const actions=el('div',null,'actions');
+    actions.append(cancel,change,confirm);
+    const preview=el('blockquote',result.text,'history-search-snippet');
+    preview.tabIndex=0;
+    preview.setAttribute('aria-label','实际送达正文');
+    panel.replaceChildren(
+      el('strong',result.recipient.displayName+' · '+number),
+      el('p','群背景 #'+result.background.id+' · '+result.background.author,'minor'),
+      el('p',result.file.name+' · #'+result.file.id+' · '+result.file.author),
+      el('strong','实际送达正文'),preview,actions,
+    );
+    preview.focus({preventScroll:true});
+  }
+  draft();
+}
 function showGroupMessageTaskDraft({account,conversation:target,number,source},original){
   const id=target.id;
   const epoch=generation,visit=chatVisit;
