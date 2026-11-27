@@ -1912,6 +1912,16 @@ function renderHistory(scroll) {
       if(!control){
         control=button('',()=>void toggleVoice(message,control),'outline voice-bubble');
         control.dataset.voiceId=message.id;
+        const icon=el('span',null,'voice-bubble-icon');
+        const detail=el('span',null,'voice-bubble-detail');
+        const readout=el('span',null,'voice-bubble-readout');
+        const progress=el('progress',null,'voice-playhead');
+        progress.max=1;
+        detail.setAttribute('aria-hidden','true');
+        icon.setAttribute('aria-hidden','true');
+        readout.append(el('span',null,'voice-bubble-status'),el('span',null,'voice-bubble-time'));
+        detail.append(readout,progress);
+        control.append(icon,detail);
         paintVoice(control,message.attachment.durationMs);
       }
       content.append(meta,control);
@@ -2880,11 +2890,26 @@ function showAiVoice({owned=false,selectedRole}={}){
 function voiceTime(seconds) {
   return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
 }
-function paintVoice(control,durationMs,action='播放语音',audio) {
-  const total=durationMs<1000?'不到 1 秒':voiceTime(Math.floor(durationMs/1000));
-  const elapsed=audio?voiceTime(Math.floor(audio.currentTime))+' / ':'';
-  control.textContent=action+' · '+elapsed+total;
-  control.setAttribute('aria-label',action+' · '+total);
+const voiceBubbleStates={
+  ready:['语音','播放语音'],
+  loading:['正在加载','取消加载语音'],
+  buffering:['正在缓冲','暂停语音'],
+  playing:['播放中','暂停语音'],
+  paused:['已暂停','继续播放语音'],
+  failed:['播放失败','重试播放语音'],
+};
+function paintVoice(control,durationMs,state='ready',audio) {
+  const duration=Number.isFinite(audio?.duration)&&audio.duration>0?audio.duration:durationMs/1000;
+  const elapsed=Math.min(audio?.currentTime||0,duration);
+  const total=duration<1?'不到 1 秒':voiceTime(Math.floor(duration));
+  const timing=audio?voiceTime(Math.floor(elapsed))+' / '+total:total;
+  const [status,action]=voiceBubbleStates[state];
+  control.dataset.voiceState=state;
+  control.querySelector('.voice-bubble-status').textContent=status;
+  control.querySelector('.voice-bubble-time').textContent=timing;
+  control.querySelector('.voice-playhead').value=duration>0?elapsed/duration:0;
+  control.setAttribute('aria-label',action);
+  if(control.getAttribute('aria-description')!==timing)control.setAttribute('aria-description',timing);
 }
 function stopVoicePlayback() {
   const active=inlineVoice;
@@ -2908,7 +2933,7 @@ async function toggleVoice(message,control) {
   const current=inlineVoice;
   if(current?.id===message.id){
     if(current.loading)stopVoicePlayback();
-    else if(current.player.running){current.player.stop();paintVoice(control,durationMs,'继续播放语音',current.audio);}
+    else if(current.player.running){current.player.stop();paintVoice(control,durationMs,'paused',current.audio);}
     else current.player.start();
     return;
   }
@@ -2923,7 +2948,7 @@ async function toggleVoice(message,control) {
   const fail=()=>{
     if(inlineVoice!==active)return;
     stopVoicePlayback();
-    paintVoice(control,durationMs,'无法播放，重试语音');
+    paintVoice(control,durationMs,'failed');
   };
   active.player=new VoiceQueuePlayer(audio,{
     baseURL:location.href,
@@ -2931,15 +2956,15 @@ async function toggleVoice(message,control) {
       if(inlineVoice!==active)return;
       if(state==='failed')fail();
       else if(state==='completed')stopVoicePlayback();
-      else if(state==='paused')paintVoice(control,durationMs,'继续播放语音',audio);
-      else if(state==='loading'||state==='buffering')paintVoice(control,durationMs,'正在缓冲语音',audio);
+      else if(state==='paused'||state==='playing')paintVoice(control,durationMs,state,audio);
+      else if(state==='loading'||state==='buffering')paintVoice(control,durationMs,'buffering',audio);
     },
     onProgress(){
-      if(inlineVoice===active&&active.player.running&&!audio.paused&&!audio.ended)
-        paintVoice(control,durationMs,'暂停语音',audio);
+      if(inlineVoice===active&&active.player.running)
+        paintVoice(control,durationMs,control.dataset.voiceState,audio);
     },
   });
-  paintVoice(control,durationMs,'取消加载语音');
+  paintVoice(control,durationMs,'loading');
   try {
     const response=await fetch('./api/v1'+thread(id)+'/messages/'+message.id+'/voice',{
       headers:{'X-Social-Account':account},credentials:'same-origin',cache:'no-store',
