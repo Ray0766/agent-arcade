@@ -1,0 +1,15 @@
+.town-post-receipt-card {
+  display:block;
+  width:min(100%, 12rem);
+  height:auto;
+  margin-inline:auto;
+}
+.pax-post-tray [data-town-post-receipt-slot="star"] {
+  background:#e7d4a5;
+  border-style:double;
+  border-width:4px;
+}
+.pax-post-tray [data-town-post-receipt-slot] .town-post-receipt-card {
+  width:min(100%, 8rem);
+  margin-block:.25rem;
+}

@@ -7,3 +7,16 @@ export type TownPostCommand = {
   version: number;
   visitEpoch: number;
 };
+
+export interface TownPostReceiptProgress {
+  availableVersion: number | null;
+  heldVersion: number | null;
+  archivedVersion: number | null;
+}
+
+export interface TownPostReceiptCommand {
+  action: 'collect' | 'archive';
+  residentId: typeof TOWN_POST_ADA | typeof TOWN_POST_PAX;
+  version: number;
+  visitEpoch: number;
+}

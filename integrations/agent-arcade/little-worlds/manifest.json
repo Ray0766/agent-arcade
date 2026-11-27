@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "c8ea31bb725d396685c8510e079694e3835b52c6",
-  "worldTree": "43a12ce1278d8aeaaf1cdcc401c4d9b83471a72b",
-  "patchSHA256": "400d595220ed30296286281a45f14453106c20da12d68dcd4ef21b527123eab2",
+  "worldRevision": "cf78f6e534ee0afbe21963f73c12de429f517391",
+  "worldTree": "8acbea9dfbd5b747a6606c130b74c5725cdac557",
+  "patchSHA256": "5b13504ec9db96b8cf8b84bc4488ec9d51eead2475f727a2b89466ffb6ca6b75",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -474,6 +474,12 @@
     },
     {
       "action": "A",
+      "path": "src/client/ada-flower-basket-art.ts",
+      "blob": "174cda54cad548bbd59d144eec30c22ba7b30276",
+      "sha256": "e499bd2c242bc0c6087acae4a9dd3257dae916b8c052a2a4e03c4491b4c0d51a"
+    },
+    {
+      "action": "A",
       "path": "src/client/authored-town-mesh.ts",
       "blob": "5ee1972ed73be5c8d3d7b1e07ad8c79b37a57560",
       "sha256": "5aba5832abd09b701e27e6ac7cf9bcd90ef782e577264781ece6a9e27672222c"
@@ -613,8 +619,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "5bacc73ebbbcd603e9c023a7eaf567a8578247f5",
-      "sha256": "19d9d67701fa3c1e898e129f84e9f9b496a54d9aa32c265eff252f9b6eeb8207"
+      "blob": "db2a3e3b22e1eabe302f58784324b96ff56a070d",
+      "sha256": "1abe048dc3de4171bbbc80a41fa5abe7c6a4ea836b18843f43ccd496909eb50d"
     },
     {
       "action": "M",
@@ -708,6 +714,30 @@
     },
     {
       "action": "A",
+      "path": "src/client/town-post-receipt-art.css",
+      "blob": "083db0a6f80534481d3438ab66fb54ade298db34",
+      "sha256": "55a677655e411aa415b011f9b2ea5c9a43936b5e0741216a706f34523765b416"
+    },
+    {
+      "action": "A",
+      "path": "src/client/town-post-receipt-art.ts",
+      "blob": "d2aca8b343d7aa793ae5c0f12758122b1bedb46f",
+      "sha256": "c2d2af07e21e336c5e3317eca8cfdcf81e164a87898e6ebd13b72bf9afb36c87"
+    },
+    {
+      "action": "A",
+      "path": "src/client/town-post-return-receipt.css",
+      "blob": "11843ad31218a205cd66371ae7ab0bc0d54fa634",
+      "sha256": "83fcc0b85c1f37b1cadc3deecb6647eb2a4fc813ba348fa0d12ac42f4a353efb"
+    },
+    {
+      "action": "A",
+      "path": "src/client/town-post-return-receipt.ts",
+      "blob": "5427d99ba643e61febc4377f403ab316ad12020e",
+      "sha256": "2d14279ac54a11f5eff1dbe43b4412a6e0344bf02b1dfc4cbf7e94a95d414a40"
+    },
+    {
+      "action": "A",
       "path": "src/client/town-post-sort.css",
       "blob": "8cea7883db2909c14cf1abbe81bf2e9c12161e69",
       "sha256": "233103bf6cc9876ee1bf37b9ce647b0a0f010e10095db56f7540451bd6591af6"
@@ -715,8 +745,8 @@
     {
       "action": "A",
       "path": "src/client/town-post-sort.ts",
-      "blob": "bf5fc3495d3b2d5d178bde0b43ee0f80776db66d",
-      "sha256": "4351a156b0d33fc160baf6da0baa098d54e5933ab1c94cf7c666b8a6caa96930"
+      "blob": "f89c6cc61e8983f3ccc9120994d25597d3e285e2",
+      "sha256": "2fb45ed0c07484d5bb935117ddd3d6eb3b9877a6037669728a53f3e7aee8ddb6"
     },
     {
       "action": "A",
@@ -727,8 +757,8 @@
     {
       "action": "M",
       "path": "src/client/town-residents.ts",
-      "blob": "6267148174abd7de2ee776be6eaa477d014cf9cd",
-      "sha256": "dae72464bd42e2e7e41c6ba7a67b8f7ea38a6ab2faedf22bc375aa9ede369db4"
+      "blob": "e6239716999a960d1dcc5be3131b880a6fd24434",
+      "sha256": "bea209eb3f9a6dadf14e9756a6687bbd2d94181aa07ae8022f7338bc208badac"
     },
     {
       "action": "A",
@@ -805,8 +835,8 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "87da96be516d44599a958712ee33fdd0c4f21d05",
-      "sha256": "9b5db81f586ced64a57f3a836b79019da583d41907dc39e6e216184517c1b6bd"
+      "blob": "2bbe8a570ddd0fe038ea00c581ef6806dd801203",
+      "sha256": "508ca051038b81c21e716812ea75be7bb0ed8246ca2b4790a4e7ca2e3db91d27"
     },
     {
       "action": "A",
@@ -835,14 +865,14 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "c41be1654b9ced2341bf02a7622a4160965e3001",
-      "sha256": "1d70da84300d39c33ad951ba73ea2fca49198dba5150b5042161afa84afdba3b"
+      "blob": "a97bb93d18ec072773aea66a2dfe1d9d3cdc8b44",
+      "sha256": "1d6c70061b43dbc8973f811776748e543eda49905696e42c262dff1f06ff533e"
     },
     {
       "action": "A",
       "path": "src/server/town-post.ts",
-      "blob": "b31363d2be5bdb1c69acd5f6b135480bb11473ec",
-      "sha256": "5d14ed3e5ef0351b0a28edf0b304e09fca7ca51232a956612b3141e664888915"
+      "blob": "50f93f711798b87e0fc59a7f612f49cb9075b343",
+      "sha256": "0e4540fcc6626292ac3adb3cb49d9af3c3f0c7eb327b75f2246a3c9a7b4b4a73"
     },
     {
       "action": "A",
@@ -871,8 +901,8 @@
     {
       "action": "A",
       "path": "src/shared/town-post.ts",
-      "blob": "7e623a2b1268480ae898bef881fb1ec784f6b58a",
-      "sha256": "e252062746d856289cbd9d98ef226157d124eed66898350db9ceaa289b1d49b6"
+      "blob": "293749f70b28bbe975c5ae454070f80322e5facc",
+      "sha256": "eaa6d5d7c146c8d508e46dcca7bf0712ad0805bcf2d2713bff0d51f6e14ae61b"
     },
     {
       "action": "M",

@@ -1,0 +1,29 @@
+#town-post-receipt-address {
+  position: fixed;
+  z-index: 7;
+  left: 24px;
+  bottom: 118px;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 4px 8px;
+  max-width: min(20rem, calc(100vw - 38px));
+  padding: 9px 11px;
+  border: 1px solid #a98b5d;
+  border-radius: 6px;
+  color: #354637;
+  background: #f6edd7;
+  box-shadow: 0 3px 0 #794d3357;
+  pointer-events: none;
+}
+
+#town-post-receipt-address .town-star-seal { background: #31594d; }
+#town-post-receipt-address strong { font-size: 13px; }
+#town-post-receipt-address > span:last-child { font-size: 12px; }
+body:has(#town-post-receipt-address:not([hidden])) #town-star-letter { bottom: 187px; }
+#pax-return-receipt { margin-top: 8px; min-height: 44px; }
+
+@media (max-width:600px) {
+  #town-post-receipt-address { left: 12px; bottom: 205px; max-width: calc(100vw - 34px); }
+  body:has(#town-post-receipt-address:not([hidden])) #town-star-letter { bottom: 274px; }
+}
