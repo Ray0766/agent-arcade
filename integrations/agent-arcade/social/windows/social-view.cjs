@@ -71,52 +71,76 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
   });
   const contents = view.webContents;
   if(Notification){
-    const notices=new Map();
+    const notices=new Map(), pending=new Map();
     let noticeEpoch=0;
     const trustedFrame=event=>event.sender===contents&&event.senderFrame===contents.mainFrame&&
       isTrusted(event.senderFrame?.url)&&new URL(event.senderFrame.url).pathname==='/';
     const clear=()=>{
       ++noticeEpoch;
-      for(const notice of notices.values())notice.close();
+      pending.clear();
+      for(const entry of notices.values())entry.notice.close();
       notices.clear();
     };
     const focused=id=>isActive()&&noticeFocused()&&new URL(contents.mainFrame.url).hash==='#chat/'+id;
-    async function check(account,id){
-      const response=await browserSession.fetch(origin+'/api/v1/conversations/'+id,{
+    async function resolve(account,id,through,params){
+      const query=new URLSearchParams({account,through,...params});
+      const response=await browserSession.fetch(origin+'/api/v1/conversations/'+id+'/notice-target?'+query,{
         credentials:'include',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(4000),
         headers:{'X-Social-Account':account}});
-      return response.ok?(await response.json()).conversation:undefined;
+      if(!response.ok)return;
+      const result=await response.json();
+      if(result.account===account&&result.chat===id&&result.through===through&&result.eligible===true&&
+         typeof result.membershipRevision==='string'&&result.membershipRevision)return result;
     }
     contents.ipc?.on('arcade:clearConversationNotices',event=>{if(trustedFrame(event))clear();});
     contents.on('did-start-navigation',(_event,_url,inPlace,mainFrame)=>{if(mainFrame&&!inPlace)clear();});
     contents.once('destroyed',clear);
     contents.ipc?.on('arcade:conversationNotice',async(event,input)=>{
-      const {account,chat:id,through}=input??{};
+      const {account,chat:id,through,after=0}=input??{};
       if(!trustedFrame(event)||typeof account!=='string'||!/^[a-z0-9_]{4,24}$/u.test(account)||
-         typeof id!=='string'||!chatFragment.test('#chat/'+id)||!Number.isSafeInteger(through)||
-         focused(id)||!Notification.isSupported())return;
+         typeof id!=='string'||!chatFragment.test('#chat/'+id)||!Number.isSafeInteger(through)||through<1||
+         !Number.isSafeInteger(after)||after<0||after>=through||focused(id)||!Notification.isSupported())return;
       const epoch=noticeEpoch;
       const current=()=>epoch===noticeEpoch&&!contents.isDestroyed()&&trustedFrame(event);
+      // Extend a still-pending notification batch so later group chatter keeps its unread mention.
+      const prior=pending.get(id)??notices.get(id);
+      if(prior?.account===account&&prior.through>=through)return;
+      const batch={account,through,after:prior?.account===account?prior.after:after};
+      pending.set(id,batch);
       try{
-        const conversation=await check(account,id);
-        if(!current()||focused(id)||conversation?.id!==id||conversation.muted||conversation.friendRemoved||
-           conversation.unreadThrough!==through)return;
+        const result=await resolve(account,id,through,{after:batch.after});
+        if(!current()||pending.get(id)!==batch||focused(id)||!result)return;
+        const {target,membershipRevision}=result;
+        if(target!==null&&(!['direct','mention'].includes(target?.kind)||!Number.isSafeInteger(target.messageId)||
+           target.messageId<=batch.after||target.messageId>through))return;
         const notice=new Notification({title:'Agent Arcade',body:'你有一条新消息。',silent:true});
-        notices.get(id)?.close();
+        function retire(entry){
+          if(!entry)return;
+          entry.retired=true;
+          entry.notice.close();
+        }
+        retire(notices.get(id));
+        notices.delete(id);
         if(notices.size>=10){
           const oldest=notices.keys().next().value;
-          notices.get(oldest).close();notices.delete(oldest);
+          retire(notices.get(oldest));notices.delete(oldest);
         }
-        notices.set(id,notice);
-        notice.once('close',()=>{if(notices.get(id)===notice)notices.delete(id);});
+        const entry={...batch,notice};
+        notices.set(id,entry);
+        notice.once('close',()=>{if(notices.get(id)===entry)notices.delete(id);});
         notice.once('click',async()=>{
+          if(notices.get(id)===entry)notices.delete(id);
           try{
-            if(!current()||(await check(account,id))?.id!==id||!current())return;
-            openNotice({account,id});
+            if(!current()||entry.retired)return;
+            const checked=await resolve(account,id,through,{membershipRevision,...(target??{kind:'none'})});
+            if(!current()||entry.retired||!checked)return;
+            const exact=target&&checked.membershipRevision===membershipRevision&&
+              checked.target?.kind===target.kind&&checked.target.messageId===target.messageId;
+            openNotice({account,id,...(exact&&{messageId:target.messageId,membershipRevision})});
           }catch{}
         });
         notice.show();
-      }catch{}
+      }catch{}finally{if(pending.get(id)===batch)pending.delete(id);}
     });
   }
   if(visitFriend)contents.ipc?.handle('arcade:visitFriend',async(event,input)=>{

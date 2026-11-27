@@ -552,6 +552,12 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       }
       else {
         const account = current(store,req);
+        if(req.method==='GET'&&collection==='conversations'&&parts.length===3&&action==='notice-target'){
+          if(req.headers['x-social-account']!==account)fail(409,'notice_session','账号已切换');
+          const result=store.noticeTarget(account,chat,url.searchParams);
+          res.setHeader('Content-Type','application/json; charset=utf-8');
+          return res.end(JSON.stringify(result));
+        }
         if(req.method==='GET'&&req.headers['x-social-account']!==undefined&&
            req.headers['x-social-account']!==account&&
            (['ai-contacts','ai-contacts/pair','personal-ai','conversations','stickers'].includes(key)||

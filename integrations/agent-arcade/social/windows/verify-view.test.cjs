@@ -490,9 +490,18 @@ test('conversation notices check desktop focus, current account and mute before 
   const browserSession={
     setPermissionRequestHandler(){},setPermissionCheckHandler(){},webRequest:{onBeforeRequest(){}},on(){},
     async fetch(url,options){
-      assert.equal(url,origin+'/api/v1/conversations/'+id);
+      const request=new URL(url),params=request.searchParams;
+      assert.equal(request.origin+request.pathname,origin+'/api/v1/conversations/'+id+'/notice-target');
+      assert.equal(params.get('account'),'notices_a');
       assert.equal(options.headers['X-Social-Account'],'notices_a');
-      return {ok:validAccount,json:async()=>({conversation:{id,unreadThrough:21,muted}})};
+      const through=Number(params.get('through'));
+      if(params.has('kind')){
+        assert.equal(params.get('kind'),'direct');
+        assert.equal(params.get('messageId'),'21');
+        assert.equal(params.get('membershipRevision'),'r1');
+      }else assert.equal(params.get('after'),'18');
+      return {ok:validAccount,json:async()=>({account:'notices_a',chat:id,through,membershipRevision:'r1',
+        eligible:!muted&&through===21,target:{kind:'direct',messageId:21}})};
     },
   };
   class NativeNotice extends EventEmitter {
@@ -513,7 +522,7 @@ test('conversation notices check desktop focus, current account and mute before 
     noticeFocused:()=>focused,openNotice:target=>opened.push(target)});
   const c=view.webContents,event={sender:c,senderFrame:c.mainFrame};
   const show=c.ipc.listeners('arcade:conversationNotice')[0];
-  const input={account:'notices_a',chat:id,through:21};
+  const input={account:'notices_a',chat:id,through:21,after:18};
   await show(event,input);
   focused=false;muted=true;await show(event,input);
   muted=false;await show(event,{...input,through:20});
@@ -525,5 +534,5 @@ test('conversation notices check desktop focus, current account and mute before 
   assert.deepEqual(opened,[]);
   validAccount=true;
   await shown[0].listeners('click')[0]();
-  assert.deepEqual(opened,[{account:'notices_a',id}]);
+  assert.deepEqual(opened,[{account:'notices_a',id,messageId:21,membershipRevision:'r1'}]);
 });

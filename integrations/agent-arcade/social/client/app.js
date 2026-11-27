@@ -2265,7 +2265,7 @@ async function sync() {
     if(Number.isSafeInteger(previousCursor)){
       for(const item of threads.conversations){
         if(!item.muted&&!item.friendRemoved&&item.unreadThrough>previousCursor)
-          window.arcadeConversationNotices?.show({account:user.number,chat:item.id,through:item.unreadThrough});
+          window.arcadeConversationNotices?.show({account:user.number,chat:item.id,through:item.unreadThrough,after:previousCursor});
       }
     }
     if(!foreground)return;
@@ -2319,9 +2319,29 @@ async function sync() {
 }
 setInterval(()=>{if(socialVisible&&!document.hidden||window.arcadeConversationNotices)void sync();},2500);
 window.addEventListener('focus',()=>{if(socialVisible){void acknowledgeRead();void sync();}});
-window.addEventListener('arcade-conversation-notice-open',event=>{
-  const {account,id}=event.detail;
-  if(socialVisible&&user?.number===account)void goChat(id,false,account);
+let noticeNavigation=0;
+window.addEventListener('arcade-conversation-notice-open',async event=>{
+  const {account,id,messageId,membershipRevision:revision}=event.detail??{};
+  if(!socialVisible||!user||user.number!==account||typeof id!=='string')return;
+  const epoch=generation,visit=chatVisit,scope=dialogGeneration,route=location.href,serial=++noticeNavigation;
+  let historyTarget;
+  if(Number.isSafeInteger(messageId)&&messageId>0&&typeof revision==='string'){
+    try{
+      const params=new URLSearchParams({account,around:messageId});
+      const page=await api(thread(id)+'/history-search?'+params,undefined,{expectedAccount:account});
+      if(page.anchor===messageId&&page.membershipRevision===revision)historyTarget=page;
+    }catch(error){if(error.status!==404)return;}
+  }
+  if(serial!==noticeNavigation||!socialVisible||generation!==epoch||user?.number!==account||
+     chatVisit!==visit||location.href!==route||dialogGeneration!==scope)return;
+  if(dialog.open)closeDialog();
+  const opening=goChat(id,false,account);
+  const openedVisit=chatVisit, openedDialog=dialogGeneration;
+  await opening;
+  if(historyTarget&&serial===noticeNavigation&&socialVisible&&generation===epoch&&user?.number===account&&
+     chat===id&&routeId()===id&&chatVisit===openedVisit&&dialogGeneration===openedDialog&&conversation&&
+     historyTarget.historyFloor===historyFloor&&historyTarget.membershipRevision===membershipRevision&&
+     !removedMessages.has(messageId))displayOriginal(historyTarget,messageId);
 });
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void sync();});
 window.addEventListener('arcade-social-deactivate',()=>{socialVisible=false;});
