@@ -15,7 +15,7 @@ function makeGroup(store){
   return store.createGroup('lin_xiao','周日河边小队',['zhou_ning','chen_yu']).id;
 }
 
-test('three real HTTP sessions share one room, with private pairwise signaling, departure and account switching',async t=>{
+async function httpGroup(t){
   const store=new SocialStore(':memory:');
   const server=createServer(store).listen(0,'127.0.0.1');
   t.after(async()=>{await new Promise(resolve=>server.close(resolve));store.db.close();});
@@ -41,8 +41,8 @@ test('three real HTTP sessions share one room, with private pairwise signaling, 
       get:(extra={},status=200,account)=>api(path()+'?'+new URLSearchParams({revision:w.revision,...extra}),undefined,status,account),
       post:(action,extra={},status=200)=>api(path(),{action,revision:w.revision,...extra},status),
       joined:()=>({roomId:w.roomId,self:w.self}),
-      async join(attempt=joinId){
-        const {room}=await w.post('join',{joinId:attempt});
+      async join(attempt=joinId,video){
+        const {room}=await w.post('join',{joinId:attempt,video});
         w.self=room.self;
         w.roomId=room.id;
         return room;
@@ -56,6 +56,11 @@ test('three real HTTP sessions share one room, with private pairwise signaling, 
     await w.api('/register',{number:w.number,displayName:people[i]?.[1]||'何雨',password});
   chat=makeGroup(store);
   for(const w of users)w.revision=store.access(w.number,chat).membershipRevision;
+  return {store,chat,lin,zhou,chen,other,windowFor,password,requests:()=>requests};
+}
+
+test('three real HTTP sessions share one room, with private pairwise signaling, departure and account switching',async t=>{
+  const {store,chat,lin,zhou,chen,other,windowFor,password,requests}=await httpGroup(t);
   await other.get({},404);
   const writes=()=>store.one('SELECT total_changes() AS n').n;
   const before=writes();
@@ -124,7 +129,67 @@ test('three real HTTP sessions share one room, with private pairwise signaling, 
   const privateCall=(await second.api('/calls/'+second.device,{action:'dial',chat:direct,kind:'audio'})).call;
   await lin.post('join',{joinId:randomUUID()},409);
   await second.api('/calls/'+second.device,{action:'end',id:privateCall.id});
-  t.diagnostic(requests+' isolated HTTP requests; 3 peers, 3 pairs, 6 targeted descriptions');
+  t.diagnostic(requests()+' isolated HTTP requests; 3 peers, 3 pairs, 6 targeted descriptions');
+});
+
+test('video negotiation and versioned camera status belong to current seats; legacy peers remain audio-only',async t=>{
+  const {store,chat,lin,zhou,chen,other,requests,windowFor,password}=await httpGroup(t);
+  const audio=description('camera negotiation'),video='m=video 9 UDP/TLS/RTP/SAVPF 96\r\n';
+  const av=audio+video;
+  const signal=(from,to,type,sdp,status=200)=>from.post('signal',{...from.joined(),to:to.self,type,sdp},status);
+  const camera=(user,state,version,status=200)=>user.post('camera',{...user.joined(),state,version},status);
+  const find=(room,user)=>room.participants.find(member=>member.number===user.number);
+  const state=async(viewer,subject)=>find((await viewer.get(viewer.joined())).room,subject);
+  await lin.join(lin.joinId,true);
+  await zhou.join(zhou.joinId,true);
+  assert.equal((await state(zhou,lin)).camera,'off');
+  assert.equal((await state(zhou,lin)).cameraVersion,0);
+  await other.post('camera',{...lin.joined(),state:'on',version:1},404);
+  await chen.post('camera',{...lin.joined(),state:'on',version:1},409);
+  await camera(lin,'on',1);
+  assert.deepEqual(find((await chen.get()).room,lin),{number:lin.number,id:lin.self});
+  for(const sdp of ['v=0\r\n'+video,av+video,audio+audio.slice(audio.indexOf('m=')),av+'m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n'])
+    await signal(lin,zhou,'offer',sdp,409);
+  await signal(lin,zhou,'offer',av);
+  await signal(lin,zhou,'offer',av);
+  await signal(zhou,lin,'answer',audio,409);
+  await signal(zhou,lin,'answer',av);
+  assert.deepEqual((await zhou.get(zhou.joined())).room.signals,[{from:lin.self,type:'offer',sdp:av}]);
+  assert.equal((await chen.get()).room.signals,undefined);
+  await chen.join();
+  await chen.join(chen.joinId,true); // A replay cannot upgrade this seat.
+  assert.equal((await state(lin,chen)).video,undefined);
+  await camera(chen,'on',1,409);
+  assert.deepEqual((await chen.get(chen.joined())).room.signals,[]);
+  await signal(chen,lin,'offer',av,409);
+  await signal(chen,lin,'offer',audio);
+  await signal(lin,chen,'answer',av,409);
+  await signal(lin,chen,'answer',audio);
+  await camera(lin,'off',3);
+  await camera(lin,'on',2);
+  await camera(lin,'on',3);
+  assert.deepEqual(await state(zhou,lin),{number:lin.number,id:lin.self,video:true,camera:'off',cameraVersion:3});
+  await camera(zhou,'unavailable',1);
+  assert.equal((await state(lin,zhou)).camera,'unavailable');
+  await camera(zhou,'on',0,409);
+  const otherWindow=windowFor(lin.number);
+  await otherWindow.api('/login',{number:lin.number,password});
+  otherWindow.revision=lin.revision;
+  await otherWindow.post('camera',{...lin.joined(),state:'on',version:4},409);
+  const old=lin.joined();
+  await lin.post('leave',old);
+  await lin.join(randomUUID(),true);
+  await lin.post('camera',{...old,state:'on',version:99},409);
+  assert.equal((await state(zhou,lin)).cameraVersion,0);
+  assert.deepEqual((await zhou.get(zhou.joined())).room.signals,[]);
+  await camera(lin,'on',1);
+  await lin.api('/login',{number:other.number,password});
+  await camera(lin,'off',2,409);
+  assert.equal(await state(zhou,lin),undefined);
+  store.remove(zhou.number,chat,zhou.number,true);
+  await camera(zhou,'on',2,404);
+  assert.equal(await state(chen,zhou),undefined);
+  t.diagnostic(requests()+' local HTTP requests: A/V and audio-only pairs, scoped camera and session changes');
 });
 
 test('lease expiry, revoked membership, group size and session validity are checked before peer delivery',t=>{
