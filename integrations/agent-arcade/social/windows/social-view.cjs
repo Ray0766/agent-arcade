@@ -7,7 +7,7 @@ const imageDownloadPath=/^\/api\/v1\/conversations\/([a-f0-9]{8}(?:-[a-f0-9]{4})
 const fileDownloadPath=/^\/api\/v1\/conversations\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})\/messages\/[1-9]\d{0,15}\/file\/download$/u;
 const chatFragment=/^#chat\/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/u;
 
-function createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, pickCrop, readSendShortcut, visitFriend, isActive=()=>false,
+function createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, pickCrop, readSendShortcut, visitFriend, getParent, isActive=()=>false,
   spawnSnip=require('node:child_process').spawn, openExternal=url=>require('electron').shell.openExternal(url) }) {
   const origin = serviceOrigin(configuration.origin, configuration.mode);
   const {desktopVersion} = configuration;
@@ -61,6 +61,10 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
   if(pickCrop && process.platform==='win32')preloadArgs.push('--arcade-chat-crop');
   if(typeof desktopVersion==='string'&&/^[1-9]\d{0,4}(?:\.(?:0|[1-9]\d{0,4})){2}\.0$/u.test(desktopVersion))
     preloadArgs.push('--arcade-feedback-desktop-version='+desktopVersion);
+  // Only the dedicated Friends session gets the user-gesture window picker bridge.
+  const sharePreload = process.platform==='win32' && getParent && browserSession.registerPreloadScript?.({
+    type:'frame', filePath:path.join(__dirname,'window-share','chat-preload.cjs')
+  });
   const view = new WebContentsView({
     webPreferences: {
       session: browserSession, contextIsolation: true, nodeIntegration: false,
@@ -69,6 +73,10 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
     },
   });
   const contents = view.webContents;
+  const windowShare = sharePreload && require('./window-share/host.cjs').installWindowShare({
+    contents,browserSession,origin,isActive,getParent
+  });
+  if(sharePreload)contents.once('destroyed',()=>browserSession.unregisterPreloadScript(sharePreload));
   if(visitFriend)contents.ipc?.handle('arcade:visitFriend',async(event,input)=>{
     const frame=event.senderFrame, address=frame?.url;
     const current=()=>isActive()&&!contents.isDestroyed()&&event.sender===contents&&frame===contents.mainFrame&&frame.url===address;
@@ -315,6 +323,7 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
         void contents.executeJavaScript('window.dispatchEvent(new Event("arcade-social-activate"))').catch(()=>{});
     },
     deactivate() {
+      windowShare?.revoke?.();
       cancelCrop();
       cancelCardVisit();
       if(!contents.isDestroyed())

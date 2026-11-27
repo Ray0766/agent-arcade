@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<title>选择共享窗口</title>
+<style>
+*{box-sizing:border-box}body{margin:24px;color:#222c31;background:#f7faf9;font:15px/1.5 system-ui,sans-serif}
+h1{font-size:21px;margin:0}p{margin:6px 0 18px;color:#465752}select{width:100%;padding:7px}footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}button{padding:7px 14px;font:inherit}#share{background:#215b50;color:white;border:1px solid #215b50;border-radius:4px}#share:disabled{opacity:.5}
+</style>
+<h1>共享一个窗口</h1><p>群通话成员将看到这个窗口的画面。系统声音保持关闭。</p>
+<label for="target">应用窗口</label><select id="target"><option value="">请选择窗口</option></select>
+<footer><button id="cancel">取消</button><button id="share" disabled>共享窗口</button></footer>
+</html>
