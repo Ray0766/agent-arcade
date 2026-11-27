@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
-  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
+  "worldRevision": "222ba8e2000ed1a74b96464624a2dee5210a9455",
+  "worldTree": "0ccb4aaa9c09f2c20b7fdc5da232ab213b9c5068",
+  "patchSHA256": "47e27e1047a85cf3144b904c60da77309076a6e83da2391fae958a90c2d5f811",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -201,6 +201,12 @@
       "path": "spec/street-prop-contract.test.ts",
       "blob": "25e4cbb43912a95af046a268cc08c08764a5c0f9",
       "sha256": "62637b23ade5f1042fab9f8ab95bb065191892be920740c5a90117cd1a917665"
+    },
+    {
+      "action": "M",
+      "path": "spec/terrain-preparation.test.ts",
+      "blob": "0a56c6be69bf987487149720c86f16c6d2be6696",
+      "sha256": "7905c2fcfdbb2abef1cf897cfad100471d3e20a9fbd072a30cbef1b7af85492e"
     },
     {
       "action": "M",
@@ -685,8 +691,8 @@
     {
       "action": "M",
       "path": "src/client/terrain-model.ts",
-      "blob": "fb9b2ec315a9892be7b8651a0ce8905832113fac",
-      "sha256": "53eabf39c14e67427a644161a72b31769f6de09a4406bec0d1b782cdd9496d26"
+      "blob": "e993c74eb9f6504f0b390d3c0e402fca1ba933ad",
+      "sha256": "7f4dba0a412bc6923e0923ba92fed26b2bff6778eec24e50f4567df87c8ad238"
     },
     {
       "action": "A",
