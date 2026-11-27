@@ -1,0 +1,21 @@
+body:not(.in-space,.building,.home-interior-active) .interaction[data-visitor-bouquet] { display: block !important; }
+#visitor-flower-bouquet, #visitor-bouquet-inspect { min-height: 44px; margin-inline-start: 6px; }
+#visitor-bouquet-dialog {
+  box-sizing: border-box;
+  width: min(17rem, calc(100% - 24px));
+  margin: auto auto 96px 24px;
+  padding: 16px;
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--ui-panel);
+}
+#visitor-bouquet-dialog::backdrop { background: transparent; backdrop-filter: none; }
+#visitor-bouquet-dialog h2 { font-size: 19px; font-weight: 650; margin: 0 0 12px; }
+#visitor-bouquet-dialog label { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 5px; align-items: center; margin: 8px 0; }
+#visitor-bouquet-dialog select { min-height: 44px; padding-inline: 6px; color: var(--ink); background: var(--ui-choice); border: 1px solid var(--ui-dialog-border); border-radius: 6px; }
+.visitor-bouquet-actions { display: flex; gap: 8px; justify-content: space-between; margin-top: 14px; }
+.visitor-bouquet-actions button { flex: 1; min-height: 44px; }
+#visitor-bouquet-dialog :focus-visible { outline: 3px solid var(--ui-teal); outline-offset: 2px; }
+@media (max-width: 700px) {
+  #visitor-bouquet-dialog { margin: auto auto 12px 12px; }
+}
