@@ -1,6 +1,9 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const {readFileSync}=require('node:fs');
+const {createRequire}=require('node:module');
+const {compileFunction}=require('node:vm');
 const {normalizeRegexScript,importRegexScripts,applyRegexScripts,parseFindRegex,LIMITS}=require('../src/vendor/sillytavern/regex-scripts.cjs');
 const {screenPattern,guardedMatches}=require('../src/vendor/sillytavern/safe-regex.cjs');
 // Synthetic script in the shape SillyTavern exports (numeric placement and substituteRegex).
@@ -144,14 +147,32 @@ test('hostile or broken patterns are skipped and leave the text unchanged',()=>{
   assert.equal(screenPattern('(a|b)+'),'a nested or alternating repeated group');assert.equal(screenPattern('\\1'),'a backreference');
   assert.equal(guardedMatches(/a/g,'aaa',20,2).tooMany,true);
 });
-test('input and output caps',()=>{
+test('input and script count caps',()=>{
   const big=run('a'.repeat(LIMITS.inputChars+1),S('/a/g','b'));
   assert.equal(big.text.length,LIMITS.inputChars+1);assert.ok(big.text.startsWith('aaa'));assert.match(big.warnings[0],/were not applied/);
-  // 3000 matches x 100 characters would exceed the output cap: the script and those after it stop.
-  const grow=run('a'.repeat(3000),[S('/^a/','b'),S('/a/g','x'.repeat(100)),S('b','c')]);
-  assert.equal(grow.text,'b'+'a'.repeat(2999));assert.equal(grow.applied.length,1);assert.match(grow.warnings[0],/beyond 200000 characters/);
   const many=Array.from({length:101},(_,index)=>S('a','a',{scriptName:'n'+index}));
   assert.match(run('a',many).warnings[0],/Only the first 100/);
+});
+
+test('the output cap preserves previous changes and stops later scripts', () => {
+  // Run the real replacement pipeline with an isolated clock and matcher watchdog.
+  const filename = require.resolve('../src/vendor/sillytavern/regex-scripts.cjs');
+  const load = compileFunction(readFileSync(filename, 'utf8'), ['require', 'module'], {filename});
+  const localRequire = createRequire(filename);
+  const isolated = {exports: {}};
+  load(name => name === './safe-regex.cjs' ? {
+    screenPattern,
+    guardedMatches: (regex, text, _timeout, maxMatches) => guardedMatches(regex, text, 1000, maxMatches)
+  } : localRequire(name), isolated);
+
+  const tail = 'a'.repeat(Math.floor(LIMITS.outputChars / 3));
+  const scripts = [S('/^a/', 'b'), S('/^b.*$/', '$0$0$0'), S('/^b/', 'c')];
+  const grow = isolated.exports.applyRegexScripts('a' + tail, {
+    scripts, placement: 'ai_output', now: () => 0
+  });
+  assert.equal(grow.text, 'b' + tail);
+  assert.deepEqual(grow.applied, [scripts[0].id]);
+  assert.match(grow.warnings[0], /beyond 200000 characters/);
 });
 
 test('zero-width matches respect the match cap', () => {
