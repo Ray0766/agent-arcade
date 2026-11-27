@@ -330,6 +330,29 @@ export class BothouseResidents {
   hasApprovedVisit(world: GroundWorld) {
     return world === this.visitorWorld && this.visitorAllowed;
   }
+  photoResident(world:GroundWorld,id:string) {
+    const figure=this.figures.get(id);
+    if(!this.hasApprovedVisit(world)||!this.closure.hidden||!figure?.motion.valid)return null;
+    return figure.model.root;
+  }
+  photoBystanders(subject:T.Object3D) {
+    return [...this.figures.values()].map(figure=>figure.model.root).filter(root=>root!==subject&&root.visible).map(root=>root.position);
+  }
+  nearbyPhotoResidents(world:GroundWorld,viewer:T.Vector3,camera:T.Camera) {
+    if(!this.hasApprovedVisit(world)||!this.closure.hidden)return [];
+    const direction=viewer.toArray() as Vec3;
+    const eye=viewer.clone().multiplyScalar(world.support(direction,world.radius(direction)+.45).radius+1.1);
+    return [...this.figures.values()].flatMap(figure=>{
+      const root=figure.model.root;
+      const distance=viewer.angleTo(root.position)*world.baseRadius;
+      if(!root.visible||!figure.motion.valid||distance<.8||distance>3.4)return [];
+      const point=root.position.clone().addScaledVector(root.position.clone().normalize(),1.35);
+      if(world.cameraDistance(eye,point,.06)+.05<eye.distanceTo(point))return [];
+      const screen=point.project(camera);
+      if(Math.abs(screen.x)>.96||Math.abs(screen.y)>.94||screen.z>=1)return [];
+      return [{id:figure.role.id,name:figure.role.displayName,root,rank:Math.abs(screen.x)+distance*.08}];
+    }).sort((a,b)=>a.rank-b.rank);
+  }
   guideRoster(world: GroundWorld, epoch: number): ResidentGuideEntry[] {
     if (world !== this.visitorWorld || !this.friendVisitAllowed || !this.closure.hidden ||
         this.visit !== world.planetId+'/'+epoch+'/'+world.revision) return [];
