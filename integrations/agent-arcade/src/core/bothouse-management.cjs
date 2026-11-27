@@ -313,7 +313,9 @@ function mountBothouse({window,WebContentsView,session,dialog,profile,language,i
       }
       const photoBinding=target.planet&&visitPhotos?.claim(value.friend);
       const view=new WebContentsView({webPreferences:{session:isolated,nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false,
-        ...(photoBinding&&{preload:path.join(__dirname,'visit-photo-preload.cjs'),additionalArguments:['--arcade-photo-page='+destination.href]}),
+        ...(world&&{preload:path.join(__dirname,'visit-photo-preload.cjs'),additionalArguments:[
+          '--arcade-world-page='+destination.href,...(photoBinding?['--arcade-photo-page='+destination.href]:[]),
+        ]}),
         webSecurity:true,webviewTag:false,navigateOnDragDrop:false}});
       guest={view};top=value.headerBottom;
       if(world){
@@ -412,6 +414,31 @@ function mountBothouse({window,WebContentsView,session,dialog,profile,language,i
       })`);
       if(!current())fail('cancelled');
       if(!rendered)fail(world?'offline':'dashboard');
+      if(world){
+        const frame=wc.mainFrame;
+        let minimized=false;
+        const valid=()=>current()&&!wc.isDestroyed()&&wc.mainFrame===frame&&frame.url===destination.href;
+        const onMinimize=()=>{
+          if(minimized||!valid())return;
+          minimized=true;
+          frame.send('arcade:worldMinimized',true);
+        };
+        const onRestore=()=>{
+          if(!minimized)return;
+          minimized=false;
+          if(valid())frame.send('arcade:worldMinimized',false);
+        };
+        const detach=()=>{
+          window.removeListener('minimize',onMinimize);
+          window.removeListener('restore',onRestore);
+          wc.removeListener('did-start-navigation',navigation);
+        };
+        const navigation=(_event,_url,inPlace,main)=>{if(main&&!inPlace)detach();};
+        wc.on('did-start-navigation',navigation);
+        wc.once('destroyed',detach);
+        window.on('minimize',onMinimize);
+        window.on('restore',onRestore);
+      }
       aiChatReady=world;
       view.setVisible(true);wc.focus();
       return 'ready';
