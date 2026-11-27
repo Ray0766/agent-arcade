@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "c8ea31bb725d396685c8510e079694e3835b52c6",
-  "worldTree": "43a12ce1278d8aeaaf1cdcc401c4d9b83471a72b",
-  "patchSHA256": "400d595220ed30296286281a45f14453106c20da12d68dcd4ef21b527123eab2",
+  "worldRevision": "6437b8ea2bc4ba67e4d7f2eeaaacbe1e5ad86672",
+  "worldTree": "2a759b0ac46bc35eb657b969663d3c02329cbd8e",
+  "patchSHA256": "c4df53250451a9b446735cb44bb88d3189988c930ccd71bca5036aa7128bfc69",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -213,6 +213,12 @@
       "path": "spec/tutorial-navigation.test.ts",
       "blob": "a08299f008c3e82b05d8a63c53f9d95a6bdafb91",
       "sha256": "b6e7a101d642c1bbe25115eac5df7c4166b02a97f5f9ca5fa292e8674dc914b0"
+    },
+    {
+      "action": "M",
+      "path": "spec/village-polish.test.ts",
+      "blob": "f8b5a2c14a4f676cca92bc79a8c0e2b1b56e63ab",
+      "sha256": "36f2c6cfe590ed1547d025d0b67969d373686135af61f229be95b73e57b832a8"
     },
     {
       "action": "M",
@@ -703,8 +709,8 @@
     {
       "action": "A",
       "path": "src/client/town-post-delivery.ts",
-      "blob": "688a82f8a8dc93d5ebd0fc960365ac9eab1da9aa",
-      "sha256": "27041a183152a89f8fc683c542c228e28b302b89a44ea94e56bcf1551a6e1f7c"
+      "blob": "fe5aa7f58603128d82fd30f8e7c71787e42217d2",
+      "sha256": "9597496918ba2031b8c8e4b47272660be871a6743a00ea6ac0e2cfebe1fcafca"
     },
     {
       "action": "A",
@@ -751,8 +757,8 @@
     {
       "action": "M",
       "path": "src/client/village-polish.ts",
-      "blob": "bf4d8e88fe0c25f7f3003c3c214d217801d7039f",
-      "sha256": "7c0c17219dd76923d05b5e11f75224f471ef2b2c624519140f0a007e76e86d2b"
+      "blob": "c4b3a2efab1fb0fee3dd5407616469b0581c5daa",
+      "sha256": "03b12d531081ca2edac30a3d17997838df975ee4d0ac50bab64889f3c39be0a6"
     },
     {
       "action": "A",

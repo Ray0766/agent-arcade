@@ -4,10 +4,10 @@ import { TOWN_POST_ADA, TOWN_POST_PAX, type TownPostCommand, type TownPostProgre
 import './town-post-delivery.css';
 
 const copy={
-  zh:{offer:'接下星星信', deliver:'把星星信交给艾达', address:'商铺街东排 · 艾达收',
+  zh:{offer:'接下星星信', deliver:'把星星信交给艾达', address:'商铺街东排 · 花篮招牌 · 艾达收',
     route:'沿邮局巷回抵达广场，再转进商铺街。', wrong:'这封信写着商铺街东排，得交给艾达。',
     retry:'暂时没能交接。走近一些，再试一次。', done:'艾达：收到了，谢谢！是东排小店订的新招牌，明早就能挂上。'},
-  en:{offer:'Take the star letter', deliver:'Give the star letter to Ada', address:'Ada · East row, Market Street',
+  en:{offer:'Take the star letter', deliver:'Give the star letter to Ada', address:'Ada · Basket sign, east row · Market Street',
     route:'Follow Post Lane back to Arrival Square, then turn onto Market Street.', wrong:'This letter belongs to Ada on the east row.',
     retry:'The letter could not be handed over. Step closer and try again.', done:'Ada: Thank you! It’s about the new sign for my shop. I can hang it tomorrow.'},
 };
