@@ -443,6 +443,10 @@ export class BothouseResidents {
     return world === this.visitorWorld && this.friendVisitAllowed
       && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
   }
+  hasCurrentFriendVisit(world: GroundWorld, epoch: number) {
+    return world === this.visitorWorld && this.friendVisitAllowed && this.closure.hidden
+      && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
+  }
   private clear() {
     this.benchIds=[];
     this.friendVisitAllowed = false;

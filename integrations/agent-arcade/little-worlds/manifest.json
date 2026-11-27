@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
-  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
+  "worldRevision": "37e90a72a71fea23588842d0417ef8bcca458733",
+  "worldTree": "dce2477ad37ae23f146b0cc5e436c247e7ec91fe",
+  "patchSHA256": "94402fb6e6f71bba56e9cf491b35babdbdd96d106aa2c96dbe182ad01980246e",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -511,8 +511,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "6b5468c5294258ee5f6e6a4bcf1e75ad734210b4",
-      "sha256": "3a4ed80e080acdd4e95c135c2ce0730b668b4529b83a6d4b31f20258de2041cb"
+      "blob": "19827b14e0192306231f2bd98a28e97d6931b3c1",
+      "sha256": "f9f001e323f56cb5b465f4d012dc2b8b7009da7014d80a624df4a26ef717e052"
     },
     {
       "action": "A",
@@ -613,14 +613,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "92983bc0cbfab0bfae35edf381fdedf000a7de7b",
-      "sha256": "867ce3d4b574d1af231325087a0e4660afa4d056201b6344af7a1d5f779a91eb"
+      "blob": "6cb75513bb4a75f5c2e8ff5897ebe2d52e0d45dd",
+      "sha256": "0088adc62e0a06df7895268425103fff033b5a156eabd12a9cb33cd6794ac27b"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "992cafe704edc69412e8a22d704386db99b6f449",
-      "sha256": "46428718fd216b2e9ace2a49ebe4772e0c3dfafd785737db0beb1123a0a4556d"
+      "blob": "28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920",
+      "sha256": "02ded8106e7ee55083be9ab8b2a508585ee17b0a89d83ec17d31a2761e882c60"
     },
     {
       "action": "A",
@@ -727,8 +727,8 @@
     {
       "action": "M",
       "path": "src/client/village-polish.ts",
-      "blob": "bf4d8e88fe0c25f7f3003c3c214d217801d7039f",
-      "sha256": "7c0c17219dd76923d05b5e11f75224f471ef2b2c624519140f0a007e76e86d2b"
+      "blob": "287c1a8548eab7ccc3c0faed110f0b452f8cadcc",
+      "sha256": "43ae685fe54f0d878f03ae4edcd233ef5048ad25dd016bf1228ad25671532641"
     },
     {
       "action": "M",
@@ -739,8 +739,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "faed0a799741bf12007cbf4f0d224884b266918f",
-      "sha256": "59dbcb913a462654f1d10e031a02a49fbaf60dffc4304c43c87f9bd659ff2a41"
+      "blob": "479e67a0d45fd7307d2ef6675d52340e6200c0c2",
+      "sha256": "3b48c1b5a98a08e2f1f2735221d4dd4ad31d4182c6a0047a2dfc57bf8a353e91"
     },
     {
       "action": "A",
