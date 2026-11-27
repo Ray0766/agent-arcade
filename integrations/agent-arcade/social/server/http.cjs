@@ -11,6 +11,7 @@ const net = require('node:net');
 const {createHash} = require('node:crypto');
 const {friendShareLookup}=require('./bothouse/friend-share-lookup.cjs');
 const {fail,number} = require('./store.cjs');
+const {createPhotoThumbnails}=require('./photo-thumbnail.cjs');
 const {current,makeAuth,sessionDigest} = require('./auth.cjs');
 const {planetPublishers}=require('./bothouse/planet-residents.cjs');
 const {createAiDirect} = require('./ai-direct.cjs');
@@ -349,6 +350,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
     return grant?.enabled?ai.contacts().filter(role=>role.number===grant.ai)
       .map(({number,displayName,kind})=>({number,displayName,kind})):[];
   }
+  const readPhotoThumbnail=createPhotoThumbnails(store);
   const aiFeed=createAiFeed(store,[[AI_NUMBER,aiProvider],[AI_JU_NUMBER,juAvailable?claudeProvider:undefined],
     [AI_DRAGON_NUMBER,openaiProvider]],feedClock);
   const server = http.createServer(async (req,res) => {
@@ -388,6 +390,18 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       }
       if (!['GET','POST'].includes(req.method)) fail(405,'method','请求方法无效');
       const [collection,chat,action,message,asset,variant]=parts;
+      if(req.method==='GET'&&collection==='conversations'&&action==='messages'&&asset==='album-thumbnail'&&
+        parts.length===5&&/^[1-9]\d*$/u.test(message)&&Number.isSafeInteger(Number(message))){
+        const account=current(store,req);
+        if(url.searchParams.get('account')!==account)fail(409,'image_session','账号已切换');
+        const bytes=await readPhotoThumbnail(account,chat,Number(message),url.searchParams.get('revision'));
+        if(current(store,req)!==account)fail(409,'image_session','账号已切换');
+        res.setHeader('Content-Type','image/png');
+        res.setHeader('Content-Length',bytes.length);
+        res.setHeader('Cross-Origin-Resource-Policy','same-origin');
+        res.setHeader('X-Content-Type-Options','nosniff');
+        return res.end(bytes);
+      }
       if(collection==='conversations'&&parts.length===3&&action==='files'&&req.method==='POST'){
         const account=current(store,req);
         if(req.headers['x-social-account']!==account)fail(409,'file_session','账号已切换，请重新打开会话');
