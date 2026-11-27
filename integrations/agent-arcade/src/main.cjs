@@ -2570,7 +2570,7 @@ else {
         window:win, WebContentsView:require('electron').WebContentsView, session,
         pickGroupCard:createGroupCardPicker({window:win,WebContentsView:require('electron').WebContentsView,
           library:characterLibrary,lorebookLibrary,nativeImage}),
-        configuration,saveImage:createSocialImageSaver(win,dialog),
+        Notification,configuration,saveImage:createSocialImageSaver(win,dialog),
         readSendShortcut:()=>config.sendShortcut,
       }));
     }

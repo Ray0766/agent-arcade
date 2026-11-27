@@ -317,13 +317,14 @@
     if(typeof window.arcade.storeSupport==='function')void window.arcade.storeSupport()
       .then(value=>{supportData=value;drawSupport();}).catch(()=>{});
     window.arcade.onStoreSocialUnavailable(()=>{ if(socialActive){++socialEpoch;socialState('error');} });
+    window.arcade.onStoreConversationNotice?.(target=>void showSocial(true,undefined,target));
     window.arcade.onStoreSocialFocus(()=>toggleSocialMenu(false,{focus:false}));
     window.arcade.onStoreToolsRequested(()=>{if(socialActive&&!imageFeedbackReturn)toggleSocialMenu(true);});
     const resize=new ResizeObserver(()=>{if(socialStatus.hidden)fitSocial();});
     resize.observe(bar);
     resize.observe(socialMenu);
   }
-  async function showSocial(focus=false,aiChatAccount){
+  async function showSocial(focus=false,aiChatAccount,noticeTarget){
     leaveBothouse();
     toggleSocialMenu(false,{focus:false});
     const epoch=++socialEpoch;
@@ -335,7 +336,7 @@
     paintSocialButtons();
     socialState('loading');
     let loaded=false;
-    try{loaded=await storeSocial({active:true,headerBottom:socialHeaderBottom(),focus,aiChatAccount,...(imageFeedbackReturn&&{imageFeedback:true})});}catch{}
+    try{loaded=await storeSocial({active:true,headerBottom:socialHeaderBottom(),focus,aiChatAccount,noticeTarget,...(imageFeedbackReturn&&{imageFeedback:true})});}catch{}
     if(epoch===socialEpoch){
       socialState(loaded?'ready':'error');
       if(focus&&!loaded)socialRetry.focus({preventScroll:true});

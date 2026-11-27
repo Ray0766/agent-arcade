@@ -180,6 +180,10 @@ CREATE TABLE IF NOT EXISTS ai_appointment_messages (
   message INTEGER PRIMARY KEY REFERENCES messages(id), reply INTEGER REFERENCES messages(id)
 );
 CREATE INDEX IF NOT EXISTS ai_appointment_drafts_until ON ai_appointment_drafts(until);
+CREATE TABLE IF NOT EXISTS muted_conversations (
+  chat TEXT NOT NULL, account TEXT NOT NULL, PRIMARY KEY(chat,account),
+  FOREIGN KEY(chat,account) REFERENCES members(chat,account) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS conversation_reads (
   chat TEXT NOT NULL, account TEXT NOT NULL, through INTEGER NOT NULL CHECK(through>=0),
   PRIMARY KEY(chat,account),

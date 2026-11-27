@@ -7,6 +7,10 @@ if(process.isMainFrame&&location.pathname==='/'&&!location.search){
       open:({account,number})=>ipcRenderer.invoke('arcade:visitFriend',{account,number}),
     });
   }
+  require('electron').contextBridge.exposeInMainWorld('arcadeConversationNotices',{
+    show:value=>ipcRenderer.send('arcade:conversationNotice',value),
+    reset:()=>ipcRenderer.send('arcade:clearConversationNotices'),
+  });
   const versionArgument='--arcade-feedback-desktop-version=';
   const desktopVersion=process.argv.find(arg=>arg.startsWith(versionArgument))?.slice(versionArgument.length);
   document.addEventListener('DOMContentLoaded',()=>{

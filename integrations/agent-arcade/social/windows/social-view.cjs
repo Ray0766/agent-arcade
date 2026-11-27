@@ -7,7 +7,7 @@ const imageDownloadPath=/^\/api\/v1\/conversations\/([a-f0-9]{8}(?:-[a-f0-9]{4})
 const fileDownloadPath=/^\/api\/v1\/conversations\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})\/messages\/[1-9]\d{0,15}\/file\/download$/u;
 const chatFragment=/^#chat\/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/u;
 
-function createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, pickCrop, readSendShortcut, visitFriend, isActive=()=>false,
+function createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, pickCrop, readSendShortcut, visitFriend, Notification, noticeFocused, openNotice, isActive=()=>false,
   spawnSnip=require('node:child_process').spawn, openExternal=url=>require('electron').shell.openExternal(url) }) {
   const origin = serviceOrigin(configuration.origin, configuration.mode);
   const {desktopVersion} = configuration;
@@ -63,12 +63,62 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
     preloadArgs.push('--arcade-feedback-desktop-version='+desktopVersion);
   const view = new WebContentsView({
     webPreferences: {
+      ...(Notification&&{backgroundThrottling:false}),
       session: browserSession, contextIsolation: true, nodeIntegration: false,
       sandbox: true, devTools: false, preload:path.join(__dirname,'privacy-preload.cjs'),
       ...(preloadArgs.length&&{additionalArguments:preloadArgs}),
     },
   });
   const contents = view.webContents;
+  if(Notification){
+    const notices=new Map();
+    let noticeEpoch=0;
+    const trustedFrame=event=>event.sender===contents&&event.senderFrame===contents.mainFrame&&
+      isTrusted(event.senderFrame?.url)&&new URL(event.senderFrame.url).pathname==='/';
+    const clear=()=>{
+      ++noticeEpoch;
+      for(const notice of notices.values())notice.close();
+      notices.clear();
+    };
+    const focused=id=>isActive()&&noticeFocused()&&new URL(contents.mainFrame.url).hash==='#chat/'+id;
+    async function check(account,id){
+      const response=await browserSession.fetch(origin+'/api/v1/conversations/'+id,{
+        credentials:'include',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(4000),
+        headers:{'X-Social-Account':account}});
+      return response.ok?(await response.json()).conversation:undefined;
+    }
+    contents.ipc?.on('arcade:clearConversationNotices',event=>{if(trustedFrame(event))clear();});
+    contents.on('did-start-navigation',(_event,_url,inPlace,mainFrame)=>{if(mainFrame&&!inPlace)clear();});
+    contents.once('destroyed',clear);
+    contents.ipc?.on('arcade:conversationNotice',async(event,input)=>{
+      const {account,chat:id,through}=input??{};
+      if(!trustedFrame(event)||typeof account!=='string'||!/^[a-z0-9_]{4,24}$/u.test(account)||
+         typeof id!=='string'||!chatFragment.test('#chat/'+id)||!Number.isSafeInteger(through)||
+         focused(id)||!Notification.isSupported())return;
+      const epoch=noticeEpoch;
+      const current=()=>epoch===noticeEpoch&&!contents.isDestroyed()&&trustedFrame(event);
+      try{
+        const conversation=await check(account,id);
+        if(!current()||focused(id)||conversation?.id!==id||conversation.muted||conversation.friendRemoved||
+           conversation.unreadThrough!==through)return;
+        const notice=new Notification({title:'Agent Arcade',body:'你有一条新消息。',silent:true});
+        notices.get(id)?.close();
+        if(notices.size>=10){
+          const oldest=notices.keys().next().value;
+          notices.get(oldest).close();notices.delete(oldest);
+        }
+        notices.set(id,notice);
+        notice.once('close',()=>{if(notices.get(id)===notice)notices.delete(id);});
+        notice.once('click',async()=>{
+          try{
+            if(!current()||(await check(account,id))?.id!==id||!current())return;
+            openNotice({account,id});
+          }catch{}
+        });
+        notice.show();
+      }catch{}
+    });
+  }
   if(visitFriend)contents.ipc?.handle('arcade:visitFriend',async(event,input)=>{
     const frame=event.senderFrame, address=frame?.url;
     const current=()=>isActive()&&!contents.isDestroyed()&&event.sender===contents&&frame===contents.mainFrame&&frame.url===address;
@@ -283,6 +333,12 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
           'window.dispatchEvent(new CustomEvent("arcade-world-ai-chat",{detail:'+JSON.stringify(account)+'}))'
         );
       }catch { /* The service or page may have closed while returning. */ }
+    },
+    async openConversationNotice(target,current) {
+      if(current()&&!contents.isDestroyed()&&isTrusted(contents.mainFrame?.url)&&new URL(contents.mainFrame.url).pathname==='/'){
+        await contents.executeJavaScript('window.dispatchEvent(new CustomEvent("arcade-conversation-notice-open",{detail:'+
+          JSON.stringify(target)+'}))').catch(()=>{});
+      }
     },
     activate() {
       publishSendShortcut();

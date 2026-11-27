@@ -26,6 +26,7 @@ let friends = [], incoming = [], outgoing = [], conversations = [], syncFlight, 
 let chatVisit=0, moderationCursor=0, historyFloor=0, historyAfter=0, dialogMessage, dialogGroup, dialogCleanup;
 let membershipRevision, historyContext, historyFinder;
 let socialVisible=true;
+let noticeCursor, muteFlight;
 const readThrough=new Map(), readFlights=new Map();
 let inlineVoice, messageAction;
 let feedScope='friends', feedCursor=null, feedRead=0, pendingPost;
@@ -338,6 +339,8 @@ function toggleAuthMode(mode) {
   $('#auth-error').textContent = '';
 }
 function leaveSession({discardFeedback=false,expired=false}={}) {
+  noticeCursor=undefined;
+  window.arcadeConversationNotices?.reset();
   closeStartMenu();
   if(expired)for(const key of localDraftKeys(draftScope))refreshLocalDraft(key.slice(draftScope.prefix.length));
   interruptedDrafts=expired?suspendChatDrafts(user?.number,[...drafts],chat):undefined;
@@ -1354,10 +1357,29 @@ const remarkControl=button('好友备注',()=>{
   });
 });
 remarkControl.hidden=true;chatSettings.append(remarkControl);
+const muteControl=button('消息免打扰',async()=>{
+  if(!user||!conversation||muteFlight)return;
+  const id=chat,expectedAccount=user.number,epoch=generation;
+  const lock={};muteFlight=lock;muteControl.disabled=true;
+  try{
+    const {muted}=await api(thread(id)+'/mute',{expectedAccount,muted:!conversation.muted});
+    if(epoch!==generation)return;
+    if(chat===id&&conversation){conversation={...conversation,muted};showChatHeader();}
+  }catch(error){
+    if(epoch===generation)$('#sync-status').textContent=textError(error);
+  }finally{
+    if(muteFlight===lock){muteFlight=undefined;muteControl.disabled=false;}
+  }
+});
+muteControl.hidden=true;
+chatSettings.append(muteControl);
 function showChatHeader() {
   showReplyTarget();
   renderReconnectAction();
   const available=!!conversation, meta=conversation;
+  muteControl.hidden=!available;
+  muteControl.textContent=meta?.muted?'消息免打扰 · 已开启':'消息免打扰 · 已关闭';
+  muteControl.setAttribute('aria-pressed',String(!!meta?.muted));
   $('#no-chat').hidden=!!chat;
   $('#chat-head').hidden=!available;
   historyView.hidden=!chat;
@@ -1752,7 +1774,7 @@ async function loadChatPortrait(id,visit) {
   }
 }
 async function acknowledgeRead() {
-  if(!user||!chat||historyContext||historyFinder||!Number.isSafeInteger(conversation?.readThrough)||!socialVisible||document.hidden||readFlights.has(chat))return;
+  if(!user||!chat||historyContext||historyFinder||!Number.isSafeInteger(conversation?.readThrough)||!socialVisible||document.hidden||(window.arcadeConversationNotices&&!document.hasFocus())||readFlights.has(chat))return;
   const id=chat, epoch=generation, expectedAccount=user.number;
   const through=messages.findLast(row=>row.id<=historyAfter&&row.sender.number!==expectedAccount&&!row.removed)?.id;
   if(!(through>(readThrough.get(id)??0)))return;
@@ -2230,12 +2252,23 @@ async function syncHistory(loadOlder=false) {
 }
 async function sync() {
   if(!user||syncFlight) return;
+  const foreground=socialVisible&&!document.hidden;
   const epoch=generation, lock={};
   syncFlight=lock;
   try {
-    const [people,requests,threads]=await Promise.all([api('/friends'),api('/friend-requests'),api('/conversations')]);
+    const [threads,people,requests]=await Promise.all([api('/conversations',undefined,{expectedAccount:user.number}),
+      ...(foreground?[api('/friends'),api('/friend-requests')]:[])]);
     if(generation!==epoch||syncFlight!==lock) return;
-    if(people.account!==undefined&&people.account!==user.number){leaveSession();return;}
+    if(people?.account!==undefined&&people.account!==user.number){leaveSession();return;}
+    const previousCursor=noticeCursor;
+    noticeCursor=threads.conversations.reduce((cursor,item)=>Math.max(cursor,item.lastMessage?.id??0),previousCursor??0);
+    if(Number.isSafeInteger(previousCursor)){
+      for(const item of threads.conversations){
+        if(!item.muted&&!item.friendRemoved&&item.unreadThrough>previousCursor)
+          window.arcadeConversationNotices?.show({account:user.number,chat:item.id,through:item.unreadThrough});
+      }
+    }
+    if(!foreground)return;
     const changed=JSON.stringify([friends,incoming,outgoing,conversations])!==JSON.stringify([people.friends,requests.incoming,requests.outgoing,threads.conversations]);
     const removedFriend=tab==='feed'&&friends.some(friend=>friend.kind==='human'&&!people.friends.some(next=>next.number===friend.number));
     friends=people.friends;incoming=requests.incoming;outgoing=requests.outgoing;conversations=threads.conversations;
@@ -2256,6 +2289,10 @@ async function sync() {
     if(chat&&conversation) {
       const active=conversations.find(item=>item.id===chat);
       if(active) {
+        if(!muteFlight&&active.muted!==conversation.muted){
+          conversation={...conversation,muted:active.muted};
+          showChatHeader();
+        }
         if(active.friendRemoved!==conversation.friendRemoved){
           await openChat(chat,user.number,true);
         }else if(active.cloudChat) {
@@ -2274,13 +2311,18 @@ async function sync() {
       }
 
     }
-    const received = await syncHistory();
+    const received = socialVisible&&!document.hidden&&await syncHistory();
     if(received&&generation===epoch&&syncFlight===lock) setReceiveStatus();
   } catch(error) {
     if(generation===epoch&&syncFlight===lock) setReceiveStatus(error);
   } finally {if(syncFlight===lock)syncFlight=undefined;}
 }
-setInterval(()=>{if(socialVisible&&!document.hidden)void sync();},2500);
+setInterval(()=>{if(socialVisible&&!document.hidden||window.arcadeConversationNotices)void sync();},2500);
+window.addEventListener('focus',()=>{if(socialVisible){void acknowledgeRead();void sync();}});
+window.addEventListener('arcade-conversation-notice-open',event=>{
+  const {account,id}=event.detail;
+  if(socialVisible&&user?.number===account)void goChat(id,false,account);
+});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void sync();});
 window.addEventListener('arcade-social-deactivate',()=>{socialVisible=false;});
 window.addEventListener('arcade-social-activate',()=>{socialVisible=true;void sync();});
