@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
-  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
+  "worldRevision": "cde421d14ddc47834533a9f71cacbe9de7007a1c",
+  "worldTree": "636f6c9b0a21f6a52ba22d6681e566f333b48dd4",
+  "patchSHA256": "1723fd64c4406ea1eb77bc604f74269b16e55282e8ac527cfc9ab5cb79b51e5c",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -511,8 +511,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "6b5468c5294258ee5f6e6a4bcf1e75ad734210b4",
-      "sha256": "3a4ed80e080acdd4e95c135c2ce0730b668b4529b83a6d4b31f20258de2041cb"
+      "blob": "992a25ce44eb77bbafe1f3bbf889854befa4cab4",
+      "sha256": "12b56ea260ff4bb1f5a3b3694175530cc03022d6e0b7439d50ad2bb31c6357d8"
     },
     {
       "action": "A",
@@ -575,6 +575,12 @@
       "sha256": "8692d09cccf6396fda0f704c0719aff2859dddf79b271209ea89ab74c582c8de"
     },
     {
+      "action": "A",
+      "path": "src/client/group-photo-framing.ts",
+      "blob": "00c57a5fd8de341c65965b307b0f291fb09bca0a",
+      "sha256": "ebe994b0d93e69cf3eda0d08c7c7050c84ac9168972cb1c438b99583effb3d88"
+    },
+    {
       "action": "M",
       "path": "src/client/harbour.ts",
       "blob": "353faeb78c3b1508899eece2aebc32edcf831162",
@@ -613,14 +619,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "92983bc0cbfab0bfae35edf381fdedf000a7de7b",
-      "sha256": "867ce3d4b574d1af231325087a0e4660afa4d056201b6344af7a1d5f779a91eb"
+      "blob": "0162054400e91ca6a5dd42f5709bfb137c61c0de",
+      "sha256": "da61edf9832865823bf8a3c9b72a6fe53f9307ae7477e6f682e59b419598fbc8"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "992cafe704edc69412e8a22d704386db99b6f449",
-      "sha256": "46428718fd216b2e9ace2a49ebe4772e0c3dfafd785737db0beb1123a0a4556d"
+      "blob": "c57ff39ad5813151cd71494e48e58332bc7c6b00",
+      "sha256": "453a64ebd262d2f89819fa566a5d2181599106f4fee0883224c210ae51eff121"
     },
     {
       "action": "A",
@@ -631,14 +637,14 @@
     {
       "action": "M",
       "path": "src/client/photo-mode.css",
-      "blob": "2e44da8cc037900e2f2cfbad0c57a04420d83cb8",
-      "sha256": "2dd982be2cbda4ce7ec522d3eb002ef71def69a0475ae5d1cc65bc61e48412b5"
+      "blob": "f4480f71c30b9cf9661d4159ab3bf44b2ddd09e5",
+      "sha256": "a5545e1fcd6b126aacb80a4d65ef76c684ef9f5fd730a033e39541257dc3d771"
     },
     {
       "action": "M",
       "path": "src/client/photo-mode.ts",
-      "blob": "b827ccc218a09106f5a68c9da855fa10b73cc7eb",
-      "sha256": "c1ede7c5fe6c639d06bd755e1a042187d68a7e0ddd4fdd0717b3ffba99ebe63c"
+      "blob": "64f0aa53012726eb2b9795c2c6ddc959600ed9e6",
+      "sha256": "fbb665a5060fa9b35f662804ef2b0f0a4f74867bee09f1f9c42384d69e71e2b5"
     },
     {
       "action": "M",
