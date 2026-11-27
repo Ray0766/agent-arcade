@@ -327,6 +327,10 @@ export class BothouseResidents {
     }
     return false;
   }
+  hasCurrentFriendVisit(world: GroundWorld, epoch: number) {
+    return world === this.visitorWorld && this.friendVisitAllowed && this.closure.hidden
+      && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
+  }
   hasApprovedVisit(world: GroundWorld) {
     return world === this.visitorWorld && this.visitorAllowed;
   }

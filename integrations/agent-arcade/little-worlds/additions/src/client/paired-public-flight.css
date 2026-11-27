@@ -1,0 +1,74 @@
+#paired-public-flight {
+  box-sizing: border-box;
+  width: min(260px, calc(100vw - 32px));
+  padding: 11px;
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 8px;
+  background: var(--ui-panel);
+  color: var(--ink);
+  font: 13px/1.45 system-ui, sans-serif;
+  pointer-events: auto;
+}
+
+#paired-public-flight > strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+#paired-public-flight p {
+  margin: 4px 0 0;
+  color: var(--ui-muted);
+}
+
+#paired-public-flight select {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  color: var(--ink);
+  background: var(--ui-chip);
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 5px;
+}
+
+.paired-public-flight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.paired-public-flight-actions:empty { margin: 0; }
+
+#paired-public-flight button {
+  min-height: 38px;
+  padding: 6px 9px;
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 5px;
+  background: var(--ui-chip);
+  color: var(--ink);
+  font: 650 12px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#paired-public-flight button.primary {
+  background: var(--ui-action);
+  color: var(--ui-action-ink);
+}
+
+#paired-public-flight button:focus-visible,
+#paired-public-flight select:focus-visible {
+  outline: 2px solid var(--ui-teal);
+  outline-offset: 2px;
+}
+
+.in-space #paired-public-flight {
+  position: fixed;
+  right: 16px;
+  bottom: 32px;
+}
+@media (max-width: 700px) {
+  .in-space #paired-public-flight {
+    right: 12px;
+    bottom: 176px;
+  }
+}
