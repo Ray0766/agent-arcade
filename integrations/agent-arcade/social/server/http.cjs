@@ -220,9 +220,12 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
           return values.map(Number);
         };
         const ids=readIds('reactionIds'),correctionIds=readIds('correctionIds');
+        const replyCorrectionIds=readIds('replyCorrectionIds');
         return {...page,messages:store.withMessageReactions(a,id,visible),
           ...(ids.length&&{reactionUpdates:store.reactionSummaries(a,id,ids)}),
-          ...(correctionIds.length&&{correctionUpdates:store.correctionTargets(a,id,correctionIds)})};
+          ...(correctionIds.length&&{correctionUpdates:store.correctionTargets(a,id,correctionIds)}),
+          ...(replyCorrectionIds.length&&{replyCorrectionUpdates:Object.fromEntries(
+            Object.keys(store.replyCorrectionTargets(a,id,replyCorrectionIds)).map(reply=>[reply,true]))})};
       }
       if (method === 'POST') {
         if(body.correctionOf!==undefined)return {message:store.send(a,id,body)};
@@ -243,6 +246,12 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
         });
         return {message,directTurn,groupTurn,personalTurn,abortProactive,bothouseTurn};
       }
+    }
+    if(parts.length===5&&action==='messages'&&sub==='reply-correction'&&method==='GET'&&
+      /^[1-9]\d*$/u.test(msg)&&Number.isSafeInteger(Number(msg))){
+      if(params.get('account')!==a)fail(409,'history_session','账号已切换，请重新打开会话');
+      store.group(a,id);
+      return {targetId:store.replyCorrectionTargets(a,id,[Number(msg)])[msg]??null};
     }
     if(parts.length===5&&action==='messages'&&method==='POST'&&/^[1-9]\d*$/u.test(msg)){
       if(sub==='recall')return store.recallMessage(a,id,Number(msg),body);
