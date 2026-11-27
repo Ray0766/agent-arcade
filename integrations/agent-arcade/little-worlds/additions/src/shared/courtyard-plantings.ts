@@ -30,3 +30,12 @@ export const COURTYARD_PLANTINGS = {
 export type CourtyardPlanting = keyof typeof COURTYARD_PLANTINGS;
 export const courtyardPlanting = (hash: unknown) => Object.entries(COURTYARD_PLANTINGS)
   .find(([, planting]) => planting.hash === hash)?.[0] as CourtyardPlanting | undefined;
+
+export type CourtyardFlower = 'coral' | 'gold';
+export type CourtyardBedPalette = 'original' | CourtyardFlower;
+export const COURTYARD_BED_PALETTES = ['original', 'coral', 'gold'] as const;
+export const isCourtyardBedPalette = (value: unknown): value is CourtyardBedPalette =>
+  COURTYARD_BED_PALETTES.some(palette => palette === value);
+export function courtyardBedFlowers(palette?: CourtyardBedPalette): { main: CourtyardFlower; accent: CourtyardFlower } {
+  return palette === 'gold' ? { main: 'gold', accent: 'coral' } : { main: 'coral', accent: 'gold' };
+}

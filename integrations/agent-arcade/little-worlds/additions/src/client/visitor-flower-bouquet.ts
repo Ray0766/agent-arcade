@@ -1,18 +1,20 @@
 import * as T from 'three';
 import { disposeObject3D } from '../assets/claude-geometry/core/dispose.ts';
-import { COURTYARD_PLANTINGS } from '../shared/courtyard-plantings.ts';
+import { COURTYARD_PLANTINGS, courtyardBedFlowers } from '../shared/courtyard-plantings.ts';
 import type { GroundPose, GroundWorld } from '../shared/physics/world.ts';
-import type { PlacedObject } from '../shared/planets.ts';
-import { courtyardFoliage } from './nature-art.ts';
+import type { PlanetView, PlacedObject } from '../shared/planets.ts';
+import { courtyardPetalMaterial } from './courtyard-petal-material.ts';
+import { flowerFoliage } from './nature-art.ts';
 import './visitor-flower-bouquet.css';
 
 type Flower = 'coral' | 'gold';
 type Arrangement = { main: Flower; accent: Flower };
-type Bed = { object: PlacedObject; model: T.Object3D };
+type Bed = { object: PlacedObject; model: T.Object3D; arrangement: Arrangement };
 type Site = {
   world: GroundWorld;
   pose: GroundPose;
   objects: readonly PlacedObject[];
+  bedPalettes?: PlanetView['courtyardBedPalettes'];
   getModel(id: string): T.Object3D | undefined;
 };
 const defaultFlowers: Arrangement = { main: 'coral', accent: 'gold' };
@@ -21,9 +23,11 @@ const flowers = {
   gold: ['金色花', 'Golden flowers'],
 } satisfies Record<Flower, [string, string]>;
 
-function nearbyBed({ world, pose, objects, getModel }: Site): Bed | null {
+function nearbyBed({ world, pose, objects, getModel, bedPalettes }: Site): Bed | null {
   if (!pose.grounded || world.blocked(pose)) return null;
   const up = new T.Vector3(...pose.position), eye = up.clone().multiplyScalar(pose.radius + .9);
+  let closest = 1.75;
+  let bed: Bed | null = null;
   for (const object of objects) {
     if (object.kind !== 'structure' || object.blueprintHash !== COURTYARD_PLANTINGS.bed.hash ||
         up.angleTo(new T.Vector3(...object.position)) * world.baseRadius > 2.55) continue;
@@ -35,11 +39,13 @@ function nearbyBed({ world, pose, objects, getModel }: Site): Bed | null {
       if (anchor?.userData.part !== part.part) continue;
       const point = anchor.localToWorld(new T.Vector3(0, .58, 0));
       const metres = up.angleTo(point) * world.baseRadius;
-      if (metres >= .65 && metres <= 1.75 && world.cameraDistance(eye, point, .04) + .06 >= eye.distanceTo(point))
-        return { object, model };
+      if (metres >= .65 && metres <= closest && world.cameraDistance(eye, point, .04) + .06 >= eye.distanceTo(point)) {
+        closest = metres;
+        bed = { object, model, arrangement: courtyardBedFlowers(bedPalettes?.[object.id]) };
+      }
     }
   }
-  return null;
+  return bed;
 }
 
 function makeBouquet({ main, accent }: Arrangement) {
@@ -53,7 +59,9 @@ function makeBouquet({ main, accent }: Arrangement) {
   tie.position.y = -.091;
   root.add(tie);
   const tuck = (flower: Flower, x: number, y: number, z: number, width: number, height: number, tilt: number) => {
-    const spray = courtyardFoliage('flowers', flower === 'gold');
+    const spray = new T.Group();
+    for (const { geometry, material, texture } of flowerFoliage())
+      spray.add(new T.Mesh(geometry, texture === 'flowers' ? courtyardPetalMaterial(flower, material) : material));
     spray.position.set(x, y, z);
     spray.scale.set(width, height, width);
     spray.rotation.set(.15, x < 0 ? .28 : -.24, tilt);
@@ -133,8 +141,8 @@ export class VisitorFlowerBouquet {
       if (!this.offer) return;
       releaseView();
       this.source = this.offer;
-      this.main.value = defaultFlowers.main;
-      this.accent.value = defaultFlowers.accent;
+      this.main.value = this.source.arrangement.main;
+      this.accent.value = this.source.arrangement.accent;
       this.dialog.showModal();
       this.preview();
     };
