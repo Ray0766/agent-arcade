@@ -32,6 +32,20 @@ function createWorkOrders(store,receiver){
     return JSON.stringify([member.membershipRevision,role.revision,grant?.revision??null,...binding]);
   }
   const retryPattern=/^重试任务\s*[#＃]\s*([1-9]\d{0,14})[。！!]?$/u;
+  async function directoryRoleAvailable(account,role,chat){
+    if(role?.kind!=='ai'||role.source!=='bothouse'||!role.configured||!role.id||!receiver?.available)return false;
+    try{
+      if(chat){
+        const direct=store.access(account,chat);
+        if(direct.type!=='direct'||direct.friendRemoved||
+           (direct.first_user===account?direct.second_user:direct.first_user)!==role.number)return false;
+      }
+      const original=chat&&roleScope(account,chat,role.number,role.id);
+      if(chat&&!original)return false;
+      const available=await receiver.available({account,number:role.number,project:role.id,chat,direct:true});
+      return available===true&&(!chat||roleScope(account,chat,role.number,role.id)===original);
+    }catch{return false;}
+  }
   async function sharedDirectAvailable(account,chat){
     const member=store.access(account,chat);
     if(member.type!=='direct'||member.friendRemoved||!receiver?.available)return {available:false};
@@ -161,7 +175,7 @@ function createWorkOrders(store,receiver){
   function view(id){
     return store.one('SELECT prompt AS messageId,ai AS target,state,attempt,board_id AS boardId FROM bothouse_work_orders WHERE prompt=?',id);
   }
-  return {prepare,sharedDirectAvailable,stage,retry,view,start(){if(receiver)timer=setInterval(poll,500).unref();},
+  return {prepare,sharedDirectAvailable,directoryRoleAvailable,stage,retry,view,start(){if(receiver)timer=setInterval(poll,500).unref();},
     stop(){closed=true;clearInterval(timer);receiver?.stop?.();},wake(){setImmediate(poll);}};
 }
 module.exports={createWorkOrders,isAssignment};

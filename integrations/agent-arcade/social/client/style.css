@@ -459,3 +459,10 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .message-quote strong { display:block; font-size:.85em; }
 .reply-target:not([hidden]) { display:flex; align-items:center; gap:.5rem; grid-column:1/-1; }
 .reply-target span { flex:1; }
+
+.group-message-task-form{display:grid;gap:.7rem;min-width:0}
+.group-message-task-recipient{display:grid;gap:.15rem;overflow-wrap:anywhere;margin:0}
+.group-message-task-form blockquote{margin:0;padding:.5rem .75rem;border-inline-start:2px solid currentColor;white-space:pre-wrap;overflow-wrap:anywhere;max-block-size:26vh;overflow:auto}
+.group-message-task-form label{display:grid;gap:.3rem}
+.group-message-task-form textarea{width:100%;box-sizing:border-box;resize:vertical}
+.group-message-task-actions{display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap}

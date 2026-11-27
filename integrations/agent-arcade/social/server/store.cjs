@@ -403,6 +403,19 @@ class SocialStore {
     }
     return this.conversation(a,direct.id);
   }
+  checkGroupTaskSource(account,source) {
+    const unavailable=()=>fail(404,'group_task_source','原群消息已移除或不可查看');
+    if(typeof source?.chatId!=='string'||!Number.isSafeInteger(source.messageId)||source.messageId<1||
+       typeof source.membershipRevision!=='string'||this.user(account).kind!=='human')unavailable();
+    const from=this.access(account,source.chatId);
+    if(from.type!=='group'||from.membershipRevision!==source.membershipRevision)unavailable();
+    const row=this.one('SELECT * FROM messages WHERE chat=? AND id=? AND id>? AND sender=? AND removed=0',
+      source.chatId,source.messageId,from.since,account);
+    if(!row)unavailable();
+    const message=this.message(row);
+    if(!row.body.trim()||message.attachment||message.task||message.imageQuestion)unavailable();
+    return message;
+  }
   access(a,id) {
     // Existing memberships keep a stable identity until they are removed.
     const chat = this.one(`SELECT c.*,m.since,COALESCE(r.revision,c.id||'/'||m.account) AS membershipRevision,
