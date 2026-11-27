@@ -503,3 +503,11 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 @media (min-width:700px) {
   #group-video-stage:not([hidden]) {grid-template-columns:repeat(3,minmax(0,200px))}
 }
+
+.group-video-all {grid-column:1/-1;justify-self:end;order:-2;min-height:36px}
+.group-video-tile {position:relative}
+.group-video-tile.group-video-featured {grid-column:1/-1;order:-1}
+.group-video-featured .group-video-screen {aspect-ratio:16/9;max-height:34vh}
+.group-video-select {background:none;color:var(--ink);border:0;padding:0;font:inherit;font-weight:650;text-align:start;text-decoration:underline;text-underline-offset:2px}
+.group-video-select::after {content:"";position:absolute;inset:0;cursor:pointer}
+.group-video-select:focus-visible::after {outline:2px solid var(--plum);outline-offset:-3px;border-radius:8px}
