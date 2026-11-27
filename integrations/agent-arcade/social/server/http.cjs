@@ -83,6 +83,18 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
     case 'GET personal-ai/private-profile': return {profile:personal.publicProfile(a,true)};
     case 'POST personal-ai/private-profile': return {profile:personal.saveProfile(a,body,true)};
     case 'GET me': return {user:store.profile(a)};
+    case 'GET message-bookmarks':
+      if(params.get('account')!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
+      return store.messageBookmarkPage(a,params.get('before'));
+    case 'POST message-bookmarks/save':
+      if(body.expectedAccount!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
+      if(typeof body.chat!=='string'||!Number.isSafeInteger(body.message)||body.message<1)
+        fail(400,'bookmark_type','请选择一条聊天消息');
+      return store.saveMessageBookmark(a,body.chat,body.message);
+    case 'POST message-bookmarks/remove':
+      if(body.expectedAccount!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
+      if(!Number.isSafeInteger(body.id)||body.id<1)fail(400,'bookmark_type','请选择一条收藏');
+      return store.removeMessageBookmark(a,body.id);
     case 'GET stickers': return {stickers:bundledStickerOptions(),...store.savedStickerPage(a,params.get('before'))};
     case 'POST stickers/save': {
       if(body.expectedAccount!==a)fail(409,'image_session','账号已切换，请重新打开会话');
@@ -512,7 +524,8 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       if(collection==='conversations'&&action==='messages'&&asset==='image'&&req.method==='GET'&&
           (parts.length===5||parts.length===6&&variant==='download')&&/^[1-9]\d*$/u.test(message)) {
         const account=current(store,req);
-        if(req.headers['x-social-account']!==undefined&&req.headers['x-social-account']!==account)
+        if((req.headers['x-social-account']!==undefined&&req.headers['x-social-account']!==account)||
+          (url.searchParams.has('account')&&url.searchParams.get('account')!==account))
           fail(409,'image_session','账号已切换，请重新打开会话');
         const file=store.messageImage(account,chat,message);
         res.setHeader('Content-Type',file.mime);
