@@ -32,6 +32,22 @@ function createWorkOrders(store,receiver){
     return JSON.stringify([member.membershipRevision,role.revision,grant?.revision??null,...binding]);
   }
   const retryPattern=/^重试任务\s*[#＃]\s*([1-9]\d{0,14})[。！!]?$/u;
+  async function sharedDirectAvailable(account,chat){
+    const member=store.access(account,chat);
+    if(member.type!=='direct'||member.friendRemoved||!receiver?.available)return {available:false};
+    const number=member.first_user===account?member.second_user:member.first_user;
+    if(!/^bh_[a-f0-9]{21}$/u.test(number)||store.user(number).kind!=='ai')return {available:false};
+    try{
+      const original=roleScope(account,chat,number,number);
+      if(!original)return {available:false};
+      const project=await receiver.identity(account,number);
+      if(!project||!await receiver.available({account,number,project,chat,direct:true}))return {available:false};
+      if(await receiver.identity(account,number)!==project||roleScope(account,chat,number,number)!==original)
+        return {available:false};
+      const stableNumber=store.one('SELECT native FROM bothouse_native_numbers WHERE legacy=?',number)?.native??number;
+      return {available:true,number,stableNumber};
+    }catch{return {available:false};}
+  }
   async function prepare(account,chat,body){
     if(typeof body.text!=='string'||(!retryPattern.test(body.text.trim())&&!isAssignment(body.text)))return;
     const member=store.access(account,chat);
@@ -145,7 +161,7 @@ function createWorkOrders(store,receiver){
   function view(id){
     return store.one('SELECT prompt AS messageId,ai AS target,state,attempt,board_id AS boardId FROM bothouse_work_orders WHERE prompt=?',id);
   }
-  return {prepare,stage,retry,view,start(){if(receiver)timer=setInterval(poll,500).unref();},
+  return {prepare,sharedDirectAvailable,stage,retry,view,start(){if(receiver)timer=setInterval(poll,500).unref();},
     stop(){closed=true;clearInterval(timer);receiver?.stop?.();},wake(){setImmediate(poll);}};
 }
 module.exports={createWorkOrders,isAssignment};
