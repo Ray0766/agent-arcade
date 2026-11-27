@@ -722,9 +722,12 @@ class SocialStore {
     if(cursor!==null&&!isPostId(cursor))fail(400,'cursor','消息位置无效');
     const before=cursor===null?Number.MAX_SAFE_INTEGER:Number(cursor),limit=20;
     const rows=this.all(`WITH searchable AS (
-      SELECT m.id,m.chat,m.sender,m.created,coalesce(f.name,m.body) AS text,
-        CASE WHEN f.message IS NOT NULL THEN 'file' END AS attachmentKind
+      SELECT m.id,m.chat,m.sender,m.created,coalesce(caption.caption,f.name,m.body) AS text,
+        CASE WHEN caption.message IS NOT NULL THEN 'photo' WHEN f.message IS NOT NULL THEN 'file' END AS attachmentKind
       FROM members viewer CROSS JOIN messages m
+      LEFT JOIN message_image_captions caption ON caption.message=m.id AND m.body=''
+        AND NOT EXISTS (SELECT 1 FROM message_stickers s WHERE s.message=m.id)
+        AND NOT EXISTS (SELECT 1 FROM message_drawings d WHERE d.message=m.id)
       LEFT JOIN message_files f ON f.message=m.id AND m.body=''
       WHERE viewer.account=? AND m.chat=viewer.chat AND m.id>viewer.since AND m.id<? AND m.removed=0
         AND NOT EXISTS (SELECT 1 FROM message_voices v WHERE v.message=m.id)
