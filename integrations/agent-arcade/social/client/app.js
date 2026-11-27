@@ -2226,10 +2226,10 @@ $('#forward-own-photo').addEventListener('click',()=>{
   messageActions.hidePopover();
   showForwardPicker(row);
 });
-function showForwardPicker(singlePhoto,{onCancel}={}){
+function showForwardPicker(singlePhoto,{onCancel,albumPhotoIds}={}){
   const selection=messageSelection,source=chat,sourceRevision=membershipRevision,account=user.number,epoch=generation;
-  const photo=Boolean(singlePhoto);
-  const ids=singlePhoto?[singlePhoto.id]:Array.from(selection?.ids??[]).sort((a,b)=>a-b);
+  const photo=Boolean(singlePhoto||albumPhotoIds);
+  const ids=singlePhoto?[singlePhoto.id]:Array.from(albumPhotoIds??selection?.ids??[]).sort((a,b)=>a-b);
   if(selection?.unavailable)return;
   if(!ids.length||!sourceRevision)return;
   if(ids.length>20){
@@ -3402,13 +3402,62 @@ function showDirectPhotoAlbum(){
   status.setAttribute('role','status');
   const more=button('加载更多',()=>void load(),'outline');
   more.hidden=true;
+  const albumActions=el('div',null,'actions direct-photo-selection');
+  const selectedPhotos=new Set();
+  let pickingPhotos=false,lastPicked;
+  const selectionStatus=el('span',null,'minor');
+  selectionStatus.setAttribute('role','status');
+  const toggleSelection=button('选择本人照片',()=>{
+    if(!current())return;
+    pickingPhotos=!pickingPhotos;
+    if(!pickingPhotos)selectedPhotos.clear();
+    paintPhotoSelection();
+  });
+  const forwardSelection=button('转发所选照片',async()=>{
+    const version=listRevision;
+    const active=()=>current()&&listRevision===version;
+    if(!active()||!await verifyAccess(active))return;
+    paintPhotoSelection();
+    if(!selectedPhotos.size)return;
+    const position=dialog.scrollTop;
+    showForwardPicker(undefined,{albumPhotoIds:[...selectedPhotos],async onCancel(canReturn){
+      if(!sameConversation()||!await verifyAccess(canReturn))return;
+      for(const tile of list.querySelectorAll('[data-photo-id]')){
+        if(removedMessages.has(Number(tile.dataset.photoId)))tile.remove();
+      }
+      openAlbum();
+      paintPhotoSelection();
+      dialog.scrollTop=position;
+      const focus=list.querySelector('[data-own-album-photo][data-photo-id="'+lastPicked+'"]')??
+        (albumActions.hidden?(monthLabel.hidden?$('#dialog-close'):monthPicker):toggleSelection);
+      focus.focus({preventScroll:true});
+    }});
+  },'primary');
+  albumActions.append(toggleSelection,selectionStatus,forwardSelection);
+  albumActions.hidden=true;
   const sections=new Map();
   let scope,before=null,loading=false,opening=false;
   const sameConversation=()=>generation===epoch&&chatVisit===visit&&chat===id&&user?.number===account&&
     membershipRevision===revision&&!conversation?.friendRemoved;
   const current=()=>scope===dialogGeneration&&sameConversation();
   function openAlbum(){
-    scope=directPhotoAlbumScope=openDialog('共享照片',[monthLabel,list,status,more],id);
+    scope=directPhotoAlbumScope=openDialog('共享照片',[monthLabel,albumActions,list,status,more],id);
+  }
+  function paintPhotoSelection(){
+    const own=[...list.querySelectorAll('[data-own-album-photo]')];
+    const visibleIds=new Set(own.map(tile=>Number(tile.dataset.photoId)).filter(id=>!removedMessages.has(id)));
+    for(const id of selectedPhotos)if(!visibleIds.has(id))selectedPhotos.delete(id);
+    albumActions.hidden=!visibleIds.size;
+    toggleSelection.textContent=pickingPhotos?'退出选择':'选择本人照片';
+    selectionStatus.hidden=forwardSelection.hidden=!pickingPhotos;
+    selectionStatus.textContent=pickingPhotos?'已选 '+selectedPhotos.size+' 张（最多 20 张）':'';
+    forwardSelection.disabled=!selectedPhotos.size;
+    for(const tile of own){
+      const selected=selectedPhotos.has(Number(tile.dataset.photoId));
+      if(pickingPhotos)tile.setAttribute('aria-pressed',String(selected));
+      else tile.removeAttribute('aria-pressed');
+      tile.setAttribute('aria-label',(pickingPhotos?'选择照片，':'查看原图，')+tile.dataset.photoLabel);
+    }
   }
   async function verifyAccess(active){
     try{
@@ -3432,7 +3481,16 @@ function showDirectPhotoAlbum(){
     const photo=el('img');
     photo.alt='';
     photo.loading='lazy';
+    const own=isOwnPhoto(message,account);
     const tile=button('',async()=>{
+      if(own&&pickingPhotos){
+        if(!current()||removedMessages.has(message.id))return;
+        lastPicked=message.id;
+        if(selectedPhotos.has(message.id))selectedPhotos.delete(message.id);
+        else if(selectedPhotos.size<20)selectedPhotos.add(message.id);
+        paintPhotoSelection();
+        return;
+      }
       if(!current()||opening||removedMessages.has(message.id))return;
       opening=true;
       try{
@@ -3455,7 +3513,10 @@ function showDirectPhotoAlbum(){
         const originalScope=directPhotoAlbumScope=dialogGeneration;
       }finally{opening=false;}
     },'direct-photo-tile');
-    tile.setAttribute('aria-label','查看原图，'+message.sender.displayName+'，'+date+' '+time(message.createdAt,clockTime));
+    tile.dataset.photoId=message.id;
+    tile.dataset.photoLabel=message.sender.displayName+'，'+date+' '+time(message.createdAt,clockTime);
+    tile.setAttribute('aria-label','查看原图，'+tile.dataset.photoLabel);
+    if(own)tile.dataset.ownAlbumPhoto='';
     photo.addEventListener('error',()=>{
       tile.replaceChildren(el('span','缩略图不可用','minor'));
     },{once:true});
@@ -3478,6 +3539,7 @@ function showDirectPhotoAlbum(){
       if(!applicable())return;
       if(page.membershipRevision!==revision)throw Error('membership_changed');
       for(const message of page.items)appendPhoto(message);
+      paintPhotoSelection();
       before=page.nextBefore;
       more.hidden=before===null;
       status.textContent=list.childElementCount?'':month?'本月暂无双方共享的照片。':'暂无双方共享的照片。';
@@ -3486,6 +3548,7 @@ function showDirectPhotoAlbum(){
       if([403,404,409].includes(error.status)||error.message==='membership_changed'){
         list.replaceChildren();
         sections.clear();
+        paintPhotoSelection();
         more.hidden=monthLabel.hidden=true;
         status.textContent='这段私聊的共享照片已不可查看。';
       }else{
@@ -3521,7 +3584,10 @@ function showDirectPhotoAlbum(){
     before=null;
     more.hidden=true;
     sections.clear();
+    selectedPhotos.clear();
+    lastPicked=undefined;
     list.replaceChildren();
+    paintPhotoSelection();
     void load();
   });
   openAlbum();

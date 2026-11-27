@@ -532,3 +532,6 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .forward-photo-list li + li {border-top:1px solid var(--line)}
 .forward-photo-list .attachment-preview {width:5rem;height:4.5rem;margin:0;object-fit:contain;background:var(--wash)}
 .forward-photo-list p {white-space:pre-wrap}
+
+.direct-photo-selection { justify-content:flex-start; align-items:center; flex-wrap:wrap; }
+.direct-photo-tile[aria-pressed="true"] { box-shadow:inset 0 0 0 2px var(--plum); background:var(--select); }
