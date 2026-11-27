@@ -1,5 +1,5 @@
 import * as T from 'three';
-import type { HomeItemKind } from '../shared/home.ts';
+import type { HomeItemKind, HomeShelfStyle } from '../shared/home.ts';
 import table from '../assets/kenney-furniture/tableRound.glb?url';
 import chair from '../assets/kenney-furniture/chairCushion.glb?url';
 import shelf from '../assets/kenney-furniture/bookcaseOpen.glb?url';
@@ -41,14 +41,18 @@ async function fitModel(model: FurnitureModel) {
   return root;
 }
 
-async function addShelfContents(root: T.Group) {
+type ShelfContents = Record<'default' | HomeShelfStyle, T.Group>;
+type FurnitureTemplate = { root: T.Group; shelf: ShelfContents | null };
+
+async function makeShelfContents(): Promise<ShelfContents> {
   // The original GLB's three shelf surfaces are at y=.13, .37 and .61 of .88.
   const [lower, middle, upper] = [.13, .37, .61].map(y => y * models.shelf.size[1] / .88);
-  const [bookStack, storageBox, pottedHerb, tabletopRadio] = await Promise.all([
+  const [bookStack, storageBox, pottedHerb, tabletopRadio, leafModel] = await Promise.all([
     fitModel({ url: books, size: [.24, .17, .15], turn: Math.PI }),
     fitModel({ url: box, size: [.21, .17, .17] }),
     fitModel({ url: shelfPlant, size: [.14, .26, .14] }),
     fitModel({ url: radio, size: [.23, .17, .12], turn: Math.PI }),
+    fitModel({ url: plant, size: [.28, .37, .2] }).catch(() => null),
   ]);
   // Keep the stoneware jar silhouette from the original room's open shelf.
   const jarProfile = [[.07, 0], [.095, .08], [.09, .17], [.06, .215], [.065, .24], [0, .24]];
@@ -61,18 +65,50 @@ async function addShelfContents(root: T.Group) {
   tabletopRadio.position.set(.10, middle, -.043);
   bookStack.position.set(-.125, upper, -.042);
   pottedHerb.position.set(.14, upper, -.035);
-  root.add(storageBox, lowerBooks, jar, tabletopRadio, bookStack, pottedHerb);
+  const classic = new T.Group();
+  classic.add(storageBox, lowerBooks, jar, tabletopRadio, bookStack, pottedHerb);
+
+  const reading = new T.Group(), greenery = new T.Group();
+  const put = (row: T.Group, model: T.Object3D, x: number, y: number, scale = 1, yaw = 0) => {
+    const prop = model.clone(true);
+    prop.position.set(x, y, -.036);
+    prop.scale.multiplyScalar(scale);
+    prop.rotation.y = yaw;
+    row.add(prop);
+  };
+
+  // Turn the horizontal volumes into a row of spines, above two rows of stacks.
+  const upright = new T.Group();
+  const spines = bookStack.clone(true);
+  spines.rotation.z = -Math.PI / 2;
+  spines.position.set(-.085, .12, 0);
+  upright.add(spines);
+  for (const x of [-.19, 0, .19]) put(reading, upright, x, middle, .95);
+  put(reading, bookStack, -.145, lower, 1.12);
+  put(reading, bookStack, .145, lower, 1.05, Math.PI);
+  put(reading, bookStack, -.14, upper, 1.1);
+  put(reading, tabletopRadio, .14, upper, .92);
+
+  // Let the leaves fill the mid and upper openings while small pots sit below.
+  const broadLeaves = leafModel ?? pottedHerb;
+  put(greenery, storageBox, -.135, lower);
+  put(greenery, pottedHerb, .13, lower, 1.15);
+  put(greenery, broadLeaves, -.135, middle);
+  put(greenery, pottedHerb, .135, middle, 1.4, .45);
+  put(greenery, broadLeaves, .125, upper, 1.05, -.75);
+  put(greenery, jar, -.155, upper, .86);
+  return { default: classic, reading, greenery };
 }
 
-const templates = new Map<HomeItemKind, Promise<T.Group | null>>();
+const templates = new Map<HomeItemKind, Promise<FurnitureTemplate | null>>();
 
 function loadModel(kind: HomeItemKind) {
   const cached = templates.get(kind);
   if (cached) return cached;
   const loading = (async () => {
     const root = await fitModel(models[kind]);
-    if (kind === 'shelf') await addShelfContents(root);
-    root.traverse(node => {
+    const shelf = kind === 'shelf' ? await makeShelfContents() : null;
+    for (const group of [root, ...Object.values(shelf ?? {})]) group.traverse(node => {
       if (!(node instanceof T.Mesh)) return;
       node.castShadow = node.receiveShadow = true;
       node.geometry.userData.sharedResource = true;
@@ -80,7 +116,7 @@ function loadModel(kind: HomeItemKind) {
         material.userData.sharedResource = true;
       }
     });
-    return root;
+    return { root, shelf };
   })().catch(() => {
     // A damaged or unavailable asset must not trap the player outside.
     templates.delete(kind);

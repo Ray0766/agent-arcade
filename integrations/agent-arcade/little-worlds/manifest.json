@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "bd6ea7a07a95af3ed1bf3c467e5c1b77a95b8a2e",
-  "worldTree": "f2a6b415470171e18618669b53556bde1273d275",
-  "patchSHA256": "151278fdfe393fcb2b985b6ba5c989d048a5560b8f4bc6097ce2000621c2da21",
+  "worldRevision": "47254de538926bcb8607958318787eded08558d8",
+  "worldTree": "85437ed6bb4f5a867f6200f13e4b026852c84e52",
+  "patchSHA256": "1eccf59b2237171e371ec4b154cdc9d55c2963e7cbe0f33bdf5b2f08f5bb5420",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -201,6 +201,12 @@
       "path": "spec/home-interior-view.test.ts",
       "blob": "3f01aff3d6e6cb2437d48aa556ee1620e7d6ab5e",
       "sha256": "4d6835531faabd35851d9874e8a1fa6640800a30f07c03ee291d88e4de1e4e1c"
+    },
+    {
+      "action": "M",
+      "path": "spec/home-owner-access.test.ts",
+      "blob": "e2c8352d6949b91d36f2426f8c2f81c7cdd1150a",
+      "sha256": "8ee80dd38f5e419b037056d18679893537a45a98e57d8ec8a16211bd3934e3c8"
     },
     {
       "action": "M",
@@ -619,8 +625,8 @@
     {
       "action": "A",
       "path": "src/client/home-furniture-models.ts",
-      "blob": "73c9906b5b44ea66f38c1f4bdc1c1b36a554404e",
-      "sha256": "f5c6af19d94227c47c7dd28491f4c77b11b19533d9b0db31dd15cc82110187b8"
+      "blob": "744112358c9bde70352b60d9b71e13cf59549567",
+      "sha256": "eed9af0b95de72dc698b3e273967fe91603c31bd7fc5baf3e866bbebc088c12b"
     },
     {
       "action": "M",
@@ -631,8 +637,8 @@
     {
       "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "21380a472a76930342bff3fae0129ec7ae92d53b",
-      "sha256": "c0311ccc557e719da34c5729bbcbc3fbf4e88dec978280766ccac02a191119e0"
+      "blob": "6310a7ccdec8f79384919eff9f3798deb29bd5cf",
+      "sha256": "22a86dde03473428438b766affedf5f30139721cf0e77a117abea71f57495430"
     },
     {
       "action": "M",
@@ -810,6 +816,12 @@
     },
     {
       "action": "M",
+      "path": "src/server/home.ts",
+      "blob": "dbc81f8e99c73cd9436560867ae68874d6b02090",
+      "sha256": "7d92705ea13ead721fba4243c090b583fc8cfee47674252dd038f5b2394943e4"
+    },
+    {
+      "action": "M",
       "path": "src/server/index.ts",
       "blob": "e4d054a91c00d77aa2a9c17b150fda8a06a15475",
       "sha256": "014113509c49f6e2616d5904c4a9224a31abd54006a3853ccd79b236dc5fc697"
@@ -849,6 +861,12 @@
       "path": "src/shared/courtyard-arrival.ts",
       "blob": "c3ff42a4c1edccdd15a868eeea00a4fc4bba1d93",
       "sha256": "43565b441e61e0077903d884d39ae6c122df58f85afe997c0a736e3260b39b07"
+    },
+    {
+      "action": "M",
+      "path": "src/shared/home.ts",
+      "blob": "6e5702f0649eaee503697d44d8b556933254e8a0",
+      "sha256": "5a0cd3ef91c96640bf8a65cb3124877020a71009343c705206fae8b31e51fce9"
     },
     {
       "action": "A",
