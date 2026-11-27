@@ -1205,6 +1205,7 @@ function pickMention(person,id,scope) {
   closeDialog();
   chooseMention(person);
 }
+const canSendChatVideo=meta=>user?.kind==='human'&&Boolean(membershipRevision)&&canAttach(meta);
 const canAttach = meta => Boolean(meta && !meta.friendRemoved&&(meta.type==='group'||meta.members.every(member=>member.kind==='human')));
 const canSendPhoto=meta=>canAttach(meta)||!meta?.personalAi&&meta?.cloudChat?.enabled===true;
 const imageUrl = row => './api/v1'+thread(row.conversationId)+'/messages/'+row.id+'/image';
@@ -1422,6 +1423,7 @@ function showChatHeader() {
   stickerButton.hidden=!canSendPhoto(meta);
   $('#record-voice').hidden=!canAttach(meta);
   if($('#attach-file'))$('#attach-file').hidden=!canAttach(meta);
+  $('#attach-video').hidden=!canSendChatVideo(meta);
   if($('#chat-screenshot'))$('#chat-screenshot').hidden=!canSendPhoto(meta);
   $('#mention-member').hidden=meta.type!=='group';
   if(mentionSuggestions)messageBox.setAttribute('aria-autocomplete',meta.type==='group'?'list':'none');
@@ -1838,6 +1840,7 @@ function sameRun(a,b){
   return first.toDateString()===last.toDateString()&&last-first>=0&&last-first<300000;
 }
 function renderHistory(scroll) {
+  const focusedVideo=document.activeElement?.dataset?.videoMessage;
   const oldTop=historyView.scrollTop, oldHeight=historyView.scrollHeight;
   const imageButtons=new Map([...historyView.querySelectorAll('[data-image-id]')]
     .map(node=>[Number(node.dataset.imageId),node]));
@@ -1901,6 +1904,13 @@ function renderHistory(scroll) {
       content.append(meta,open);
       const sticker=message.attachment.sticker;
       if(sticker?.source)content.append(el('p',sticker.label,'minor'));
+    }else if(message.attachment?.type==='video'&&!message.removed){
+      const attachment=message.attachment;
+      const play=button('',()=>void openChatVideo(message),'chat-video-bubble');
+      play.dataset.videoMessage=message.id;
+      play.append(el('strong','▶ 播放短视频'),el('span',attachment.name,'chat-video-name'),
+        el('small',chatVideoLength(attachment.durationMs)+' · '+fileSize(attachment.bytes),'minor'));
+      content.append(meta,play);
     }else if(message.attachment?.type==='file'&&!message.removed){
       const {name,bytes}=message.attachment;
       const save=el('a','保存文件','save-chat-file');
@@ -1958,6 +1968,7 @@ function renderHistory(scroll) {
       historyView.querySelector('[data-message-action="'+action+'"]'))?.focus({preventScroll:true});
   }
   if(focusedAnchor)historyView.querySelector('[data-history-message="'+focusedAnchor+'"]')?.focus({preventScroll:true});
+  if(focusedVideo)historyView.querySelector('[data-video-message="'+focusedVideo+'"]')?.focus({preventScroll:true});
   if(scroll==='end') historyView.scrollTop=historyView.scrollHeight;
   else if(scroll==='prepend') historyView.scrollTop=oldTop+historyView.scrollHeight-oldHeight;
   else historyView.scrollTop=oldTop;
@@ -3109,6 +3120,172 @@ function showOriginalImage(message) {
 }
 function fileSize(bytes){
   return bytes.toLocaleString()+' 字节';
+}
+const chatVideoMime='video/webm';
+const chatVideoLimit=16*1024*1024;
+function chatVideoLength(milliseconds){
+  return (Math.round(milliseconds/100)/10).toLocaleString()+' 秒';
+}
+function chatVideoPlayer(label){
+  const player=el('video',null,'chat-video-player');
+  player.controls=true;
+  player.playsInline=true;
+  player.preload='auto';
+  player.setAttribute('aria-label',label);
+  return player;
+}
+function useChatVideo(player,blob){
+  const url=URL.createObjectURL(blob);
+  player.src=url;
+  return ()=>{
+    player.pause();
+    player.removeAttribute('src');
+    player.load();
+    URL.revokeObjectURL(url);
+  };
+}
+$('#attach-video')?.addEventListener('click',()=>chatVideoDialog());
+function chatVideoDialog(){
+  if(!canSendChatVideo(conversation))return;
+  const id=chat,account=user.number,visit=chatVisit,epoch=generation,revision=membershipRevision;
+  const field=el('label','选择 WebM 视频（最长 60 秒，最多 16 MiB）');
+  const input=el('input');
+  input.type='file';input.accept='.webm,video/webm';
+  field.append(input);
+  const preview=el('div',null,'chat-video-preview');
+  const details=el('p',null,'chat-video-name');
+  const status=el('p',null,'feedback');
+  status.setAttribute('role','status');
+  let selection,sending=false,release;
+  const send=button('发送视频',()=>void sendVideo(),'primary');
+  const cancel=button('取消',()=>{if(!sending)closeDialog();},'outline');
+  const controls=el('div',null,'actions');
+  controls.append(cancel,send);
+  send.disabled=true;
+  const scope=openDialog('发送短视频',[field,details,preview,status,controls],id);
+  const current=()=>dialog.open&&scope===dialogGeneration&&visit===chatVisit&&epoch===generation&&
+    user?.number===account&&routeId()===id&&membershipRevision===revision&&canSendChatVideo(conversation);
+  dialogCleanup=()=>release?.();
+  input.addEventListener('change',()=>{
+    if(!current()||sending)return;
+    release?.();
+    release=undefined;
+    selection=undefined;
+    preview.replaceChildren();
+    send.disabled=true;
+    send.textContent='发送视频';
+    details.textContent='';
+    const file=input.files[0];
+    if(!file){status.textContent='';return;}
+    if(!/\.webm$/iu.test(file.name)||!file.size||file.size>chatVideoLimit){
+      status.textContent=file.size>chatVideoLimit?'这段视频超过 16 MiB。':'请选择可播放的 WebM 短视频。';
+      return;
+    }
+    const player=chatVideoPlayer('本地短视频预览');
+    const candidate={file,clientId:clientNonce(),ready:false};
+    selection=candidate;
+    details.textContent=file.name;
+    status.textContent='正在读取本地视频…';
+    const active=()=>current()&&selection===candidate;
+    player.addEventListener('loadeddata',()=>{
+      if(!active())return;
+      if(!(player.duration>0)||!player.videoWidth){
+        status.textContent='无法读取这段视频的画面或时长。';
+        return;
+      }
+      if((Number.isFinite(player.duration)&&player.duration>60)||Math.max(player.videoWidth,player.videoHeight)>4096||
+          player.videoWidth*player.videoHeight>4096*2160){
+        status.textContent='视频须在 60 秒内，最长边不超过 4096 像素。';
+        return;
+      }
+      candidate.ready=true;
+      send.disabled=false;
+      status.textContent=(Number.isFinite(player.duration)?chatVideoLength(player.duration*1000):'已可预览')+' · '+fileSize(file.size);
+    },{once:true});
+    player.addEventListener('error',()=>{
+      if(!active())return;
+      candidate.ready=false;
+      send.disabled=true;
+      status.textContent='这段 WebM 视频无法播放，请选择 VP8 / Opus 短片。';
+    });
+    preview.append(player);
+    release=useChatVideo(player,file.slice(0,file.size,chatVideoMime));
+  });
+  async function sendVideo(){
+    if(!current()||sending||!selection?.ready)return;
+    const {file,clientId}=selection;
+    sending=input.disabled=send.disabled=cancel.disabled=true;
+    status.textContent='正在发送视频…';
+    preview.querySelector('video')?.pause();
+    try{
+      const result=await api(thread(id)+'/videos',file,{expectedAccount:account,
+        fileUpload:{name:file.name,clientId,revision,mime:chatVideoMime},timeoutMs:60000});
+      if(!current())return;
+      merge([result.message],'end');
+      closeDialog();
+      void sync();
+    }catch(error){
+      if(!current())return;
+      status.textContent=error.status===400||error.status===413||error.status===415||error.status===422?
+        '这段视频未能通过格式或大小检查，请换一段 VP8 / Opus WebM 短片。':textError(error);
+      send.textContent='重试发送';
+    }finally{
+      sending=false;
+      if(current())input.disabled=cancel.disabled=false;
+      if(current())send.disabled=!selection.ready;
+    }
+  }
+}
+async function openChatVideo(message){
+  const id=chat,account=user?.number,visit=chatVisit,epoch=generation,revision=membershipRevision;
+  if(!account||!revision||message.conversationId!==id||removedMessages.has(message.id))return;
+  const findRow=()=>historyView.querySelector('[data-history-message="'+message.id+'"]');
+  const offset=(findRow()?.getBoundingClientRect().top??historyView.getBoundingClientRect().top)-historyView.getBoundingClientRect().top;
+  const sameChat=()=>generation===epoch&&chatVisit===visit&&user?.number===account&&routeId()===id&&membershipRevision===revision;
+  const abort=new AbortController(),player=chatVideoPlayer('聊天短视频播放器');
+  player.hidden=true;
+  const status=el('p','正在读取短视频…','feedback');
+  status.setAttribute('role','status');
+  const replay=button('重播',()=>{
+    if(current()&&!player.hidden){player.currentTime=0;void player.play().catch(()=>{});}
+  },'outline');
+  replay.hidden=true;
+  const scope=openDialog('播放短视频',[el('strong',message.attachment.name,'chat-video-name'),player,status,replay],id);
+  const current=()=>sameChat()&&scope===dialogGeneration&&dialog.open&&!abort.signal.aborted;
+  stopVoicePlayback();
+  let release;
+  dialogCleanup=()=>{
+    abort.abort();
+    release?.();
+    requestAnimationFrame(()=>{
+      if(!sameChat()||dialog.open||removedMessages.has(message.id))return;
+      const row=findRow();
+      if(!row)return;
+      historyView.scrollTop+=row.getBoundingClientRect().top-historyView.getBoundingClientRect().top-offset;
+      row.querySelector('[data-video-message]')?.focus({preventScroll:true});
+    });
+  };
+  dialogMessage={chatId:id,messageId:message.id};
+  player.addEventListener('loadeddata',()=>{
+    if(!current())return;
+    player.hidden=replay.hidden=false;
+    status.textContent='';
+  },{once:true});
+  player.addEventListener('error',unavailable);
+  function unavailable(){
+    if(!current())return;
+    player.hidden=replay.hidden=true;
+    status.textContent='这段视频暂时无法播放。';
+  }
+  try{
+    const response=await fetch('./api/v1'+thread(id)+'/messages/'+message.id+'/video',{
+      headers:{'X-Social-Account':account},cache:'no-store',
+      signal:AbortSignal.any([abort.signal,AbortSignal.timeout(30000)])
+    });
+    if(!response.ok)throw Error('video_unavailable');
+    const blob=await response.blob();
+    if(current())release=useChatVideo(player,blob);
+  }catch{unavailable();}
 }
 $('#attach-file')?.addEventListener('click',()=>fileDialog());
 function fileDialog(droppedFile){
