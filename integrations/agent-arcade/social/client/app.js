@@ -2656,11 +2656,14 @@ historySearchButton?.addEventListener('click',()=>{
   const submit=el('button','搜索','primary');submit.type='submit';
   const senderLabel=el('label','发送人'),sender=el('select');
   const dateLabel=el('label','日期（本地时间）'),day=el('input');
+  const typeLabel=el('label','消息类型'),messageType=el('select');
+  messageType.append(new Option('全部类型',''),new Option('短视频','video'));
+  typeLabel.append(messageType);
   day.type='date';
   sender.append(new Option('全部发送人',''));
   senderLabel.append(sender);
   dateLabel.append(day);
-  form.append(label,input,senderLabel,dateLabel,submit);
+  form.append(label,input,senderLabel,dateLabel,typeLabel,submit);
   const status=el('p',null,'minor');status.setAttribute('role','status');
   const results=el('ul',null,'history-search-results');
   const more=button('更多结果',()=>void search(true),'outline');more.hidden=true;
@@ -2712,6 +2715,7 @@ historySearchButton?.addEventListener('click',()=>{
       const query=input.value.trim();
       if(query)filters.q=query;
       if(sender.value)filters.sender=sender.value;
+      if(messageType.value)filters.type=messageType.value;
       if(day.value){
         if(!/^\d{4}-\d{2}-\d{2}$/u.test(day.value)){
           status.textContent='请选择有效日期。';return;
@@ -2727,7 +2731,7 @@ historySearchButton?.addEventListener('click',()=>{
         filters.until=end.toISOString();
       }
       if(!Object.keys(filters).length){
-        status.textContent='请选择日期或发送人，或填写关键词。';return;
+        status.textContent='请选择消息类型、日期或发送人，或填写关键词。';return;
       }
     }
     const before=next;
@@ -2741,8 +2745,10 @@ historySearchButton?.addEventListener('click',()=>{
         if(removedMessages.has(hit.id))continue;
         const snippet=el('span',null,'history-search-snippet');
         highlightHistoryHit(snippet,hit.text,filters.q);
+        if(hit.category==='video')snippet.append(el('small',' · '+chatVideoLength(hit.durationMs),'minor'));
         const open=button('',()=>void jumpTo(hit.id),'history-search-hit');
-        open.append(el('span',hit.sender+'　'+time(hit.createdAt),'minor'),snippet);
+        const category=hit.category==='video'?' · 短视频':'';
+        open.append(el('span',hit.sender+'　'+time(hit.createdAt)+category,'minor'),snippet);
         const entry=el('li');
         entry.dataset.historyHit=hit.id;
         entry.append(open);results.append(entry);
