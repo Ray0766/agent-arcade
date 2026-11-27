@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "1cf3d72270ff634cf0697e5b1f438e77de01f960",
-  "worldTree": "ce4906ca57f95d00572befd6e3ebf2431e18b88b",
-  "patchSHA256": "f50dd1bdc5bba88aa2b12a1f9295340d821205e9086a21d88c0a2ec97da7508a",
+  "worldRevision": "94ac383909f638f851b003ff5f8495f97307312a",
+  "worldTree": "df8b080772ec8dceb25f53928b9328b46110b640",
+  "patchSHA256": "efb20d310bca76a06e161321c27c4cd3d6c01510e2bf82d445eda1ecc4b0c8ff",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -817,8 +817,8 @@
     {
       "action": "M",
       "path": "src/client/village-polish.ts",
-      "blob": "5343c6934d3748aaf621bb80922fed15e172827c",
-      "sha256": "73414343961c689064a6f04c3292959a2d9ef4d5275a6a05fcfd036ea151eb7e"
+      "blob": "c24e2f9f48e3b7116ad737aee6e6f3e197c1944b",
+      "sha256": "9f2ce32289e6522334003167f8687b96a873ac241c20e4a634ab13205728a9aa"
     },
     {
       "action": "A",
