@@ -121,6 +121,41 @@ let potMaterial: T.MeshStandardMaterial | undefined;
 /** The existing Quaternius flowers, without the standalone object's pot. */
 export function flowerFoliage() { return pieces(shapeData('flowers', 'distant')); }
 
+const gold = new WeakMap<T.MeshStandardMaterial, T.MeshStandardMaterial>();
+function goldenFoliage(source: T.MeshStandardMaterial) {
+  const existing = gold.get(source);
+  if (existing) return existing;
+  const material = markShared(applyArtMaterial(new T.MeshStandardMaterial({
+    map: source.map, side: source.side, alphaTest: source.alphaTest, roughness: source.roughness,
+  })));
+  material.alphaToCoverage = false;
+  const before = material.onBeforeCompile, baseKey = material.customProgramCacheKey();
+  material.customProgramCacheKey = () => baseKey + ':courtyard-golden-foliage';
+  material.onBeforeCompile = (shader, renderer) => {
+    before.call(material, shader, renderer);
+    // Recolour the existing leaf/petal texture and preserve its original cutout alpha.
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      float plantTone = clamp(dot(diffuseColor.rgb, vec3(0.28, 0.60, 0.12)) * 1.85, 0.0, 1.0);
+      diffuseColor.rgb = mix(vec3(0.52, 0.115, 0.012), vec3(1.0, 0.75, 0.20), plantTone);`);
+  };
+  gold.set(source, material);
+  return material;
+}
+
+export function courtyardFoliage(kind: 'flowers' | 'tree' | 'bush', golden: boolean) {
+  const data = shapeData(kind === 'tree' ? 'leafy' : 'flowers', 'distant');
+  const group = new T.Group();
+  pieces(data).forEach(({ geometry, material }, index) => {
+    const t = data[index].t;
+    // Every saved structure owns these copies for its camera provenance attributes.
+    const shape = geometry.clone(); shape.userData = {};
+    const mesh = new T.Mesh(shape, golden && (t === 'flowers' || t.startsWith('leaves-')) ? goldenFoliage(material) : material);
+    mesh.castShadow = mesh.receiveShadow = true;
+    group.add(mesh);
+  });
+  return group;
+}
+
 function flowerPot() {
   return pot ??= markShared(new T.LatheGeometry([
     [0, 0], [.64, 0], [.79, .91], [.94, .91], [.94, 1], [.76, 1], [.75, .90], [0, .90],

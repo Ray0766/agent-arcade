@@ -1,6 +1,7 @@
 import sampleImage from '../assets/courtyard-inspiration.webp';
 import flowerCornerImage from '../assets/courtyard-flower-corner.webp';
 import type { BuildKind } from '../shared/planets.ts';
+import { COURTYARD_PLANTINGS, type CourtyardPlanting } from '../shared/courtyard-plantings.ts';
 import { localizeTree, setAttribute, setText } from './i18n.ts';
 import './courtyard-inspiration.css';
 
@@ -14,15 +15,18 @@ const examples = [{
   ],
 }, {
   title: 'Flower-viewing corner', image: flowerCornerImage,
-  alt: 'Two pots at different heights on the grass beside the open stone path, with a lantern set back.',
+  alt: 'Coral and gold flowers, low stone edging and a golden tree frame the grass beside the courtyard path.',
   items: [
-    { kind: 'flowers', title: 'Front flower pot', tip: 'Place it on lower grass beside the path, near the entrance.' },
-    { kind: 'flowers', title: 'Raised flower pot', tip: 'Place the same pot on higher grass, a little farther from the path.' },
-    { kind: 'lamp', title: 'Lantern', tip: 'Set the lantern behind the pots. Leave the stone path clear from end to end.' },
+    { kind: 'bed', title: COURTYARD_PLANTINGS.bed.name, tip: 'Lay the flowers across the grass to make a broad band of colour.' },
+    { kind: 'edging', title: COURTYARD_PLANTINGS.edging.name, tip: 'Turn the trim along the grass edge. Keep the path and the front of both seats clear.' },
+    { kind: 'golden-tree', title: COURTYARD_PLANTINGS['golden-tree'].name, tip: 'Set the taller tree behind the flowers. Leave open space around the pots.' },
+    { kind: 'flowers', title: 'Flower pot', tip: 'Keep a pot within reach from the open grass so a visiting friend can water it.' },
   ],
 }] as const;
 
-export function createCourtyardInspiration(after: HTMLElement, choose: (kind: BuildKind) => void) {
+export type CourtyardChoice = BuildKind | CourtyardPlanting;
+
+export function createCourtyardInspiration(after: HTMLElement, choose: (kind: CourtyardChoice) => void) {
   const open = document.createElement('button');
   open.type = 'button';
   open.id = 'open-courtyard-inspiration';
