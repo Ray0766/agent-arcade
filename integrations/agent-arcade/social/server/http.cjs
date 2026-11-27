@@ -140,6 +140,7 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
       const {conversation}=store.acceptAiFriendRequest(a,target.number);
       return {conversation:conversationView(conversation)};
     }
+    case 'GET conversation-search': return store.searchConversationMessages(a,params);
     case 'GET conversations': return {conversations:store.conversations(a).map(conversationView)};
     case 'POST direct': {
       const direct = store.direct(a,number(body.number));

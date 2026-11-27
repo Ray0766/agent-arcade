@@ -707,6 +707,29 @@ class SocialStore {
       ORDER BY coalesce((SELECT created FROM messages WHERE chat=c.id AND id>m.since ORDER BY id DESC LIMIT 1), c.created) DESC,c.id`,a)
       .map(row => this.conversation(a,row.id));
   }
+  searchConversationMessages(account,params) {
+    if(params.get('account')!==account)fail(409,'history_session','账号已切换，请重新打开消息页');
+    const query=string(params.get('q'),100,'搜索关键词');
+    const cursor=params.get('before');
+    if(cursor!==null&&!isPostId(cursor))fail(400,'cursor','消息位置无效');
+    const before=cursor===null?Number.MAX_SAFE_INTEGER:Number(cursor),limit=20;
+    const rows=this.all(`WITH hits AS MATERIALIZED (
+      SELECT m.id,m.chat,m.sender,m.body,m.created
+      FROM members viewer CROSS JOIN messages m
+      WHERE viewer.account=? AND m.chat=viewer.chat AND m.id>viewer.since AND m.id<? AND m.removed=0
+        AND instr(lower(m.body),lower(?))>0
+        AND NOT EXISTS (SELECT 1 FROM message_voices v WHERE v.message=m.id)
+      ORDER BY m.id DESC LIMIT ?
+    )
+    SELECT h.id,h.chat AS chatId,c.type AS chatType,coalesce(r.remark,peer.name,c.title) AS chatTitle,
+      peer.number AS peerNumber,h.body AS text,h.created AS createdAt,u.name AS sender
+    FROM hits h JOIN chats c ON c.id=h.chat JOIN users u ON u.number=h.sender
+    LEFT JOIN users peer ON c.type='direct' AND peer.number=CASE WHEN c.first_user=? THEN c.second_user ELSE c.first_user END
+    LEFT JOIN friend_remarks r ON r.account=? AND r.friend=peer.number
+    ORDER BY h.id DESC`,account,before,query,limit+1,account,account);
+    const results=rows.slice(0,limit);
+    return {results,next:rows.length>limit?results.at(-1).id:null};
+  }
   history(a,id,params) {
     return this.historyPage(a,id,params).messages;
   }
