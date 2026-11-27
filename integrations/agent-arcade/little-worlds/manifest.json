@@ -2,8 +2,8 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "a753ed10b154f2982d0b69e69f252416c1486002",
-  "worldTree": "d14ab0bb21dcf1da2f70c77938e20798e60d11a2",
+  "worldRevision": "c38b5b5594c85857f5c783c9dedb6309662075c5",
+  "worldTree": "3c9c921603968f649c429d69a66bd8d9375bbe7a",
   "patchSHA256": "1f6620b658951b72d0559c44aa72ff3236f7b3510212c8aefdc981951c7ac3eb",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
@@ -571,8 +571,8 @@
     {
       "action": "A",
       "path": "src/client/courtyard-planting-art.ts",
-      "blob": "8b970e1affd7f27dc20086a00eb9db55e8b4b295",
-      "sha256": "b4e0c7b01df88fb5e87f1ff6a9120283173e2e5611a3b8cada8a52f744c02c76"
+      "blob": "95909a2d2aec14d5e6e0cfc1347eba9012ba6dba",
+      "sha256": "9b1c711659270f976e32b2713e33d0dec4280088574ac66a926135819bb9b9aa"
     },
     {
       "action": "M",
@@ -637,8 +637,8 @@
     {
       "action": "A",
       "path": "src/client/nature-art.ts",
-      "blob": "404fe98ac5b8e8b5f80a1f8b5b796c6d55a7c76c",
-      "sha256": "061c4b4e2b7609074bb286172b96a0662561172c1e43679b23c8c8f5f602e474"
+      "blob": "e58c85558215a4ce129fb79b4e9cb703f533347e",
+      "sha256": "1c88e4323c83067d9c6a3feef922ce03d0e9d09c0260dd9c8c71d253656c0fde"
     },
     {
       "action": "M",

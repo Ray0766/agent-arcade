@@ -8,6 +8,12 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 
+def write_pointer(pointer, value):
+    tmp = pointer.with_suffix('.partial')
+    tmp.write_text(value, encoding='ascii')
+    os.replace(tmp, pointer)
+
+
 def main():
     gate, root, role, key, action = sys.argv[1:]
     if str(UUID(key)) != key or not role or len(role) > 200:
@@ -30,24 +36,32 @@ def main():
         # Keep the original board number even if a worker later claims a workspace
         # (which can change sk), or archives the task before an HTTP retry.
         pointer = artifacts / (key + ".id")
-        if pointer.exists():
-            item = board.item_by_id(int(pointer.read_text(encoding="ascii")))
+        recorded = pointer.read_text(encoding="ascii") if pointer.exists() else None
+        if recorded not in (None, "pending"):
+            item = board.item_by_id(int(recorded))
             if item is None:
                 raise ValueError("original task no longer on board")
         else:
-            item = next((row for row in board.items() + board.done_records()
-                         if row.get("sk") == source), None)
-        if not item and action in {"submit", "retry"}:
+            matches = {row["id"]: row for row in board.items() + board.done_records()
+                       if row.get("sk") == source}
+            if len(matches) > 1:
+                raise ValueError("ambiguous board assignment")
+            item = next(iter(matches.values()), None)
+        if not item and action in {"submit", "retry", "recover-submit"}:
+            if action != "retry":
+                # If a killed writer could have added a task before saving its ID, only
+                # a matching existing row can prove the assignment for automatic recovery.
+                if recorded == "pending":
+                    raise ValueError("unverified board submission")
+                write_pointer(pointer, "pending")
             number = board.add(request["text"], request["location"], "已接单", role,
                                assigner={"kind": "human", "id": request["sender"]})
             item = board.item_by_id(number)
         if not item or item["who"] != role:
             raise ValueError("unknown assignment")
         number = item["id"]
-        if not pointer.exists():
-            tmp = pointer.with_suffix(".partial")
-            tmp.write_text(str(number), encoding="ascii")
-            os.replace(tmp, pointer)
+        if recorded in (None, "pending"):
+            write_pointer(pointer, str(number))
         lease = artifacts / (key + ".worker")
         token = request.get("claim")
         if action == "cancel" and not item.get("returned_at"):

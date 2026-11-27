@@ -13,7 +13,8 @@ export function addCourtyardPlantingArt(root: Object3D, kind: CourtyardPlanting,
       tree.scale.set(1.07, 2.12, 1);
       const crown = courtyardFoliage('bush', true);
       crown.position.set(x, y + 1.15, z);
-      crown.scale.set(.60, .91, .46);
+      // Fit the wider shrub within the original crown's height and footprint.
+      crown.scale.set(.50, .93, .41);
       root.add(tree, crown);
     }
     if (kind !== 'bed' || part.part !== 'garden.bed') continue;
