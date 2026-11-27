@@ -1,6 +1,6 @@
-import { Group, Vector3 } from 'three';
+import { Group, Quaternion, Vector3 } from 'three';
 import { expect, it } from 'vitest';
-import { benchSeat } from '../src/client/bench-rest.ts';
+import { adjacentBenchCompanion, benchSeat } from '../src/client/bench-rest.ts';
 import type { GroundPose } from '../src/shared/physics/world.ts';
 
 it('seats visitors facing their approach side and refuses obstructed or end-on approaches', () => {
@@ -21,4 +21,17 @@ it('seats visitors facing their approach side and refuses obstructed or end-on a
   }
   expect(benchSeat(bench, footing(1, 0), clear)).toBeNull();
   expect(benchSeat(bench, footing(0, .8), { cameraDistance: () => .25 })).toBeNull();
+});
+
+it('offers only a separate, visible bench with clearance from the seated resident', () => {
+  const seat = { position:new Vector3(0,21.6,0), rotation:new Quaternion(), distance:.8 };
+  const other = (benchId:string,x:number,y=21.6) => ({
+    benchId, residentId:benchId, name:benchId, model:new Group(),
+    seat:{ ...seat, position:new Vector3(x,y,0) },
+  });
+  const clear = { cameraDistance:(a:Vector3,b:Vector3)=>a.distanceTo(b) };
+  const seated = other('next-bench',1.8);
+  expect(adjacentBenchCompanion('mine',seat,[other('mine',1.45),other('too-close',1),other('upper',1.6,22.4),seated],clear)).toBe(seated);
+  expect(adjacentBenchCompanion('mine',seat,[other('too-far',3.5)],clear)).toBeUndefined();
+  expect(adjacentBenchCompanion('mine',seat,[seated],{cameraDistance:()=>.6})).toBeUndefined();
 });
