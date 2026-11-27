@@ -53,8 +53,8 @@ function drawTerrain(canvas:HTMLCanvasElement, terrain:MinimapTerrain, view:View
   ctx.clearRect(0,0,WIDTH,HEIGHT);ctx.drawImage(sample,0,0,WIDTH,HEIGHT);
 }
 
-const zh={open:'小地图',close:'关闭地图',north:'北',you:'你的位置',dock:'码头',courtyard:'公共院落',route:'前往公共院落'};
-const en={open:'Local map',close:'Close map',north:'N',you:'You are here',dock:'Dock',courtyard:'Public courtyard',route:'Directions to courtyard'};
+const zh={open:'小地图',close:'关闭地图',north:'北',you:'你的位置',dock:'码头',courtyard:'公共院落',route:'前往公共院落',dockRoute:'寻找返航飞船',residentRoute:'寻找居民'};
+const en={open:'Local map',close:'Close map',north:'N',you:'You are here',dock:'Dock',courtyard:'Public courtyard',route:'Directions to courtyard',dockRoute:'Find the ship back',residentRoute:'Find resident'};
 
 export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap {
   const launcher=document.createElement('button');
@@ -76,19 +76,29 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
   const legend=panel.querySelector<HTMLUListElement>('ul')!;
   const exit=panel.querySelector<HTMLButtonElement>('#planet-minimap-close')!;
   const route=panel.querySelector<HTMLButtonElement>('#planet-minimap-courtyard')!;
-  const types=['you','dock','courtyard'] as const;
-  const dockPin=document.createElement('button');dockPin.type='button';dockPin.id='planet-minimap-dock-pin';
+  const youPin=document.createElement('span');
+  const dockPin=document.createElement('button');
   const courtyardPin=document.createElement('button');
-  courtyardPin.id='planet-minimap-courtyard-pin';courtyardPin.type='button';courtyardPin.hidden=true;
-  const markers=types.map(kind=>{
-    const marker=kind==='courtyard'?courtyardPin:kind==='dock'?dockPin:document.createElement('span');
+  const residentPin=document.createElement('button');
+  const markers={you:youPin,dock:dockPin,courtyard:courtyardPin,resident:residentPin};
+  youPin.setAttribute('aria-hidden','true');
+  for (const [kind,marker] of Object.entries(markers)) {
     marker.className='planet-minimap-pin';marker.dataset.kind=kind;
-    if(kind==='you')marker.setAttribute('aria-hidden','true');
-    plot.append(marker);return marker;
-  });
+    marker.hidden=true;plot.append(marker);
+    if(marker instanceof HTMLButtonElement){
+      marker.id='planet-minimap-'+kind+'-pin';
+      marker.type='button';
+    }
+  }
+  const types=['you','dock','courtyard'] as const;
   const keys=types.map(kind=>{
     const li=document.createElement('li');li.dataset.kind=kind;legend.append(li);return li;
   });
+  const residentKey=document.createElement('li');
+  residentKey.dataset.kind='resident';residentKey.hidden=true;
+  const residentName=document.createElement('span');
+  const residentStatus=document.createElement('small');
+  residentKey.append(residentName,residentStatus);legend.append(residentKey);
   let current:PlanetMinimapFrame|null=null, view:View|null=null, painted:MinimapTerrain|null=null;
   let textLanguage='';
   function copy(){
@@ -98,8 +108,8 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
     const words=lang==='zh'?zh:en;
     launcher.textContent=words.open;exit.setAttribute('aria-label',words.close);north.textContent=words.north;
     types.forEach((kind,i)=>{keys[i].textContent=words[kind];});
-    dockPin.setAttribute('aria-label',lang==='zh'?'寻找返航飞船':'Find the ship back');
     route.textContent=words.route;courtyardPin.setAttribute('aria-label',words.route);
+    dockPin.setAttribute('aria-label',words.dockRoute);
   }
   function close(returnFocus:boolean){
     const focusWasInside=panel.contains(document.activeElement);
@@ -108,10 +118,9 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
   }
   function render(){
     if(!current||panel.hidden)return;
-    const {terrain,player,dock,courtyard}=current;
-    if(!current.canRouteToDock && document.activeElement===dockPin)exit.focus({preventScroll:true});
-    dockPin.disabled=!current.canRouteToDock;
-    const points=courtyard?[player,dock,courtyard]:[player,dock];
+    const {terrain,player,dock,canRouteToDock,courtyard,resident}=current;
+    const markerPoints={you:player,dock,courtyard,resident:resident?.point};
+    const points=Object.values(markerPoints).filter(point=>point!==undefined);
     if(!view||painted!==terrain||points.some(point=>{
       const p=pixels(point,view!);return p.x<INSET||p.y<INSET||p.x>WIDTH-INSET||p.y>HEIGHT-INSET;
     })){
@@ -119,12 +128,27 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
     }
     if(title.textContent!==terrain.name)title.textContent=terrain.name;
     route.hidden=keys[2].hidden=!courtyard;
-    markers.forEach((marker,i)=>{
-      const point=points[i];marker.hidden=!point;
-      if(!point)return;
+    if((!resident&&document.activeElement===residentPin)||(!canRouteToDock&&document.activeElement===dockPin)){
+      exit.focus({preventScroll:true});
+    }
+    dockPin.disabled=!canRouteToDock;
+    residentKey.hidden=!resident;
+    const name=resident?.name??'',status=resident?.status??'';
+    if(residentName.textContent!==name)residentName.textContent=name;
+    if(residentStatus.textContent!==status)residentStatus.textContent=status;
+    residentStatus.hidden=!status;
+    if(resident){
+      const words=textLanguage==='zh'?zh:en;
+      const label=[words.residentRoute,name,status].filter(Boolean).join(' · ');
+      if(residentPin.getAttribute('aria-label')!==label)residentPin.setAttribute('aria-label',label);
+    }else residentPin.removeAttribute('aria-label');
+    for(const kind of Object.keys(markers) as (keyof typeof markers)[]){
+      const marker=markers[kind],point=markerPoints[kind];
+      marker.hidden=!point;
+      if(!point)continue;
       const p=pixels(point,view!);
       marker.style.left=p.x/WIDTH*100+'%';marker.style.top=p.y/HEIGHT*100+'%';
-    });
+    }
   }
   launcher.onclick=()=>{
     if(!current)return;
@@ -133,8 +157,28 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
     render();exit.focus({preventScroll:true});panel.scrollIntoView({block:'nearest'});
   };
   exit.onclick=()=>close(true);
-  dockPin.onclick=()=>{if(current?.canRouteToDock&&options.onDock())close(true);};
-  courtyardPin.onclick=route.onclick=()=>{if(current?.courtyard&&options.onCourtyard())close(true);};
+  const actions=new Map<HTMLButtonElement,()=>boolean>([
+    [courtyardPin,()=>!!current?.courtyard&&options.onCourtyard()],
+    [dockPin,()=>!!current?.canRouteToDock&&options.onDock()],
+    [residentPin,()=>!!current?.resident&&options.onResident(current.resident.id)],
+  ]);
+  for(const button of actions.keys()){
+    button.onclick=event=>{
+      let pin=button;
+      // Two touch targets can overlap. A pointer click belongs to the closest visible symbol.
+      if(event.detail>0){
+        let closest=Infinity;
+        for(const hit of document.elementsFromPoint(event.clientX,event.clientY)){
+          if(!(hit instanceof HTMLButtonElement)||!actions.has(hit)||hit.hidden||hit.disabled)continue;
+          const box=hit.getBoundingClientRect();
+          const distance=Math.hypot(event.clientX-box.x-box.width/2,event.clientY-box.y-box.height/2);
+          if(distance<closest){pin=hit;closest=distance;}
+        }
+      }
+      if(actions.get(pin)?.())close(true);
+    };
+  }
+  route.onclick=()=>{if(actions.get(courtyardPin)?.())close(true);};
 
   return {
     frame(value){
@@ -144,7 +188,9 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
       if(!value){
         if(!previous)return;
         close(false);painted=null;view=null;
-        route.hidden=true;keys[2].hidden=true;markers.forEach(marker=>marker.hidden=true);
+        route.hidden=true;keys[2].hidden=true;residentKey.hidden=true;
+        residentName.textContent='';residentStatus.textContent='';residentPin.removeAttribute('aria-label');
+        Object.values(markers).forEach(marker=>marker.hidden=true);
         canvas.getContext('2d')?.clearRect(0,0,WIDTH,HEIGHT);
       }else render();
     },
