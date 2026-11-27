@@ -11,6 +11,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     return {
       phase:s?(s.stream?'active':'joining'):'idle',
       notice,chatId:s?.chatId,roomId:s?.roomId,memberId:s?.memberId,muted:!!s?.muted,
+      sharedPhoto:s?.room?.sharedPhoto,
       audioBlocked:!!s&&[...s.peers.values()].some(peer=>peer.audioBlocked),
       members:s?.members.map(({id,number})=>({id,number,connection:id===s.memberId?'local':
         s.peers.get(id)?.pc.connectionState??'new'}))??[],
@@ -250,6 +251,30 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       return false;
     }
   }
+  function photoSession(chatId){
+    const s=session;
+    return s?.chatId===chatId&&s.stream&&isCurrent(s)?s:null;
+  }
+  async function sharePhoto(chatId,messageId){
+    const s=photoSession(chatId);
+    if(!s)return false;
+    await request(s,'share-photo',{messageId});
+    return isCurrent(s);
+  }
+  async function stopPhoto(chatId,messageId){
+    const s=photoSession(chatId);
+    if(s?.room.sharedPhoto?.from===s.memberId)await request(s,'stop-photo',{messageId});
+  }
+  async function readSharedPhoto(chatId,{from,messageId},signal){
+    const s=photoSession(chatId);
+    if(!s||s.room.sharedPhoto?.from!==from||s.room.sharedPhoto.messageId!==messageId)throw Error('photo_unavailable');
+    const params=new URLSearchParams({revision:s.revision,roomId:s.roomId,self:s.memberId,from,messageId});
+    const response=await fetch('./api/v1'+path(chatId)+'/photo?'+params,{
+      cache:'no-store',headers:{'X-Social-Account':s.account},signal
+    });
+    if(!response.ok||!isCurrent(s))throw Error('photo_unavailable');
+    return response.blob();
+  }
   async function leave(){
     if(!session)return;
     await dispose(session,'',true);
@@ -270,5 +295,5 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     if(session)for(const peer of session.peers.values())play(session,peer);
   }
   window.addEventListener('pagehide',reset);
-  return {discover,join,leave,setMuted,getState,resumeAudio,reset};
+  return {discover,join,leave,setMuted,sharePhoto,stopPhoto,readSharedPhoto,getState,resumeAudio,reset};
 }

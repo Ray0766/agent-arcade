@@ -1,6 +1,47 @@
 // Group-call controls and the bridge from the media controller to Friends signaling.
-export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,privateCallBusy}) {
+export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,privateCallBusy,openSharedPhoto}) {
   const panel=document.querySelector('#group-voice');
+  const photos=panel.querySelector('#group-voice-photo');
+  const photoBy=photos.querySelector('strong'),photoCaption=photos.querySelector('.group-voice-photo-caption');
+  const viewPhoto=photos.querySelector('[data-view-photo]'),stopPhoto=photos.querySelector('[data-stop-photo]');
+  const photoStatus=photos.querySelector('[role="status"]');
+  let photo,viewer,stopFlight;
+  function paintPhoto(share,person){
+    const identity=share&&person?JSON.stringify([state.roomId,state.memberId,share.from,share.messageId]):null;
+    if(photo?.identity!==identity){
+      viewer?.();
+      viewer=undefined;
+      photo=identity?{identity,share,name:person.displayName,chatId:state.chatId}:undefined;
+      photoStatus.textContent='';
+    }
+    photos.hidden=!photo;
+    if(!photo)return;
+    photoBy.textContent=photo.name+'正在分享群照片';
+    photoCaption.textContent=share.caption??'';
+    photoCaption.hidden=!share.caption;
+    viewPhoto.disabled=false;
+    stopPhoto.hidden=share.from!==state.memberId;
+    stopPhoto.disabled=stopFlight===identity;
+  }
+  viewPhoto.addEventListener('click',()=>{
+    const selected=photo;
+    if(!selected)return;
+    viewer?.();
+    viewer=openSharedPhoto(selected,{read:signal=>controller.readSharedPhoto(selected.chatId,selected.share,signal)});
+  });
+  stopPhoto.addEventListener('click',async()=>{
+    const selected=photo;
+    if(!selected||stopFlight===selected.identity)return;
+    stopFlight=selected.identity;
+    stopPhoto.disabled=true;
+    photoStatus.textContent='';
+    try{await controller.stopPhoto(selected.chatId,selected.share.messageId);}
+    catch{if(photo===selected)photoStatus.textContent='暂时无法停止分享，请重试。';}
+    finally{
+      if(stopFlight===selected.identity)stopFlight=undefined;
+      if(photo===selected)stopPhoto.disabled=false;
+    }
+  });
   const dock=panel.parentElement;
   const title=panel.querySelector('strong');
   const status=panel.querySelector('[role="status"]');
@@ -24,12 +65,14 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     panel.classList.toggle('group-voice-detached',Boolean(detached));
     const participants=call?state.members:(key(current)===discoveredFor?discovery?.participants:null)??[];
     panel.hidden=!context||(!call&&!context.canStart&&!participants.length);
-    if(panel.hidden)return;
+    if(panel.hidden){paintPhoto();return;}
     const confirmed=call&&state.phase==='active';
     const people=participants.flatMap(member=>{
       const person=context.members.find(item=>item.number===member.number);
       return person?[{...person,entryId:member.id}]:[];
     });
+    const shared=confirmed&&!detached?state.sharedPhoto:undefined;
+    paintPhoto(shared,people.find(person=>person.entryId===shared?.from));
     title.textContent=detached?context.title+' · 群语音':'群语音';
     status.textContent=message||state.notice||(joining&&!confirmed?'正在加入…':
       people.length?people.length+' 人在通话':'');
@@ -137,5 +180,10 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     paint();
   }
   setInterval(()=>{if(!document.hidden)void discover();},1500);
-  return {refresh,reset,isBusy:()=>joining||state.phase!=='idle'};
+  function canSharePhoto(chatId){
+    return state.phase==='active'&&state.chatId===chatId&&scope()?.id===chatId;
+  }
+  return {refresh,reset,canSharePhoto,
+    sharePhoto:(chatId,messageId)=>canSharePhoto(chatId)?controller.sharePhoto(chatId,messageId):false,
+    isBusy:()=>joining||state.phase!=='idle'};
 }

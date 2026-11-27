@@ -30,7 +30,7 @@ let membershipRevision, historyContext, historyFinder;
 let socialVisible=true;
 const calls=mountLiveCalls({api,account:()=>user?.number,chat:()=>chat,goChat,groupVoiceBusy:()=>groupVoice.isBusy()});
 const groupVoice=mountGroupVoicePanel({
-  api,account:()=>user?.number,privateCallBusy:calls.isBusy,openChat:id=>goChat(id,false,user?.number),
+  api,account:()=>user?.number,privateCallBusy:calls.isBusy,openSharedPhoto:showSharedCallPhoto,openChat:id=>goChat(id,false,user?.number),
   personAvatar:person=>personAvatar(person),
   scope:()=>{
     if(user?.kind!=='human'||conversation?.type!=='group'||routeId()!==chat||!membershipRevision)return;
@@ -3050,6 +3050,39 @@ $('#record-voice').addEventListener('click',async()=>{
       error.message==='voice_duration'?'录音太短。请取消后重新录一句。':'无法录音。请检查麦克风后重新录音。';
   }
 });
+function showSharedCallPhoto({share,name,chatId},{read}) {
+  if(chat!==chatId)return;
+  const abort=new AbortController();
+  const image=el('img',null,'original-image');
+  image.alt='群聊原图';
+  const caption=share.caption?el('p',share.caption,'chat-original-caption'):null;
+  if(caption)caption.hidden=true;
+  const status=el('p','正在打开群聊原图…','feedback');
+  status.setAttribute('role','status');
+  const scope=openDialog('通话共看照片',[el('p',name+'正在分享群照片','minor'),image,
+    ...(caption?[caption]:[]),status,button('收起照片',closeDialog,'outline')],chatId);
+  const current=()=>scope===dialogGeneration&&dialog.open&&!abort.signal.aborted;
+  const close=()=>{if(current())closeDialog();};
+  const photoData=new FileReader();
+  dialogMessage={chatId,messageId:share.messageId};
+  dialogCleanup=()=>{
+    abort.abort();
+    if(photoData.readyState===FileReader.LOADING)photoData.abort();
+    image.removeAttribute('src');
+  };
+  image.addEventListener('load',()=>{
+    if(caption)caption.hidden=false;
+    status.textContent='';
+  },{once:true});
+  image.addEventListener('error',()=>{status.textContent='群聊原图目前不可查看。';},{once:true});
+  const unavailable=()=>{if(current())status.textContent='群聊原图目前不可查看。';};
+  photoData.addEventListener('load',()=>{if(current())image.src=String(photoData.result);},{once:true});
+  photoData.addEventListener('error',unavailable,{once:true});
+  void read(AbortSignal.any([abort.signal,AbortSignal.timeout(12000)])).then(blob=>{
+    if(current())photoData.readAsDataURL(blob);
+  }).catch(unavailable);
+  return close;
+}
 function showOriginalImage(message) {
   if(chat!==message.conversationId||!visibleHistory().some(row=>row.id===message.id&&!row.removed))return;
   const image=el('img',null,'original-image');
@@ -3093,7 +3126,23 @@ function showOriginalImage(message) {
   resend.hidden=true;
   image.addEventListener('load',()=>{loaded=true;save.hidden=false;resend.hidden=!available;},{once:true});
   image.addEventListener('error',()=>{loaded=false;image.hidden=save.hidden=ask.hidden=resend.hidden=true;status.textContent='原图目前不可查看。';});
-  const scope=openDialog('原图',[image,save,ask,resend,note,status],chat);
+  const shareButton=!direct&&!message.attachment.drawing&&!message.attachment.sticker&&groupVoice.canSharePhoto(group)
+    ?button('在本次通话中一起看',async()=>{
+      if(!current()||shareButton.disabled)return;
+      shareButton.disabled=true;
+      try{
+        if(await groupVoice.sharePhoto(group,message.id)){
+          if(current())closeDialog();
+        }else if(current())status.textContent='请先加入本群通话。';
+      }catch(error){if(current())status.textContent=textError(error);}
+      finally{if(current())shareButton.disabled=false;}
+    },'outline'):null;
+  if(shareButton){
+    shareButton.hidden=true;
+    image.addEventListener('load',()=>{if(current())shareButton.hidden=false;},{once:true});
+    image.addEventListener('error',()=>{shareButton.hidden=true;},{once:true});
+  }
+  const scope=openDialog('原图',[image,...(shareButton?[shareButton]:[]),save,ask,resend,note,status],chat);
   const current=()=>scope===dialogGeneration&&generation===epoch&&chat===group&&membershipRevision===revision&&
     (!direct||conversation?.cloudChat?.revision===aiConsentRevision);
   if(message.attachment.drawing&&revision&&(!direct||aiConsentRevision!==undefined)){

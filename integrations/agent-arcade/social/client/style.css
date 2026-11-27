@@ -490,3 +490,10 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
   position:fixed;z-index:9;inset-inline-end:12px;inset-block-end:12px;max-inline-size:min(400px,calc(100% - 24px));
   border:1px solid var(--line);border-radius:10px;box-shadow:0 5px 24px #231a3029
 }
+
+#group-voice-photo:not([hidden]) {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--wash)}
+#group-voice-photo p {margin:0;overflow-wrap:anywhere}
+#group-voice-photo .feedback:empty {display:none}
+.group-voice-photo-caption {margin-block-start:3px;color:var(--muted);font-size:.86rem;white-space:pre-wrap}
+.group-voice-photo-actions {display:flex;flex-wrap:wrap;gap:6px}
+.group-voice-photo-actions button {min-block-size:40px}

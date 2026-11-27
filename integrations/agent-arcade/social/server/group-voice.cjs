@@ -11,6 +11,7 @@ function createGroupVoice(store,privateBusy,now=Date.now){
   const rooms=new Map(), seated=new Map(), retired=new Map();
   function remove(room,person){
     room.members.delete(person.number);
+    if(room.photo?.from===person.id)delete room.photo;
     seated.delete(person.number);
     retired.set(person.attempt,now()+lease);
     for(const other of room.members.values())other.inbox.delete(person.id);
@@ -34,11 +35,21 @@ function createGroupVoice(store,privateBusy,now=Date.now){
     if(room)refresh(room,roster(room.chat));
     return seated.has(number);
   }
+  function sharedPhoto(room,viewer){
+    const photo=room.photo;
+    if(!photo)return;
+    const owner=Array.from(room.members.values()).find(person=>person.id===photo.from);
+    const info=owner&&store.groupCallPhotoInfo(owner.number,room.chat,photo.messageId);
+    if(!info){delete room.photo;return;}
+    const visible=owner===viewer?info:store.groupCallPhotoInfo(viewer.number,room.chat,photo.messageId);
+    if(visible)return {...photo,...visible};
+  }
   function project(room,self){
     if(!room)return {room:null};
+    const photo=self&&sharedPhoto(room,self);
     return {room:{id:room.id,chat:room.chat,
       participants:Array.from(room.members.values(),p=>({number:p.number,id:p.id})),
-      self:self?.id??null,...(self&&{signals:Array.from(self.inbox.values())})}};
+      self:self?.id??null,...(self&&{signals:Array.from(self.inbox.values())}),...(photo&&{sharedPhoto:photo})}};
   }
   function handle(account,session,chat,device,request){
     if(typeof device!=='string'||!uuid.test(device))fail(400,'call_device','通话窗口无效');
@@ -82,6 +93,26 @@ function createGroupVoice(store,privateBusy,now=Date.now){
         return {ok:true};
       case 'ice':
         return {iceServers:[]};
+      case 'share-photo':{
+        if(!Number.isSafeInteger(request.messageId)||request.messageId<1||
+           !store.groupCallPhotoInfo(account,chat,request.messageId))fail(404,'unknown_image','群照片已不可查看');
+        sharedPhoto(room,mine);
+        if(room.photo&&(room.photo.from!==mine.id||room.photo.messageId!==request.messageId))
+          fail(409,'group_voice_photo_busy','请先结束当前照片分享');
+        room.photo={from:mine.id,messageId:request.messageId};
+        return {ok:true};
+      }
+      case 'stop-photo':
+        if(room.photo&&(room.photo.from!==mine.id||room.photo.messageId!==request.messageId))
+          fail(409,'group_voice_photo_changed','当前照片分享已变化');
+        delete room.photo;
+        return {ok:true};
+      case 'read-photo':{
+        const photo=sharedPhoto(room,mine);
+        if(!photo||photo.from!==request.from||photo.messageId!==request.messageId)
+          fail(404,'unknown_image','群照片已不可查看');
+        return store.messageImage(account,chat,photo.messageId);
+      }
       case 'signal':{
         const peer=Array.from(room.members.values()).find(p=>p.id===request.to);
         if(!peer||peer===mine)fail(409,'group_voice_peer','对方已离开本次群语音');

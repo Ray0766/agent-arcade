@@ -606,6 +606,15 @@ class SocialStore {
       drawing.original??row.lastInsertRowid,drawing.title);
     return this.message(this.one('SELECT * FROM messages WHERE id=?',row.lastInsertRowid));
   }
+  groupCallPhotoInfo(account,id,messageId) {
+    const chat=this.group(account,id);
+    return this.one(`SELECT i.width,i.height,'' AS caption
+      FROM messages m JOIN message_images i ON i.message=m.id
+      WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0
+      AND NOT EXISTS (SELECT 1 FROM message_drawings d WHERE d.message=m.id)
+      AND NOT EXISTS (SELECT 1 FROM message_stickers s WHERE s.message=m.id)`,
+      id,messageId,chat.since);
+  }
   messageImage(a,id,message) {
     const chat=this.access(a,id);
     const image=this.one(`SELECT i.mime,i.bytes FROM message_images i JOIN messages m ON i.message=m.id

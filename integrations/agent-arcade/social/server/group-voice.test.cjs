@@ -15,6 +15,55 @@ function makeGroup(store){
   return store.createGroup('lin_xiao','周日河边小队',['zhou_ning','chen_yu']).id;
 }
 
+async function httpGroup(t){
+  const store=new SocialStore(':memory:');
+  const server=createServer(store).listen(0,'127.0.0.1');
+  t.after(async()=>{await new Promise(resolve=>server.close(resolve));store.db.close();});
+  await once(server,'listening');
+  const base='http://127.0.0.1:'+server.address().port+'/api/v1';
+  let requests=0,chat;
+  function windowFor(number){
+    const device=randomUUID(),joinId=randomUUID();
+    let cookie;
+    async function api(path,body,status=200,expected=number){
+      const res=await fetch(base+path,{method:body?'POST':'GET',headers:{
+        'Content-Type':'application/json','X-Social-Account':expected,...(cookie&&{Cookie:cookie})
+      },body:JSON.stringify(body)});
+      requests++;
+      const set=res.headers.get('set-cookie');
+      if(set)cookie=set.split(';')[0];
+      if(res.headers.get('content-type')==='image/png'){
+        assert.equal(res.status,status);
+        assert.equal(res.headers.get('cache-control'),'no-store');
+        return Buffer.from(await res.arrayBuffer());
+      }
+      const result=await res.json();
+      assert.equal(res.status,status,path+' '+JSON.stringify(result));
+      return result;
+    }
+    const path=()=>'/conversations/'+chat+'/group-voice/'+device;
+    const w={number,api,device,joinId,
+      get:(extra={},status=200,account)=>api(path()+'?'+new URLSearchParams({revision:w.revision,...extra}),undefined,status,account),
+      post:(action,extra={},status=200)=>api(path(),{action,revision:w.revision,...extra},status),
+      joined:()=>({roomId:w.roomId,self:w.self}),
+      async join(attempt=joinId,video){
+        const {room}=await w.post('join',{joinId:attempt,video});
+        w.self=room.self;
+        w.roomId=room.id;
+        return room;
+      }};
+    return w;
+  }
+  const users=people.map(([number])=>windowFor(number));
+  const [lin,zhou,chen]=users,other=windowFor('guest_he');
+  const password='group voice fixture';
+  for(const [i,w] of [...users,other].entries())
+    await w.api('/register',{number:w.number,displayName:people[i]?.[1]||'何雨',password});
+  chat=makeGroup(store);
+  for(const w of users)w.revision=store.access(w.number,chat).membershipRevision;
+  return {store,chat,lin,zhou,chen,other,windowFor,password,requests:()=>requests};
+}
+
 test('three real HTTP sessions share one room, with private pairwise signaling, departure and account switching',async t=>{
   const store=new SocialStore(':memory:');
   const server=createServer(store).listen(0,'127.0.0.1');
@@ -125,6 +174,69 @@ test('three real HTTP sessions share one room, with private pairwise signaling, 
   await lin.post('join',{joinId:randomUUID()},409);
   await second.api('/calls/'+second.device,{action:'end',id:privateCall.id});
   t.diagnostic(requests+' isolated HTTP requests; 3 peers, 3 pairs, 6 targeted descriptions');
+});
+
+test('shared group photo is scoped to the original message and the current seats',async t=>{
+  const {store,chat,lin,zhou,chen,other,requests}=await httpGroup(t);
+  const direct=store.direct(lin.number,zhou.number).id;
+  const bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jMZkAAAAASUVORK5CYII=','base64');
+  const image={mime:'image/png',width:1,height:1,bytes,digest:require('node:crypto').createHash('sha256').update(bytes).digest('hex')};
+  const caption='';
+  function fillUntil(id){
+    while(store.one('SELECT coalesce(max(id),0) AS id FROM messages').id<id)
+      store.send(lin.number,direct,{clientId:randomUUID(),text:'散步路线记录'});
+  }
+  fillUntil(21);
+  assert.equal(store.sendImage(lin.number,direct,randomUUID(),image,caption).id,22);
+  fillUntil(92);
+  assert.equal(store.sendImage(lin.number,chat,randomUUID(),image,caption).id,93);
+  const count=()=>store.one('SELECT count(*) AS n FROM messages WHERE chat=?',chat).n,before=count();
+  const share=(who,id,status=200)=>who.post('share-photo',{...who.joined(),messageId:id},status);
+  const stop=(who,status=200)=>who.post('stop-photo',{...who.joined(),messageId:93},status);
+  const projected=async who=>(await who.get(who.joined())).room.sharedPhoto;
+  const read=(who,status=200,from=lin.self,messageId=93)=>who.api('/conversations/'+chat+'/group-voice/'+who.device+
+    '/photo?'+new URLSearchParams({revision:who.revision,...who.joined(),from,messageId}),undefined,status);
+  await lin.join();
+  await zhou.join();
+  await share(lin,22,404);
+  await share(lin,93);
+  await share(lin,93);
+  await share(zhou,93,409);
+  await stop(zhou,409);
+  assert.equal((await chen.get()).room.sharedPhoto,undefined);
+  await read(chen,409);
+  await read(other,404);
+  await chen.join();
+  for(const viewer of [zhou,chen]){
+    assert.deepEqual(await projected(viewer),{from:lin.self,messageId:93,width:1,height:1,caption});
+    assert.deepEqual(await read(viewer),bytes);
+  }
+  await read(zhou,404,lin.self,22);
+  await stop(lin);
+  await stop(lin);
+  assert.equal(await projected(zhou),undefined);
+  await read(zhou,404);
+  await share(lin,93);
+  const previous=lin.self;
+  await lin.post('leave',lin.joined());
+  await read(zhou,404,previous);
+  await lin.join(randomUUID());
+  await share(lin,93);
+  await read(zhou,404,previous);
+  store.remove(chen.number,chat,chen.number,true);
+  await read(chen,404);
+  store.addMembers(lin.number,chat,[chen.number]);
+  chen.revision=store.access(chen.number,chat).membershipRevision;
+  await chen.join(randomUUID());
+  assert.equal(await projected(chen),undefined);
+  await read(chen,404);
+  await share(chen,93,404);
+  assert.deepEqual(await read(zhou),bytes);
+  store.run('UPDATE messages SET removed=1 WHERE id=93');
+  assert.equal(await projected(zhou),undefined);
+  await read(lin,404);
+  assert.equal(count(),before);
+  t.diagnostic(requests()+' isolated HTTP requests; private #22 and group #93 have identical bytes; zero new group messages');
 });
 
 test('lease expiry, revoked membership, group size and session validity are checked before peer delivery',t=>{
