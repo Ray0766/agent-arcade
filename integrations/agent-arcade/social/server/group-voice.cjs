@@ -50,7 +50,8 @@ function createGroupVoice(store,privateBusy,now=Date.now){
     if(!room)return {room:null};
     return {room:{id:room.id,chat:room.chat,
       participants:Array.from(room.members.values(),p=>({number:p.number,id:p.id,
-        ...(self&&p.video&&{video:true,camera:p.camera,cameraVersion:p.cameraVersion})})),
+        ...(self&&p.video&&{video:true,camera:p.camera,cameraVersion:p.cameraVersion,
+          ...(p.videoSource&&{videoSource:p.videoSource})})})),
       self:self?.id??null,...(self&&{signals:Array.from(self.inbox.values())})}};
   }
   function handle(account,session,chat,device,request){
@@ -99,8 +100,11 @@ function createGroupVoice(store,privateBusy,now=Date.now){
       case 'camera':
         if(!mine.video||!cameraStates.has(request.state)||!Number.isSafeInteger(request.version)||request.version<1)
           fail(409,'group_voice_camera','本次入场的摄像头状态无效');
+        if(request.source!==undefined&&(request.source!=='window'||request.state!=='on'))
+          fail(409,'group_voice_camera','当前视频来源无效');
         if(request.version>mine.cameraVersion){
           mine.camera=request.state;
+          mine.videoSource=request.source;
           mine.cameraVersion=request.version;
         }
         return {ok:true};

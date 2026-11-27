@@ -192,6 +192,33 @@ test('video negotiation and versioned camera status belong to current seats; leg
   t.diagnostic(requests()+' local HTTP requests: A/V and audio-only pairs, scoped camera and session changes');
 });
 
+test('only joined seats see the current window source and late camera updates cannot restore it',async t=>{
+  const {lin,zhou,chen,requests}=await httpGroup(t);
+  await lin.join(lin.joinId,true);
+  await zhou.join(zhou.joinId,true);
+  const update=(state,version,source,status=200)=>lin.post('camera',{...lin.joined(),state,version,source},status);
+  const participant=async(viewer,scope)=>(await viewer.get(scope)).room.participants.find(p=>p.id===lin.self);
+  await update('on',1,'window');
+  assert.equal((await participant(zhou,zhou.joined())).videoSource,'window');
+  assert.equal((await participant(chen,{})).videoSource,undefined);
+  await chen.post('camera',{...lin.joined(),state:'on',version:2,source:'window'},409);
+  await update('on',2,'monitor',409);
+  await update('off',2,'window',409);
+  await update('on',2);
+  await update('on',1,'window');
+  assert.deepEqual(await participant(zhou,zhou.joined()),{id:lin.self,number:lin.number,video:true,camera:'on',cameraVersion:2});
+  await update('on',3,'window');
+  await update('off',4);
+  assert.equal((await participant(zhou,zhou.joined())).videoSource,undefined);
+  const old=lin.joined();
+  await update('on',5,'window');
+  await lin.post('leave',old);
+  await lin.join(randomUUID(),true);
+  await lin.post('camera',{...old,state:'on',version:6,source:'window'},409);
+  assert.deepEqual(await participant(zhou,zhou.joined()),{id:lin.self,number:lin.number,video:true,camera:'off',cameraVersion:0});
+  t.diagnostic(requests()+' local HTTP requests for window-source signaling');
+});
+
 test('lease expiry, revoked membership, group size and session validity are checked before peer delivery',t=>{
   let time=Date.now();
   const store=new SocialStore(':memory:'),voice=createGroupVoice(store,()=>false,()=>time);
