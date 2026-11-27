@@ -1,5 +1,5 @@
 // Group-call controls and the bridge from the media controller to Friends signaling.
-export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,privateCallBusy}) {
+export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,privateCallBusy,dockedReading=()=>false}) {
   const panel=document.querySelector('#group-voice');
   const dock=panel.parentElement;
   const title=panel.querySelector('strong');
@@ -19,9 +19,11 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     const call=active&&state.phase!=='idle';
     const context=call?active:current;
     const detached=call&&current?.id!==active.id;
-    if(detached&&panel.parentElement===dock)document.body.append(panel);
-    if(!detached&&panel.parentElement!==dock)dock.append(panel);
+    const floating=detached&&!dockedReading(active.id);
+    const destination=floating?document.body:dock;
+    if(panel.parentElement!==destination)destination.append(panel);
     panel.classList.toggle('group-voice-detached',Boolean(detached));
+    panel.classList.toggle('group-voice-floating',Boolean(floating));
     const participants=call?state.members:(key(current)===discoveredFor?discovery?.participants:null)??[];
     panel.hidden=!context||(!call&&!context.canStart&&!participants.length);
     if(panel.hidden)return;

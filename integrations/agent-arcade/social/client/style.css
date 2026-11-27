@@ -494,7 +494,7 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .group-voice-summary li .avatar {width:22px;height:22px;flex:0 0 22px;font-size:.68rem}
 .group-voice-actions {display:flex;gap:6px;flex-wrap:wrap}
 .group-voice-actions button {min-block-size:44px;padding:4px 10px}
-#group-voice.group-voice-detached {
+#group-voice.group-voice-floating {
   position:fixed;z-index:9;inset-inline-end:12px;inset-block-end:12px;max-inline-size:min(400px,calc(100% - 24px));
   border:1px solid var(--line);border-radius:10px;box-shadow:0 5px 24px #231a3029
 }
