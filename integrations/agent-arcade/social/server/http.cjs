@@ -21,6 +21,7 @@ const {createAiGroup} = require('./ai-group.cjs');
 const {createAiFeed} = require('./ai-feed.cjs');
 
 const {createAiProactive} = require('./ai-proactive.cjs');
+const {readVideoUpload}=require('./video-upload.cjs');
 const {readFileUpload}=require('./file-upload.cjs');
 const {readImageUpload,readAvatarUpload,readFeedPostUpload} = require('./image-upload.cjs');
 const {bundledSticker,bundledStickerOptions}=require('./bundled-stickers.cjs');
@@ -392,6 +393,27 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       }
       if (!['GET','POST'].includes(req.method)) fail(405,'method','请求方法无效');
       const [collection,chat,action,message,asset,variant]=parts;
+      if(collection==='conversations'&&parts.length===3&&action==='videos'&&req.method==='POST'){
+        const account=current(store,req);
+        if(req.headers['x-social-account']!==account)fail(409,'video_session','账号已切换，请重新选择短片');
+        const scope=store.humanAttachmentAccess(account,chat,'video');
+        if(req.headers['x-social-member-revision']!==scope.membershipRevision)fail(409,'video_session','请重新打开会话');
+        const video=await readVideoUpload(req);
+        if(current(store,req)!==account)fail(409,'video_session','账号已切换，请重新选择短片');
+        const sent=store.transaction(()=>store.sendVideo(account,chat,video,scope.membershipRevision));
+        res.setHeader('Content-Type','application/json; charset=utf-8');
+        return res.end(JSON.stringify({message:sent}));
+      }
+      if(collection==='conversations'&&action==='messages'&&asset==='video'&&parts.length===5&&req.method==='GET'&&/^[1-9]\d*$/u.test(message)){
+        const account=current(store,req);
+        if(req.headers['x-social-account']!==account)fail(409,'video_session','账号已切换，请重新打开视频');
+        const {bytes,mime}=store.messageVideo(account,chat,Number(message));
+        res.setHeader('Content-Type',mime);
+        res.setHeader('Content-Length',bytes.byteLength);
+        res.setHeader('Cross-Origin-Resource-Policy','same-origin');
+        res.setHeader('X-Content-Type-Options','nosniff');
+        return res.end(bytes);
+      }
       if(collection==='conversations'&&parts.length===3&&action==='files'&&req.method==='POST'){
         const account=current(store,req);
         if(req.headers['x-social-account']!==account)fail(409,'file_session','账号已切换，请重新打开会话');
