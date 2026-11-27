@@ -195,6 +195,10 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
     if (parts.length===3&&method==='POST'&&action==='remove-friend')return store.removeFriend(a,id,body);
     if (parts.length===3&&method==='POST'&&action==='friend-remark')return store.saveFriendRemark(a,id,body);
     if (parts.length === 3 && action === 'read' && method === 'POST') return store.markConversationRead(a,id,body);
+    if(parts.length===3&&method==='POST'){
+      if(action==='forward-preview')return store.messageForwardPreview(a,id,body);
+      if(action==='forward')return store.forwardMessages(a,id,body);
+    }
     if (parts.length === 3 && action === 'history-search' && method === 'GET') {
       const page=store.historySearch(a,id,params);
       return page.messages?{...page,messages:store.withMessageReactions(a,id,store.withReplyPreviews(a,id,page.messages))}:page;
@@ -514,18 +518,24 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         res.setHeader('Cross-Origin-Resource-Policy','same-origin');
         return res.end(file.bytes);
       }
-      if(collection==='conversations'&&parts.length===3&&action==='images'&&req.method==='POST') {
+      if(collection==='conversations'&&parts.length===3&&['images','captioned-images'].includes(action)&&req.method==='POST') {
         const account=current(store,req);
         if(req.headers['x-social-account']!==account)fail(409,'image_session','账号已切换，请重新打开会话');
         const captureRevision=req.headers['x-social-member-revision'];
         const scope=store.imageUploadAccess(account,chat);
         if(captureRevision!==undefined && captureRevision!==scope.membershipRevision)fail(409,'file_session','请重新打开会话');
+        let caption='';
+        if(action==='captioned-images'){
+          try{caption=decodeURIComponent(req.headers['x-social-image-caption']??'').trim();}
+          catch{fail(400,'image_caption','图片配文格式无效');}
+          if(!caption||caption.length>500||caption.includes('\0'))fail(400,'image_caption','图片配文须为 1–500 字');
+        }
         const image=await readImageUpload(req);
         if(current(store,req)!==account)fail(409,'image_session','账号已切换，请重新打开会话');
         const sent=store.transaction(()=>{
           if((scope.type==='direct'||captureRevision!==undefined)&&store.access(account,chat).membershipRevision!==scope.membershipRevision)
             fail(409,'file_session','会话权限已变更，请重新选择图片');
-          return store.sendImage(account,chat,image.clientId,image);
+          return store.sendImage(account,chat,image.clientId,image,caption);
         });
         res.setHeader('Content-Type','application/json; charset=utf-8');
         return res.end(JSON.stringify({message:sent}));

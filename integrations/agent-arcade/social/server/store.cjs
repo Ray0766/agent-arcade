@@ -1,4 +1,5 @@
 'use strict';
+const {createHash}=require('node:crypto');
 
 const {attribution}=require('./public-reactions.cjs');
 
@@ -43,6 +44,9 @@ const savedStickerVisibility=`FROM saved_stickers s JOIN messages m ON m.id=s.me
   JOIN members viewer ON viewer.chat=m.chat AND viewer.account=s.account
   WHERE s.account=? AND m.removed=0 AND m.id>viewer.since`;
 
+function postBodyDigest(value){
+  return createHash('sha256').update(value).digest('hex');
+}
 class SocialStore {
   constructor(filename) {
     this.db = new DatabaseSync(filename);
@@ -456,15 +460,16 @@ class SocialStore {
     const pictureQuestion=this.one('SELECT state,image,ai FROM ai_image_turns WHERE prompt=?',r.id);
     const aiReply = pictureQuestion?.state??this.one('SELECT state FROM ai_direct_turns WHERE prompt=? UNION ALL SELECT state FROM ai_group_turns WHERE prompt=?',r.id,r.id)?.state;
     const mentioned = this.one('SELECT account FROM message_mentions WHERE message=?',r.id)?.account;
-    const image=!r.removed&&r.body===''&&this.one(`SELECT i.mime,i.width,i.height,length(i.bytes) AS bytes,s.label,p.source_code,d.title AS drawing
-      FROM message_images i LEFT JOIN message_stickers s ON s.message=i.message
+    const image=!r.removed&&r.body===''&&this.one(`SELECT i.mime,i.width,i.height,length(i.bytes) AS bytes,c.caption,s.label,p.source_code,d.title AS drawing
+      FROM message_images i LEFT JOIN message_image_captions c ON c.message=i.message
+      LEFT JOIN message_stickers s ON s.message=i.message
       LEFT JOIN message_sticker_sources p ON p.message=i.message
       LEFT JOIN message_drawings d ON d.message=i.message WHERE i.message=?`,r.id);
     const voice=!r.removed&&!image&&this.one(
       'SELECT duration_ms AS durationMs,length(bytes) AS bytes FROM message_voices WHERE message=?',r.id);
     const file=!r.removed && !image && !voice && r.body==='' &&
       this.one('SELECT name,length(bytes) AS bytes FROM message_files WHERE message=?',r.id);
-    const {label,source_code,drawing,...picture}=image||{};
+    const {label,source_code,drawing,caption,...picture}=image||{};
     const credit=source_code?JSON.parse(source_code):null;
     const source=attribution(credit);
     const drawingSource=credit?.drawing&&{
@@ -472,14 +477,15 @@ class SocialStore {
       author:{number:credit.drawing.author,displayName:this.one('SELECT name FROM users WHERE number=? AND kind=?',
         credit.drawing.author,'ai')?.name??credit.drawing.author},
     };
-    const attachment=image?{type:'image',...picture,...(label&&{sticker:{label,...(source&&{source}),...(drawingSource&&{drawingSource})}}),
+    const attachment=image?{type:'image',...picture,...(caption&&{caption}),...(label&&{sticker:{label,...(source&&{source}),...(drawingSource&&{drawingSource})}}),
       ...(drawing!==null&&{drawing:{title:drawing}})}:
       voice?{type:'voice',mime:'audio/wav',...voice}:file&&{type:'file',...file};
     const webResults=!r.removed&&r.nonce.startsWith('ai-reply-')&&
       this.one('SELECT sources FROM message_web_results WHERE message=?',r.id)?.sources;
     return {id:r.id, conversationId:r.chat, sender:this.messagePerson(r.sender), clientId:r.nonce,
+      ...(!r.removed&&r.nonce.startsWith('forward-')&&this.one('SELECT 1 FROM forwarded_messages WHERE message=?',r.id)&&{forwarded:true}),
       ...(webResults&&{webResults:JSON.parse(webResults)}),
-      text:r.removed ? '[已移除]' : image?(drawing!==null?'[AI 绘图]':label?'[表情图]':'[图片]'):voice?'[语音]':file?'[文件] '+file.name:r.body,
+      text:r.removed ? '[已移除]' : image?(drawing!==null?'[AI 绘图]':label?'[表情图]':caption?'[图片] '+caption:'[图片]'):voice?'[语音]':file?'[文件] '+file.name:r.body,
       createdAt:r.created, removed:Boolean(r.removed),
       ...(aiReply && {aiReply}), ...(task&&{task}),
       ...(!r.removed&&pictureQuestion&&{imageQuestion:{image:pictureQuestion.image,role:this.user(pictureQuestion.ai)}}),
@@ -515,9 +521,9 @@ class SocialStore {
       fail(403,kind+'_human_only','附件仅供真人在好友私聊或群聊中发送');
     return chat;
   }
-  sendImage(a,id,clientId,image) {
-    const chat=this.imageUploadAccess(a,id);
-    return this.writeImage(a,chat,clientId,image,null);
+  sendImage(a,id,clientId,image,caption='') {
+    const chat=caption?this.humanAttachmentAccess(a,id,'image'):this.imageUploadAccess(a,id);
+    return this.writeImage(a,chat,clientId,image,null,null,null,caption);
   }
   sendHumanSticker(a,id,clientId,image) {
     const chat=this.humanAttachmentAccess(a,id,'image');
@@ -583,23 +589,25 @@ class SocialStore {
     }
     return this.writeImage(a,chat,clientId,image,null,null,{title:image.title,original:image.original});
   }
-  writeImage(a,chat,clientId,image,label,sourceCode=null,drawing=null) {
+  writeImage(a,chat,clientId,image,label,sourceCode=null,drawing=null,caption='') {
     const id=chat.id;
     const old=this.one('SELECT * FROM messages WHERE chat=? AND sender=? AND nonce=?',id,a,clientId);
     if(old) {
-      const saved=this.one(`SELECT i.mime,i.digest,s.label,p.source_code,d.title,d.original FROM message_images i
+      const saved=this.one(`SELECT i.mime,i.digest,c.caption,s.label,p.source_code,d.title,d.original FROM message_images i
+        LEFT JOIN message_image_captions c ON c.message=i.message
         LEFT JOIN message_stickers s ON s.message=i.message LEFT JOIN message_sticker_sources p ON p.message=i.message
         LEFT JOIN message_drawings d ON d.message=i.message
         WHERE i.message=?`,old.id);
       if(old.id<=chat.since||!saved||saved.mime!==image.mime||saved.digest!==image.digest||saved.label!==label||saved.source_code!==sourceCode)
         fail(409,'message_conflict','此编号已被使用');
-      if(saved.title!==(drawing?.title??null)||saved.original!==(drawing?(drawing.original??old.id):null))
+      if((saved.caption??'')!==caption||saved.title!==(drawing?.title??null)||saved.original!==(drawing?(drawing.original??old.id):null))
         fail(409,'message_conflict','此编号已被使用');
       return this.message(old);
     }
     const row=this.run("INSERT INTO messages(chat,sender,nonce,body,created) VALUES(?,?,?,'',?)",id,a,clientId,now());
     this.run('INSERT INTO message_images VALUES(?,?,?,?,?,?)',row.lastInsertRowid,
       image.mime,image.width,image.height,image.digest,image.bytes);
+    if(caption)this.run('INSERT INTO message_image_captions VALUES(?,?)',row.lastInsertRowid,caption);
     if(label)this.run('INSERT INTO message_stickers VALUES(?,?)',row.lastInsertRowid,label);
     if(sourceCode)this.run('INSERT INTO message_sticker_sources VALUES(?,?)',row.lastInsertRowid,sourceCode);
     if(drawing)this.run('INSERT INTO message_drawings VALUES(?,?,?)',row.lastInsertRowid,
@@ -608,7 +616,7 @@ class SocialStore {
   }
   messageImage(a,id,message) {
     const chat=this.access(a,id);
-    const image=this.one(`SELECT i.mime,i.bytes FROM message_images i JOIN messages m ON i.message=m.id
+    const image=this.one(`SELECT i.mime,i.width,i.height,i.digest,i.bytes FROM message_images i JOIN messages m ON i.message=m.id
       WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0`, id,message,chat.since);
     if(!image)fail(404,'unknown_image','没有找到该图片');
     return image;
@@ -821,6 +829,77 @@ class SocialStore {
     const quotes=new Map(rows.map(row=>[row.message,row.id===null?{unavailable:true}:
       {id:row.id,name:row.name,text:row.text}]));
     return messages.map(message=>quotes.has(message.id)?{...message,quote:quotes.get(message.id)}:message);
+  }
+  messageForwardPreview(account,source,{expectedAccount,sourceRevision,target,ids,kind='text'}){
+    if(expectedAccount!==account)fail(409,'forward_session','账号已切换，请重新打开会话');
+    const from=this.access(account,source);
+    const photo=kind==='photo';
+    if(kind!=='text'&&!photo)fail(400,'forward_selection','不支持转发这种消息');
+    if(photo&&from.friendRemoved)fail(403,'forward_source','来源会话已解除好友关系');
+    if(from.membershipRevision!==sourceRevision)fail(409,'forward_session','来源会话权限已变更，请重新选择消息');
+    if(this.user(account).kind!=='human'||typeof target!=='string'||!Array.isArray(ids)||
+      !ids.length||ids.length>20||new Set(ids).size!==ids.length||ids.some(id=>!Number.isSafeInteger(id)||id<1))
+      fail(400,'forward_selection',photo?'请选择 1 至 20 张本人照片':'请选择 1 至 20 条普通文字消息');
+    const to=this.writableChat(account,target);
+    const conversation=this.conversation(account,target);
+    if(photo&&(target===source||conversation.members.some(member=>member.kind!=='human')))
+      fail(400,'forward_target','请选择其他真人好友或全真人群聊接收照片');
+    if(to.type==='direct'&&(conversation.members.length!==2||conversation.members.some(member=>member.kind!=='human')))
+      fail(403,'forward_target','请选择真人私聊或群聊');
+    const sources=this.all(`SELECT * FROM messages WHERE chat=? AND id>? AND removed=0
+      AND id IN (${ids.map(()=>'?').join(',')}) ORDER BY id`,source,from.since,...ids);
+    if(sources.length!==ids.length)fail(409,'forward_source','有原消息已撤回、移除或不可查看，请重新选择');
+    const entries=sources.map(row=>{
+      const message=this.message(row);
+      if(photo){
+        const image=message.attachment;
+        if(row.sender!==account||image?.type!=='image'||image.sticker||image.drawing)
+          fail(403,'forward_photo','只能转发本人发送的普通照片');
+        const {digest}=this.one('SELECT digest FROM message_images WHERE message=?',row.id);
+        return {id:row.id,digest,caption:image.caption??''};
+      }
+      if(message.attachment||message.task||message.imageQuestion||message.webResults?.length||
+        !row.body.trim()||Array.from(row.body).length>4000)
+        fail(400,'forward_selection','批量转发仅支持普通文字和文字中的链接');
+      return {id:row.id,text:row.body.trim()};
+    });
+    const recipient={id:target,type:to.type,title:conversation.title,members:conversation.members
+      .filter(member=>member.number!==account).map(({number,displayName,kind})=>({number,displayName,kind}))};
+    const snapshot=[source,sourceRevision,to.membershipRevision,recipient,entries];
+    if(photo&&to.type==='group'){
+      // A member leaving and rejoining starts a new membership, even with the same account number.
+      snapshot.push(this.all(`SELECT m.account,r.revision FROM members m LEFT JOIN conversation_membership_revisions r
+        ON r.chat=m.chat AND r.account=m.account WHERE m.chat=? ORDER BY m.account`,target));
+    }
+    const review=postBodyDigest(JSON.stringify(snapshot));
+    return {recipient,entries,review};
+  }
+  forwardMessages(account,source,body){
+    const {expectedAccount,target,ids,review,clientId}=body;
+    if(expectedAccount!==account)fail(409,'forward_session','账号已切换，请重新打开会话');
+    if(typeof clientId!=='string'||!/^[a-f0-9]{32}$/u.test(clientId)||
+      typeof review!=='string'||!/^[a-f0-9]{64}$/u.test(review))
+      fail(400,'forward_request','请先查看转发预览');
+    const intent=postBodyDigest(JSON.stringify([source,target,ids,review,...(body.kind==='photo'?['photo']:[])]));
+    const previous=this.one('SELECT intent,count FROM message_forward_batches WHERE account=? AND nonce=?',account,clientId);
+    if(previous){
+      if(previous.intent!==intent)fail(409,'forward_request','本次确认与原转发请求不一致');
+      return {count:previous.count};
+    }
+    // POST dispatch wraps the full permission check and all inserts in one transaction.
+    const confirmed=this.messageForwardPreview(account,source,body);
+    if(confirmed.review!==review)fail(409,'forward_changed','收件方或消息已变更，请返回重新预览');
+    const markForwarded=message=>this.run('INSERT INTO forwarded_messages(message) VALUES(?)',message.id);
+    for(const entry of confirmed.entries){
+      const nonce='forward-'+randomUUID();
+      if(body.kind==='photo'){
+        const image=this.messageImage(account,source,entry.id);
+        markForwarded(this.sendImage(account,target,nonce,image,entry.caption));
+      }else this.send(account,target,{text:entry.text,clientId:nonce},markForwarded);
+    }
+    const count=confirmed.entries.length;
+    this.run('INSERT INTO message_forward_batches(account,nonce,intent,count) VALUES(?,?,?,?)',account,clientId,intent,count);
+    return {count};
   }
   send(a,id,body,onInsert) {
     const chat = this.writableChat(a,id);

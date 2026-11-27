@@ -160,6 +160,16 @@ CREATE TABLE IF NOT EXISTS messages (
   created TEXT NOT NULL, removed INTEGER NOT NULL DEFAULT 0, UNIQUE(chat,sender,nonce)
 );
 CREATE INDEX IF NOT EXISTS chat_history ON messages(chat,id);
+CREATE TABLE IF NOT EXISTS message_forward_batches (
+  account TEXT NOT NULL REFERENCES users(number),
+  nonce TEXT NOT NULL,
+  intent TEXT NOT NULL,
+  count INTEGER NOT NULL,
+  PRIMARY KEY(account,nonce)
+);
+CREATE TABLE IF NOT EXISTS forwarded_messages (
+  message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS message_web_results (
   message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
   sources TEXT NOT NULL
@@ -208,6 +218,10 @@ CREATE TABLE IF NOT EXISTS message_images (
   mime TEXT NOT NULL CHECK(mime IN ('image/png','image/jpeg')),
   width INTEGER NOT NULL CHECK(width>0), height INTEGER NOT NULL CHECK(height>0),
   digest TEXT NOT NULL, bytes BLOB NOT NULL CHECK(length(bytes) BETWEEN 1 AND 4194304)
+);
+CREATE TABLE IF NOT EXISTS message_image_captions (
+  message INTEGER PRIMARY KEY REFERENCES message_images(message) ON DELETE CASCADE,
+  caption TEXT NOT NULL CHECK(length(caption) BETWEEN 1 AND 500)
 );
 CREATE TABLE IF NOT EXISTS saved_stickers (
   id TEXT PRIMARY KEY,

@@ -12,6 +12,7 @@ const root = $('#workspace'), auth = $('#auth'), dialog = $('#dialog'), director
 const conversationList = mountConversationList(directory,renderDirectory);
 const feed = $('#friend-feed'), feedPosts = $('#feed-posts'), feedStatus = $('#feed-status');
 const historyView = $('#history'), messageBox = $('#message'), composer = $('#composer');
+const messageSelectionBar=$('#message-selection');
 const chatSettings=$('#chat-settings'), messageActions=$('#message-actions');
 const personalAiProfileButton=$('#personal-ai-direct-profile');
 const tabs = [...root.querySelectorAll('[data-tab]')];
@@ -28,6 +29,9 @@ let membershipRevision, historyContext, historyFinder;
 let socialVisible=true;
 const readThrough=new Map(), readFlights=new Map();
 let inlineVoice, messageAction;
+let messageSelection;
+const pendingForwards=new Map();
+let forwardPickerDismiss;
 let feedScope='friends', feedCursor=null, feedRead=0, pendingPost;
 let feedRoles=[], feedFollowFlight=false;
 const postDraftKey='arcade.friendPost.pending';
@@ -305,6 +309,7 @@ async function api(route, body, {session = true, expectedAccount, image, voice, 
     headers:{'X-Social-Claude-UI':'1','X-Social-AI-Friend-Roles':'1',...(expectedAccount && {'X-Social-Account':expectedAccount}),
       ...(body !== undefined && !formData && {'Content-Type':attachment?.mime||'application/json',
       ...(attachment && {'X-Social-Client-Id':attachment.clientId}),
+      ...(image?.caption && {'X-Social-Image-Caption':encodeURIComponent(image.caption)}),
       ...(attachment?.revision && {'X-Social-Member-Revision':attachment.revision}),
       ...(fileUpload && {'X-Social-File-Name':encodeURIComponent(fileUpload.name)})})},
     ...(body !== undefined && {body:attachment||formData?body:JSON.stringify(body)}),
@@ -359,10 +364,12 @@ function leaveSession({discardFeedback=false,expired=false}={}) {
   contactSearch.hidden=true;
   chatPortrait=undefined;
   chat = conversation = historyContext = historyFinder = undefined;
+  resetMessageSelection();
   friends = incoming = outgoing = conversations = messages = [];
   readThrough.clear();
   readFlights.clear();
   removedMessages.clear();
+  pendingForwards.clear();
   drafts.clear();
   persistChatDrafts();
   sending.clear();
@@ -1361,7 +1368,7 @@ function showChatHeader() {
   $('#no-chat').hidden=!!chat;
   $('#chat-head').hidden=!available;
   historyView.hidden=!chat;
-  composer.hidden=!available;
+  composer.hidden=!available||Boolean(messageSelection);
   const chatAvatar=$('#chat-avatar');
   if(!available) {
     chatAvatar.replaceChildren();
@@ -1684,6 +1691,7 @@ async function openChat(id,expectedAccount,reload=false) {
   chatPortrait=undefined;
   chatSettings.hidePopover();
   messageActions.hidePopover();
+  resetMessageSelection();
   chat=id;
   conversation=historyContext=undefined;
   messages=[];
@@ -1847,12 +1855,21 @@ function renderHistory(scroll) {
     .map(node=>[Number(node.dataset.voiceId),node]));
   const focusedVoice=document.activeElement?.dataset?.voiceId?document.activeElement:null;
   const focusedAction=document.activeElement?.dataset?.messageAction;
+  const focusedSelection=document.activeElement?.dataset?.selectMessage;
   const focusedReaction=document.activeElement?.dataset?.messageReaction;
   const focusedAnchor=document.activeElement?.classList.contains('history-anchor')?historyContext?.anchor:undefined;
   const focusedOlder=document.activeElement===olderButton;
   const nodes=[];
   const paused=conversation?.cloudChat?.enabled===false;
   const rows=visibleHistory();
+  if(messageSelection){
+    const visible=new Set(rows.filter(canSelectMessage).map(row=>row.id));
+    for(const id of messageSelection.ids)if(!visible.has(id)){
+      messageSelection.ids.delete(id);
+      $('#message-selection-status').textContent='';
+    }
+    paintMessageSelection();
+  }
   if(historyContext)nodes.push(latestHistoryButton);
   if(historyContext?.older??older) nodes.push(olderButton);
   if(!rows.length) nodes.push(empty(conversation?.requiresAiCloudConsent?'在上方开启云聊天后，就可以和她打招呼。':'还没有消息。先打个招呼。'));
@@ -1879,7 +1896,26 @@ function renderHistory(scroll) {
     stamp.dateTime=message.createdAt;
     stamp.title=time(message.createdAt,reportDate);
     meta.append(label,stamp);
-    if(!message.removed){
+    if(messageSelection&&canSelectMessage(message)){
+      const toggle=el('label',null,'message-select-toggle');
+      const check=el('input');
+      check.type='checkbox';
+      check.dataset.selectMessage=message.id;
+      check.checked=messageSelection.ids.has(message.id);
+      bubble.classList.toggle('message-selected',check.checked);
+      check.setAttribute('aria-label','选择'+sender+'的消息 '+message.text.slice(0,48).toWellFormed());
+      check.addEventListener('change',()=>{
+        if(!messageSelection)return;
+        if(check.checked)messageSelection.ids.add(message.id);
+        else messageSelection.ids.delete(message.id);
+        bubble.classList.toggle('message-selected',check.checked);
+        $('#message-selection-status').textContent='';
+        paintMessageSelection();
+      });
+      toggle.append(check);
+      bubble.prepend(toggle);
+    }
+    if(!message.removed&&!messageSelection){
       const control=button('⋯',()=>showMessageActions(message.id,control),'message-action-trigger');
       control.dataset.messageAction=message.id;
       control.setAttribute('aria-label','消息操作');
@@ -1900,7 +1936,11 @@ function renderHistory(scroll) {
         open.dataset.imageId=message.id;
         open.setAttribute('aria-label','查看原图');
       }
-      content.append(meta,open);
+      if(message.attachment.caption){
+        const figure=el('figure',null,'captioned-image');
+        figure.append(open,el('figcaption',message.attachment.caption));
+        content.append(meta,figure);
+      }else content.append(meta,open);
       const sticker=message.attachment.sticker;
       if(sticker?.source)content.append(el('p',sticker.label,'minor'));
     }else if(message.attachment?.type==='file'&&!message.removed){
@@ -1936,6 +1976,7 @@ function renderHistory(scroll) {
       results.append(info);
       content.append(meta,results);
     }else content.append(meta,textBubble(message,text));
+    if(message.forwarded&&!message.removed)meta.after(el('p','转发的消息','minor forwarded-label'));
     if(message.quote&&!message.removed)meta.after(quoteControl(message.quote,locateQuotedMessage));
     if(mine&&!message.removed&&message.personalVoiceOffer)content.append(voiceOfferControls(message));
     if(message.imageQuestion){
@@ -1954,6 +1995,8 @@ function renderHistory(scroll) {
   if(!resolveMessageAction())messageActions.hidePopover();
   if(focusedVoice?.isConnected)focusedVoice.focus({preventScroll:true});
   if(focusedAction)historyView.querySelector('[data-message-action="'+focusedAction+'"]')?.focus({preventScroll:true});
+  if(focusedSelection)(historyView.querySelector('[data-select-message="'+focusedSelection+'"]')??
+    $('#message-selection-exit')).focus({preventScroll:true});
   if(focusedReaction){
     const action=focusedReaction.split('/')[0];
     (historyView.querySelector('[data-message-reaction="'+focusedReaction+'"]')??
@@ -2072,6 +2115,9 @@ function showMessageActions(id,control){
   const reply=$('#reply-message');
   if(reply)reply.hidden=messageBox.readOnly||sending.has(chat)||!$('#reply-target');
   $('#copy-message').hidden=!!row.attachment;
+  $('#forward-own-photo').hidden=!membershipRevision||conversation?.friendRemoved||!isOwnPhoto(row,user?.number);
+  const select=$('#select-messages');
+  if(select)select.hidden=!messageSelectionBar||!canSelectMessage(row);
   const favorite=$('#save-message-sticker');
   favorite.hidden=row.attachment?.type!=='image';
   favorite.disabled=false;favorite.textContent='收藏为表情';
@@ -2114,6 +2160,225 @@ $('#copy-message').addEventListener('click',async()=>{
   try{await navigator.clipboard.writeText(row.text);messageActions.hidePopover();}
   catch{$('#message-action-status').textContent='可选中消息文字手动复制。';}
 });
+function canSelectMessage(row){
+  return Boolean(row&&!row.removed&&row.id>historyFloor&&!removedMessages.has(row.id)&&!row.attachment&&row.text.trim());
+}
+function paintMessageSelection(){
+  const count=messageSelection.ids.size;
+  $('#message-selection-count').textContent=count?'已选 '+count+' 条消息':'选择要复制或转发的消息';
+  $('#message-selection-copy').disabled=!count||messageSelection.copying;
+  const forward=$('#message-selection-forward');
+  if(forward)forward.disabled=!count||user?.kind!=='human'||!membershipRevision;
+}
+function resetMessageSelection(){
+  messageSelection=undefined;
+  if(messageSelectionBar)messageSelectionBar.hidden=true;
+}
+function exitMessageSelection(){
+  if(!messageSelection)return;
+  resetMessageSelection();
+  composer.hidden=!conversation;
+  renderHistory('keep');
+  (messageBox.readOnly?historyView:messageBox).focus({preventScroll:true});
+}
+$('#select-messages')?.addEventListener('click',()=>{
+  const row=resolveMessageAction();
+  if(!messageSelectionBar||!canSelectMessage(row))return;
+  messageActions.hidePopover();
+  messageSelection={ids:new Set([row.id]),copying:false};
+  closeMentionSuggestions();
+  composer.hidden=true;
+  messageSelectionBar.hidden=false;
+  $('#message-selection-status').textContent='';
+  renderHistory('keep');
+  historyView.querySelector('[data-select-message="'+row.id+'"]')?.focus();
+});
+$('#message-selection-exit')?.addEventListener('click',exitMessageSelection);
+$('#message-selection-copy')?.addEventListener('click',async()=>{
+  const selection=messageSelection;
+  if(!selection||selection.copying)return;
+  const rows=visibleHistory().filter(row=>selection.ids.has(row.id)&&canSelectMessage(row));
+  if(!rows.length)return;
+  const status=$('#message-selection-status');
+  status.textContent='';
+  selection.copying=true;
+  paintMessageSelection();
+  try{
+    await navigator.clipboard.writeText(rows.map(row=>row.text).join('\n'));
+    if(messageSelection===selection)status.textContent='已复制 '+rows.length+' 条消息。';
+  }catch{
+    if(messageSelection===selection)status.textContent='无法写入剪贴板，请检查权限后重试。';
+  }finally{
+    if(messageSelection===selection){
+      selection.copying=false;
+      paintMessageSelection();
+    }
+  }
+});
+$('#message-selection-forward')?.addEventListener('click',showForwardPicker);
+function isOwnPhoto(message,account){
+  return Boolean(account&&!message?.removed&&message?.sender?.number===account&&message.sender.kind==='human'&&
+    message.attachment?.type==='image'&&!message.attachment.sticker&&!message.attachment.drawing);
+}
+$('#forward-own-photo').addEventListener('click',()=>{
+  const row=resolveMessageAction();
+  if(!isOwnPhoto(row,user?.number)||conversation?.friendRemoved||!membershipRevision)return;
+  messageActions.hidePopover();
+  showForwardPicker(row);
+});
+function showForwardPicker(singlePhoto,{onCancel}={}){
+  const selection=messageSelection,source=chat,sourceRevision=membershipRevision,account=user.number,epoch=generation;
+  const photo=Boolean(singlePhoto);
+  const ids=singlePhoto?[singlePhoto.id]:Array.from(selection?.ids??[]).sort((a,b)=>a-b);
+  if(selection?.unavailable)return;
+  if(!ids.length||!sourceRevision)return;
+  if(ids.length>20){
+    $('#message-selection-status').textContent=photo?'每次最多转发 20 张照片，请减少选择。':'每次最多转发 20 条消息，请减少选择。';
+    return;
+  }
+  const panel=el('div',null,'forward-panel');
+  const scope=openDialog(photo?'转发照片':'转发消息',[panel],source);
+  const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&chat===source&&
+    membershipRevision===sourceRevision&&messageSelection===selection;
+  let confirming=false;
+  const cancelPicker=()=>{
+    if(scope!==dialogGeneration)return;
+    if(confirming)return;
+    if(onCancel&&current()){void onCancel(current);return;}
+    closeDialog();
+  };
+  if(photo){
+    forwardPickerDismiss=cancelPicker;
+  }
+  function choose(selectedTarget){
+    const targets=conversations.filter(item=>{
+      if(item.friendRemoved||photo&&item.id===source)return false;
+      const allHuman=item.members.every(member=>member.kind==='human');
+      return item.type==='group'?(!photo||allHuman):item.type==='direct'&&item.members.length===2&&allHuman;
+    });
+    const form=el('form',null,'forward-panel');
+    const label=el('label','转发到'),select=el('select');
+    select.required=true;
+    const placeholder=el('option',photo?'选择真人好友或全真人群聊':'选择好友或群聊');
+    placeholder.value='';
+    select.append(placeholder);
+    label.append(select);
+    for(const target of targets){
+      const peer=target.members.find(member=>member.number!==account);
+      const detail=target.type==='group'?'群聊 · '+target.members.length+' 人':'私聊 · '+peer.number;
+      const option=el('option',target.title+'（'+detail+'）');
+      option.value=target.id;
+      option.selected=target.id===selectedTarget;
+      select.append(option);
+    }
+    const preview=el('button','预览转发','primary');
+    preview.type='submit';
+    preview.disabled=!select.value;
+    select.addEventListener('change',()=>{preview.disabled=!select.value;});
+    form.addEventListener('submit',event=>{
+      event.preventDefault();
+      const target=select.value;
+      if(!current()||!target)return;
+      const request={expectedAccount:account,sourceRevision,target,ids,...(photo&&{kind:'photo'})};
+      select.disabled=true;
+      void perform(async()=>{
+        try{
+          const result=await api(thread(source)+'/forward-preview',request);
+          if(current())showPreview(request,result);
+        }finally{select.disabled=false;}
+      },preview,scope);
+    });
+    $('#dialog-error').textContent='';
+    form.append(label,preview);
+    if(photo)form.append(button('取消',cancelPicker));
+    if(targets.length){
+      panel.replaceChildren(form);
+      select.focus();
+    }else panel.replaceChildren(el('p',photo?'暂无其他可接收照片的真人好友或全真人群聊。':'暂无可转发的真人私聊或群聊。'));
+  }
+  function showPreview(request,{recipient,entries,review}){
+    const heading=el('h3','发给 '+recipient.title);
+    heading.tabIndex=-1;
+    const audience=el('p',recipient.type==='direct'?'私聊 · '+recipient.members[0].number:
+      '群聊 · '+(recipient.members.length+1)+' 位成员','minor');
+    const multiplePhotos=photo&&entries.length>1;
+    const list=multiplePhotos?el('ol',null,'forward-photo-list'):
+      photo?el('figure',null,'forward-photo-preview'):el('ol',null,'forward-entries');
+    const confirmLabel=multiplePhotos?'确认转发 '+entries.length+' 张':photo?'确认转发照片':'确认转发 '+entries.length+' 条';
+    const confirm=button(confirmLabel,()=>void perform(async()=>{
+      if(!current())return;
+      const key='arcade.forward.pending:'+account+':'+review;
+      let clientId=pendingForwards.get(key);
+      try{clientId??=sessionStorage.getItem(key);}catch{}
+      if(!clientId||!/^[a-f0-9]{32}$/u.test(clientId))clientId=clientNonce();
+      pendingForwards.set(key,clientId);
+      try{sessionStorage.setItem(key,clientId);}catch{}
+      const clearPending=()=>{
+        pendingForwards.delete(key);
+        try{sessionStorage.removeItem(key);}catch{}
+      };
+      confirming=cancel.disabled=back.disabled=true;
+      try{
+        const {count}=await api(thread(source)+'/forward',{...request,review,clientId});
+        clearPending();
+        if(!current())return;
+        closeDialog();
+        exitMessageSelection();
+        $('#send-error').textContent='已向「'+recipient.title+'」转发 '+count+(photo?' 张照片。':' 条消息。');
+        void sync();
+      }catch(error){
+        if(error.status>=400&&error.status<500)clearPending();
+        if(photo&&recipient.type==='group'&&current()&&['forward_changed','forward_target','unknown_chat'].includes(error.message)){
+          choose(request.target);
+        }
+        throw error;
+      }finally{confirming=cancel.disabled=back.disabled=false;}
+    },confirm,scope),'primary');
+    const back=button('更换收件方',()=>choose());
+    const cancel=button('取消',cancelPicker);
+    if(photo){
+      confirm.disabled=true;
+      let remaining=entries.length;
+      for(const [index,entry] of entries.entries()){
+        const image=el('img',null,'attachment-preview');
+        image.alt='第 '+(index+1)+' 张照片';
+        image.addEventListener('load',()=>{if(--remaining===0)confirm.disabled=false;},{once:true});
+        image.addEventListener('error',()=>{
+          if(current()&&panel.contains(image))$('#dialog-error').textContent='原图暂时无法打开，请重新预览。';
+        },{once:true});
+        image.src=imageUrl({conversationId:source,id:entry.id})+'?account='+encodeURIComponent(account);
+        if(multiplePhotos){
+          const item=el('li'),detail=el('div');
+          detail.append(el('small','第 '+(index+1)+' 张','minor'),el('p',entry.caption||'无配文'));
+          item.append(image,detail);
+          list.append(item);
+        }else{
+          list.append(image);
+          if(entry.caption)list.append(el('figcaption',entry.caption));
+        }
+      }
+    }else list.append(...entries.map(entry=>el('li',entry.text)));
+    const actions=el('div',null,'actions');
+    actions.append(cancel,back,confirm);
+    panel.replaceChildren(heading,audience);
+    if(recipient.type==='group'){
+      const members=el('details');
+      members.append(el('summary','查看群成员'),el('p',recipient.members.length?
+        recipient.members.map(member=>member.displayName+'（'+member.number+'）').join('、'):'群内只有你'));
+      panel.append(members);
+    }
+    panel.append(list,actions);
+    heading.focus({preventScroll:true});
+  }
+  choose();
+}
+composer.parentElement.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&messageSelection&&!dialog.open&&!chatSettings.matches(':popover-open')){
+    event.preventDefault();
+    exitMessageSelection();
+  }
+});
+
 $('#save-message-sticker').addEventListener('click',async event=>{
   const row=resolveMessageAction(),control=event.currentTarget;
   if(row?.attachment?.type!=='image'||control.disabled)return;
@@ -2435,6 +2700,7 @@ composer.addEventListener('submit',async event=>{
 });
 const wideMembers=matchMedia('(min-width: 1024px)');
 function closeDialog() {
+  forwardPickerDismiss=undefined;
   const returnToMembers=dialog.open&&dialog.dataset.memberPanel!==undefined&&dialog.contains(document.activeElement);
   delete dialog.dataset.memberPanel;
   ++dialogGeneration;dialogGroup=dialogMessage=undefined;
@@ -2443,14 +2709,15 @@ function closeDialog() {
   $('#dialog-body').replaceChildren();
   if(returnToMembers&&!$('#members').hidden)$('#members').focus({preventScroll:true});
 }
-$('#dialog-close').addEventListener('click',closeDialog);
+$('#dialog-close').addEventListener('click',()=>forwardPickerDismiss?forwardPickerDismiss():closeDialog());
 dialog.addEventListener('cancel',event=>{
   // File pickers can bubble their own cancel event through the dialog.
   if(event.target!==dialog)return;
   event.preventDefault();
-  closeDialog();
+  if(forwardPickerDismiss)forwardPickerDismiss();else closeDialog();
 });
 function openDialog(title, nodes, groupId, memberPanel=false) {
+  forwardPickerDismiss=undefined;
   const dock=memberPanel&&wideMembers.matches;
   if(dialog.open&&dock===dialog.matches(':modal'))dialog.close();
   if(memberPanel)dialog.dataset.memberPanel=groupId;
@@ -3334,6 +3601,12 @@ function photoDialog(screenshot,droppedFile,snipRequest){
   if(droppedFile)form.append(el('p','发送到「'+conversation.title+'」','minor'),name,input);
   else form.append(label);
   form.append(notice,preview);
+  const caption=el('textarea'),allowCaption=canAttach(conversation)&&user.kind==='human';
+  if(allowCaption){
+    const captionLabel=el('label','图片配文（选填）');
+    caption.rows=2;caption.maxLength=500;
+    captionLabel.append(caption);form.append(captionLabel);
+  }
   if(droppedFile)form.append(replacePhoto);
   if(direct)form.append(questionLabel,disclose);
   form.append(submit);
@@ -3389,7 +3662,7 @@ function photoDialog(screenshot,droppedFile,snipRequest){
     if(file){event.preventDefault();void selectPhoto(file);}
   }
   async function selectPhoto(file){
-    latestFile=file;
+    latestFile=file;caption.readOnly=false;
     name.textContent=file?.name??'';
     selected=undefined;submit.disabled=true;preview.hidden=true;preview.removeAttribute('src');
     $('#dialog-error').textContent='';
@@ -3419,7 +3692,11 @@ function photoDialog(screenshot,droppedFile,snipRequest){
     void perform(async()=>{
       try {
         if(boundToMembership&&(!revision||membershipRevision!==revision))throw Error('file_session');
-        const {message}=await api(thread(id)+'/images',file,{expectedAccount:account,image:{clientId,mime,...(boundToMembership&&{revision})}});
+        const text=allowCaption?caption.value.trim():'';
+        caption.readOnly=true;
+        const endpoint=text?'/captioned-images':'/images';
+        const {message}=await api(thread(id)+endpoint,file,{expectedAccount:account,image:{clientId,mime,caption:text,
+          ...((text||boundToMembership)&&{revision})}});
         if(!current())return;
         merge([message],'end');
         if(chosenQuestion){
