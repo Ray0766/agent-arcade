@@ -424,30 +424,46 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f1955aa0a0f2 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..3c9ef627ca47dfe877efe10f89997d1566cb8b88 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
-@@ -1,3 +1,5 @@
+@@ -1,5 +1,7 @@
 +import {addTownExterior} from './town-exterior.ts';
  import { localizedOption, setAttribute, setText, translate } from './i18n.ts';
  import { makePlacementPreview } from './placement-preview.ts';
 +import { createCourtyardInspiration } from './courtyard-inspiration.ts';
  import { PlacedObjectShadows } from './placed-shadows.ts';
-@@ -12,2 +14,6 @@ import {RADIUS} from '../shared/world.ts';
+ import * as T from 'three';
+ import {fieldOf,objectSeat} from '../shared/terrain.ts';
+@@ -10,6 +12,10 @@ import type { BuildKind, PlacedObject, PlanetView, Universe } from '../shared/pl
+ import type { PlayerState, Vec3 } from '../shared/world.ts';
+ import {RADIUS} from '../shared/world.ts';
  import { builtObject, disposeGeometry } from './build-art.ts';
 +import { flowerPlacementHint } from './bothouse-resident-sites.ts';
 +import { courtyardPlacementImpact } from './courtyard-placement-impact.ts';
 +import {planCourtyardArrival} from '../shared/courtyard-arrival.ts';
 +import {GroundWorld} from '../shared/physics/world.ts';
  import type { Workshop } from './workshop.ts';
-@@ -34,4 +40,5 @@ export interface ColonyBridge {
+ import { canAcceptUniverse } from './sync.ts';
+ import {lazyPanel,openPanel} from './lazy-panel.ts';
+@@ -32,8 +38,9 @@ const el = <E extends HTMLElement = HTMLElement>(id:string) => document.getEleme
+ export interface ColonyBridge {
+   canvas: HTMLCanvasElement; camera: T.Camera; scene: T.Scene;
    ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
 +  ownerRosterSize?: (planet:PlanetView, epoch:number) => number|null;
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-@@ -55,2 +62,9 @@ export class Colony {
+   universe:(u:Universe)=>void; bearing:(id:string)=>void;
+   flush: () => Promise<void>; notice: (text:string) => void;
+@@ -50,22 +57,46 @@ export class Colony {
+   private pathPreview = new T.Group();
+   private cutawayController:TownCameraCutaway|undefined;
+   get cutaway(){return this.cutawayController;}
++  private committedPlanet?: PlanetView;
+   private objects = new Map<string,T.Group>(); private draft: Draft | null = null;
+   private shadows = new PlacedObjectShadows(PRESENTATION.ground.garden.shadowExtent * .75);
    private placing = false; private selected: string | null = null;
 +  private flowerHint: {key:string; text:string}|null=null;
 +  private courtyardImpact: {key:string; text:string|null}|null=null;
@@ -457,17 +473,20 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    color:0xf3d180,side:T.DoubleSide,depthTest:false,depthWrite:false,
 +  }));
    private painted = ''; private cards = ''; private pointer: {id:number;x:number;y:number} | null = null;
-@@ -59,2 +73,3 @@ export class Colony {
+   private workshop: Workshop|null=null;
+   private structureWorkshopOpening:symbol|null=null;
    private loadWorkshop: () => Promise<Workshop>;
 +  private readonly courtyardInspiration: ReturnType<typeof createCourtyardInspiration>;
    private localParts: Record<string,PartPlacement[]> = {};
-@@ -64,2 +79,5 @@ export class Colony {
+   private ray = new T.Raycaster(); private pollBusy = false;
+   constructor(private bridge: ColonyBridge) {
+     bridge.scene.add(this.layer);
      bridge.scene.add(this.pathPreview);
 +    this.arrivalMarker.visible=false;
 +    this.arrivalMarker.renderOrder=10;
 +    bridge.scene.add(this.arrivalMarker);
      const loadWorkshop=this.loadWorkshop=lazyPanel(async()=>{const {Workshop}=await import('./workshop.ts');return this.workshop = new Workshop({read:bridge.libraryRead,save:bridge.librarySave,allowed:()=>!!this.universe?.currentPlanet.mine&&this.universe.player.flight.mode==='ground'&&this.universe.player.location?.kind!=='interior'&&this.syncing,
-@@ -67,3 +85,15 @@ export class Colony {
+       place:entry=>{this.localParts[entry.hash]=entry.blueprint.parts;this.setBuilding(true);this.draft={id:crypto.randomUUID(),kind:'structure',blueprintHash:entry.hash,...structureSize(entry.blueprint.parts),position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);bridge.notice('Tap an open spot, turn the structure, then Place object.');}});});
      const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
 -    el('build-mode').after(workshopButton);
 +    const addCourtyardFlower=document.createElement('button');
@@ -484,7 +503,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      this.startCourtyardPlacement('flowers');
 +    };
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
-@@ -84,2 +114,20 @@ export class Colony {
+     el<HTMLSelectElement>('region-select').onchange=()=>{this.cards='';this.starMap();};
+     el('open-map').onclick=()=>{el<HTMLDialogElement>('menu-dialog').close();bridge.pause(this.building);this.cards='';if(this.universe)this.starMap();this.map.showModal();void this.poll();};
+@@ -82,12 +113,30 @@ export class Colony {
+     el('move-object').after(editStructure);editStructure.onclick=()=>{if(this.selected)void this.openStructureWorkshop(this.selected);};
+     el('cancel-object').onclick=()=>{if(!this.discardPlacement())return;this.clearDraft();this.editor();};
      el('save-object').onclick=()=>void this.save();
 +    const chooseArrival=document.createElement('button');
 +    chooseArrival.id='choose-courtyard-arrival';chooseArrival.className='quiet';
@@ -505,16 +528,26 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    cancelArrival.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.editor();};
 +    arrivalActions.append(saveArrival,cancelArrival);arrivalTools.append(arrivalStatus,arrivalActions);chooseArrival.after(arrivalTools);
      el('remove-object').onclick=()=>void this.remove();
-@@ -89,3 +137,3 @@ export class Colony {
+     el<HTMLSelectElement>('built-list').onchange=()=>this.select(el<HTMLSelectElement>('built-list').value);
+     for(const kind of Object.keys(CATALOGUE) as BuildKind[]) {
+       const button=document.createElement('button');button.className='catalogue-item';button.dataset.kind=kind;setAttribute(button, 'aria-label', `Add ${CATALOGUE[kind].name.toLowerCase()}`);
        const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
 -      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
 +      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
      }
-@@ -111,2 +159,3 @@ export class Colony {
+     bridge.canvas.addEventListener('pointerdown',e=>{
+       this.pointer=this.building&&!this.busy&&!document.querySelector('dialog[open]')&&e.button===0&&e.isPrimary!==false?{id:e.pointerId,x:e.clientX,y:e.clientY}:null;
+@@ -109,6 +158,7 @@ export class Colony {
+     void this.poll();
+   }
    get paused() { return this.building || this.map.open || this.busy || this.workshop?.opened; }
 +  savedObjectModel(id: string) { return this.objects.get(id); }
    private setKitCollapsed(collapsed:boolean){
-@@ -118,4 +167,21 @@ export class Colony {
+     const panel=el('builder'),choices=el('building-kit-choices'),toggle=el('toggle-building-kit');
+     panel.classList.toggle('kit-collapsed',collapsed);toggle.setAttribute('aria-expanded',String(!collapsed));
+@@ -116,8 +166,25 @@ export class Colony {
+     // Move keyboard focus before its selected catalogue control is visually hidden.
+     if(collapsed&&choices.contains(document.activeElement))toggle.focus();
    }
 -  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
 -  private hasDraft(){const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
@@ -538,7 +571,80 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;this.pickingArrival=false;this.arrivalDraft=null;this.arrivalMarker.visible=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
 +  private hasDraft(){if(this.arrivalDraft&&!this.arrivalDraft.problem)return true;const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
    private discardPlacement(){return !this.hasDraft()||window.confirm(translate('Discard the unsaved building placement or changes?'));}
-@@ -226,3 +292,13 @@ export class Colony {
+   private setBuilding(value:boolean,force=false){
+     if(!value&&!force&&!this.discardPlacement())return false;
+@@ -179,13 +246,41 @@ export class Colony {
+     }
+     this.hud();this.editor();this.starMap();
+   }
++  // Placed models sit on the immutable base field. Neighbours change the
++  // graded terrain and collision, but not these saved model transforms.
++  reusableObjects(planet: PlanetView) {
++    const kept = new Map<string, T.Group>(), previous = this.committedPlanet;
++    if (!previous || planet.kind !== 'garden' || previous.kind !== planet.kind ||
++      previous.id !== planet.id || previous.environment !== planet.environment ||
++      previous.radius !== planet.radius || this.bridge.cameraCutaway) return kept;
++    const old = new Map(previous.objects.map(item => [item.id, item]));
++    for (const item of planet.objects) {
++      const group = this.objects.get(item.id), before = old.get(item.id);
++      // Lamps can carry transient light state.
++      if (!group || !before || item.kind === 'lamp' ||
++        JSON.stringify(item) !== JSON.stringify(before)) continue;
++      if (item.kind === 'structure') {
++        const inputs = (view: PlanetView) => [
++          view.blueprints?.[item.blueprintHash!],
++          view.homeDoor?.buildingId === item.id ? view.homeDoor.partNumber : null,
++          !!view.homeManifest?.objects?.some(original => original.id === item.id),
++        ];
++        if (!planet.blueprints?.[item.blueprintHash!] || JSON.stringify(inputs(previous)) !== JSON.stringify(inputs(planet))) continue;
++      }
++      kept.set(item.id, group);
++    }
++    return kept;
++  }
+   private commitObjects(planet:PlanetView,objects:Map<string,T.Group>,cutaway?:TownCameraCutaway){
+     this.previewPaths([]);this.painted=worldVisualSignature(planet);
+     this.bridge.canvas.dataset.placedAssetKit=SHARED_ASSET_VERSION;this.bridge.canvas.dataset.placedAssetKinds=planet.objects.map(o=>o.kind).join(',');
+     // Restore source materials before the old model handles release their
+     // owned lamps/geometry. Shared library resources remain library-owned.
+     this.cutawayController?.dispose();this.cutawayController=undefined;
+-    this.shadows.clear();for(const child of [...this.layer.children])disposeGeometry(child);this.layer.clear();this.objects=objects;
++    this.shadows.clear();
++    const nextChildren=new Set<T.Object3D>(objects.values());
++    for (const child of [...this.layer.children]) if (!nextChildren.has(child)) disposeGeometry(child);
++    this.layer.clear();this.objects=objects;this.committedPlanet=planet;
+     for(const group of objects.values())this.layer.add(group);this.shadows.replace(objects);
+     const list=el<HTMLSelectElement>('built-list');list.replaceChildren(localizedOption('Select a saved object…', ''));
+     planet.objects.forEach((o,i)=>list.add(localizedOption(`${objectName(o)} ${i+1}`,o.id)));list.value=this.selected??'';
+@@ -193,16 +288,20 @@ export class Colony {
+     if(this.selected&&!planet.objects.some(o=>o.id===this.selected))this.clearDraft();
+     this.cutawayController=cutaway;
+   }
+-  async prepareObjects(planet:PlanetView,options:{signal:AbortSignal;yieldFrame:()=>Promise<void>;onProgress?:(done:number,total:number)=>void;budgetMs?:number}){
++  async prepareObjects(planet:PlanetView,options:{signal:AbortSignal;yieldFrame:()=>Promise<void>;onProgress?:(done:number,total:number)=>void;budgetMs?:number},kept:ReadonlyMap<string,T.Group>=new Map()){
+     const root=new T.Group(),objects=new Map<string,T.Group>();let released=false,cutaway:TownCameraCutaway|undefined;
+-    const dispose=()=>{if(released)return;released=true;cutaway?.dispose();for(const group of objects.values())disposeGeometry(group);root.clear();root.removeFromParent();};
++    const dispose=()=>{if(released)return;released=true;cutaway?.dispose();for(const group of [...root.children])disposeGeometry(group);root.clear();root.removeFromParent();};
+     const check=()=>{if(options.signal.aborted)throw new DOMException('Loading cancelled.','AbortError');};
+     try{
+       await options.yieldFrame();check();cutaway=this.createCutaway(planet);let started=performance.now();
+-      options.onProgress?.(0,planet.objects.length);
++      const total=planet.objects.length-kept.size;
++      options.onProgress?.(0,total);
+       for(const object of planet.objects){
+-        check();const group=this.renderSavedObject(object,planet,cutaway);group.userData.objectId=object.id;root.add(group);objects.set(object.id,group);
+-        options.onProgress?.(objects.size,planet.objects.length);
++        check();
++        const existing=kept.get(object.id);
++        if(existing){objects.set(object.id,existing);continue;}
++        const group=this.renderSavedObject(object,planet,cutaway);group.userData.objectId=object.id;root.add(group);objects.set(object.id,group);
++        options.onProgress?.(root.children.length,total);
+         if(performance.now()-started>=(options.budgetMs??6)){await options.yieldFrame();started=performance.now();}
+       }
+       check();return {root,cutaway,dispose,commit:()=>{if(released)return;check();this.commitObjects(planet,objects,cutaway);released=true;root.removeFromParent();}};
+@@ -224,7 +323,17 @@ export class Colony {
+   private async poll(){
+     if(this.pollBusy||this.busy||this.workshop?.opened)return;this.pollBusy=true;
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -553,7 +659,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      }
 +    }finally{this.pollBusy=false;}
    }
-@@ -277,3 +353,6 @@ export class Colony {
+   private async command(route:string,body:unknown){
+     if(this.busy||!this.syncing)return false;this.busy=true;this.editor();this.hud();
+@@ -275,7 +384,10 @@ export class Colony {
+     const options={foundationDepth:fit.foundationDepth,pivot:pivotOf(parts)};
+     const model=cameraCutaway?buildCameraBlueprintModel(visibleParts,worldMaterials(),'medium',{...options,identityParts:parts})
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
@@ -561,7 +671,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
 +    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
-@@ -293,2 +372,7 @@ export class Colony {
+     model.object.position.fromArray(transform.position);model.object.quaternion.fromArray(transform.quaternion);
+     model.object.userData.disposeOwned=()=>{finish.dispose();model.dispose();};
+@@ -291,6 +403,11 @@ export class Colony {
+   }
+   private point(x:number,y:number){
      this.ray.setFromCamera(new T.Vector2(x/innerWidth*2-1,-y/innerHeight*2+1),this.bridge.camera);
 +    if(this.pickingArrival){
 +      const hit=this.ray.intersectObject(this.bridge.ground())[0];
@@ -569,7 +683,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      return;
 +    }
      if(this.placing&&this.draft){const hit=this.ray.intersectObject(this.bridge.ground())[0];if(hit){this.draft.position=hit.point.normalize().toArray() as Vec3;this.preview();this.editor();}return;}
-@@ -314,2 +398,24 @@ export class Colony {
+     const hit=this.ray.intersectObjects([...this.objects.values()],true)[0];
+     const surface=this.ray.intersectObject(this.bridge.ground())[0];
+@@ -312,13 +429,62 @@ export class Colony {
+     const body={planetId:this.universe.currentPlanet.id,objectId:d.id,position:d.position,rotation:d.rotation,...(d.version?{expectedVersion:d.version}:{kind:d.kind,...(d.blueprintHash?{blueprintHash:d.blueprintHash}:{})})};
+     if(await this.command(route,body)){this.clearDraft();this.editor();this.bridge.notice('Saved. Everyone visiting can see your change.');}
    }
 +  private previewArrival(direction:T.Vector3){
 +    const u=this.universe;
@@ -594,7 +712,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    }
 +  }
    private async remove(){const d=this.draft;if(!d?.version||!this.universe)return;if(await this.command('objects/delete',{planetId:this.universe.currentPlanet.id,objectId:d.id,expectedVersion:d.version})){this.clearDraft();this.editor();this.bridge.notice('Removed from your planet.');}}
-@@ -317,6 +423,33 @@ export class Colony {
+   private editor(){
      const d=this.draft;el('object-tools').hidden=!d;
 -    setText(el('build-instruction'), this.busy?'Saving your change…':!this.syncing?'Connection lost. Building is paused.':d?(this.placing?'Tap an open spot on the planet, then save.':'Object selected. Move, rotate or remove it.'):'Choose something to add, or tap an existing object.');
 -    setText(el('build-selection'), d?objectName(d):'Sunseed building kit');
@@ -631,13 +749,19 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    }
 +    setText(el('placement-status'),status);
      el<HTMLButtonElement>('save-object').disabled=this.busy||!this.syncing||!d?.position||!!problem;
-@@ -340,2 +473,6 @@ export class Colony {
+     setText(el('save-object'), this.busy?'Saving…':d?.version?'Save changes':'Place object');
+     el<HTMLButtonElement>('move-object').hidden=!d?.version;el<HTMLButtonElement>('remove-object').hidden=!d?.version;
+@@ -338,6 +504,10 @@ export class Colony {
+     el<HTMLButtonElement>('claim-planet').disabled=this.busy||!this.syncing;
+     el<HTMLButtonElement>('build-mode').hidden=!p.mine;setText(el('build-mode'), this.building?'Building…':'Build on my planet');
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
 +    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
 +    courtyardFlower.hidden=!this.canArrangeCourtyard();
 +    courtyardFlower.disabled=this.busy||!this.syncing;
 +    this.courtyardInspiration.update(!courtyardFlower.hidden,!courtyardFlower.disabled);
      el<HTMLButtonElement>('open-workshop').hidden=!p.mine||u.player.flight.mode!=='ground';el<HTMLButtonElement>('open-workshop').disabled=this.busy||!this.syncing;
+     el('delivery-toggle').hidden=p.kind!=='hub';
+     el('my-planet').hidden=!u.ownedPlanetId||u.ownedPlanetId===p.id;
 diff --git a/src/client/flight.css b/src/client/flight.css
 index e56a89e92190efaab22096861abb75c51ac8688a..044eb69124dbd394fcdf96bfbdd5145f969e5101 100644
 --- a/src/client/flight.css
@@ -1043,30 +1167,45 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf000a7de7b 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..7d7d677decce53d2d4a6e9d94573e97b4277f907 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
+@@ -30,6 +30,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
+ import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
+ import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
 +import { BothouseResidents } from './bothouse-residents.ts';
  import { GroundPresence } from './presence.ts';
-@@ -77,2 +78,3 @@ import {buildCameraFrame} from './build-camera.ts';
+ import { PresenceVisitGate } from './presence-visit.ts';
+ import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
+@@ -75,6 +76,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
+ import {createVillageDrawing} from './village-drawing.ts';
+ import {buildCameraFrame} from './build-camera.ts';
  import {arrivalViewScore} from './arrival-camera.ts';
 +import { benchSeat, type BenchSeat } from './bench-rest.ts';
  import { HomeSetup } from './home-setup.ts';
-@@ -146,2 +148,5 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
+ import { TeleportStations } from './teleport-station.ts';
+ import { SaveProgress } from './save-progress.ts';
+@@ -144,6 +146,9 @@ let residentConversationKey='';
+ let queue: Promise<unknown> = Promise.resolve();
+ const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
 +const interaction = action.parentElement!;
 +const benchChoice = $<HTMLButtonElement>('visitor-bench-choice');
 +let benchRest: { id: string; model: T.Object3D; seat: BenchSeat; footing: T.Vector3 } | null = null;
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
-@@ -270,3 +275,4 @@ function accept(next: PlayerState) {
+ function renderSaveProgress(){
+   if(!state||physicsMismatch)return;
+@@ -268,16 +273,20 @@ function accept(next: PlayerState) {
+   const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
+   flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
 -  physicsMismatch=false;online = navigator.onLine; renderSaveProgress(); renderTask();
 +  // An accepted world response proves this server is reachable, even on a local-only network.
 +  physicsMismatch=false;online=true;renderSaveProgress();renderTask();
    homeInterior?.receive(state);homeInterior?.setOnline(online);homeControls?.receivePlayer(state);
-@@ -275,7 +281,10 @@ function accept(next: PlayerState) {
+   placeHomeDoor(exteriorHomeDoor,state.flight.mode==='ground'?state.home:null);
+   return true;
  }
 -function failed(error: unknown) {
 -  clearGroundMotion();
@@ -1081,11 +1220,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +function failed(error: unknown) {
 +  worldUnavailable();
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
-@@ -319,2 +328,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
+ }
+ function renderTask() {
+@@ -317,6 +326,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+ setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
+ worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
 +const bothouseResidents=new BothouseResidents(scene,reduced);
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
-@@ -351,7 +361,9 @@ function tutorialContext(){
+ const practical=createWorldPracticalLights();scene.add(practical.group);
+ const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
+@@ -349,11 +359,13 @@ function tutorialContext(){
+     paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
+ }
  function frameVillageGuide(){
 -  tutorial?.frame(tutorialContext());
 +  const context=tutorialContext(),planet=colony?.universe?.currentPlanet;
@@ -1099,30 +1246,73 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    ? {planet,world:groundWorld} : undefined;
 +  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
-@@ -364,2 +376,5 @@ function frameVillageGuide(){
+     visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
+     homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
+@@ -362,12 +374,15 @@ function frameVillageGuide(){
+   if(context&&planet&&groundWorld&&walker){
+     const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
 +      approvedCourtyard:!!courtyard,
 +      residentRoster:context.online&&context.ready&&!indoor&&state?.flight.mode==='ground'
 +        ? bothouseResidents.guideRoster(groundWorld,state.location?.visitEpoch??0) : [],
        visible:context.ready&&!photoPaused&&!colony?.paused&&!flight?.active&&!departure&&(!homeInterior?.active||!!room),enabled:context.ready&&online&&!photoPaused&&!colony?.paused&&!document.querySelector('dialog[open]'),
-@@ -369,3 +384,3 @@ function frameVillageGuide(){
+       scene:room?.scene??scene,camera:room?.camera??renderCamera(),feet,up:room?new T.Vector3(0,1,0):walker.up.clone(),forward:room?.forward??walker.north.clone(),
+       roomKey:room?.key??indoorRoomView.room?.id??activePlanet,indoor,online,time:elapsed,reducedMotion:reduced,
+       stand:room?.stand??(point=>{const normal=point.clone().normalize().toArray() as Vec3,support=groundWorld!.support(normal,feet.length()+.2),pose={position:normal,radius:support.radius,verticalSpeed:0,grounded:true};return Math.abs(support.radius-feet.length())<.28&&!groundWorld!.blocked(pose)?new T.Vector3(...normal).multiplyScalar(support.radius):null;})});
      renderer.domElement.dataset.worldGuide=JSON.stringify(guideState);
 -  }
 +  } else worldGuide.clearResidentVisit();
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
-@@ -546,2 +561,6 @@ window.addEventListener('keydown',event=> {
+   renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
+   renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
+@@ -409,15 +424,20 @@ function prepareSurface(planet:PlanetView){
+           onGroundProgress:(done,total)=>feedback.update('Preparing the ground…',done,total),
+           onProgress:p=>feedback.update('Bringing buildings into view…',p.readyObjects,p.totalObjects)});
+       }
+-      await prewarmTerrainFits({environment:village?.environment??planet.environment,radius,objects:planet.objects,blueprints:planet.blueprints},
+-        {signal,yieldFrame:()=>yieldSceneFrame(signal),onProgress:(done,total)=>feedback.update('Preparing the ground…',done,total)});
++      const kept=colony!.reusableObjects(planet);
++      const changed=planet.objects.filter(object=>!kept.has(object.id));
++      // After the loading card has painted, CPU-only work on an existing
++      // garden can yield a browser task without waiting for another GPU frame.
++      const yieldPreparation=kept.size ? ()=>new Promise<void>(resolve=>setTimeout(resolve,0)) : ()=>yieldSceneFrame(signal);
++      await prewarmTerrainFits({environment:village?.environment??planet.environment,radius,objects:changed,blueprints:planet.blueprints},
++        {signal,yieldFrame:yieldPreparation,onProgress:(done,total)=>feedback.update('Preparing the ground…',done,total)});
+       if(!current())throw new DOMException('Loading cancelled.','AbortError');
+-      placed=await colony!.prepareObjects(planet,{signal,budgetMs:6,yieldFrame:()=>yieldSceneFrame(signal),onProgress:(done,total)=>feedback.update('Bringing buildings into view…',done,total)});
++      placed=await colony!.prepareObjects(planet,{signal,budgetMs:6,yieldFrame:yieldPreparation,onProgress:(done,total)=>feedback.update('Bringing buildings into view…',done,total)},kept);
+       await yieldSceneFrame(signal);
+       if(rebuildSurface){
+         const terrainEnvironment=village?.environment??planet.environment;
+         if(terrainEnvironment)terrain=await terrainModelAsync(terrainEnvironment,village?.objects??planet.objects,village?.blueprints??planet.blueprints,'medium',true,radius,village?.routes??planet.homeManifest?.routes??[],
+-          {signal,budgetMs:6,yieldFrame:()=>yieldSceneFrame(signal),onProgress:(done,total)=>feedback.update('Preparing the ground…',done,total)});
++          {signal,budgetMs:6,yieldFrame:yieldPreparation,onProgress:(done,total)=>feedback.update('Preparing the ground…',done,total)});
+         await yieldSceneFrame(signal);
+         staged=createWorld(nextRoot,planet.kind==='hub',planet.environment,planet.objects,planet.blueprints,radius,planet.homeManifest?.routes??[],town,terrain);
+         stagedCutaway=town?.cutaway;town=undefined;terrain=undefined;staged.parked.setDesign((state.ship??defaultShip()).design);
+@@ -544,6 +564,10 @@ window.addEventListener('keydown',event=> {
+   if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
+   const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
 +    if (benchRest && key !== 'shift') {
 +      benchRest = null;
 +      if (key === 'e') { event.preventDefault(); return; }
 +    }
      event.preventDefault();keys.add(key);target=null;
-@@ -599,3 +618,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
+     if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
+   }
+@@ -597,7 +621,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+ renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
+ renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
 -  if(flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
 +  if(benchRest || flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
-@@ -700,3 +719,46 @@ async function interact() {
+   const hit=raycaster.intersectObject(world.globe)[0];
+   if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
+@@ -698,7 +722,50 @@ async function interact() {
+     player.greet(elapsed);
+   }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
 -action.onclick=()=>void interact();
 +function canGreetVisitor() {
@@ -1170,17 +1360,23 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +  if (canGreetVisitor()) bothouseResidents.greetVisitor(id,walker.up,renderCamera());
 +};
  setInterval(()=>void savePosition(),350);
-@@ -723,3 +785,3 @@ setInterval(async()=>{
+ setInterval(async()=>{
+   if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
+@@ -721,17 +788,34 @@ setInterval(async()=>{
+   if(online || busy || physicsMismatch || stateLoader.pending) return;
+   if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
 -    const next=await serial(()=>stateLoader.read());if(!accept(next))return;
 +    const next=await serial(()=>stateLoader.read());if(online||!accept(next))return;
      walker=new SurfaceWalker(next.position);lastSaved.copy(walker.up);clearInput();rebaseGroundCamera();ensureColony();notice('Back at your last saved spot. Welcome home.');
-@@ -727,4 +789,2 @@ setInterval(async()=>{
+   }catch(error){if(!arrivalRefused(error))status('Offline · retrying',true);else if(!arrival.stopped)notice(error instanceof Error?error.message:'Please try again.');}
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
 
-@@ -734,2 +794,21 @@ function animate(now:number) {
+ let previous=performance.now(),elapsed=0,uiTick=0,started=false;
+ function animate(now:number) {
+   requestAnimationFrame(animate);
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
@@ -1202,12 +1398,20 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    benchChoice.hidden=true;
 +  }
    if(graphicsLost)return;
-@@ -781,3 +860,3 @@ function animate(now:number) {
+   if(qualityApplyPending&&!photoMode?.capturing)resize();
+   observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
+@@ -779,7 +863,7 @@ function animate(now:number) {
+   // A rejected isolated pose must not let unrendered motion reach the save
+   // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
 -    if(paused){clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
 +    if(paused||benchRest){if(paused)clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
        physicsClock=Math.min(.05,physicsClock+dt);
-@@ -801,2 +880,7 @@ function animate(now:number) {
+       while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
+         physicsClock-=FIXED_STEP;const before=standing;
+@@ -799,6 +883,11 @@ function animate(now:number) {
+   destinationRing.visible=!!target;
+   const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
 +  if (benchRest) {
 +    player.root.position.copy(benchRest.seat.position);
@@ -1215,21 +1419,35 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    player.sit();
 +  }
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-@@ -873,3 +957,3 @@ function animate(now:number) {
+   const renderUp=surfaceNormal(walker.up);
+   const hub=activePlanet==='hub',phone=innerWidth<600;
+@@ -871,7 +960,7 @@ function animate(now:number) {
+     }else{
+       const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
 -      player.root.visible=pose.playerVisible;
 +      player.root.visible=pose.playerVisible||!!benchRest;
        // Retain the baseline hub/craft geometry checks alongside static proxies.
-@@ -910,2 +994,4 @@ function animate(now:number) {
+       const shortenAgainst=(root:T.Object3D)=>{
+         const offset=pose.position.clone().sub(headPoint),length=offset.length();
+@@ -908,11 +997,14 @@ function animate(now:number) {
+   fitGroundSunShadowDepth(sun);
+   if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
 +  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused,'exploration',
 +    {usedByPlayer:benchRest?.id,getModel:id=>colony?.savedObjectModel(id)});
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +1001,3 @@ function animate(now:number) {
+   world.npcs.forEach(n=>{n.avatar.animate(elapsed,0,reduced);if(near===n.id){const local=n.anchor.worldToLocal(player.root.position.clone());const yaw=Math.atan2(local.x,local.z);const diff=Math.atan2(Math.sin(yaw-n.avatar.root.rotation.y),Math.cos(yaw-n.avatar.root.rotation.y));n.avatar.root.rotation.y+=diff*(1-Math.exp(-4*dt));}n.beacon.position.y=2.0+(reduced?0:Math.sin(elapsed*2)*.06);n.beacon.visible=state.quest!=='delivered'&&n.id===(state.quest==='available'?'mica':'sol');});
+   presence.frame(now,dt,walker.up,reduced);
+   colony?.updateShadows(feet);
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -966,3 +1053,14 @@ function animate(now:number) {
+   // never move the player, steer the camera, or write a saved position.
+   if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
+@@ -964,7 +1056,18 @@ function animate(now:number) {
+     nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
+     renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
@@ -1245,7 +1463,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    delete action.dataset.benchRest;
 +    action.hidden=interactionPaused||(!near&&!nearResident&&(!greeting||greeting.greeted)&&(!bench||offerBenchChoice));
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
-@@ -978,2 +1076,20 @@ function animate(now:number) {
+     else if(nearResident){
+       const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
+@@ -976,6 +1079,24 @@ function animate(now:number) {
+         setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
+       }
      }
 +    else if(greeting){
 +      delete action.dataset.residentPrompt;
@@ -1266,7 +1488,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      setText($('nearby'),'');
 +    }
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
-@@ -1032,5 +1148,6 @@ function ensureColony() {
+     if(state.quest!=='delivered') {
+       const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
+@@ -1030,15 +1151,17 @@ function ensureColony() {
+     confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
+     ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
 +  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
@@ -1274,13 +1500,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
      applyPlayer:accept,
-@@ -1040,3 +1157,4 @@ function ensureColony() {
+     universe:u=>{guideStationApproaches=tutorialStationApproaches(u.currentPlanet);homeSetup?.receive(u);teleportStations?.receive(u);homeControls?.receive(u);flight?.universe(u);tutorial?.receive(u);prepareSurface(u.currentPlanet);},bearing:id=>flight?.mark(id),
+     obstacles:blocks=>{placedObstacles=blocks;if(activePlanet!=='hub')world.blocks.splice(0,world.blocks.length,...blocks);},
+     pause:building=>{clearInput();overview=building;setAttribute($('view-mode'), 'aria-label', overview?'Walking view':'View planet');setHTML($('view-mode'), overview?'↗ <span>Walking view</span>':'◉ <span>Planet view</span>');},
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1179,8 @@ photoMode=new PhotoMode({renderer,
+   mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
+   tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
+@@ -1059,12 +1182,36 @@ photoMode=new PhotoMode({renderer,
+       const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
+     }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
@@ -1290,7 +1522,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1065,4 +1188,23 @@ photoMode=new PhotoMode({renderer,
+ });
  const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
 -$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 -window.addEventListener('open-photo-mode',()=>void photoMode?.open());
@@ -1316,6 +1548,8 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +visitPhotoButton.onclick=()=>openWorldPhoto('follow');
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
+ async function startInitialVisit(){
+   initialStateReady=false;welcomeCommitted=false;welcome.stage('connecting');
 diff --git a/src/client/messages.ts b/src/client/messages.ts
 index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db99b6f449 100644
 --- a/src/client/messages.ts
@@ -2942,3 +3176,47 @@ index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83
 -#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true]{outline:2px solid #378f79}
 +#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics,#world-guide-residents{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true],#world-guide-residents button[aria-pressed=true]{outline:2px solid #378f79}
  #world-guide-dialog button,#world-guide-hud button,#world-guide-home{min-height:44px;border-radius:10px;border:1px solid #acbcaa;padding:7px 10px;cursor:pointer;background:#f5f1e2;color:#293c38;font:13px system-ui}
+diff --git a/spec/colony-loading.test.ts b/spec/colony-loading.test.ts
+index e162d544ee72f2fe80e701dc8f37e55f6537f1f2..a94b755d09c277d99222ec5629bf460a30b4859a 100644
+--- a/spec/colony-loading.test.ts
++++ b/spec/colony-loading.test.ts
+@@ -54,3 +54,26 @@ it('cleans an interrupted factory and does not replace the prior layer with part
+   const rejected=expect(waiting).rejects.toThrow('Model preparation failed');await f.frame();await rejected;
+   expect(f.models[0].dispose).toHaveBeenCalledTimes(1);expect(f.layer.children).toEqual([f.old]);expect(f.oldDisposed).not.toHaveBeenCalled();
+ });
++
++it('borrows only unchanged committed models and leaves them attached when a revision is discarded',async()=>{
++  const f=fixture(),previous=planet(),config={signal:f.controller.signal,yieldFrame:async()=>{}};
++  (await f.colony.prepareObjects(previous,config)).commit();
++  const original=[...f.layer.children];
++  const next=structuredClone(previous);
++  next.objects[1].rotation=.5;
++  next.objects.push({...next.objects[0],id:'4'});
++  next.objects.splice(2,1);
++  const kept=f.colony.reusableObjects(next);
++  expect([...kept.keys()]).toEqual(['1']);
++  expect(f.colony.reusableObjects({...next,radius:13}).size).toBe(0);
++  expect(f.colony.reusableObjects({...next,id:'other'}).size).toBe(0);
++  const cancelled=await f.colony.prepareObjects(next,config,kept);
++  expect(cancelled.root.children).toHaveLength(2);
++  cancelled.dispose();
++  expect(f.layer.children).toEqual(original);
++  expect(f.models.slice(0,3).every(m=>m.dispose.mock.calls.length===0)).toBe(true);
++  expect(f.models.slice(3).every(m=>m.dispose.mock.calls.length===1)).toBe(true);
++  (await f.colony.prepareObjects(next,config,kept)).commit();
++  expect(f.layer.children[0]).toBe(original[0]);
++  expect(f.models.slice(0,3).map(m=>m.dispose.mock.calls.length)).toEqual([0,1,1]);
++});
+diff --git a/src/shared/terrain-prewarm.ts b/src/shared/terrain-prewarm.ts
+index a4cd47b93439485b91462055f1316814ad9949b3..4d6d336a2bf21d8eafb4bdd39b1bd45cff559e56 100644
+--- a/src/shared/terrain-prewarm.ts
++++ b/src/shared/terrain-prewarm.ts
+@@ -11,7 +11,7 @@ export interface TerrainPreparation {
+   blueprints?: BlueprintContents;
+ }
+ export interface TerrainPreparationOptions {
+-  /** The client supplies a real frame boundary, not a resolved microtask. */
++  /** Yield to the host between slices so pending input and paints can run. */
+   yieldFrame: () => Promise<void>;
+   signal?: AbortSignal;
+   onProgress?: (completed: number, total: number) => void;

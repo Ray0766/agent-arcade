@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
-  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
+  "worldRevision": "8b89c5bab102db110f92abec01c80f6a2185f343",
+  "worldTree": "c91c0a89261c291b578e55cff2b818057c29937c",
+  "patchSHA256": "a4bd515bb18947870a636789d0e1ac73d09d6ca48e168297f1c82615b26dce6e",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -141,6 +141,12 @@
       "path": "spec/bothouse-work-pose.test.ts",
       "blob": "4c25871a71dfb03d1149e9f765ad9392b905db68",
       "sha256": "7a199a120e35d37e8fca392d877b697f81bd1f66dc7616cfa9f2d238a5e118fb"
+    },
+    {
+      "action": "M",
+      "path": "spec/colony-loading.test.ts",
+      "blob": "a94b755d09c277d99222ec5629bf460a30b4859a",
+      "sha256": "d6d6ddb03248df43c352fa956ef0428b82f73a687b636eca9fddf24b9cc595dc"
     },
     {
       "action": "M",
@@ -541,8 +547,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "01cf312f46a7f0ac7795a8146c05f1955aa0a0f2",
-      "sha256": "99e131d1d2f437f3712a7b9216af132d21b100eb91e3e91b2c1efd4aea6279a2"
+      "blob": "3c9ef627ca47dfe877efe10f89997d1566cb8b88",
+      "sha256": "0f7c9c84491b99adedc63f7ca490d0ebb675ed8bb07592ddb05db3fe1eee61b1"
     },
     {
       "action": "A",
@@ -613,8 +619,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "92983bc0cbfab0bfae35edf381fdedf000a7de7b",
-      "sha256": "867ce3d4b574d1af231325087a0e4660afa4d056201b6344af7a1d5f779a91eb"
+      "blob": "7d7d677decce53d2d4a6e9d94573e97b4277f907",
+      "sha256": "492ff59e67811a8cea9187934f561b2afb9bbb54142780948bfef3085036c491"
     },
     {
       "action": "M",
@@ -831,6 +837,12 @@
       "path": "src/shared/resident-portrait.ts",
       "blob": "9f6a08cdaf111ec2f3c4386ac53303138c7ac50f",
       "sha256": "24836ed60409e82b0d0d4eef34e86a3da691c09f98d1f8a6a9b0786cabd79d28"
+    },
+    {
+      "action": "M",
+      "path": "src/shared/terrain-prewarm.ts",
+      "blob": "4d6d336a2bf21d8eafb4bdd39b1bd45cff559e56",
+      "sha256": "cfc8939038ae9118c9b573c44b3cd7f61203b1653cda6f69441ae566a0f48b0c"
     },
     {
       "action": "M",
