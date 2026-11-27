@@ -16,20 +16,28 @@ export interface MinimapTerrain {
   readonly projection: MinimapProjection;
   heightAt(point: MinimapPoint): number | null;
 }
+export interface MinimapResident {
+  readonly id: string;
+  readonly name: string;
+  readonly status: string;
+  readonly point: MinimapPoint;
+}
 export interface PlanetMinimapFrame {
   readonly terrain: MinimapTerrain;
   readonly player: MinimapPoint;
-  readonly canRouteToDock: boolean;
   readonly dock: MinimapPoint;
+  readonly canRouteToDock: boolean;
   readonly courtyard?: MinimapPoint;
+  readonly resident?: MinimapResident;
 }
 export interface PlanetMinimap {
   frame(value: PlanetMinimapFrame | null): void;
   dispose(): void;
 }
 export interface PlanetMinimapOptions {
-  onDock(): boolean;
   onCourtyard(): boolean;
+  onResident(id: string): boolean;
+  onDock(): boolean;
 }
 export type CreatePlanetMinimap = (options: PlanetMinimapOptions) => PlanetMinimap;
 

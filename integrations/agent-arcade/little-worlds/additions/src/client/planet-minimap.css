@@ -12,18 +12,25 @@
 .planet-minimap-pin{position:absolute;transform:translate(-50%,-50%);width:13px;height:13px;box-sizing:border-box;border:2px solid #284235;background:#fff1bf;box-shadow:0 0 0 1px #f8f3d9;border-radius:2px}
 .planet-minimap-pin[data-kind=you]{z-index:2;width:9px;height:9px;border-color:#f9f7e9;background:#20506e;border-radius:50%;box-shadow:0 0 0 1px #20506e}
 span.planet-minimap-pin{pointer-events:none}
-#planet-minimap-panel #planet-minimap-courtyard-pin{width:44px;height:44px;padding:0;border:0;box-shadow:none;background:transparent;touch-action:manipulation}
-#planet-minimap-courtyard-pin::before{content:"";position:absolute;inset:50% auto auto 50%;width:13px;height:13px;box-sizing:border-box;transform:translate(-50%,-50%) rotate(45deg);border:2px solid #482f25;border-radius:2px;background:#eab96d;box-shadow:0 0 0 1px #f8f3d9}
-#planet-minimap-courtyard-pin:hover::before,#planet-minimap-courtyard-pin:focus-visible::before{background:#ffe2a3}
+#planet-minimap-panel button.planet-minimap-pin{width:44px;height:44px;padding:0;border:0;box-shadow:none;background:transparent;touch-action:manipulation}
+#planet-minimap-panel button.planet-minimap-pin:disabled{pointer-events:none}
+.planet-minimap-pin[data-kind=dock],.planet-minimap-key [data-kind=dock]{--pin-fill:#fff1bf;--pin-edge:#284235;--pin-hot:#fff9e0}
+.planet-minimap-pin[data-kind=courtyard],.planet-minimap-key [data-kind=courtyard]{--pin-fill:#eab96d;--pin-edge:#482f25;--pin-hot:#ffe2a3}
+.planet-minimap-pin[data-kind=resident],.planet-minimap-key [data-kind=resident]{--pin-fill:#9a4e58;--pin-edge:#612f38;--pin-hot:#ba6871}
+button.planet-minimap-pin::before{content:"";position:absolute;inset:50% auto auto 50%;width:15px;height:15px;box-sizing:border-box;transform:translate(-50%,-50%);border:2px solid var(--pin-edge);border-radius:2px;background-color:var(--pin-fill);box-shadow:0 0 0 1px #f8f3d9}
+button.planet-minimap-pin[data-kind=courtyard]::before{width:13px;height:13px;transform:translate(-50%,-50%) rotate(45deg)}
+button.planet-minimap-pin[data-kind=resident]::before{width:17px;height:17px;border-radius:50%;background-image:radial-gradient(circle at 50% 31%,#fff7e3 0 1.8px,transparent 2.2px),radial-gradient(ellipse 4px 2.7px at 50% 75%,#fff7e3 95%,transparent)}
+button.planet-minimap-pin:is(:hover,:focus-visible)::before{background-color:var(--pin-hot)}
+button.planet-minimap-pin:focus-visible{z-index:3}
 .planet-minimap-key{display:flex;flex-wrap:wrap;gap:4px 12px;list-style:none;padding:0;margin:7px 0 6px}
 .planet-minimap-key li{display:flex;align-items:center;gap:5px;white-space:nowrap}
-.planet-minimap-key li::before{content:"";width:8px;height:8px;border:1px solid #284235;background:#fff1bf;border-radius:1px}
+.planet-minimap-key li::before{content:"";flex:none;width:8px;height:8px;border:1px solid var(--pin-edge,#284235);background:var(--pin-fill,#fff1bf);border-radius:1px}
 .planet-minimap-key li[data-kind=you]::before{background:#20506e;border-radius:50%}
-.planet-minimap-key li[data-kind=courtyard]::before{background:#eab96d;transform:rotate(45deg)}
+.planet-minimap-key li[data-kind=courtyard]::before{transform:rotate(45deg)}
+.planet-minimap-key li[data-kind=resident]{flex-basis:100%;padding:4px 6px;background:#ece5d2;border-radius:5px;white-space:normal;overflow-wrap:anywhere}
+.planet-minimap-key li[data-kind=resident]::before{border-radius:50%}
+.planet-minimap-key li[data-kind=resident] span{font-weight:700}
+.planet-minimap-key li[data-kind=resident] small{margin-inline-start:auto;font-size:inherit}
 #planet-minimap-panel #planet-minimap-courtyard{width:100%;background:#294e39;color:#fff4d8}
 #planet-minimap-panel button:focus-visible,#planet-minimap-open:focus-visible{outline:3px solid #165567;outline-offset:2px}
 @media(max-width:700px){#planet-minimap-panel{padding:6px}}
-
-#planet-minimap-panel #planet-minimap-dock-pin{width:44px;height:44px;padding:0;border:0;box-shadow:none;background:transparent;touch-action:manipulation}
-#planet-minimap-dock-pin::before{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:#fff1bf;border:2px solid #284235}
-#planet-minimap-dock-pin:disabled{pointer-events:none}

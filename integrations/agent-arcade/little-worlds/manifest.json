@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "12be5fb06b52ddefe17c487896fe74726902700f",
-  "worldTree": "1730cda1ce0d1f49311fd201b4b0c5a9fedf93bf",
-  "patchSHA256": "8df28ee5f0e0c536a3bf7963e69b6554aef12716074c471998f4380a9f4a4c5b",
+  "worldRevision": "b03ed0683ead116341807cb23354ca3036e5554e",
+  "worldTree": "ee43048e3618ecca065752323b7f43a6268895cf",
+  "patchSHA256": "9848c73d6bbbf116e3e9484ae2ea8d016fba0808219de12e348156bf59073ac5",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -547,8 +547,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "41e7d05e1c0d3c8834327866eda501fca9690970",
-      "sha256": "029c84bc5dd49b4f0bba693d0f9767d0c8be40f4a453f388b65d2f6b51ae2d05"
+      "blob": "4b54c2a219f8882788bbb36bad39c959c90a6ec7",
+      "sha256": "c41c76a16adee2dc72bea7870c851e5de3dea2255c45200fb8c61dff93b6aea6"
     },
     {
       "action": "A",
@@ -649,8 +649,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "9aa48f876bd6f5107659d8b6cc78f00af08afc25",
-      "sha256": "88193d0d994d989f749d275aaabfb91f9ad778674fce0e963c4b297f25f9b3c4"
+      "blob": "f0ee0d07ae1760fc18d06eb4870e22ad8b77c440",
+      "sha256": "2f93742fc28756297b644ebd70ac0378bbb2852d374f02fb4c0dfc377d2ee78f"
     },
     {
       "action": "M",
@@ -679,20 +679,20 @@
     {
       "action": "A",
       "path": "src/client/planet-minimap-contract.ts",
-      "blob": "11e521e69e037babfc0445661e03d9600b86dfe0",
-      "sha256": "4cf7c0bb1abbae67cdfb29f21aa8af4162e6e6692636e650b84f9de783b039c2"
+      "blob": "c2048747556ed15b87280aa9065cdf09202adcd4",
+      "sha256": "5cc3bc5852bd904fa1c64cbd0716b6dcccd39fcbbf245d56bdb946eccdf6e242"
     },
     {
       "action": "A",
       "path": "src/client/planet-minimap.css",
-      "blob": "da13178c1fbcdd4033cf85372b6dbc5fd31dd636",
-      "sha256": "af3b6d78f0eac54c8a84e70ff0cd4915bff5d371e6e14de7fc3bda2715273337"
+      "blob": "34a72b41cf6c6d8f9a0b8b5c6ab933d4797298b6",
+      "sha256": "1e3749df8b461e11c3b7c6477fe8746e38745246832301758137a539a99ae052"
     },
     {
       "action": "A",
       "path": "src/client/planet-minimap.ts",
-      "blob": "6ec9799e6efb76ce047d1a75116d07b28dd30b7b",
-      "sha256": "9264538e4b7674e92aac56cac9725263e10b1b123a08b64d26171621d404da3c"
+      "blob": "7bfc93ab4335c5807d506235dc4a7460389761a6",
+      "sha256": "253ba23b83a7fa2a6ac7114755cca44bfdec203b3491c0dc3c923a1cf857051c"
     },
     {
       "action": "M",
@@ -799,8 +799,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "3e90ac203c95e0ed6a66f77480cf6b81a3e1d9ed",
-      "sha256": "2bfa10d3ff74545097a166f30c80f92ec54cbf1c5324af977d76a04f4166a30b"
+      "blob": "595b0637b5be49eae2efcf85c67446ef7c29dc52",
+      "sha256": "786aed359f3b00be64570a2ddc06929a64a37b120b8c469eef702e247400c988"
     },
     {
       "action": "A",
