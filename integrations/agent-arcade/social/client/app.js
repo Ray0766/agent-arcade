@@ -1919,7 +1919,12 @@ function renderHistory(scroll) {
       control.setAttribute('aria-expanded',String(messageActions.matches(':popover-open')&&messageAction?.id===message.id));
       meta.append(control);
     }
-    if(message.attachment?.type==='image'&&!message.removed){
+    if(message.forwardRecord&&!message.removed){
+      const card=button('',()=>showForwardRecord(message),'forward-record-card');
+      card.append(el('strong','聊天记录'),el('span',message.sender.displayName+'转发 · '+message.forwardRecord.count+' 条消息','minor'),
+        el('span','展开记录 ›','forward-record-open'));
+      content.append(meta,card);
+    }else if(message.attachment?.type==='image'&&!message.removed){
       let open=imageButtons.get(message.id);
       if(!open){
         const preview=el('img');preview.alt=message.attachment.sticker?.label||
@@ -1968,7 +1973,7 @@ function renderHistory(scroll) {
       results.append(info);
       content.append(meta,results);
     }else content.append(meta,textBubble(message,text));
-    if(message.forwarded&&!message.removed)meta.after(el('p','转发的消息','minor forwarded-label'));
+    if(message.forwarded&&!message.forwardRecord&&!message.removed)meta.after(el('p','转发的消息','minor forwarded-label'));
     if(message.quote&&!message.removed)meta.after(quoteControl(message.quote,locateQuotedMessage));
     if(mine&&!message.removed&&message.personalVoiceOffer)content.append(voiceOfferControls(message));
     if(message.imageQuestion){
@@ -2152,7 +2157,7 @@ $('#copy-message').addEventListener('click',async()=>{
   catch{$('#message-action-status').textContent='可选中消息文字手动复制。';}
 });
 function canSelectMessage(row){
-  return Boolean(row&&!row.removed&&row.id>historyFloor&&!removedMessages.has(row.id)&&!row.attachment&&row.text.trim());
+  return Boolean(row&&!row.removed&&!row.forwardRecord&&row.id>historyFloor&&!removedMessages.has(row.id)&&!row.attachment&&row.text.trim());
 }
 function paintMessageSelection(){
   const count=messageSelection.ids.size;
@@ -2207,6 +2212,47 @@ $('#message-selection-copy')?.addEventListener('click',async()=>{
   }
 });
 $('#message-selection-forward')?.addEventListener('click',showForwardPicker);
+function recordText(text){
+  const body=el('p',null,'body');
+  let offset=0;
+  for(const match of text.matchAll(/https?:\/\/[^\s<>"，。；！？、]+/gu)){
+    const url=match[0].replace(/[.,!?;)\]]+$/u,'');
+    if(!url)continue;
+    const link=el('a',url);
+    link.href=url;
+    link.target='_blank';
+    link.rel='noopener noreferrer';
+    body.append(text.slice(offset,match.index),link);
+    offset=match.index+url.length;
+  }
+  body.append(text.slice(offset));
+  return body;
+}
+function recordEntries(entries){
+  const list=el('ol',null,'forward-record-entries');
+  const names=new Map();
+  for(const {author} of entries){
+    if(!names.has(author.name))names.set(author.name,new Set());
+    names.get(author.name).add(author.number);
+  }
+  for(const {author,text} of entries){
+    const name=names.get(author.name).size>1?author.name+'（'+author.number+'）':author.name;
+    const item=el('li');
+    item.append(el('strong',name),recordText(text));
+    list.append(item);
+  }
+  return list;
+}
+function showForwardRecord(message){
+  const account=user.number,id=message.conversationId,body=el('div');
+  const scope=openDialog('聊天记录',[el('p',message.sender.displayName+'转发 · '+message.forwardRecord.count+' 条消息','minor'),body],id);
+  dialogMessage={chatId:id,messageId:message.id};
+  void perform(async()=>{
+    const {entries}=await api(thread(id)+'/messages/'+message.id+'/forward-record?account='+encodeURIComponent(account),
+      undefined,{expectedAccount:account});
+    if(dialogGeneration===scope&&user?.number===account&&chat===id)body.replaceChildren(recordEntries(entries));
+  },null,scope);
+}
 function showForwardPicker(){
   const selection=messageSelection,source=chat,sourceRevision=membershipRevision,account=user.number,epoch=generation;
   const ids=visibleHistory().filter(row=>selection?.ids.has(row.id)&&canSelectMessage(row)).map(row=>row.id);
@@ -2221,6 +2267,7 @@ function showForwardPicker(){
   const scope=openDialog('转发消息',[panel],source);
   const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&chat===source&&
     membershipRevision===sourceRevision&&messageSelection===selection;
+  let textMode='text';
   function choose(){
     const form=el('form',null,'forward-panel');
     const label=el('label','转发到'),select=el('select');
@@ -2236,6 +2283,20 @@ function showForwardPicker(){
       option.value=target.id;
       select.append(option);
     }
+    let mode;
+    {
+      const method=el('label','转发方式');
+      mode=el('select');
+      for(const [value,title] of [['text','逐条转发'],['record','合并为聊天记录']]){
+        const option=el('option',title);
+        option.value=value;
+        mode.append(option);
+      }
+      mode.value=textMode;
+      mode.addEventListener('change',()=>{textMode=mode.value;});
+      method.append(mode);
+      form.append(method);
+    }
     const preview=el('button','预览转发','primary');
     preview.type='submit';
     preview.disabled=true;
@@ -2244,13 +2305,15 @@ function showForwardPicker(){
       event.preventDefault();
       const target=select.value;
       if(!current()||!target)return;
-      const request={expectedAccount:account,sourceRevision,target,ids};
+      const requestKind=textMode;
+      const request={expectedAccount:account,sourceRevision,target,ids,kind:requestKind};
+      if(mode)mode.disabled=true;
       select.disabled=true;
       void perform(async()=>{
         try{
           const result=await api(thread(source)+'/forward-preview',request);
           if(current())showPreview(request,result);
-        }finally{select.disabled=false;}
+        }finally{select.disabled=false;if(mode)mode.disabled=false;}
       },preview,scope);
     });
     $('#dialog-error').textContent='';
@@ -2265,9 +2328,11 @@ function showForwardPicker(){
     heading.tabIndex=-1;
     const audience=el('p',recipient.type==='direct'?'私聊 · '+recipient.members[0].number:
       '群聊 · '+(recipient.members.length+1)+' 位成员','minor');
-    const list=el('ol',null,'forward-entries');
-    list.append(...entries.map(entry=>el('li',entry.text)));
-    const confirm=button('确认转发 '+entries.length+' 条',()=>void perform(async()=>{
+    const record=request.kind==='record';
+    const list=record?recordEntries(entries):el('ol',null,'forward-entries');
+    if(!record)list.append(...entries.map(entry=>el('li',entry.text)));
+    const confirmLabel=record?'确认转发聊天记录':'确认转发 '+entries.length+' 条';
+    const confirm=button(confirmLabel,()=>void perform(async()=>{
       if(!current())return;
       const key='arcade.forward.pending:'+account+':'+review;
       let clientId=pendingForwards.get(key);
@@ -2286,7 +2351,7 @@ function showForwardPicker(){
         if(!current())return;
         closeDialog();
         exitMessageSelection();
-        $('#send-error').textContent='已向「'+recipient.title+'」转发 '+count+' 条消息。';
+        $('#send-error').textContent='已向「'+recipient.title+'」转发 '+count+(record?' 张聊天记录。':' 条消息。');
         void sync();
       }catch(error){
         if(error.status>=400&&error.status<500)clearPending();
@@ -2303,6 +2368,7 @@ function showForwardPicker(){
         recipient.members.map(member=>member.displayName+'（'+member.number+'）').join('、'):'群内只有你'));
       panel.append(members);
     }
+    if(record)panel.append(el('strong','合并为 1 张聊天记录 · '+entries.length+' 条消息'));
     panel.append(list,actions);
     heading.focus({preventScroll:true});
   }

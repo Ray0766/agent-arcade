@@ -513,3 +513,11 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .forward-entries { margin:0; padding-inline-start:1.5rem; overflow-wrap:anywhere; }
 .forward-entries li { margin-block:.375rem; white-space:pre-wrap; }
 .forwarded-label { margin:0; }
+
+.forward-record-card { display: grid; gap: .35rem; min-width: min(13rem, 100%); max-width: 100%; text-align: start; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--surface, white); color: inherit; }
+.forward-record-open { color: var(--accent); font-size: .85rem; }
+.forward-record-entries { list-style: none; margin: 0; padding: 0 .85rem; background: var(--wash); border-radius: .65rem; }
+.forward-record-entries li { padding: .7rem 0; overflow-wrap: anywhere; }
+.forward-record-entries li + li { border-top: 1px solid var(--line); }
+.forward-record-entries p { margin: .25rem 0 0; white-space: pre-wrap; }
+.forward-panel > .forward-record-entries { max-height: 42vh; overflow: auto; }

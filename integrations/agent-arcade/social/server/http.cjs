@@ -189,6 +189,10 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
     if (action === 'remove') return store.remove(a,id,number(body.number),false);
   }
   if (root === 'conversations') {
+    if(parts.length===5&&action==='messages'&&parts[4]==='forward-record'&&method==='GET'){
+      if(params.get('account')!==a)fail(409,'forward_session','账号已切换，请重新打开会话');
+      return store.readForwardRecord(a,id,Number(parts[3]));
+    }
     if (parts.length === 2 && method === 'GET') return {conversation:conversationView(store.conversation(a,id))};
     if (parts.length===3&&method==='POST'&&action==='remove-friend')return store.removeFriend(a,id,body);
     if (parts.length===3&&method==='POST'&&action==='friend-remark')return store.saveFriendRemark(a,id,body);
