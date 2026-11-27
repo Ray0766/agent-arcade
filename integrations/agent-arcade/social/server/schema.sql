@@ -219,6 +219,10 @@ CREATE TABLE IF NOT EXISTS message_images (
   width INTEGER NOT NULL CHECK(width>0), height INTEGER NOT NULL CHECK(height>0),
   digest TEXT NOT NULL, bytes BLOB NOT NULL CHECK(length(bytes) BETWEEN 1 AND 4194304)
 );
+CREATE TABLE IF NOT EXISTS message_image_captions (
+  message INTEGER PRIMARY KEY REFERENCES message_images(message) ON DELETE CASCADE,
+  caption TEXT NOT NULL CHECK(length(caption) BETWEEN 1 AND 500)
+);
 CREATE TABLE IF NOT EXISTS saved_stickers (
   id TEXT PRIMARY KEY,
   account TEXT NOT NULL REFERENCES users(number) ON DELETE CASCADE,
