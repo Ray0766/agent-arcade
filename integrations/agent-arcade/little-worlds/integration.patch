@@ -817,10 +817,10 @@ index e56a89e92190efaab22096861abb75c51ac8688a..b97527c6f2a9dc7a6c933df56e53aa17
 +  border-top: 1px solid var(--ui-dialog-border);
 +}
 diff --git a/src/client/flight.ts b/src/client/flight.ts
-index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c5ff1647c 100644
+index eeb7d88eabbcb938873d370abbcf3434b7202330..d25efa238696373c04a3a9f260aa3a479ce2a707 100644
 --- a/src/client/flight.ts
 +++ b/src/client/flight.ts
-@@ -18,23 +18,48 @@ import type {Vec3} from '../shared/world.ts';
+@@ -18,23 +18,50 @@ import type {Vec3} from '../shared/world.ts';
  import type { SaveProgress } from './save-progress.ts';
  import {getQualityProfile} from './quality.ts';
  import {orbitPlan,orbitCacheLimit,orbitBufferBytes} from './orbit-preload.ts';
@@ -862,6 +862,8 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
 +  private destinationVisual?: (frame: ConfirmedFlightVisitFrame | null) => void;
 +  private visualBinding = '';
 +  private approaching = false;
++  private destinationLookTrip = '';
++  private framedApproach = false;
 +  private preparingArrival = '';
 +  private friendPlanet=new URLSearchParams(location.search).get('visit');
 +  private friendRoute=document.createElement('button');
@@ -871,7 +873,7 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
    private route:Vec3[]=[];private routeIndex=0;private travelling=false;private routeNote='Choose a destination. The ship handles takeoff and landing.';
    private travelSelect=document.createElement('select');private travelButton=document.createElement('button');private travelStatus=document.createElement('p');
    private departureSelect=document.createElement('select');private preview=document.createElement('p');private requestId=crypto.randomUUID();
-@@ -55,11 +80,33 @@ export class SpaceFlight {
+@@ -55,11 +82,33 @@ export class SpaceFlight {
      this.orbitNotice.className='orbit-preparation';this.orbitNotice.hidden=true;this.orbitNotice.setAttribute('role','status');this.orbitNotice.setAttribute('aria-live','polite');
      this.orbitNotice.innerHTML='<span></span><progress></progress><button type="button" hidden></button>';el('flight-hud').append(this.orbitNotice);
      configureSpace(this.scene,bridge.renderer);this.scene.fog=null;this.scene.add(this.ship.root);this.drawing=createVillageDrawing(bridge.renderer,this.scene,this.camera,true);
@@ -906,23 +908,29 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
      const navigation=document.createElement('section');navigation.className='flat-flight-navigation';navigation.setAttribute('aria-label','Automatic journey');
      const label=document.createElement('label');setText(label,'Destination');this.travelSelect.id='flight-destination';label.htmlFor=this.travelSelect.id;
      this.travelButton.id='flight-travel';this.travelButton.type='button';setText(this.travelButton,'Resume journey');this.travelButton.onclick=()=>void this.startTravel();
-@@ -69,6 +116,15 @@ export class SpaceFlight {
+@@ -68,8 +117,19 @@ export class SpaceFlight {
+     this.travelStatus.id='flight-route-status';this.travelStatus.setAttribute('role','status');
      navigation.append(label,this.travelSelect,this.travelButton,this.skipButton,this.returnButton,this.travelStatus);el('flight-hud').append(navigation);
      this.travelSelect.onchange=()=>this.mark(this.travelSelect.value);
-     const forwardButton=document.createElement('button');forwardButton.id='flight-look-forward';setText(forwardButton,'Look forward');forwardButton.onclick=()=>{if(this.pilot)this.controls.lookForward(this.pilot);};navigation.append(forwardButton);
+-    const forwardButton=document.createElement('button');forwardButton.id='flight-look-forward';setText(forwardButton,'Look forward');forwardButton.onclick=()=>{if(this.pilot)this.controls.lookForward(this.pilot);};navigation.append(forwardButton);
+-    this.controls=new FlightControls(bridge.canvas,()=>!!this.active&&!this.paused,()=>{},[],false);
++    const forwardButton=document.createElement('button');forwardButton.id='flight-look-forward';setText(forwardButton,'Look forward');forwardButton.onclick=()=>{this.destinationLookTrip='';this.framedApproach=false;if(this.pilot)this.controls.lookForward(this.pilot);};navigation.append(forwardButton);
 +    const lookDestination=this.destinationButton;
 +    lookDestination.id='flight-look-destination';lookDestination.type='button';lookDestination.disabled=true;
 +    setText(lookDestination,'Look at destination');
 +    lookDestination.onclick=()=>{
 +      const target=this.confirmedTarget();
-+      if(this.pilot&&target&&!this.paused&&!this.visitUnavailable(target))
++      if(this.pilot&&target&&!this.paused&&!this.visitUnavailable(target)){
++        this.destinationLookTrip=this.tripKey();
 +        destinationOrbit(this.pilot.position,target.center,this.controls.orbit);
++      }
 +    };
 +    navigation.append(lookDestination);
-     this.controls=new FlightControls(bridge.canvas,()=>!!this.active&&!this.paused,()=>{},[],false);
++    this.controls=new FlightControls(bridge.canvas,()=>!!this.active&&!this.paused,()=>{},[],false,()=>{this.destinationLookTrip='';this.framedApproach=false;});
      this.noseMarker.id='flight-nose-marker';this.noseMarker.setAttribute('aria-hidden','true');el('flight-hud').append(this.noseMarker);
      let pointer:{x:number;y:number;distance:number}|null=null;
-@@ -79,14 +135,15 @@ export class SpaceFlight {
+     bridge.canvas.addEventListener('pointerdown',e=>{if(e.button===0)pointer={x:e.clientX,y:e.clientY,distance:0};});
+@@ -79,14 +139,15 @@ export class SpaceFlight {
        const hits=this.planets.filter(p=>this.bodies.get(p.id)?.root.visible).flatMap(p=>{const point=ray.ray.intersectSphere(new T.Sphere(new T.Vector3(...p.center),bodyRadius(p)),new T.Vector3());return point?[{id:p.id,d:point.distanceTo(ray.ray.origin)}]:[];}).sort((a,b)=>a.d-b.d);if(hits[0])this.mark(hits[0].id);
      });
      this.renameButton.id='rename-planet';setText(this.renameButton,'Name my planet');el('my-planet').after(this.renameButton);this.renameButton.onclick=()=>this.openRename();
@@ -934,13 +942,13 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
  
    private get paused(){return sceneLoadingActive()||this.presentation||this.busy||!this.bridge.online()||document.hidden||!!document.querySelector('dialog[open]');}
 -  clear(){this.travelling=false;this.controls?.clear();this.steering.set(0,0);this.routeNote='Journey paused. Resume, skip, or return to departure.';}
-+  clear(){this.travelling=false;this.approaching=false;this.controls?.clear();this.steering.set(0,0);this.routeNote='Journey paused. Resume, skip, or return to departure.';}
++  clear(){this.travelling=false;this.approaching=false;this.destinationLookTrip='';this.framedApproach=false;this.controls?.clear();this.steering.set(0,0);this.routeNote='Journey paused. Resume, skip, or return to departure.';}
    receive(f:FlightState,force=false){
 +    if(f.mode!=='space')this.clearDestinationVisual();
      if(f.mode!=='space'&&this.detailPreparation){this.detailPreparation.controller.abort();this.detailPreparation.feedback.finish();this.detailPreparation=null;}
      const entering=!this.pilot||f.mode!==this.pilot.mode||f.journey!==this.pilot.journey;
      if(entering||force){this.bridge.progress?.reset('flight');this.pilot=structuredClone(f);this.ack=structuredClone(f);this.ackAt=performance.now();this.cameraStarted=false;this.orbitWarmed=false;this.clear();if(entering)this.controls?.lookForward(f);}
-@@ -96,11 +153,21 @@ export class SpaceFlight {
+@@ -96,11 +157,21 @@ export class SpaceFlight {
    }
    universe(u:Universe){
      this.planets=u.planets;
@@ -963,7 +971,7 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
      if(!this.busy&&this.dialog.open&&this.action==='retarget'&&(u.player.trip?.status!=='active'||u.player.trip.revision!==this.confirmRevision)){this.dialog.close();this.bridge.notice('Your trip changed. Refresh its destination before trying again.');}
      if(this.travelling&&this.routeTrip!==this.tripKey())this.clear();this.updatePreview();
      let changed=false;
-@@ -179,8 +246,100 @@ export class SpaceFlight {
+@@ -179,8 +250,100 @@ export class SpaceFlight {
        }finally{if(timer!==undefined)clearTimeout(timer);}
      })();
    }
@@ -1065,7 +1073,7 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
    async startTravel(){
      if(!this.pilot||this.busy||!this.bridge.online())return;
      const trip=this.bridge.player()?.trip;
-@@ -192,10 +351,11 @@ export class SpaceFlight {
+@@ -192,10 +355,11 @@ export class SpaceFlight {
    }
    private async finishTrip(){
      const t=this.bridge.player()?.trip;if(!t||t.status!=='active'||this.busy||!this.bridge.online())return;
@@ -1079,7 +1087,7 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
    }
    private async returnTrip(){
      const t=this.bridge.player()?.trip;if(!t||t.status!=='active'||this.busy)return;this.busy=true;this.clear();
-@@ -206,20 +366,49 @@ export class SpaceFlight {
+@@ -206,20 +370,49 @@ export class SpaceFlight {
      const trip=this.bridge.player()?.trip;
      if(this.active&&trip?.status==='active'){
        this.travelSelect.value=trip.targetId;if(id===trip.targetId)return;this.action='retarget';this.confirmTarget=id;this.confirmRevision=trip.revision;this.departureSelect.hidden=true;this.preview.hidden=true;
@@ -1135,7 +1143,7 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
    }
    private openRename(){
      const p=this.planets.find(p=>p.mine);if(!p)return;el<HTMLDialogElement>('menu-dialog').close();el<HTMLDialogElement>('star-map').close();
-@@ -254,9 +443,14 @@ export class SpaceFlight {
+@@ -254,23 +447,37 @@ export class SpaceFlight {
      const input=this.travelling&&this.route[this.routeIndex]?flightRouteInput(this.pilot,this.route[this.routeIndex],true):{thrust:false,brake:true,turn:0,pitch:0};
      if(!paused)paused=this.holdSpeedPeak(input);
      this.steering.lerp(new T.Vector2(input.turn,input.pitch),1-Math.exp(-10*dt));
@@ -1150,16 +1158,37 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
        if(next.position.some((v,i)=>v!==before.position[i])||next.yaw!==before.yaw||next.pitch!==before.pitch||next.speed!==before.speed)this.bridge.progress?.dirty('flight');
      }
      const f=this.pilot,pos=new T.Vector3(...f.position),front=new T.Vector3(...forward(f.yaw,f.pitch));
-@@ -271,6 +465,8 @@ export class SpaceFlight {
-     this.ship.root.visible=true;this.camera.aspect=innerWidth/innerHeight;if(innerWidth<700)this.camera.setViewOffset(innerWidth,innerHeight,0,innerHeight*.12,innerWidth,innerHeight);else this.camera.clearViewOffset();this.camera.updateProjectionMatrix();this.updateLod(now);this.bridge.canvas.dataset.railVisible='0';
-     this.bridge.canvas.dataset.flightLook=JSON.stringify({mode:'free-orbit-3d',orbit:{...this.controls.orbit},eye:this.camera.position.toArray(),forward:this.camera.getWorldDirection(new T.Vector3()).toArray(),up:this.camera.up.toArray()});
-     for(const body of this.bodies.values())if(body.root.visible&&body.detail?.userData.updateTown)body.detail.userData.updateTown(this.camera.position.clone().sub(body.root.position));
+     const right=new T.Vector3().crossVectors(front,new T.Vector3(0,1,0)).normalize(),up=new T.Vector3().crossVectors(right,front).normalize();
+     this.turn.setFromRotationMatrix(new T.Matrix4().makeBasis(right,up,front.clone().negate()));this.ship.root.position.copy(pos);this.ship.root.quaternion.copy(this.turn);this.bank+=(this.steering.x*-.28-this.bank)*(1-Math.exp(-5*dt));this.ship.root.rotateZ(this.bank);
+     this.enginePower+=((input.thrust&&!paused?1:input.brake?.04:.12)-this.enginePower)*(1-Math.exp(-6*dt));this.ship.animate(this.enginePower,input.brake);
+-    const view=flightCameraPose(f,this.controls.orbit,this.planets),behind=view.position;
 +    const confirmed=this.confirmedTarget();
++    const validFocus=!!confirmed&&!this.visitUnavailable(confirmed)&&this.destinationLookTrip===this.tripKey();
++    if(!validFocus)this.destinationLookTrip='';
++    // Keep the framing through short correction pulses once final braking has begun.
++    const inFinalApproach=validFocus&&this.travelling&&!this.paused&&!!waypoint&&
++      this.routeIndex===this.route.length-1&&spaceDistance(f.position,waypoint)<=14;
++    const chosenApproach=this.framedApproach=inFinalApproach&&(this.approaching||this.framedApproach);
++    const shoulder=chosenApproach&&!this.reduced?Math.min(.56,.41*innerWidth/innerHeight):0;
++    const view=flightCameraPose(f,this.controls.orbit,this.planets,shoulder),behind=view.position;
+     this.ship.root.scale.setScalar(1);
+     this.look.position.copy(behind);this.look.up.copy(view.up);this.look.lookAt(view.target);
+     if(!this.cameraStarted){this.camera.position.copy(behind);this.camera.quaternion.copy(this.look.quaternion);this.cameraStarted=true;}
+     this.camera.up.copy(view.up);this.camera.position.copy(clipFlightEye(pos,this.camera.position.clone().lerp(behind,this.reduced?1:1-Math.exp(-10*dt)),this.planets));this.camera.quaternion.slerp(this.look.quaternion,this.reduced?1:1-Math.exp(-10*dt));
+     this.ship.root.visible=true;this.camera.aspect=innerWidth/innerHeight;if(innerWidth<700)this.camera.setViewOffset(innerWidth,innerHeight,0,innerHeight*.12,innerWidth,innerHeight);else this.camera.clearViewOffset();this.camera.updateProjectionMatrix();this.updateLod(now);this.bridge.canvas.dataset.railVisible='0';
+-    this.bridge.canvas.dataset.flightLook=JSON.stringify({mode:'free-orbit-3d',orbit:{...this.controls.orbit},eye:this.camera.position.toArray(),forward:this.camera.getWorldDirection(new T.Vector3()).toArray(),up:this.camera.up.toArray()});
++    this.bridge.canvas.dataset.flightLook=JSON.stringify({mode:shoulder?'destination-approach':'free-orbit-3d',orbit:{...this.controls.orbit},eye:this.camera.position.toArray(),forward:this.camera.getWorldDirection(new T.Vector3()).toArray(),up:this.camera.up.toArray()});
+     for(const body of this.bodies.values())if(body.root.visible&&body.detail?.userData.updateTown)body.detail.userData.updateTown(this.camera.position.clone().sub(body.root.position));
 +    this.paintDestinationVisual(confirmed,f);
      const drawingTarget=this.nearby();this.drawing.render(drawingTarget?new T.Vector3(...drawingTarget.center):pos,true);
      if(now-this.hudAt<80)return;this.hudAt=now;
      // Render-enabled roots are not proof of on-screen worlds. Expose the
-@@ -285,19 +481,32 @@ export class SpaceFlight {
+@@ -281,23 +488,37 @@ export class SpaceFlight {
+     this.bridge.canvas.dataset.orbitInView=JSON.stringify(inView.map(p=>p.id));
+     const shipScreen=pos.clone().project(this.camera);
+     this.bridge.canvas.dataset.shipScreen=JSON.stringify(shipScreen.toArray());
+-    const shipMarker=el('ship-marker');shipMarker.style.left=`${(shipScreen.x*.5+.5)*100}%`;shipMarker.style.top=`${(-shipScreen.y*.5+.5)*100}%`;shipMarker.hidden=!this.ship.root.visible||shipScreen.z>1||Math.abs(shipScreen.x)>1||Math.abs(shipScreen.y)>1;
++    const shipMarker=el('ship-marker');shipMarker.style.left=`${(shipScreen.x*.5+.5)*100}%`;shipMarker.style.top=`${(-shipScreen.y*.5+.5)*100}%`;shipMarker.hidden=chosenApproach||!this.ship.root.visible||shipScreen.z>1||Math.abs(shipScreen.x)>1||Math.abs(shipScreen.y)>1;
      setText(el('ship-speed'), f.speed.toFixed(0).padStart(2,'0'));setText(el('flight-throttle'), paused?'STANDBY':input.brake?'BRAKING':input.thrust?'MAIN DRIVE':'COAST');const heading=shipHeading(f);setText(el('flight-heading'), `Ship heading ${heading.degrees}° · automatic height`);el('flight-hud').dataset.yaw=String(f.yaw);el('flight-hud').dataset.pitch=String(f.pitch);el('velocity-bar').style.width=`${f.speed/36*100}%`;document.body.classList.toggle('ship-braking',input.brake);el('flight-hud').dataset.speed=f.speed.toFixed(3);el('flight-hud').dataset.position=JSON.stringify(f.position);
      const closest=this.nearby();if(closest)setText(el('location-chip'), regionFor(closest.slot).name.toUpperCase()+' / FLIGHT');const distance=closest?spaceDistance(f.position,closest.center):Infinity;
      setText(el('flight-altitude'), `${Math.max(0,distance-(closest?bodyRadius(closest):RADIUS)).toFixed(0)} m above ${closest?.name??'the nearest world'}`);
@@ -1183,6 +1212,7 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..2262724f83e685549d27a9e132c6718c
 +      setText(el('course-distance'), `${regionFor(target.slot).name} · ${Math.round(d)} m · ${target.kind==='hub'?'Main planet':target.mine?'Your world':target.claimed?'Neighbour':'Unclaimed'}`);
        el('flight-hud').dataset.yawError=String(yaw);el('flight-hud').dataset.pitchError=String(pitch);el('flight-hud').dataset.distance=String(d);el('flight-hud').dataset.target=target.id;
        const indicator=flightIndicator(this.camera,new T.Vector3(...target.center)),marker=el('course-marker');marker.style.left=`${(indicator.x*.5+.5)*100}%`;marker.style.top=`${(-indicator.y*.5+.5)*100}%`;marker.classList.toggle('behind',indicator.behind);marker.dataset.direction=indicator.visible?'visible':indicator.behind?'behind':'offscreen';setText(marker,indicator.visible?'◇':indicator.behind?'↩':'➤');marker.style.transform=`translate(-50%,-50%) rotate(${indicator.visible||indicator.behind?0:indicator.angle-90}deg)`;
++      this.noseMarker.hidden=chosenApproach;
        const nose=flightIndicator(this.camera,pos.clone().addScaledVector(front,70));this.noseMarker.style.left=`${(nose.x*.5+.5)*100}%`;this.noseMarker.style.top=`${(-nose.y*.5+.5)*100}%`;setText(this.noseMarker,nose.behind?'Ship heading ↩':'Ship heading ▲');
 -      setText(el('course-heading'),this.travelling?'Automatic journey in progress':indicator.behind?'Target behind the view · drag to look around':indicator.visible?'Destination in view':'Target outside the view · follow the edge arrow');
 +      const course=unavailable?unavailableVisit:preparing?'Preparing to land…':approach?
@@ -4224,10 +4254,10 @@ index 69099e05580acd108b297c0c588623300cf2a914..c1c0a7807433b2799640e17f955e52ea
   finish(id:string,body:Record<string,unknown>,now=Date.now()){
    strict(body,['tripId','revision']);return transaction(()=>{const t=current(id,body);if(t.status==='arrived')return t;const f=navigation.flight(id);if(f.mode!=='space'||f.journey!==t.journey)throw new RequestError(409,'This flight is no longer current.');
 diff --git a/src/client/flight-look.ts b/src/client/flight-look.ts
-index 9452246e459b863506d63054d7711930eac12596..88c5f1c9e77de5fc97882cc4c4034c2d4c35e37f 100644
+index 9452246e459b863506d63054d7711930eac12596..b775b30be78778ef84c4785085f5f6206974e699 100644
 --- a/src/client/flight-look.ts
 +++ b/src/client/flight-look.ts
-@@ -1,9 +1,16 @@
+@@ -1,17 +1,26 @@
  import {Vector3} from 'three';
  import type {PerspectiveCamera} from 'three';
 -import {firstCollision} from '../shared/flight.ts';
@@ -4246,3 +4276,35 @@ index 9452246e459b863506d63054d7711930eac12596..88c5f1c9e77de5fc97882cc4c4034c2d
  export function clipFlightEye(position:Vector3,eye:Vector3,bodies:SpaceBody[]){
   const hit=firstCollision(position.toArray(),eye.toArray(),bodies,RADIUS+2.65);
   return hit===null?eye.clone():position.clone().lerp(eye,Math.max(0,hit-.005));
+ }
+ /** World-oriented orbit: following the ship's position never recentres its view yaw. */
+-export function flightCameraPose(f:FlightState,orbit:FlightOrbit,bodies:SpaceBody[]){
++export function flightCameraPose(f:FlightState,orbit:FlightOrbit,bodies:SpaceBody[],shoulder=0){
+  const target=new Vector3(...f.position),c=Math.cos(orbit.elevation),offset=new Vector3(-Math.sin(orbit.yaw)*c,Math.sin(orbit.elevation),Math.cos(orbit.yaw)*c).multiplyScalar(orbit.distance);
+- return {position:clipFlightEye(target,target.clone().add(offset),bodies),target,up:new Vector3(0,1,0)};
++ const side=new Vector3(Math.cos(orbit.yaw),0,Math.sin(orbit.yaw)).multiplyScalar(orbit.distance*shoulder);
++ const eye=clipFlightEye(target,target.clone().add(offset).add(side),bodies);
++ return {position:eye,target:target.addScaledVector(side,.68),up:new Vector3(0,1,0)};
+ }
+ /** A real bearing even when a destination is behind the camera or off-screen. */
+ export function flightIndicator(camera:PerspectiveCamera,position:Vector3){
+diff --git a/src/client/flight-controls.ts b/src/client/flight-controls.ts
+index b7fb79d73ed8d4416eec55b2362207f0b10a2fd8..9560a527a0df4d3b5cd2c1c790602464deb94e5c 100644
+--- a/src/client/flight-controls.ts
++++ b/src/client/flight-controls.ts
+@@ -6,13 +6,13 @@ const bindings:Record<string,string>={w:'forward',s:'backward',' ':'brake',a:'le
+ /** View drag and wheel only change orbit values; steering uses separate controls. */
+ export class FlightControls {
+  readonly orbit=defaultFlightOrbit();private switches:number[]=[];private keys=new Set<string>();private held=new Map<number,string>();private drag:{id:number;x:number;y:number}|null=null;private lifetime=new AbortController();
+- constructor(private canvas:HTMLCanvasElement,private enabled:()=>boolean,private manual:()=>void,buttons:HTMLElement[]=[],allowDriving=true){
++ constructor(private canvas:HTMLCanvasElement,private enabled:()=>boolean,private manual:()=>void,buttons:HTMLElement[]=[],allowDriving=true,onLookDrag?:()=>void){
+   const options={signal:this.lifetime.signal};
+   window.addEventListener('keydown',e=>{if(!allowDriving||!enabled()||e.ctrlKey||e.metaKey||e.altKey||e.isComposing||(e.target instanceof Element&&e.target.closest('input,textarea,select,[contenteditable]'))||(e.key===' '&&e.target instanceof Element&&e.target.closest('button')))return;const key=e.key.toLowerCase(),action=bindings[key];if(!action||e.repeat&&!this.keys.has(key))return;e.preventDefault();if(!this.keys.has(key)){manual();if(action==='left'||action==='right')this.switches.push(action==='left'?-1:1);this.switches=this.switches.slice(-4);}this.keys.add(key);},options);
+   window.addEventListener('keyup',e=>this.keys.delete(e.key.toLowerCase()),options);
+   window.addEventListener('blur',()=>this.clear(),options);document.addEventListener('visibilitychange',()=>this.clear(),options);
+   canvas.addEventListener('pointerdown',e=>{if(!enabled()||this.drag||e.button!==0)return;e.preventDefault();this.drag={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);},options);
+-  canvas.addEventListener('pointermove',e=>{if(!this.drag||this.drag.id!==e.pointerId||!enabled())return;this.orbit.yaw=wrapAngle(this.orbit.yaw-(e.clientX-this.drag.x)*.005);this.orbit.elevation=Math.max(-1.15,Math.min(1.2,this.orbit.elevation+(e.clientY-this.drag.y)*.005));this.drag={id:e.pointerId,x:e.clientX,y:e.clientY};},options);
++  canvas.addEventListener('pointermove',e=>{if(!this.drag||this.drag.id!==e.pointerId||!enabled())return;if(e.clientX!==this.drag.x||e.clientY!==this.drag.y)onLookDrag?.();this.orbit.yaw=wrapAngle(this.orbit.yaw-(e.clientX-this.drag.x)*.005);this.orbit.elevation=Math.max(-1.15,Math.min(1.2,this.orbit.elevation+(e.clientY-this.drag.y)*.005));this.drag={id:e.pointerId,x:e.clientX,y:e.clientY};},options);
+   for(const name of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(name,e=>{if(this.drag?.id===(e as PointerEvent).pointerId)this.drag=null;},options);
+   canvas.addEventListener('wheel',e=>{if(!enabled())return;e.preventDefault();this.orbit.distance=Math.max(10,Math.min(90,this.orbit.distance*Math.exp(Math.max(-100,Math.min(100,e.deltaY))*.002)));},{...options,passive:false});
+   for(const button of buttons){button.addEventListener('pointerdown',e=>{if(!enabled()||e.button!==0)return;e.preventDefault();manual();const action=button.dataset.flightDrive!;if(action==='left'||action==='right'){this.switches.push(action==='left'?-1:1);this.switches=this.switches.slice(-4);}button.setPointerCapture(e.pointerId);this.held.set(e.pointerId,action);},options);for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,e=>this.held.delete((e as PointerEvent).pointerId),options);}

@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "42b287d368f5154ec6f831cdb4627521a5f5a37d",
-  "worldTree": "47713ea35a24d895302152c351783ecda15dfe77",
-  "patchSHA256": "bf9f3f3337d95d4cc4d89dc7c120cc2cc8b2d6d9bd4da0c25a912d585bc7b252",
+  "worldRevision": "fdfa9bb40f93682098aec5bc0d543c792d7ad4e0",
+  "worldTree": "22f14b6cbcb177aaecd601f3d45012635540f658",
+  "patchSHA256": "c58e5160e31a451a2e28f19218963c93d3509d85dde66221d3f64fc62febe9d2",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -569,10 +569,16 @@
       "sha256": "a587ddc259cd49281713374b49fc7c2048a22ee09d533c016c8d7ae05204f190"
     },
     {
+      "path": "src/client/flight-controls.ts",
+      "action": "M",
+      "blob": "9560a527a0df4d3b5cd2c1c790602464deb94e5c",
+      "sha256": "7e60c4b5334229c11e7dacf07b58fc3d7d9dfd9f8523f2add99320dd4160f812"
+    },
+    {
       "path": "src/client/flight-look.ts",
       "action": "M",
-      "blob": "88c5f1c9e77de5fc97882cc4c4034c2d4c35e37f",
-      "sha256": "03ae8947e7ac54bb66915ba10d292ad9cfc4bfb643ea9c460ee537d4ffb16598"
+      "blob": "b775b30be78778ef84c4785085f5f6206974e699",
+      "sha256": "5fe02c3d5eea0cf34de0387da1b4cf29c55dcb706a4bce6d3874135376c01575"
     },
     {
       "action": "M",
@@ -583,8 +589,8 @@
     {
       "action": "M",
       "path": "src/client/flight.ts",
-      "blob": "2262724f83e685549d27a9e132c6718c5ff1647c",
-      "sha256": "109eeac6f603aa3108ce23b8a7f110472828ff679f5b9d54d54c592967be3291"
+      "blob": "d25efa238696373c04a3a9f260aa3a479ce2a707",
+      "sha256": "0fdd1971927e676c6e0d45a369c38d566dd826fd54afefe0e6572f942ab4470a"
     },
     {
       "action": "M",
