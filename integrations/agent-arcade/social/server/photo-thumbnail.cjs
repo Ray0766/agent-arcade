@@ -4,20 +4,25 @@ const path=require('node:path');
 const {Worker}=require('node:worker_threads');
 const {fail}=require('./store.cjs');
 
+const ordinaryDirectPhoto=` AND m.body='' AND m.sender IN (?,?)
+  AND NOT EXISTS (SELECT 1 FROM message_stickers s WHERE s.message=m.id)
+  AND NOT EXISTS (SELECT 1 FROM message_drawings d WHERE d.message=m.id)`;
+
+function requireDirectPhotoAlbum(store,chat){
+  if(chat.type!=='direct'||chat.friendRemoved||
+    [chat.first_user,chat.second_user].some(number=>store.user(number).kind!=='human'))
+    fail(404,'direct_photos_unavailable','这段私聊的共享照片不可查看');
+}
+
 function authorizedPhoto(store,account,chat,id,revision){
   const membership=store.access(account,chat);
-  if(membership.friendRemoved||membership.membershipRevision!==revision)
-    fail(404,'unknown_image','照片不可查看');
+  if(membership.membershipRevision!==revision)fail(404,'unknown_image','照片不可查看');
   const direct=membership.type==='direct';
-  const participants=[membership.first_user,membership.second_user];
-  if(direct&&participants.some(number=>store.user(number).kind!=='human'))
-    fail(404,'unknown_image','照片不可查看');
-  const ordinaryPhoto=direct?` AND m.body='' AND m.sender IN (?,?)
-    AND NOT EXISTS (SELECT 1 FROM message_stickers s WHERE s.message=m.id)
-    AND NOT EXISTS (SELECT 1 FROM message_drawings d WHERE d.message=m.id)`:'';
+  if(direct)requireDirectPhotoAlbum(store,membership);
+  const ordinary=direct?ordinaryDirectPhoto:'';
   const image=store.one(`SELECT i.digest FROM messages m JOIN message_images i ON i.message=m.id
-    WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0${ordinaryPhoto}`,
-    chat,id,membership.since,...(direct?participants:[]));
+    WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0${ordinary}`,
+    chat,id,membership.since,...(direct?[membership.first_user,membership.second_user]:[]));
   if(!image)fail(404,'unknown_image','照片不可查看');
   return image.digest;
 }
@@ -61,4 +66,4 @@ function createPhotoThumbnails(store){
   };
 }
 
-module.exports={createPhotoThumbnails};
+module.exports={createPhotoThumbnails,ordinaryDirectPhoto,requireDirectPhotoAlbum};

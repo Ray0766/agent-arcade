@@ -12,6 +12,7 @@ const {createHash} = require('node:crypto');
 const {friendShareLookup}=require('./bothouse/friend-share-lookup.cjs');
 const {fail,number} = require('./store.cjs');
 const {createPhotoThumbnails}=require('./photo-thumbnail.cjs');
+const {directSharedPhotos}=require('./direct-shared-photos.cjs');
 const {current,makeAuth,sessionDigest} = require('./auth.cjs');
 const {planetPublishers}=require('./bothouse/planet-residents.cjs');
 const {createAiDirect} = require('./ai-direct.cjs');
@@ -390,6 +391,12 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       }
       if (!['GET','POST'].includes(req.method)) fail(405,'method','请求方法无效');
       const [collection,chat,action,message,asset,variant]=parts;
+      if(req.method==='GET'&&collection==='conversations'&&action==='shared-media'&&message==='direct-photos'&&parts.length===4){
+        const account=current(store,req);
+        if(url.searchParams.get('expectedAccount')!==account)fail(409,'image_session','账号已切换');
+        res.setHeader('Content-Type','application/json; charset=utf-8');
+        return res.end(JSON.stringify(directSharedPhotos(store,account,chat,url.searchParams)));
+      }
       if(req.method==='GET'&&collection==='conversations'&&action==='messages'&&asset==='album-thumbnail'&&
         parts.length===5&&/^[1-9]\d*$/u.test(message)&&Number.isSafeInteger(Number(message))){
         const account=current(store,req);
