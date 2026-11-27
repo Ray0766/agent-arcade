@@ -1437,14 +1437,32 @@ index 8856c726a754f80e41e37562696c200f393ca434..5772ead4c82fa8aa62571fa933ac4b4c
 +    const replacement=createTravelShip(this.draft,this.stage.library);
      this.model?.dispose();this.model=replacement;this.stage.scene.add(replacement.object);this.frame();
 diff --git a/src/client/terrain-model.ts b/src/client/terrain-model.ts
-index af46a0e52754af0f16119b6056df5c529454dee6..fb9b2ec315a9892be7b8651a0ce8905832113fac 100644
+index af46a0e52754af0f16119b6056df5c529454dee6..e993c74eb9f6504f0b390d3c0e402fca1ba933ad 100644
 --- a/src/client/terrain-model.ts
 +++ b/src/client/terrain-model.ts
-@@ -10,2 +10,3 @@ import { fieldOf,foundations } from '../shared/terrain.ts';
+@@ -8,6 +8,7 @@ import type { PlacedObject } from '../shared/planets.ts';
+ import type { BlueprintContents } from '../shared/blueprints.ts';
+ import { fieldOf,foundations } from '../shared/terrain.ts';
  import type { HomeSurfaceRoute } from '../shared/home-layout.ts';
 +import { replaceTerrainNature } from './nature-art.ts';
  import { rebasedTerrainFlora } from './sample-landscape.ts';
-@@ -42,2 +43,10 @@ export function terrainModel(environment:string,objects:readonly PlacedObject[]=
+ import { disposeObject3D } from '../assets/claude-geometry/core/dispose.ts';
+ import { measure } from '../assets/claude-geometry/style/geometry.ts';
+@@ -22,6 +23,11 @@ import { PUBLIC_TOWN_ENVIRONMENT } from '../shared/public-town-layout.ts';
+ /** The planned main planet's streets: drawn ground graded under them, flora kept off (render only). */
+ const paving=(environment:string,radius:number,field:TerrainField)=>isPlannedMainPlanet(radius)&&environment===PUBLIC_TOWN_ENVIRONMENT?pavingGrade(mainPlanetNetwork(),field):null;
+ interface PreparedTerrain {field:TerrainField;kit:TerrainKit;foundations:ReturnType<typeof foundations>}
++type VertexSamples = ReadonlyMap<string, ReturnType<TerrainField['sample']>>;
++// Keep only the latest complete grid per LOD. Saved objects change the grading
++// and clearings, while an identical base field has identical vertex samples.
++const vertexGrids = new Map<LodTier, { field: TerrainField; samples: VertexSamples }>();
++const sampleKey = (dir: Vec3) => dir.map(value => Object.is(value, -0) ? '-0' : String(value)).join(',');
+ export interface TerrainModelPreparation {
+  signal?:AbortSignal;yieldFrame:()=>Promise<void>;budgetMs?:number;onProgress?:(done:number,total:number)=>void;
+ }
+@@ -40,6 +46,14 @@ export function terrainModel(environment:string,objects:readonly PlacedObject[]=
+   const flora=rebasedTerrainFlora(field,radius,kit,lod,clearings,BUDGET.terrain[lod].triangles-model.stats.triangles);
+   model.object.add(flora.object);const stats=measure(flora.object);model.stats.triangles+=stats.triangles;model.stats.drawCalls+=stats.drawCalls;model.stats.vegetation=flora.vegetation;
   }
 + const vegetation=model.object.getObjectByName('flora');
 + if(vegetation){
@@ -1455,6 +1473,60 @@ index af46a0e52754af0f16119b6056df5c529454dee6..fb9b2ec315a9892be7b8651a0ce89058
 +  model.stats.drawCalls+=after.drawCalls-before.drawCalls;
 + }
   model.stats.generationMs+=performance.now()-adaptedAt;
+  // Strata altitude is relative to this planet's base, not the vendor default.
+  for(const material of (Array.isArray(model.ground.material)?model.ground.material:[model.ground.material])){const uniforms=material.userData.uniforms;if(uniforms?.uRadius)uniforms.uRadius.value=radius;}
+@@ -59,11 +73,12 @@ export function terrainModel(environment:string,objects:readonly PlacedObject[]=
+
+ /** Prepare the existing terrain implementation in bounded stages. Coordinates
+  * and samples are exact: no rounded cache keys, alternate mesh or shared-field
+- * mutation. The temporary cache and private kit belong only to this request. */
++ * mutation. Only exact, complete base grids are shared; grading, clearings
++ * and the private rendering kit still belong to the current request. */
+ export async function terrainModelAsync(environment:string,objects:readonly PlacedObject[]=[],blueprints:BlueprintContents={},lod:LodTier='medium',alphaCanvas=false,radius=10,surfaceRoutes:readonly HomeSurfaceRoute[]=[],preparation:TerrainModelPreparation={yieldFrame:()=>new Promise(resolve=>requestAnimationFrame(()=>resolve()))}){
+  const field=fieldOf(environment,radius) as TerrainField,kit=new TerrainKit(lod,{look:PRESENTATION.materials.look});
+- const samples=new Map<string,ReturnType<TerrainField['sample']>>();
+- const key=(dir:Vec3)=>dir.map(value=>Object.is(value,-0)?'-0':String(value)).join(',');
++ const previous=vertexGrids.get(lod);
++ let samples=previous?.field===field?previous.samples:undefined;
+  const check=()=>{if(preparation.signal?.aborted)throw new DOMException('Loading cancelled.','AbortError');};
+  const frame=async()=>{
+   check();await new Promise<void>((resolve,reject)=>{
+@@ -87,13 +102,17 @@ export async function terrainModelAsync(environment:string,objects:readonly Plac
+    if(radius!==10){floraModel(kind,kit);await frame();}
+   }
+   const level=LOD[lod].terrainSubdivisions,ico=icosphere(level),count=ico.levels[level].vertices;
+-  const total=count+objects.length,budget=preparation.budgetMs??6;let completed=0,started=performance.now();
++  const total=count+objects.length,budget=preparation.budgetMs??6;let completed=samples?count:0,started=performance.now();
+   if(!Number.isFinite(budget)||budget<0)throw new Error('Invalid terrain preparation budget.');
+   preparation.onProgress?.(completed,total);
+-  for(let i=0;i<count;i++){
+-   check();const dir:Vec3=[ico.dirs[i*3],ico.dirs[i*3+1],ico.dirs[i*3+2]];
+-   samples.set(key(dir),field.sample(dir));completed++;
+-   if(performance.now()-started>=budget){preparation.onProgress?.(completed,total);await frame();started=performance.now();}
++  if(!samples){
++   const grid=new Map<string,ReturnType<TerrainField['sample']>>();
++   for(let i=0;i<count;i++){
++    check();const dir:Vec3=[ico.dirs[i*3],ico.dirs[i*3+1],ico.dirs[i*3+2]];
++    grid.set(sampleKey(dir),field.sample(dir));completed++;
++    if(performance.now()-started>=budget){preparation.onProgress?.(completed,total);await frame();started=performance.now();}
++   }
++   check();samples=grid;vertexGrids.set(lod,{field,samples});
+   }
+   const preparedFoundations:ReturnType<typeof foundations>=[];
+   for(const object of objects){
+@@ -101,9 +120,9 @@ export async function terrainModelAsync(environment:string,objects:readonly Plac
+    if(performance.now()-started>=budget){preparation.onProgress?.(completed,total);await frame();started=performance.now();}
+   }
+   preparation.onProgress?.(completed,total);await frame();
+-  const sampledField:TerrainField={...field,sample:dir=>samples.get(key(dir))??field.sample(dir)};
++  const sampledField:TerrainField={...field,sample:dir=>samples?.get(sampleKey(dir))??field.sample(dir)};
+   result=terrainModel(environment,objects,blueprints,lod,alphaCanvas,radius,surfaceRoutes,{field:sampledField,kit,foundations:preparedFoundations});
+   // The model no longer needs vertex samples once its buffers and flora exist.
+-  samples.clear();await frame();return result;
+- }catch(error){samples.clear();if(result)result.dispose();else kit.dispose();throw error;}
++  samples=undefined;await frame();return result;
++ }catch(error){samples=undefined;if(result)result.dispose();else kit.dispose();throw error;}
+ }
 diff --git a/src/client/town-residents.ts b/src/client/town-residents.ts
 index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106ab63f9909 100644
 --- a/src/client/town-residents.ts
@@ -2942,3 +3014,50 @@ index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83
 -#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true]{outline:2px solid #378f79}
 +#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics,#world-guide-residents{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true],#world-guide-residents button[aria-pressed=true]{outline:2px solid #378f79}
  #world-guide-dialog button,#world-guide-hud button,#world-guide-home{min-height:44px;border-radius:10px;border:1px solid #acbcaa;padding:7px 10px;cursor:pointer;background:#f5f1e2;color:#293c38;font:13px system-ui}
+diff --git a/spec/terrain-preparation.test.ts b/spec/terrain-preparation.test.ts
+index a5302863a05df41569128fdfebc640a330e194da..0a56c6be69bf987487149720c86f16c6d2be6696 100644
+--- a/spec/terrain-preparation.test.ts
++++ b/spec/terrain-preparation.test.ts
+@@ -9,6 +9,7 @@ import type {PlacedObject} from '../src/shared/planets.ts';
+ import type {Vec3} from '../src/shared/world.ts';
+
+ const environment=encodeEnvironment(defaultEnvironment('temperate',71923));
++const coldEnvironment=encodeEnvironment(defaultEnvironment('temperate',71925));
+ const objects:PlacedObject[]=[{id:'ordinary-foundation',kind:'path',position:[0,1,0],rotation:.37,assetVersion:2,version:1}];
+ const groundAttributes=['position','normal','color','surface','cover'];
+ type TerrainModel=ReturnType<typeof terrainModel>;
+@@ -72,9 +73,24 @@ it.each([10,21.6])('prepares the exact complete low terrain, foundation and flor
+  }finally{prepared?.dispose();reference.dispose();}
+ },15000);
+
++it('reuses an exact base grid while applying new foundations and flora clearings',async()=>{
++ const original=await terrainModelAsync(environment,[],{},'low',false,21.6,[],{yieldFrame:async()=>{}});
++ let edited:TerrainModel|undefined,reference:TerrainModel|undefined;
++ const progress:number[]=[];
++ try{
++  edited=await terrainModelAsync(environment,objects,{},'low',false,21.6,[],{
++   yieldFrame:async()=>{},onProgress:done=>progress.push(done),
++  });
++  reference=terrainModel(environment,objects,{},'low',false,21.6);
++  expect(progress[0]).toBe(original.stats.groundVertices);
++  expect(progress.at(-1)).toBe(original.stats.groundVertices+objects.length);
++  expect(snapshot(edited)).toEqual(snapshot(reference));
++ }finally{original.dispose();edited?.dispose();reference?.dispose();}
++},15000);
++
+ it('cancels during sampling without publishing a partial terrain and releases every prepared kit resource once',async()=>{
+  const tracked=trackPrivateKits(),controller=new AbortController(),publish=vi.fn();
+- const pending=terrainModelAsync(environment,objects,{},'low',false,21.6,[],{
++ const pending=terrainModelAsync(coldEnvironment,objects,{},'low',false,21.6,[],{
+   signal:controller.signal,budgetMs:0,yieldFrame:async()=>{tracked.watch();},
+   onProgress:done=>{if(done>0)controller.abort();},
+  });
+@@ -104,7 +120,7 @@ it('interrupts a suspended frame immediately on cancellation and releases alread
+
+ it('releases private textures, plant materials and geometries when a preparation frame fails',async()=>{
+  const tracked=trackPrivateKits(),failure=new Error('Frame preparation failed');let sampled=false;
+- await expect(terrainModelAsync(environment,objects,{},'low',false,21.6,[],{
++ await expect(terrainModelAsync(coldEnvironment,objects,{},'low',false,21.6,[],{
+   budgetMs:0,onProgress:done=>{sampled=done>0;},yieldFrame:async()=>{tracked.watch();if(sampled)throw failure;},
+  })).rejects.toBe(failure);
+  expect([...tracked.resources.keys()].some(resource=>resource instanceof Material)).toBe(true);
