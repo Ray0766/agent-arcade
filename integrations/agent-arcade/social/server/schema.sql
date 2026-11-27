@@ -195,6 +195,11 @@ CREATE TABLE IF NOT EXISTS local_reaction_scan (
   chat TEXT PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE,
   last_message INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS voice_listens (
+  account TEXT NOT NULL REFERENCES users(number) ON DELETE CASCADE,
+  message INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  PRIMARY KEY(account,message)
+);
 CREATE TABLE IF NOT EXISTS message_replies (
   message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
   original INTEGER NOT NULL REFERENCES messages(id)

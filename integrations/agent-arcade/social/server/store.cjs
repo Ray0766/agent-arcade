@@ -653,6 +653,25 @@ class SocialStore {
     this.run('INSERT INTO message_voices VALUES(?,?,?,?)',row.lastInsertRowid,voice.durationMs,voice.digest,voice.bytes);
     return this.message(this.one('SELECT * FROM messages WHERE id=?',row.lastInsertRowid));
   }
+  markVoiceListened(a,id,message,{expectedAccount,revision}) {
+    if(expectedAccount!==a)fail(409,'voice_session','账号已切换，请重新打开会话');
+    const chat=this.access(a,id);
+    if(revision!==chat.membershipRevision)fail(409,'voice_session','会话权限已变更，请重新打开');
+    const visible=this.one(`SELECT 1 FROM message_voices v JOIN messages m ON m.id=v.message
+      JOIN users sender ON sender.number=m.sender AND sender.kind='human'
+      WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0`,id,message,chat.since);
+    if(!visible)fail(404,'unknown_voice','这条语音已无法播放');
+    this.run('INSERT INTO voice_listens(account,message) VALUES(?,?) ON CONFLICT DO NOTHING',a,message);
+    return {listened:true};
+  }
+  withVoiceListens(a,messages){
+    const ids=messages.filter(row=>row.attachment?.type==='voice'&&row.sender.kind==='human').map(row=>row.id);
+    if(!ids.length)return messages;
+    const slots=ids.map(()=>'?').join(',');
+    const heard=new Set(this.all(`SELECT message FROM voice_listens WHERE account=? AND message IN (${slots})`,
+      a,...ids).map(row=>row.message));
+    return messages.map(row=>heard.has(row.id)?{...row,listened:true}:row);
+  }
   messageVoice(a,id,message) {
     const chat=this.access(a,id);
     const voice=this.one(`SELECT v.bytes FROM message_voices v JOIN messages m ON m.id=v.message

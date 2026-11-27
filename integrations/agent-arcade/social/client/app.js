@@ -1924,6 +1924,10 @@ function renderHistory(scroll) {
         control.append(icon,detail);
         paintVoice(control,message.attachment.durationMs);
       }
+      if(message.sender.kind==='human'){
+        const heard=el('span',message.listened?'已听完':'还没听完','voice-listened');
+        meta.append(heard);
+      }
       content.append(meta,control);
     }else if(message.webResults?.length&&!message.removed){
       const results=el('div',null,'body web-results');
@@ -2950,12 +2954,35 @@ async function toggleVoice(message,control) {
     stopVoicePlayback();
     paintVoice(control,durationMs,'failed');
   };
+  const visit=chatVisit,revision=membershipRevision,epoch=generation;
+  let sought=false;
+  audio.addEventListener('seeking',()=>{sought=true;});
+  const stillVisible=()=>generation===epoch&&chatVisit===visit&&chat===id&&user?.number===account&&
+    membershipRevision===revision&&visibleHistory().some(row=>row.id===message.id&&!row.removed);
+  async function saveListened(){
+    try{
+      await api(thread(id)+'/messages/'+message.id+'/listened',{expectedAccount:account,revision},{expectedAccount:account});
+      if(!stillVisible())return;
+      for(const rows of [messages,historyContext?.messages]){
+        const row=rows?.find(item=>item.id===message.id);
+        if(row)row.listened=true;
+      }
+      renderHistory(false);
+    }catch{
+      if(stillVisible())$('#send-error').textContent='听完状态未保存，可重新播放。';
+    }
+  }
   active.player=new VoiceQueuePlayer(audio,{
     baseURL:location.href,
     onState(state){
       if(inlineVoice!==active)return;
       if(state==='failed')fail();
-      else if(state==='completed')stopVoicePlayback();
+      else if(state==='completed'){
+        const completed=message.sender.kind==='human'&&!sought&&audio.ended&&audio.played.length===1&&
+          audio.played.start(0)<=0.05&&audio.played.end(0)>=audio.duration-0.05&&stillVisible();
+        stopVoicePlayback();
+        if(completed)void saveListened();
+      }
       else if(state==='paused'||state==='playing')paintVoice(control,durationMs,state,audio);
       else if(state==='loading'||state==='buffering')paintVoice(control,durationMs,'buffering',audio);
     },
