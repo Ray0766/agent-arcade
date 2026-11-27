@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "307d5909baaca75df40e10a346359a0a79fbbd47",
-  "worldTree": "abe4ed218599478ae9b48028560f9fe701fe54c6",
-  "patchSHA256": "bb9ac6f96fbfe2ba8e00f0ca36e5a439555a37bbab0f9312d67326f428142993",
+  "worldRevision": "a03ef116e724ec9e75e249569e537074021e0c9e",
+  "worldTree": "925f3e24db8521602cf89c4f4658574cb9a68832",
+  "patchSHA256": "702d49b447192d570adc84f71759335f64a8428869ee6f3b589c907087fd25cf",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -384,6 +384,18 @@
     },
     {
       "action": "A",
+      "path": "src/assets/nell-seedling-coral.webp",
+      "blob": "b1941060ebad56caadb1eb602f967b2b301e0bc6",
+      "sha256": "ea715442d3f4a24e6dba6c616ed63ff5a676cffd12469d39ddbec398183f0661"
+    },
+    {
+      "action": "A",
+      "path": "src/assets/nell-seedling-gold.webp",
+      "blob": "e7afaaafdf811cb137bfeda00d6924c440537160",
+      "sha256": "6ee5533397de8cfc0af0059600d6be1241292263b446eece6d1e166d85c8b7b5"
+    },
+    {
+      "action": "A",
       "path": "src/assets/resident-face/README.md",
       "blob": "88dabbd960b29544b2ab62102f09f7405ac5854c",
       "sha256": "56abfe881d33daba21211b91e82d9e59e39a28eeeeda1b1a1a86c24b3c984fb9"
@@ -521,6 +533,12 @@
       "sha256": "f993d1110ffb02fb0e947e269390c666b66c64b5b8bedc355f4e233f8205a71c"
     },
     {
+      "action": "A",
+      "path": "src/client/bouquet-model.ts",
+      "blob": "e0388eb552ee7b00bc303dcd95cc286a683cc873",
+      "sha256": "d39586cc0e14d307b5d950f2f49518ba217239d8943defc15c35af3609ec188a"
+    },
+    {
       "action": "M",
       "path": "src/client/build-art.ts",
       "blob": "434dca5f7d35749a931c1732c274edb757d23b15",
@@ -555,6 +573,12 @@
       "path": "src/client/courtyard-inspiration.ts",
       "blob": "167d266c8a6dd078a0f8a112bda0b079733141ab",
       "sha256": "f7542f2ba2e3e820869165f108b90ca8f5390aead3e814f655ed3a39b1b19f0d"
+    },
+    {
+      "action": "A",
+      "path": "src/client/courtyard-petal-material.ts",
+      "blob": "b91aafbeba21cec26e8f403e16f5a1886b1652eb",
+      "sha256": "053c4861b731f10e118a6193156f91cc50da54c6817a66b441180efe7f85ba3d"
     },
     {
       "action": "A",
@@ -595,8 +619,8 @@
     {
       "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "8e164b713b68f9f65a0cb099e5918e27453f035e",
-      "sha256": "53f1a889d4f6d10afa8dd8f757965df78494db9098761b2d7cce5bf47f28f20e"
+      "blob": "50bd78d79a6d1ab3c83b3dfc2d017cfc6274e496",
+      "sha256": "6ccbe42fbc484a7f6184297f8764b4b5e9681fc2aa5b5791b065f9808157975a"
     },
     {
       "action": "M",
@@ -613,8 +637,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "7896cb01bce1869c8c928296dba643349a16957d",
-      "sha256": "43543922c6e7b38d5a9a373c126287cfc3daf78eef11eaaee4dbba35387b8095"
+      "blob": "281e01bcdabc57b2775c9a55487d6b80a30a09b7",
+      "sha256": "ca939d226cb1f331e57ed89a5ed7dcff776196b5c968721edb2966f0f669a9a6"
     },
     {
       "action": "M",
@@ -625,8 +649,14 @@
     {
       "action": "A",
       "path": "src/client/nature-art.ts",
-      "blob": "cafc0f18826c98d5debf73fb5ff14c6c1b00042b",
-      "sha256": "9ef6d4f912fc91c7814e5bbb6bf6e1695638540b40f70a1472e5a87b046a7739"
+      "blob": "8aa416594f66a3d8764793983162463db52ba6f3",
+      "sha256": "d14121ff855126c7ab951e8e716e01069560a0c677edfabe2e54855d648babb4"
+    },
+    {
+      "action": "A",
+      "path": "src/client/nell-seedling-art.ts",
+      "blob": "affb3e191fedb53d3d063b9ee1777a50b52aa951",
+      "sha256": "436d55f2bf265cec128bd6a242205026d8c36e55d0bf90caf5e74a083850159a"
     },
     {
       "action": "M",
@@ -696,6 +726,24 @@
     },
     {
       "action": "A",
+      "path": "src/client/town-nell-camera.ts",
+      "blob": "9cdc1a296bd0d82778d7f58b1df79f3ecf420bc8",
+      "sha256": "b92c381c6f6395718404092eb473b3c52267263d7ec56aa450213e644e94cf7e"
+    },
+    {
+      "action": "A",
+      "path": "src/client/town-nell-seedlings.css",
+      "blob": "62c6afd2a0b92b04407d05564722b19f20c06d49",
+      "sha256": "c10f9b3160fabe4305fae3271981234261de5ad48767297e114a34cdc3655a9e"
+    },
+    {
+      "action": "A",
+      "path": "src/client/town-nell-seedlings.ts",
+      "blob": "5cbff8af5685fa0079659169776527f329d2ead6",
+      "sha256": "76cc086e8f9ecb3c57ede2a91f3e2e415bd390836e104ffd3cfd4b3c1c0fbf7e"
+    },
+    {
+      "action": "A",
       "path": "src/client/town-post-delivery.css",
       "blob": "5fe07613e5a6d50e85ba1cfdcc6fc4f274eccd0c",
       "sha256": "e7664f7561ec4252576a3f33d162a08fe6ca477f039eac86c80fcce622bef5e2"
@@ -721,8 +769,8 @@
     {
       "action": "A",
       "path": "src/client/town-quay-repair-prop.ts",
-      "blob": "e3c210a717c4d2ce69c7058aebe7645aa9d43855",
-      "sha256": "8587b1f27f236ee5d2749b811be524140de373853173c73bf6c53ccb6fd80a23"
+      "blob": "32ee888af1cc9a44ba0126aafa5604e5919bdee4",
+      "sha256": "0f9c293f004134ccfe6ea6d6b58ba04a3325a2551dc7f83207d3cff8d25ad2ef"
     },
     {
       "action": "A",
@@ -745,8 +793,8 @@
     {
       "action": "M",
       "path": "src/client/town-residents.ts",
-      "blob": "3394ad3c2366c9625a722022215c530d3429e799",
-      "sha256": "c80311ddc7f6639fbdb49aef69ac2d63e832c462067089a24e046a5d053b7f2d"
+      "blob": "44cfd6652bccee1056edcd2039753f5eba5d4450",
+      "sha256": "916582d3f2b2e5daedc3870f51510683e2dcd98c4a0a06229d675ff5f94ccd10"
     },
     {
       "action": "A",
@@ -823,8 +871,14 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "87da96be516d44599a958712ee33fdd0c4f21d05",
-      "sha256": "9b5db81f586ced64a57f3a836b79019da583d41907dc39e6e216184517c1b6bd"
+      "blob": "c64f48d42da1855a6cfdc7959bfc56fb49bea7b6",
+      "sha256": "d4e5a1059a235c16d6a15771371c85723dc5f1b507a51c2182f5d5bd3b33b2b5"
+    },
+    {
+      "action": "A",
+      "path": "src/server/nell-seedlings.ts",
+      "blob": "2ab367bf8c0151d25612d28d0876e7e485150cd5",
+      "sha256": "ca362f21e6fe3aa2cc501fe2d1388d0623139f64a1f693d27d5474a126322161"
     },
     {
       "action": "A",
@@ -853,8 +907,8 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "c41be1654b9ced2341bf02a7622a4160965e3001",
-      "sha256": "1d70da84300d39c33ad951ba73ea2fca49198dba5150b5042161afa84afdba3b"
+      "blob": "5828fb75f9275c113e1c2383fe6877fb4db19f99",
+      "sha256": "7318000691caffecd1fd4e62503e2d6e44dea7eb27576c795423d832fa6ee0c2"
     },
     {
       "action": "A",
@@ -867,6 +921,18 @@
       "path": "src/shared/courtyard-arrival.ts",
       "blob": "c3ff42a4c1edccdd15a868eeea00a4fc4bba1d93",
       "sha256": "43565b441e61e0077903d884d39ae6c122df58f85afe997c0a736e3260b39b07"
+    },
+    {
+      "action": "A",
+      "path": "src/shared/courtyard-plantings.ts",
+      "blob": "6d9f9ebd2d7a8c97594daf8024abb757db673c49",
+      "sha256": "52277e95929dc5ecc97f7aa2738e6a31ef1dc1aeca00344e3368da331098d316"
+    },
+    {
+      "action": "A",
+      "path": "src/shared/nell-seedlings.ts",
+      "blob": "7857ccba93a7a13ff6ff14ad3a9a2d1a1aa32887",
+      "sha256": "e33b60150a8a32c1d91bb9f3af693295b2263ae59a119e67d8f79914c3cbefb9"
     },
     {
       "action": "A",

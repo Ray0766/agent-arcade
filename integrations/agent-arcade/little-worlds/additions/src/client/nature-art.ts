@@ -20,6 +20,7 @@ interface PieceData {
   triangles: number;
 }
 interface Piece {
+  texture: string;
   geometry: T.BufferGeometry;
   material: T.MeshStandardMaterial;
 }
@@ -71,7 +72,7 @@ function pieces(data: readonly PieceData[]) {
       geometry.setIndex(new T.BufferAttribute(new Uint16Array(bytes(piece.i)), 1));
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
-      return { geometry, material: materialFor(piece.t, piece.mask) };
+      return { geometry, material: materialFor(piece.t, piece.mask), texture: piece.t };
     });
     geometries.set(data, parts);
   }
@@ -127,6 +128,14 @@ function flowerPot() {
   ].map(([x, y]) => new T.Vector2(x, y)), 12));
 }
 
+export function plantedPotMesh(radius: number, height: number) {
+  potMaterial ??= markShared(applyArtMaterial(new T.MeshStandardMaterial(HARBOUR_SURFACES.copper)));
+  const pot = new T.Mesh(flowerPot(), potMaterial);
+  pot.scale.set(radius, height, radius);
+  pot.castShadow = pot.receiveShadow = true;
+  return pot;
+}
+
 /** A rendering-only upgrade for both generations of standalone saved plants.
  * Scale within the old size contract; the caller still seats, picks and edits
  * the normal object root and the server still owns planting clearance. */
@@ -137,13 +146,7 @@ export function plantedNature(kind: 'tree' | 'flowers', assetVersion: number, lo
   root.userData.assetVersion = assetVersion;
   const shape = kind === 'tree' ? 'leafy' : 'flowers';
   const potHeight = kind === 'flowers' ? height * .42 : 0;
-  if (potHeight) {
-    potMaterial ??= markShared(applyArtMaterial(new T.MeshStandardMaterial(HARBOUR_SURFACES.copper)));
-    const container = new T.Mesh(flowerPot(), potMaterial);
-    container.scale.set(radius, potHeight, radius);
-    container.castShadow = container.receiveShadow = true;
-    root.add(container);
-  }
+  if (potHeight) root.add(plantedPotMesh(radius, potHeight));
   const width = Math.min(height - potHeight, radius * 2 / Math.max(models[shape].span[0], models[shape].span[2]));
   for (const { geometry, material } of pieces(shapeData(shape, lod === 'low' ? 'distant' : 'close'))) {
     const mesh = new T.Mesh(geometry, material);

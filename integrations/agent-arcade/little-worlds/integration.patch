@@ -766,19 +766,35 @@ index 5e243b9ac17c704ab24ecf75238869f6006af5f8..353faeb78c3b1508899eece2aebc32ed
 +   addTownExterior(model.object,parts,worldMaterials());
     if(village){
 diff --git a/src/client/home-interior.ts b/src/client/home-interior.ts
-index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27453f035e 100644
+index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..50bd78d79a6d1ab3c83b3dfc2d017cfc6274e496 100644
 --- a/src/client/home-interior.ts
 +++ b/src/client/home-interior.ts
-@@ -13,3 +13,3 @@ import { emitPart } from '../shared/blueprint-parts.ts';
+@@ -1,3 +1,5 @@
++import { isNellFlower, type NellSeedlings } from '../shared/nell-seedlings.ts';
++import { createHomeNellTray } from './nell-seedling-art.ts';
+ import {appearanceOf} from '../shared/appearance.ts';
+ import type { HomeDoorPartId } from '../shared/home-door.ts';
+ import * as T from 'three';
+@@ -11,7 +13,7 @@ import { PartBuilder } from '../assets/claude-geometry/style/geometry.ts';
+ import { libraryMaterials, makeKit } from '../assets/claude-geometry/blueprint/parts/kit.ts';
+ import { emitPart } from '../shared/blueprint-parts.ts';
  import type { PartId } from '../shared/blueprint-parts.ts';
 -import { HOME_ROOM, HOME_BODY_RADIUS, homeExit, homeNearDoor, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
 +import { HOME_ROOM, HOME_BODY_RADIUS, HOME_ITEM_KINDS, homeExit, homeNearDoor, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
  import type { HomeDescriptor, HomeInterior as InteriorData, HomeItem, HomeRoom } from '../shared/home.ts';
-@@ -21,2 +21,3 @@ import { createHomeDoor } from './home-door.ts';
+ import type { PlayerState, Vec3 } from '../shared/world.ts';
+ import type { Universe } from '../shared/planets.ts';
+@@ -19,6 +21,7 @@ import type { PresenceSnapshot } from '../shared/presence.ts';
+ import { homeIndoorDoorOrigin } from '../shared/home-door.ts';
+ import { createHomeDoor } from './home-door.ts';
  import { createHomeRoomArt, applyHomeRoomTheme } from './home-room-art.ts';
 +import {loadHomeFurniture} from './home-furniture-models.ts';
  import {beginSceneLoading,yieldSceneFrame} from './loading-state.ts';
-@@ -53,2 +54,18 @@ export function homeFurnitureFits(items: readonly HomeItem[], position: Vec3, ro
+ import './home-interior.css';
+ 
+@@ -51,20 +54,39 @@ export function homeFurnitureFits(items: readonly HomeItem[], position: Vec3, ro
+     return items.slice(0, i).every(other => { const b = homeItemBounds(other); return !(a.minX < b.maxX + .04 && a.maxX > b.minX - .04 && a.minZ < b.maxZ + .04 && a.maxZ > b.minZ - .04); });
+   });
  }
 +export function firstHomeFurnitureHit(ray: T.Raycaster, roots: T.Object3D[], furniture: T.Group) {
 +  for (const hit of ray.intersectObjects(roots)) {
@@ -797,25 +813,37 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +}
 +
  const translation: Record<string, [string, string]> = {
-@@ -58,3 +75,3 @@ const translation: Record<string, [string, string]> = {
+   title: ['A room of your own', '我的小屋'], guest: ['Visiting this home', '正在做客'],
+   leave: ['Go outside · E', '出门 · E'], door: ['Open the door, then choose Go outside', '走到门口开门，再选择出门'],
+   openDoor: ['Open door', '开门'], closeDoor: ['Close door', '关门'], opened: ['Door open', '门已打开'], closed: ['Door closed · open it to leave', '门已关好 · 开门后可出门'],
    photo: ['Photo mode', '照片模式'],
 -  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'],
 +  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'], undo: ['Undo last change', '撤销上一步'],
    move: ['MOVE', '移动'], hint: ['WASD / arrows · open the door, then E to leave', 'WASD / 方向键移动 · 门口开门后按 E 出门'],
-@@ -64,2 +81,4 @@ const translation: Record<string, [string, string]> = {
+   phoneHint: ['Use the thumbstick · open the door to go outside', '拖动摇杆走动 · 门口开门后选择出门'],
+   saved: ['Room saved', '房间已保存'], saving: ['Saving…', '正在保存…'], entering: ['Welcome home', '欢迎回家'],
+   offline: ['Connection lost. Your saved room is safe.', '连接中断，已保存的房间仍然安全。'],
    retry: ['Reconnect', '重新连接'], pending: ['Opening the door…', '正在开门…'],
 +  replace: ['Replace with', '更换为'],
 +  replaceBlocked: ['This piece does not fit here. Move it or choose another.', '这里放不下这件家具，请先移动或换一种。'],
    material: ['Wall colour', '墙面颜色'], furniture: ['Furniture', '家具'], rotate: ['Turn', '旋转'],
-@@ -67,2 +86,3 @@ const translation: Record<string, [string, string]> = {
+   warm: ['Cream', '奶油'], sage: ['Sage', '浅绿'], blue: ['Sky', '浅蓝'],
    table: ['Low table', '矮桌'], chair: ['Stool', '木凳'], shelf: ['Shelf', '书架'], plant: ['Plant', '盆栽'],
 +  pickFurniture: ['Click or tap furniture, or choose it from the list', '点选家具，或从列表选择'],
    edited: ['Preview · save to keep your changes', '布置预览 · 保存后保留修改'],
-@@ -86,2 +106,3 @@ export class HomeInterior {
+   blocked: ['Leave the doorway and a walking route clear.', '请给门口和行走路线留出空间。'],
+   readonly: ['You can explore; the owner arranges this room.', '可以自由参观，房间由主人布置。'],
+@@ -84,6 +106,7 @@ export class HomeInterior {
+   private readonly fill = new T.HemisphereLight();
+   private readonly sun = new T.DirectionalLight();
    private furniture = new T.Group();
 +  private furnitureModels: Awaited<ReturnType<typeof loadHomeFurniture>> = new Map();
    private avatar = courier('clay');
-@@ -102,5 +123,7 @@ export class HomeInterior {
+   private selection = new T.Mesh(new T.RingGeometry(.45, .49, 4, 1, Math.PI / 4), new T.MeshBasicMaterial({ color: '#dcad5c', transparent: true, opacity: .85, depthWrite: false, side: T.DoubleSide }));
+   private guests = new Map<string, ReturnType<typeof courier>>();
+@@ -100,14 +123,36 @@ export class HomeInterior {
+   private pendingAction = false;
+   private online = true;
    private editing = false;
 -  private dirty = false;
 +  private readonly undoHistory: InteriorData[] = [];
@@ -824,16 +852,52 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +  private furniturePress: { pointerId: number; x: number; y: number; group: T.Group } | null = null;
 +  private readonly furnitureRay = new T.Raycaster();
    private lastSend = 0;
-@@ -130,3 +153,3 @@ export class HomeInterior {
+   private lastViewport = '';
+   private locale = '';
+   private statusKey = 'entering';
+   private sourceKey = '';
++  private nellRequest?: AbortController;
++  private nellTray?: ReturnType<typeof createHomeNellTray>;
++  private readonly nellSource=document.createElement('p');
++  private async loadNellTray(home:HomeDescriptor,signal:AbortSignal) {
++    try{
++      const response=await fetch('/api/home/nell-seedlings',{signal,cache:'no-store'});
++      if(!response.ok)return;
++      const value:unknown=await response.json();
++      if(signal.aborted||!Array.isArray(value))return;
++      const colors:NellSeedlings=value.filter(isNellFlower);
++      const zh=document.documentElement.lang.startsWith('zh');
++      this.nellTray=createHomeNellTray(colors,home.interior,zh);
++      if(!this.nellTray)return;
++      this.scene.add(this.nellTray.object);
++      this.nellSource.hidden=false;
++      const names=colors.map(color=>zh?(color==='gold'?'金色':'珊瑚色'):(color==='gold'?'gold':'coral'));
++      this.nellSource.textContent=zh?'主星温室 · 奈尔 · '+names.join('、'):'Nell · Main planet glasshouse · '+names.join(', ');
++    }catch(error){if(!signal.aborted)console.warn('Study seedlings unavailable',error);}
++  }
++
+   private currentVisit = '';
+   private abort = new AbortController();
+   private _active = false;
+@@ -128,29 +173,66 @@ export class HomeInterior {
+     this.ui.dataset.i18nVerbatim = ''; this.ui.setAttribute('aria-label', 'Home interior');
+     this.ui.innerHTML = `<header class="home-room-header"><div><span class="home-room-eyebrow">HOME / 小屋</span><h2 data-home-text="title"></h2><p id="home-room-status" role="status" aria-live="polite"></p></div><nav class="home-door-actions"><button id="home-toggle-door"></button><button id="home-exit" data-home-text="leave"></button></nav></header>
        <div class="home-room-tools"><button id="home-photo" data-home-text="photo"></button><button id="home-arrange" data-home-text="arrange"></button><button id="home-retry" data-home-text="retry" hidden></button><p id="home-room-hint"></p></div>
 -      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
 +      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><label><span data-home-text="replace"></span> <select id="home-item-replace"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-room-undo" data-home-text="undo"></button><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
        <div id="home-joystick" class="home-joystick" role="group" aria-label="Move around the room"><span id="home-stick"></span><small data-home-text="move"></small></div>`;
-@@ -138,2 +161,3 @@ export class HomeInterior {
++    this.nellSource.className='home-nell-source';this.nellSource.hidden=true;
++    this.ui.querySelector('#home-room-status')?.after(this.nellSource);
+     document.body.append(this.ui);
+     const on = (id: string, fn: () => void) => this.get(id).addEventListener('click', fn, { signal: this.abort.signal });
+     on('home-exit', () => { if (this.nearExit()) void this.leave(); });
+     on('home-toggle-door', () => void this.toggleDoor());
+     on('home-photo',()=>{if(!this.pendingAction&&!this.preparing)window.dispatchEvent(new Event('open-photo-mode'));});
      on('home-arrange', () => this.beginEditing());
 +    on('home-room-undo', () => this.undoDraft());
      on('home-cancel', () => this.cancelEditing());
-@@ -142,6 +166,40 @@ export class HomeInterior {
+     on('home-save', () => void this.saveDraft());
+     on('home-retry', () => void this.recover());
      for (const material of ['warm', 'sage', 'blue'] as const) on(`home-material-${material}`, () => {
 -      if (!this.canChange() || !this.draft) return;
 -      this.draft.material = material; this.dirty = true; this.applyTheme(material); this.setStatus('edited'); this.updateControls();
@@ -877,31 +941,61 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +      }, pointerOptions);
 +    }
      on('home-item-left', () => this.changeItem(-.25, 0)); on('home-item-right', () => this.changeItem(.25, 0));
-@@ -152,3 +210,3 @@ export class HomeInterior {
+     on('home-item-forward', () => this.changeItem(0, -.25)); on('home-item-back', () => this.changeItem(0, .25));
+     on('home-item-rotate', () => this.changeItem(0, 0, Math.PI / 2));
+     window.addEventListener('keydown', this.keyDown, { capture: true, signal: this.abort.signal });
+     window.addEventListener('keyup', this.keyUp, { capture: true, signal: this.abort.signal });
      window.addEventListener('blur', () => this.clearInput(), { signal: this.abort.signal });
 -    window.addEventListener('beforeunload', event => { if (this.active && this.dirty) event.preventDefault(); }, { signal: this.abort.signal });
 +    window.addEventListener('beforeunload', event => { if (this.active && this.undoHistory.length) event.preventDefault(); }, { signal: this.abort.signal });
      document.addEventListener('visibilitychange', () => { if (document.hidden) { this.clearInput(); if(!this.photoMode)void this.flush(); } }, { signal: this.abort.signal });
-@@ -168,2 +226,3 @@ export class HomeInterior {
+     const joystick = this.get('home-joystick');
+     const drag = (e: PointerEvent) => { const rect = joystick.getBoundingClientRect(); this.stick.set((e.clientX - rect.left - rect.width / 2) / 34, (e.clientY - rect.top - rect.height / 2) / 34).clampLength(0, 1); this.get('home-stick').style.transform = `translate(${this.stick.x * 25}px,${this.stick.y * 25}px)`; };
+@@ -166,10 +248,11 @@ export class HomeInterior {
+     this.locale = document.documentElement.lang;
+     this.ui.querySelectorAll<HTMLElement>('[data-home-text]').forEach(el => { el.textContent = this.text(el.dataset.homeText!); });
      for (const direction of ['left', 'right', 'forward', 'back']) this.get(`home-item-${direction}`).setAttribute('aria-label', this.text(direction));
 +    this.get<HTMLSelectElement>('home-item-replace').replaceChildren(...HOME_ITEM_KINDS.map(kind => new Option(this.text(kind), kind)));
      this.populateItems(); this.setStatus(this.statusKey); this.updateControls();
-@@ -171,3 +230,3 @@ export class HomeInterior {
+   }
    private setStatus(key: string) { this.statusKey = key; this.get('home-room-status').textContent = this.text(key); }
 -  private clearInput() { this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
 +  private clearInput() { this.furniturePress = null; this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
    private keyDown = (event: KeyboardEvent) => {
-@@ -204,3 +263,3 @@ export class HomeInterior {
+     if (!this.active || this.preparing || this.photoMode || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+     if (document.body.classList.contains('world-guide-talking') || (event.target as Element)?.closest('input,select,textarea,button,a,[contenteditable]')) return;
+@@ -202,14 +285,14 @@ export class HomeInterior {
+       this.lastViewport = '';
+       if(document.pointerLockElement)document.exitPointerLock();
        this.currentVisit = visit; this.position = [...location.position]; this.yaw = location.yaw;
 -      this.editing = false; this.dirty = false; this.clearInput();
 +      this.editing = false; this.undoHistory.length = 0; this.clearInput();
        this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; this.selected = this.draft.items[0]?.id ?? '';
-@@ -211,3 +270,3 @@ export class HomeInterior {
+       this._active = true; this.ui.hidden = true; document.body.classList.add('home-interior-active');
+       this.avatar.setAppearance(appearanceOf(player)); this.online = true; this.setStatus(player.home.canEdit ? 'entering' : 'readonly');
+     }
+     const sourceKey = `${player.home.interiorId}:${player.home.interior.version}:${player.home.door.partId??'wall.door.open'}`;
      if (arriving || sourceKey !== this.sourceKey || this.preparation?.visit !== undefined && this.preparation.visit !== visit) {
 -      if (!this.editing || this.pendingAction) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
 +      if (!this.editing) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
        if(this.preparation?.key!==sourceKey||this.preparation.visit!==visit)void this.prepareRoom(sourceKey,visit);
-@@ -252,5 +311,8 @@ export class HomeInterior {
+       if (!homePositionAllowed(this.position, player.home.interior.items, HOME_BODY_RADIUS, player.home.interior.room, player.home.interior.doorOpen, player.home.door.partId)) this.position = [...location.position];
+     }
+@@ -239,6 +322,11 @@ export class HomeInterior {
+   }
+ 
+   private async prepareRoom(key:string,visit:string) {
++    this.clearNellTray();
++    if(this.home?.canEdit){
++      this.nellRequest=new AbortController();
++      void this.loadNellTray(this.home,this.nellRequest.signal);
++    }
+     this.cancelPreparation();
+     const preparation={key,visit,controller:new AbortController(),task:beginSceneLoading('Preparing your room…')};
+     this.preparation=preparation;this.clearInput();this.updateControls();
+@@ -250,9 +338,12 @@ export class HomeInterior {
+       await next();await next();
+       preparation.task.update('Preparing the room…');
        room=this.createRoom(interior);await next();
 +      const kinds = this.home?.canEdit && interior.items.length ? HOME_ITEM_KINDS : interior.items.map(item => item.kind);
 +      const models = await loadHomeFurniture(kinds);
@@ -911,11 +1005,19 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 -        furniture.add(this.createFurnitureItem(item));await next();
 +        furniture.add(this.createFurnitureItem(item,models));await next();
        }
-@@ -265,2 +327,3 @@ export class HomeInterior {
+       this.applyTheme(interior.material,room,furniture);
+       preparation.task.update('Finishing the view…');await next();
+@@ -263,6 +354,7 @@ export class HomeInterior {
+       try{await this.options.renderer.compileAsync(staging,this.camera);}finally{sun.shadow.dispose();}
+       await next();
        disposeGeometry(this.room);disposeGeometry(this.furniture);
 +      this.furnitureModels=models;
        this.room=room;this.furniture=furniture;room=null;furniture=null;this.scene.add(this.room,this.furniture);
-@@ -299,12 +362,21 @@ export class HomeInterior {
+       const {width,depth,height}=interior.room;configureHomeLighting(this.scene,this.fill,this.sun,width,depth,height);
+       this.doorView.root.position.fromArray(homeIndoorDoorOrigin(interior.room,this.home?.door.partId));this.lastViewport='';this.sourceKey=key;
+@@ -297,16 +389,25 @@ export class HomeInterior {
+     disposeGeometry(this.furniture); this.furniture = new T.Group(); this.scene.add(this.furniture);
+     for (const item of (this.draft ?? this.home!.interior).items)this.furniture.add(this.createFurnitureItem(item));
    }
 -  private createFurnitureItem(item:HomeItem) {
 -      const b = new PartBuilder('medium'), source = libraryMaterials(this.library), kit = makeKit(b, source);
@@ -947,7 +1049,11 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +    source.owned().forEach(material => { material.userData.ownedResource = true; });
 +    return group;
    }
-@@ -324,4 +396,29 @@ export class HomeInterior {
+ 
+   private applyTheme(material: InteriorData['material'],room=this.room,furniture=this.furniture) {
+@@ -322,8 +423,33 @@ export class HomeInterior {
+   }
+ 
    private canChange() { return this.active && !this.preparing && this.online && this.home?.canEdit && this.editing && !this.pendingAction; }
 +  private canPickFurniture() {
 +    return this.canChange() && !this.photoMode && !document.body.classList.contains('world-guide-talking') &&
@@ -978,7 +1084,11 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 -  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.editing = false; this.dirty = false; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
 +  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.clearInput(); this.editing = false; this.undoHistory.length = 0; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.populateItems(); this.setStatus('saved'); this.updateControls(); }
    private populateItems() {
-@@ -333,8 +430,31 @@ export class HomeInterior {
+     const select = this.get<HTMLSelectElement>('home-item-select'), items = this.draft?.items ?? [];
+     const signature = items.map(i => `${i.id}:${i.kind}`).join('|') + this.locale;
+@@ -331,12 +457,35 @@ export class HomeInterior {
+     if (!items.some(i => i.id === this.selected)) this.selected = items[0]?.id ?? '';
+     select.value = this.selected;
    }
 +  private get selectedItem() { return this.draft?.items.find(item => item.id === this.selected); }
    private changeItem(x: number, z: number, yaw = 0) {
@@ -1015,7 +1125,11 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +    this.setStatus(this.undoHistory.length ? 'edited' : 'saved');
 +    this.updateControls();
    }
-@@ -355,6 +475,10 @@ export class HomeInterior {
+   private nearExit() { return this.active && !this.preparing && !!this.home && homeNearDoor(this.position, this.home.interior.room, this.home.door.partId); }
+   private updateControls() {
+@@ -353,10 +502,14 @@ export class HomeInterior {
+     this.get('home-room-editor').hidden = !this.editing;
+     this.get('home-retry').hidden = this.online;
      this.get('home-joystick').hidden = this.editing;
 -    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.dirty;
 +    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.undoHistory.length;
@@ -1029,21 +1143,41 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +    replaceSelect.disabled = !this.canChange() || !selected;
 +    replaceSelect.value = selected?.kind ?? '';
      this.selection.visible = this.editing && !!selected;
-@@ -424,3 +548,3 @@ export class HomeInterior {
+     if (selected) { const box = homeItemBounds(selected); this.selection.position.set(selected.position[0], .022, selected.position[2]); this.selection.scale.set((box.maxX - box.minX + .2) * 1.5, (box.maxZ - box.minZ + .2) * 1.5, 1); }
+     for (const material of ['warm', 'sage', 'blue']) this.get(`home-material-${material}`).setAttribute('aria-pressed', String(this.draft?.material === material));
+@@ -422,12 +575,12 @@ export class HomeInterior {
+     await this.pendingMove;
+   }
    private async saveDraft() {
 -    if (!this.canChange() || !this.home || !this.draft || !this.dirty) return;
 +    if (!this.canChange() || !this.home || !this.draft || !this.undoHistory.length) return;
      this.clearInput(); this.pendingAction = true; this.updateControls(); this.setStatus('saving');
-@@ -429,3 +553,3 @@ export class HomeInterior {
+     try {
+       await this.flush(); await this.flush(); if (!this.online) return;
        const next = await this.options.save({ buildingId: this.home.buildingId, expectedVersion: this.draftVersion, material: this.draft.material, items: this.draft.items });
 -      this.editing = false; this.dirty = false; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
 +      this.editing = false; this.undoHistory.length = 0; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
      } catch (error) { this.get('home-room-status').textContent = error instanceof Error ? error.message : this.text('offline'); }
-@@ -471,3 +595,3 @@ export class HomeInterior {
+     finally { this.pendingAction = false; this.updateControls(); }
+   }
+@@ -466,10 +619,16 @@ export class HomeInterior {
+     catch (error) { this.get('home-room-status').textContent = error instanceof Error ? error.message : this.text('offline'); }
+     finally { this.pendingAction = false; this.updateControls(); }
+   }
++  private clearNellTray() {
++    this.nellRequest?.abort();
++    this.nellRequest=undefined;
++    this.nellTray?.dispose();this.nellTray=undefined;this.nellSource.hidden=true;
++  }
+   private close() {
++    this.clearNellTray();
+     this.cancelPreparation();
      this.photoMode=false;
 -    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.dirty = false;
 +    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.undoHistory.length = 0;
      document.body.classList.remove('home-interior-active');
+     for (const guest of this.guests.values()) disposeGeometry(guest.root); this.guests.clear();
+     for (const key of ['homeInterior', 'homePosition', 'homeVersion', 'homePending', 'homeDrawCalls', 'homeDoorOpen', 'homeArea']) delete this.options.renderer.domElement.dataset[key];
 diff --git a/src/client/i18n.ts b/src/client/i18n.ts
 index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995a39b312b 100644
 --- a/src/client/i18n.ts
@@ -1065,10 +1199,17 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba643349a16957d 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..281e01bcdabc57b2775c9a55487d6b80a30a09b7 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -30,6 +30,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
+@@ -1,3 +1,6 @@
++import { TownNellCamera } from './town-nell-camera.ts';
++import { NELL_GARDENER } from '../shared/nell-seedlings.ts';
++import { TownNellSeedlings } from './town-nell-seedlings.ts';
+ import {mountAmbientMusic} from './ambient-music.ts';
+ import {mountSceneShortcuts,restoreSceneFocus} from './scene-shortcuts.ts';
+ import {CharacterEntry} from './character-entry.ts';
+@@ -30,6 +33,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
  import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
  import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
@@ -1076,7 +1217,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
  import { GroundPresence } from './presence.ts';
  import { PresenceVisitGate } from './presence-visit.ts';
  import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
-@@ -69,12 +70,17 @@ import { createHomeDoor, placeHomeDoor } from './home-door.ts';
+@@ -69,12 +73,17 @@ import { createHomeDoor, placeHomeDoor } from './home-door.ts';
  import { createStateLoader } from './state-loader.ts';
  import { worldVisualSignature } from './world-visual-signature.ts';
  import { PhotoMode } from './photo-mode.ts';
@@ -1094,7 +1235,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
  import { HomeSetup } from './home-setup.ts';
  import { TeleportStations } from './teleport-station.ts';
  import { SaveProgress } from './save-progress.ts';
-@@ -144,6 +150,9 @@ let residentConversationKey='';
+@@ -144,6 +153,9 @@ let residentConversationKey='';
  let queue: Promise<unknown> = Promise.resolve();
  const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
@@ -1104,7 +1245,12 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
  function renderSaveProgress(){
    if(!state||physicsMismatch)return;
-@@ -186,6 +195,39 @@ function talkToResident(){
+@@ -182,10 +194,55 @@ function talkToResident(){
+   residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:true});
+   const found=residents?.nearest(walker.up.toArray() as Vec3,standing?.radius);
+   if(!found||near||nearDock||homeControls?.canEnter)return;
+-  if(speakingResident?.id===found.id&&!$('conversation').hidden)return;
++  if(nellSeedlings.active || (speakingResident?.id===found.id&&!$('conversation').hidden))return;
    clearInput();speakingResident=found;renderResidentConversation();$('conversation').dataset.resident=found.id;
    $('conversation').hidden=false;conversationUntil=Infinity;residents?.greet(found.id,elapsed);
  }
@@ -1141,10 +1287,22 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
 +  starOffer: {button:townPostDelivery.offer,show:visible=>townPostDelivery.offerAfterSorting(visible)},
 +  restoreFocus: () => action.focus({preventScroll:true}),
 +});
++const nellCamera=new TownNellCamera();
++const nellSeedlings=new TownNellSeedlings(townResidentActionHost(),{
++  nearby:()=>townContactAvailable(NELL_GARDENER)?state.location?.visitEpoch??0:null,
++  prepare:()=>{closeResidentConversation();clearInput();},
++  send:async body=>{
++    if(body.action!=='discard'){await savePosition(true);await queue;}
++    return request('town/nell-seedlings',body);
++  },
++  stage:stage=>{residents?.showNellSeedling(stage);if(!stage)nellCamera.reset();},
++  report:notice,
++  restoreFocus:()=>action.focus({preventScroll:true}),
++});
  function notice(message: string, duration = 5000) { setText($('notice'), message); $('notice').hidden = false; noticeUntil = performance.now() + duration; }
  class ApiError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
  async function request<T = PlayerState>(path: string, body?: unknown): Promise<T> {
-@@ -268,16 +310,20 @@ function accept(next: PlayerState) {
+@@ -268,16 +325,20 @@ function accept(next: PlayerState) {
    const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
    flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
@@ -1170,7 +1328,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
  }
  function renderTask() {
-@@ -317,6 +363,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+@@ -317,6 +378,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
  setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
  worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
@@ -1178,7 +1336,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
  const practical=createWorldPracticalLights();scene.add(practical.group);
  const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
-@@ -349,11 +396,13 @@ function tutorialContext(){
+@@ -349,11 +411,13 @@ function tutorialContext(){
      paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
  }
  function frameVillageGuide(){
@@ -1196,7 +1354,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
      visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
      homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
-@@ -362,12 +411,15 @@ function frameVillageGuide(){
+@@ -362,12 +426,15 @@ function frameVillageGuide(){
    if(context&&planet&&groundWorld&&walker){
      const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
@@ -1213,7 +1371,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
-@@ -526,6 +578,7 @@ function cameraAvatarFrame(){
+@@ -526,6 +593,7 @@ function cameraAvatarFrame(){
    return{bounds,meshes,exactMeshes:exactGeometryReady?exactMeshes:undefined,opticalTargetPoints:bounds.flatMap(bound=>bound.corners)};
  }
  type CameraRenderFrame=ReturnType<TownCameraCutaway['captureFrameRenderEvidence']>['frame']&{assetsRevision:number};
@@ -1221,7 +1379,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
  const avatarOcclusion=new AvatarOcclusion(player.root);
  const presence=new GroundPresence(scene,renderer.domElement);
  const silhouette = new T.Mesh(new T.CapsuleGeometry(.22, .90, 4, 8), new T.MeshBasicMaterial({color:'#ffdfa0',transparent:true,opacity:.24,depthTest:false,depthWrite:false}));
-@@ -544,6 +597,10 @@ window.addEventListener('keydown',event=> {
+@@ -544,6 +612,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
@@ -1232,7 +1390,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
      event.preventDefault();keys.add(key);target=null;
      if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
    }
-@@ -597,7 +654,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+@@ -597,7 +669,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
  renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
  renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
@@ -1241,7 +1399,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +755,50 @@ async function interact() {
+@@ -698,7 +770,50 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1293,7 +1451,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +821,34 @@ setInterval(async()=>{
+@@ -721,17 +836,34 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1331,7 +1489,15 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +896,7 @@ function animate(now:number) {
+@@ -751,6 +883,7 @@ function animate(now:number) {
+   if(worldPending||homeInterior?.preparing)return;
+   if(photoPaused){photoMode?.frame();return;}
+   exteriorHomeDoor.frame(dt,reduced);
++  if(nellSeedlings.active&&!townContactAvailable(NELL_GARDENER))nellSeedlings.frame(false);
+   if(homeInterior?.active){if(indoorRoomView.room)setIndoorRoom(null);homeInterior.frame(dt,elapsed);readyWelcome();return;}
+   if(!walker || (document.body.classList.contains('workshop-open')||document.body.classList.contains('shipyard-open')||document.body.classList.contains('history-open')||document.body.classList.contains('terrain-workshop-open'))) return;
+   if(flight?.active&&indoorRoomView.room)setIndoorRoom(null);
+@@ -779,7 +912,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1340,7 +1506,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -798,7 +915,14 @@ function animate(now:number) {
+@@ -798,7 +931,14 @@ function animate(now:number) {
    }
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
@@ -1356,7 +1522,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +995,7 @@ function animate(now:number) {
+@@ -871,7 +1011,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1365,7 +1531,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +1032,22 @@ function animate(now:number) {
+@@ -908,14 +1048,37 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1381,7 +1547,13 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
 +  else {
 +    const draw=()=>drawing.render(new T.Vector3(),overview);
 +    const support=quayRepair.active ? residents?.quayRepairFocus() : null;
++    const nell=nellSeedlings.active ? residents?.nellSeedlingFocus() : null;
++    if(!nell&&nellCamera.view)nellCamera.reset();
++    const sol=nell ? world.npcs.find(n=>n.id==='sol')?.anchor.getWorldPosition(new T.Vector3()) : undefined;
 +    if(support&&groundWorld&&!overview)drawQuayRepair(camera,support,groundWorld,cameraShipCollision,innerWidth,innerHeight,draw);
++    else if(nell&&groundWorld&&!overview){
++      nellCamera.draw(camera,groundWorld,cameraShipCollision,nell,feet,sol,innerWidth,innerHeight,draw);
++    }
 +    else draw();
 +  }
 +  readyWelcome();
@@ -1389,7 +1561,31 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1099,23 @@ function animate(now:number) {
++    nellFraming:nellCamera.view?{eye:nellCamera.view.position.toArray(),...(()=> {
++      const focus=residents?.nellSeedlingFocus(), view=nellCamera.view!;
++      return focus?{color:focus.color,face:focus.face.clone().project(view).toArray(),
++        mothers:focus.mothers.map(p=>p.clone().project(view).toArray()),pot:focus.pot.clone().project(view).toArray(),
++        stream:focus.stream?{start:focus.stream.start.toArray(),end:focus.stream.end.toArray(),pot:focus.pot.toArray()}:null}:null;
++    })()}:null,
+     frameSeq:++cameraFrameSequence,frameTime:now,recordedAt:performance.now(),planet:activePlanet,overview,fov:camera.fov,aspect:camera.aspect,near:camera.near,
+     position:walker.up.toArray(),radius:standing?.radius??groundRadius(),grounded:standing?.grounded??true,
+     head:headPoint.toArray(),eye:camera.position.toArray(),heading:walker.north.toArray(),pitch:cameraPitch,
+@@ -947,10 +1110,11 @@ function animate(now:number) {
+       const d=distance(walker.up.toArray() as Vec3,NPCS[n.id].position,groundRadius());
+       if(canTalkToTaskResident(n.id))near=n.id;
+       const p=n.anchor.position.clone().addScaledVector(n.anchor.position.clone().normalize(),2.12);
+-      const labelRay=new T.Ray(camera.position.clone(),p.clone().sub(camera.position).normalize());
++      const npcCamera=nellCamera.view??renderCamera();
++      const labelRay=new T.Ray(npcCamera.position.clone(),p.clone().sub(npcCamera.position).normalize());
+       const groundHit=labelRay.intersectSphere(new T.Sphere(new T.Vector3(),groundRadius()-.10),new T.Vector3());
+-      const visible=!groundHit||camera.position.distanceTo(groundHit)>camera.position.distanceTo(p);
+-      p.project(renderCamera());const label=$('npc-'+n.id);
++      const visible=!groundHit||npcCamera.position.distanceTo(groundHit)>npcCamera.position.distanceTo(p);
++      p.project(npcCamera);const label=$('npc-'+n.id);
+       const active=state.quest!=='delivered'&&n.id===(state.quest==='available'?'mica':'sol');
+       const offscreen=Math.abs(p.x)>.84||Math.abs(p.y)>.84;
+       label.hidden=!visible||p.z>1||(!active&&offscreen)||(d>3&&!document.body.classList.contains('delivery-open'));
+@@ -964,8 +1128,28 @@ function animate(now:number) {
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
@@ -1399,6 +1595,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
 +    townPostDelivery.frame(activePlanet==='hub'&&online&&state.flight.mode==='ground'&&state.location?.kind!=='interior'&&!flight?.active,
 +      speakingResident?.id,!scenePaused&&!overview);
 +
++    nellSeedlings.frame(speakingResident?.id===NELL_GARDENER);
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
 +    const bench = benchRest ?? (!paused ? nearestOutdoorBench() : null);
 +    const interactionPaused = paused || nearDock || !!teleportStations?.canUse;
@@ -1412,9 +1609,13 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
 +    delete action.dataset.benchRest;
 +    action.hidden=interactionPaused||(!near&&!nearResident&&(!greeting||greeting.greeted)&&(!bench||offerBenchChoice));
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
++    else if(nearResident?.id===NELL_GARDENER&&nellSeedlings.active){
++      action.hidden=true;delete action.dataset.residentPrompt;setText($('nearby'),'');
++    }
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1127,24 @@ function animate(now:number) {
+       const promptKey=`${nearResident.id}|${language}`;
+@@ -976,6 +1160,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1439,7 +1640,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1199,17 @@ function ensureColony() {
+@@ -1030,15 +1232,17 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1459,7 +1660,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..7896cb01bce1869c8c928296dba64334
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1230,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1263,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -1639,10 +1840,12 @@ index af46a0e52754af0f16119b6056df5c529454dee6..fb9b2ec315a9892be7b8651a0ce89058
 + }
   model.stats.generationMs+=performance.now()-adaptedAt;
 diff --git a/src/client/town-residents.ts b/src/client/town-residents.ts
-index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d3429e799 100644
+index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..44cfd6652bccee1056edcd2039753f5eba5d4450 100644
 --- a/src/client/town-residents.ts
 +++ b/src/client/town-residents.ts
-@@ -1,5 +1,10 @@
+@@ -1,5 +1,12 @@
++import { NELL_GARDENER } from '../shared/nell-seedlings.ts';
++import { nellSeedlingStage, type NellStage } from './nell-seedling-art.ts';
 +import { quayRepairProp } from './town-quay-repair-prop.ts';
 +import { IVO_REPAIR, type QuayRepairPose } from './town-quay-repair.ts';
  import * as T from 'three';
@@ -1653,7 +1856,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
  import { GroundWorld } from '../shared/physics/world.ts';
  import { TownResidentMotion } from '../shared/town-resident-motion.ts';
  import { townResidents, RESIDENT_INTERACT_DISTANCE, RESIDENT_INTERACT_HEIGHT } from '../shared/town-residents.ts';
-@@ -7,7 +12,8 @@ import type { TownResidentDefinition } from '../shared/town-residents.ts';
+@@ -7,7 +14,8 @@ import type { TownResidentDefinition } from '../shared/town-residents.ts';
  import type { Vec3 } from '../shared/world.ts';
  
  type Shape = 'box' | 'sphere' | 'cylinder' | 'cone';
@@ -1663,7 +1866,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
  interface Rig {
    anchor: T.Group; body: T.Group; head: T.Group; leftArm: T.Group; rightArm: T.Group;
    leftForearm: T.Group; rightForearm: T.Group; leftLeg: T.Group; rightLeg: T.Group;
-@@ -17,13 +23,15 @@ interface Rig {
+@@ -17,13 +25,15 @@ interface Rig {
  interface Resident {
    definition: TownResidentDefinition; motion: TownResidentMotion; rig: Rig;
    elapsed: number; renderElapsed: number; greetUntil: number; visible: boolean; distance: number;
@@ -1681,7 +1884,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
  const zero = new T.Matrix4().makeScale(0, 0, 0);
  
  /** A two-segment reach in the shoulder's forward plane. The original .25 m
-@@ -42,15 +50,14 @@ function workReach(rig: Rig, side: 'left' | 'right', height: number, forward: nu
+@@ -42,15 +52,14 @@ function workReach(rig: Rig, side: 'left' | 'right', height: number, forward: nu
    forearm.rotation.set(-bend + Math.atan2(.014, .255), 0, 0);
  }
  
@@ -1700,7 +1903,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
    leftArm.position.set(-.25, .22, 0); rightArm.position.set(.25, .22, 0);
    leftLeg.position.set(-.105, .63, 0); rightLeg.position.set(.105, .63, 0);
    const pieces: Piece[] = [];
-@@ -59,32 +66,38 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+@@ -59,32 +68,38 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
      const node = new T.Object3D(); node.position.fromArray(position); node.scale.fromArray(size); parent.add(node);
      pieces.push({ node, shape, color: new T.Color(color), detail, slot: -1 }); return node;
    };
@@ -1765,7 +1968,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
    const apron = () => {
      piece(body, 'box', cream, [0, -.065, .169], [.27, .38, .027]);
      piece(body, 'box', timber, [0, -.06, .19], [.2, .1, .022], true);
-@@ -96,27 +109,26 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+@@ -96,27 +111,26 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
        piece(body, 'box', timber, [0, -.19, 0], [.43, .09, .34]);
        const hammer = piece(body, 'box', timber, [-.23, -.26, .04], [.033, .25, .032], true); hammer.rotation.z = -.15;
        piece(hammer, 'box', ART_PALETTE.iron, [0, .5, 0], [3.5, .25, 1.8], true);
@@ -1801,7 +2004,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
        break;
      case 'basket':
        piece(leftArm, 'cylinder', '#bc965f', [0, -.65, .04], [.34, .25, .29]);
-@@ -129,8 +141,8 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+@@ -129,8 +143,8 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
        piece(head, 'sphere', timber, [0, .08, -.18], [.19, .2, .16]);
        break;
      case 'cap':
@@ -1812,7 +2015,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
        break;
    }
    if (definition.activity === 'repair') {
-@@ -166,13 +178,14 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+@@ -166,13 +180,16 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
  export class TownResidents {
    readonly root = new T.Group();
    readonly definitions: readonly TownResidentDefinition[];
@@ -1825,11 +2028,13 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
    private disposed = false;
    private enabled = true;
    private animationTime = 0;
++  private nellStage?: ReturnType<typeof nellSeedlingStage>;
++  private nellPose: NellStage|null=null;
 +  private repairPose: QuayRepairPose | null = null;
    private frustum = new T.Frustum();
    private projection = new T.Matrix4();
    private basis = new T.Matrix4();
-@@ -186,36 +199,51 @@ export class TownResidents {
+@@ -186,36 +203,51 @@ export class TownResidents {
    constructor(parent: T.Object3D, world: GroundWorld, definitions: readonly TownResidentDefinition[] = townResidents()) {
      this.world = world; this.definitions = definitions; this.root.name = 'town-residents';
      this.residents = definitions.map((definition, index) => ({ definition, motion: new TownResidentMotion(world, definition), rig: residentRig(definition, index), elapsed: 0, renderElapsed: Infinity, greetUntil: 0, visible: false, distance: 0 }));
@@ -1894,7 +2099,17 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
      parent.add(this.root);
    }
  
-@@ -251,21 +279,28 @@ export class TownResidents {
+@@ -238,7 +270,8 @@ export class TownResidents {
+       resident.distance = distance;
+       this.sphere.center.copy(this.up).multiplyScalar(motion.pose.radius + .8);
+       const horizon = this.sphere.center.dot(this.cameraPosition) >= this.world.baseRadius ** 2 - 2.8 * eyeRadius;
+-      const visible = motion.valid && horizon && this.frustum.intersectsSphere(this.sphere);
++      const activeNell = resident.definition.id===NELL_GARDENER && !!this.nellPose && distance<=3;
++      const visible = motion.valid && horizon && (activeNell || this.frustum.intersectsSphere(this.sphere));
+       const interval = distance < 9 ? 1 / 30 : distance < 18 ? 1 / 10 : .5;
+       if (visible) this.diagnostics.visible++;
+       if (enabled && visible && distance < 18 && resident.elapsed >= .1) {
+@@ -251,21 +284,33 @@ export class TownResidents {
          this.diagnostics.animated++;
          this.pose(resident, this.animationTime, reducedMotion || distance >= 18);
          rig.anchor.updateMatrixWorld(true);
@@ -1903,6 +2118,11 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
 +          rig.anchor.localToWorld(support.root.position.set(.245,.83,.67));
 +          support.root.quaternion.copy(rig.anchor.quaternion);
 +          support.show(this.repairPose,reducedMotion);
++        }
++        if(resident.definition.id===NELL_GARDENER&&this.nellStage){
++          rig.anchor.localToWorld(this.nellStage.root.position.set(0,0,0));
++          this.nellStage.root.quaternion.copy(rig.anchor.quaternion);
++          this.nellStage.frame(this.nellPose,reducedMotion);
 +        }
        }
      }
@@ -1927,7 +2147,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
          if (batch.instanceColor) batch.instanceColor.needsUpdate = true;
          this.diagnostics.visibleInstances += batch.count;
          this.diagnostics.visibleTriangles += (batch.geometry.index?.count ?? batch.geometry.attributes.position.count) / 3 * batch.count;
-@@ -295,8 +330,16 @@ export class TownResidents {
+@@ -295,8 +340,16 @@ export class TownResidents {
      } else if (definition.activity === 'repair') {
        rig.body.rotation.x = .11; rig.head.rotation.x = .2;
        const lift = reduced ? .015 : (1 + Math.sin(t * 1.8)) * .015;
@@ -1946,7 +2166,18 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
      } else if (definition.activity === 'tend') {
        rig.body.rotation.x = .18; rig.head.rotation.x = .24;
        workReach(rig, 'left', .87, .44);
-@@ -314,15 +357,18 @@ export class TownResidents {
+@@ -307,22 +360,27 @@ export class TownResidents {
+         rig.body.updateMatrixWorld(true);
+         const mouth = rig.wateringCan.localToWorld(new T.Vector3(.10, -.04, .33));
+         rig.anchor.worldToLocal(mouth);
+-        const end = new T.Vector3(mouth.x, .225, mouth.z + .025), delta = end.clone().sub(mouth);
++        const planting=definition.id===NELL_GARDENER&&this.nellPose;
++        const end=planting&&this.nellStage ? this.nellStage.bed : new T.Vector3(mouth.x,.225,mouth.z+.025);
++        const delta=end.clone().sub(mouth);
+         rig.water.position.copy(mouth).add(end).multiplyScalar(.5);
+-        rig.water.scale.set(.012, delta.length(), .012);
++        rig.water.scale.set(.012, planting&&!planting.watering?0:delta.length(), .012);
+         rig.water.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), delta.normalize());
        }
      } else if (definition.activity === 'sort') {
        rig.body.rotation.x = .10; rig.head.rotation.x = .12;
@@ -1968,10 +2199,36 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
        // Wave beside the shoulder; never sweep a hand through the face or hat.
        // Repairers acknowledge a visitor with the free hand, keeping the wrench
        // over its bench instead of sweeping a tool beside their head.
-@@ -350,6 +396,21 @@ export class TownResidents {
+@@ -350,6 +408,47 @@ export class TownResidents {
      return nearest;
    }
  
++  showNellSeedling(stage:NellStage|null) {
++    if(!stage){
++      if(this.nellStage)this.nellStage.root.visible=false;
++      this.nellPose=null;
++      return;
++    }
++    if(!this.nellStage){
++      this.nellStage=nellSeedlingStage();
++      this.root.add(this.nellStage.root);
++    }
++    this.nellPose=stage;
++  }
++
++  nellSeedlingFocus() {
++    const stage=this.nellStage;
++    const resident=this.residents.find(r=>r.definition.id===NELL_GARDENER);
++    if(!stage?.root.visible||!resident?.visible||!this.nellPose)return null;
++    const {anchor,head,wateringCan,water}=resident.rig;
++    const stream=this.nellPose.watering&&water&&wateringCan
++      ? {start:wateringCan.localToWorld(new T.Vector3(.10,-.04,.33)),end:water.localToWorld(new T.Vector3(0,.5,0))}
++      : null;
++    return {anchor,face:head.localToWorld(new T.Vector3(0,.12,.15)),
++      mothers:stage.motherPositions.map(position=>stage.root.localToWorld(position.clone().add(new T.Vector3(0,.25,0)))),
++      pot:stage.root.localToWorld(stage.bed.clone()),stream,color:this.nellPose.color};
++  }
++
 +  quayRepairFocus() {
 +    const support=this.residents.find(resident=>resident.quayRepair)?.quayRepair?.root;
 +    return support?.visible ? support : null;
@@ -1990,7 +2247,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
    greet(id: string, time: number) {
      const resident = this.residents.find(r => r.definition.id === id);
      if (resident?.definition.conversational) resident.greetUntil = Math.max(resident.greetUntil, time + 1.2);
-@@ -361,7 +422,13 @@ export class TownResidents {
+@@ -361,7 +460,14 @@ export class TownResidents {
    dispose() {
      if (this.disposed) return; this.disposed = true; this.root.removeFromParent();
      const materials = new Set<T.Material>();
@@ -2003,6 +2260,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3394ad3c2366c9625a722022215c530d
 +    }
 +    materials.forEach(material => material.dispose());
 +    for(const resident of this.residents)resident.quayRepair?.dispose();
++    this.nellStage?.art.dispose();
 +    this.root.clear();
    }
  }
@@ -2402,7 +2660,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0c4f21d05 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..c64f48d42da1855a6cfdc7959bfc56fb49bea7b6 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
 @@ -1,7 +1,7 @@
@@ -2440,7 +2698,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0
  const guideHelp=createGuideHelp();
  // Default off; production requires explicit approval configuration and the transferred ledger.
  const aiConfig=guideConfiguration(process.env);
-@@ -53,22 +65,107 @@ const server = createServer(async (req, res) => {
+@@ -53,22 +65,114 @@ const server = createServer(async (req, res) => {
    try {
      const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
@@ -2544,6 +2802,13 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0
          }
          send(200, store.state(id)); return;
        }
++      if(req.method==='GET'&&url.pathname==='/api/home/nell-seedlings'){
++        if(!id || !store.has(id) || url.search)throw new RequestError(403,'Open your own study.');
++        const player=store.state(id);
++        if(player.location?.kind!=='interior'||!player.home?.canEdit||player.location.buildingId!==player.home.buildingId)
++          throw new RequestError(403,'Open your own study.');
++        send(200,store.readNellSeedlings(id));return;
++      }
 +      if (url.pathname === '/api/town/post' && req.method === 'GET') {
 +        if (!id || !store.has(id)) throw new RequestError(401, 'Reconnect to read your star letter.');
 +        if (url.search) throw new RequestError(400, 'Only your own star letter is available.');
@@ -2552,7 +2817,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0
        if (url.pathname === '/api/universe' && req.method === 'GET') {
          if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
          send(200, store.universe(id)); return;
-@@ -95,12 +192,13 @@ const server = createServer(async (req, res) => {
+@@ -95,12 +199,13 @@ const server = createServer(async (req, res) => {
        if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
        else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
@@ -2572,9 +2837,14 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
        if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
        if(url.pathname==='/api/guide/ask'){
-@@ -137,10 +235,15 @@ const server = createServer(async (req, res) => {
+@@ -136,11 +241,20 @@ const server = createServer(async (req, res) => {
+         send(200, store.move(id, body.position, Date.now(), body.planetId,body.motion,body.visitEpoch));
        }
        else if(url.pathname==='/api/ground/recover'){const result=store.recoverGround(id,body);presence.leave(id);send(200,result);}
++      else if (url.pathname === '/api/town/nell-seedlings') {
++        if (url.search) throw new RequestError(400,'Choose a seedling at the glasshouse.');
++        send(200,store.changeNellSeedling(id,body));
++      }
        else if (url.pathname === '/api/interact') send(200, store.interact(id, body.action));
 +      else if (url.pathname === '/api/town/post') {
 +        if (url.search) throw new RequestError(400, 'Only your own star letter is available.');
@@ -2588,7 +2858,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0
        else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
        else if (url.pathname === '/api/flight/checkpoint') send(200,store.flight(id,body));
        else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
-@@ -168,7 +271,7 @@ const server = createServer(async (req, res) => {
+@@ -168,7 +282,7 @@ const server = createServer(async (req, res) => {
        type = 'text/html; charset=utf-8';
      } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
@@ -2598,10 +2868,15 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0
        type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
      }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160965e3001 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..5828fb75f9275c113e1c2383fe6877fb4db19f99 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -32,6 +32,7 @@ import type { Vec3 } from '../shared/world.ts';
+@@ -1,3 +1,4 @@
++import { nellSeedlingsStore } from './nell-seedlings.ts';
+ import { createHash, randomUUID } from 'node:crypto';
+ import { encodeBlueprint, hashInput } from '../shared/blueprint-codec.ts';
+ import { canonicalJson } from '../assets/claude-geometry/core/doc.ts';
+@@ -32,6 +33,7 @@ import type { Vec3 } from '../shared/world.ts';
  export { RequestError } from './errors.ts';
  
  interface Row { character: Character; quest: Quest; position: string; deliveries: number; revision: number; moved_at: number; planet_id: string }
@@ -2609,7 +2884,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160
  export function openStore(path: string, options: { homeSample?: boolean; integratedWorld?: boolean } = {}) {
    // Probe with SQLite's read-only flag before mkdir, WAL pragmas or any migration.
    if(options.homeSample&&path!==':memory:'&&existsSync(path)){
-@@ -185,7 +186,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -185,7 +187,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
        migrateArrivalHomes(db);
        migrateTrips(db);
        migrateAppearances(db);
@@ -2621,15 +2896,17 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160
      } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
    }
    const history = historyStore(db);
-@@ -197,6 +201,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -197,7 +202,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
    const planets = planetStore(db, blueprints, history, homeSample ? HOME_SAMPLE_RADIUS : undefined,integratedWorld?INTEGRATED_RADIUS:undefined);
    const navigation=navigationStore(db,planets);
    const trips=tripStore(db,planets,navigation);
 +  const townPost=townPostStore(db);
    const ground=groundStore(db,planets);
++  const seedlings=nellSeedlingsStore(db);
    const homes=homeStore(db,planets,blueprints,history,homeEnabled);
    const homePaths=homePathStore(db,planets,homes,homeEnabled);
-@@ -208,6 +213,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   const homeSetup=homeSetupStore(db,planets,blueprints,homes,homeEnabled);
+@@ -208,6 +215,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      if (!result) throw new RequestError(401, 'Your session has expired. Reload to start a new visit.');
      return result;
    };
@@ -2641,7 +2918,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160
    const state = (id: string): PlayerState => {
      row(id);const flight=navigation.flight(id);
      const location=homeEnabled?homes.location(id):undefined;
-@@ -328,14 +338,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -328,14 +340,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      flight(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.checkpoint(id,clean,now);return state(id);},
      land(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.land(id,clean,now);homes.movedExterior(id);return universe(id);},
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
@@ -2662,7 +2939,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
        return state(id);
      },
-@@ -360,8 +374,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -360,8 +376,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      /** The same arrival as `create`, with the home layout and its station search run on the worker so other
       * players are answered meanwhile. Every write still happens here, after re-checking what was read: the
       * home, its owner and the new player's place at the door in one transaction, then the station. */
@@ -2676,7 +2953,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
        try{
          const inputs=homes.generationInputs(planetId,id);
-@@ -374,12 +391,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -374,12 +393,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
            const door=homes.door(planetId);
            if(!door)throw new RequestError(409,'The sample home could not be prepared.');
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
@@ -2691,10 +2968,14 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160
              throw new RequestError(503,BUSY);
            }
            throw error;
-@@ -419,6 +436,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -419,6 +438,14 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
        if(body.planetId!==r.planet_id)throw new RequestError(409,'Your visit moved to another planet. Reconnecting…');
        ground.recoverToPort(id,body.sequence,now);homes.movedExterior(id);return universe(id);
      },
++    readNellSeedlings(id:string) { return seedlings.read(id); },
++    changeNellSeedling(id:string,body:Record<string,unknown>) {
++      return seedlings.change(id,state(id),body,()=>ground.world('hub'));
++    },
 +    readTownPost(id:string) { row(id); return townPost.read(id); },
 +    changeTownPost(id:string,body:Record<string,unknown>) {
 +      return townPost.change(id,state(id),body,()=>ground.world('hub'));
@@ -2702,7 +2983,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160
      interact(id: string, action: unknown) {
        if (action !== 'pickup' && action !== 'deliver') throw new RequestError(400, 'Unknown delivery action.');
        const r = row(id);
-@@ -447,6 +468,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -447,6 +474,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
        homes.movedExterior(id);return universe(id);
      },
      terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
