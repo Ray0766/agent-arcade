@@ -6,6 +6,18 @@ const lease=45_000;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const ended=()=>fail(409,'group_voice_ended','本次群语音已结束，请重新加入');
 const busy=()=>fail(409,'call_busy','已有通话，请先离开当前通话');
+const cameraStates=new Set(['on','off','unavailable']);
+
+function mediaLayout(sdp){
+  if(typeof sdp!=='string'||sdp.length>60000||!/^v=0\r?\n/u.test(sdp))return;
+  const sections=[];
+  for(const [line] of sdp.matchAll(/^m=.*$/gmu)){
+    const kind=/^m=(audio|video) \S/u.exec(line)?.[1];
+    if(!kind||sections.includes(kind))return;
+    sections.push(kind);
+  }
+  if(sections.includes('audio'))return sections.join(' ');
+}
 
 function createGroupVoice(store,privateBusy,now=Date.now){
   const rooms=new Map(), seated=new Map(), retired=new Map();
@@ -37,7 +49,8 @@ function createGroupVoice(store,privateBusy,now=Date.now){
   function project(room,self){
     if(!room)return {room:null};
     return {room:{id:room.id,chat:room.chat,
-      participants:Array.from(room.members.values(),p=>({number:p.number,id:p.id})),
+      participants:Array.from(room.members.values(),p=>({number:p.number,id:p.id,
+        ...(self&&p.video&&{video:true,camera:p.camera,cameraVersion:p.cameraVersion})})),
       self:self?.id??null,...(self&&{signals:Array.from(self.inbox.values())})}};
   }
   function handle(account,session,chat,device,request){
@@ -55,6 +68,7 @@ function createGroupVoice(store,privateBusy,now=Date.now){
     const mine=current?.session===session&&current.device===device?current:null;
     if(request.action==='join'){
       if(typeof request.joinId!=='string'||!uuid.test(request.joinId))fail(400,'group_voice_join','入场标识无效');
+      if(request.video!==undefined&&typeof request.video!=='boolean')fail(400,'group_voice_join','视频能力标识无效');
       if(request.roomId!==undefined&&request.roomId!==room?.id)ended();
       const attempt=session+'/'+device+'/'+request.joinId;
       if(retired.has(attempt))ended();
@@ -65,7 +79,7 @@ function createGroupVoice(store,privateBusy,now=Date.now){
       if(privateBusy(account)||isBusy(account))busy();
       if(!room)room={id:randomUUID(),chat,members:new Map()};
       const participant={number:account,id:randomUUID(),revision:group.membershipRevision,
-        session,device,attempt,until:now()+lease,inbox:new Map()};
+        session,device,attempt,until:now()+lease,inbox:new Map(),video:request.video===true,camera:'off',cameraVersion:0};
       room.members.set(account,participant);
       rooms.set(chat,room);
       seated.set(account,room);
@@ -82,14 +96,21 @@ function createGroupVoice(store,privateBusy,now=Date.now){
         return {ok:true};
       case 'ice':
         return {iceServers:[]};
+      case 'camera':
+        if(!mine.video||!cameraStates.has(request.state)||!Number.isSafeInteger(request.version)||request.version<1)
+          fail(409,'group_voice_camera','本次入场的摄像头状态无效');
+        if(request.version>mine.cameraVersion){
+          mine.camera=request.state;
+          mine.cameraVersion=request.version;
+        }
+        return {ok:true};
       case 'signal':{
         const peer=Array.from(room.members.values()).find(p=>p.id===request.to);
         if(!peer||peer===mine)fail(409,'group_voice_peer','对方已离开本次群语音');
         const type=account<peer.number?'offer':'answer';
-        const {sdp}=request;
-        if(request.type!==type||typeof sdp!=='string'||sdp.length>60000||!/^v=0\r?\n/u.test(sdp)||
-          !/^m=audio /mu.test(sdp)||/^m=(?!audio )/mu.test(sdp)||
-          (type==='answer'&&!mine.inbox.has(peer.id)))
+        const {sdp}=request,layout=mediaLayout(sdp);
+        if(request.type!==type||!layout||(layout!=='audio'&&!(mine.video&&peer.video))||
+          (type==='answer'&&layout!==mediaLayout(mine.inbox.get(peer.id)?.sdp)))
           fail(409,'group_voice_signal','语音协商状态已改变');
         const previous=peer.inbox.get(mine.id);
         if(previous&&previous.sdp!==sdp)fail(409,'group_voice_signal','请重新加入以协商连接');

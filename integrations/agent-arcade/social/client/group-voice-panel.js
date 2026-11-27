@@ -6,6 +6,10 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
   const status=panel.querySelector('[role="status"]');
   const roster=panel.querySelector('ul');
   const join=panel.querySelector('[data-voice-join]');
+  const camera=panel.querySelector('[data-voice-camera]');
+  const cameraNotice=panel.querySelector('#group-voice-camera-notice');
+  const stage=panel.querySelector('#group-video-stage');
+  const tiles=new Map();
   const mute=panel.querySelector('[data-voice-mute]');
   const leave=panel.querySelector('[data-voice-leave]');
   const resume=panel.querySelector('[data-voice-resume]');
@@ -13,6 +17,67 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
   let controller,controllerFlight,active,discovery,discoveredFor,inFlight,joining=false,message='';
   let state={phase:'idle',members:[]};
   const key=current=>current&&JSON.stringify([account(),current.id,current.revision]);
+
+  function showCameras(people,visible){
+    stage.hidden=!visible;
+    const retained=new Set(visible?people.map(person=>person.entryId):[]);
+    for(const [id,tile] of tiles){
+      if(retained.has(id))continue;
+      tile.stream=null;
+      tile.video.srcObject=null;
+      tile.element.remove();
+      tiles.delete(id);
+    }
+    if(!visible)return;
+    for(const person of people){
+      const {entryId,displayName,videoStream,cameraEnabled,cameraState}=person;
+      let tile=tiles.get(entryId);
+      if(!tile){
+        const element=document.createElement('figure');
+        element.className='group-video-tile';
+        element.dataset.groupVoiceEntry=entryId;
+        element.dataset.groupVoiceAccount=person.number;
+        const screen=document.createElement('div');
+        screen.className='group-video-screen';
+        const fallback=personAvatar(person);
+        const video=document.createElement('video');
+        video.autoplay=true;
+        video.muted=true;
+        video.playsInline=true;
+        video.hidden=true;
+        video.setAttribute('aria-hidden','true');
+        const caption=document.createElement('figcaption');
+        const name=document.createElement('strong'),detail=document.createElement('span');
+        detail.className='group-video-caption-detail';
+        caption.append(name,detail);
+        screen.append(fallback,video);
+        element.append(screen,caption);
+        tile={element,video,fallback,name,detail,stream:null,cameraState:'off'};
+        const updatePicture=()=>{
+          const ready=Boolean(tile.stream&&video.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA&&video.videoWidth);
+          video.hidden=!ready;
+          fallback.hidden=ready;
+          detail.textContent=ready?'摄像头已开':tile.cameraState==='on'?'等待画面':
+            tile.cameraState==='unavailable'?'摄像头不可用':'仅语音';
+        };
+        video.addEventListener('loadeddata',updatePicture);
+        video.addEventListener('playing',updatePicture);
+        video.addEventListener('emptied',updatePicture);
+        tile.updatePicture=updatePicture;
+        tiles.set(entryId,tile);
+        stage.append(element);
+      }
+      const stream=cameraEnabled?videoStream??null:null;
+      tile.cameraState=cameraEnabled?'on':cameraState;
+      if(tile.stream!==stream){
+        tile.stream=stream;
+        tile.video.srcObject=stream;
+        if(stream)void tile.video.play().catch(()=>{});
+      }
+      tile.name.textContent=displayName+(person.number===account()?'（我）':'');
+      tile.updatePicture();
+    }
+  }
 
   function paint(){
     const current=scope();
@@ -24,11 +89,11 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     panel.classList.toggle('group-voice-detached',Boolean(detached));
     const participants=call?state.members:(key(current)===discoveredFor?discovery?.participants:null)??[];
     panel.hidden=!context||(!call&&!context.canStart&&!participants.length);
-    if(panel.hidden)return;
+    if(panel.hidden){showCameras([],false);return;}
     const confirmed=call&&state.phase==='active';
     const people=participants.flatMap(member=>{
       const person=context.members.find(item=>item.number===member.number);
-      return person?[{...person,entryId:member.id}]:[];
+      return person?[{...person,entryId:member.id,cameraEnabled:member.cameraEnabled,cameraState:member.cameraState,videoStream:member.videoStream}]:[];
     });
     title.textContent=detached?context.title+' · 群语音':'群语音';
     status.textContent=message||state.notice||(joining&&!confirmed?'正在加入…':
@@ -48,6 +113,14 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
         return item;
       }));
     }
+    const hasCamera=Boolean(confirmed&&people.some(person=>person.cameraEnabled));
+    showCameras(people,hasCamera&&!detached);
+    camera.hidden=!confirmed||(!state.videoCapable&&!state.cameraEnabled)||(detached&&!state.cameraEnabled);
+    camera.disabled=Boolean(state.cameraPending);
+    camera.textContent=state.cameraEnabled?'关闭摄像头':'打开摄像头';
+    camera.setAttribute('aria-pressed',String(Boolean(state.cameraEnabled)));
+    cameraNotice.textContent=state.cameraNotice??'';
+    cameraNotice.hidden=!state.cameraNotice;
     join.hidden=Boolean(call);
     join.disabled=joining||key(current)!==discoveredFor;
     join.textContent=people.length?'加入语音':'发起语音';
@@ -121,6 +194,9 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     discoveredFor=undefined;
     paint();
     void discover();
+  });
+  camera.addEventListener('click',()=>{
+    if(state.phase==='active'&&!state.cameraPending)void controller?.setCameraEnabled(!state.cameraEnabled);
   });
   mute.addEventListener('click',()=>controller?.setMuted(!state.muted));
   resume.addEventListener('click',()=>controller?.resumeAudio());
