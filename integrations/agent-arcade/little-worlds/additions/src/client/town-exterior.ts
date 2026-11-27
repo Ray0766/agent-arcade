@@ -11,6 +11,8 @@ import { townMeshPieces } from './authored-town-mesh.ts';
 import { CAMERA_PART_ATTRIBUTE } from './camera-blueprint-model.ts';
 import { flowerFoliage } from './nature-art.ts';
 import { WINDOW } from '../assets/claude-geometry/blueprint/parts/village/walls.ts';
+import type { HomeRoofFinish } from '../shared/home.ts';
+import { homeRoofMaterial } from './home-roof-appearance.ts';
 
 type Accent = { mesh: 'frame' | 'dormer'; host: PartPlacement };
 const cell = (x: number, z: number, level: number) => `${x},${z},${level}`;
@@ -73,12 +75,13 @@ export function planWindowBoxes(parts: readonly PartPlacement[]): PartPlacement[
 }
 
 /** Geometry lives under its ordinary blueprint; the parent owns its disposal and the shared village palette. */
-export function addTownExterior(parent: Group, parts: readonly PartPlacement[], lib: StyleLibrary, cameraSlots?: ReadonlyMap<number, number>, gardenStructure = false) {
+export function addTownExterior(parent: Group, parts: readonly PartPlacement[], lib: StyleLibrary, cameraSlots?: ReadonlyMap<number, number>, gardenStructure = false, roofFinish?: HomeRoofFinish) {
   if (lib.look !== 'village') return;
   const accents = planTownExterior(parts);
   const windowBoxes = gardenStructure ? planWindowBoxes(parts) : [];
   if (!accents.length && !windowBoxes.length) return;
   const pivot = pivotOf(parts), palette = libraryMaterials(lib);
+  const roofTile = accents.some(({ mesh }) => mesh === 'dormer') ? homeRoofMaterial(lib, roofFinish) : undefined;
   const batches = new Map<Material, BufferGeometry[]>();
   function addPart(geometry: BufferGeometry, material: Material, host: PartPlacement) {
     const transform = partTransform(host, pivot);
@@ -95,7 +98,8 @@ export function addTownExterior(parent: Group, parts: readonly PartPlacement[], 
       // the timber brace similarly bites into the 90 mm outer plaster face.
       if (mesh === 'dormer') geometry.translate(0, -.10, 0);
       else geometry.translate(0, 0, -.004);
-      addPart(geometry, palette.get(slot as KitMaterial), host);
+      const material = mesh === 'dormer' && slot === 'corrugated' && roofTile ? roofTile : palette.get(slot as KitMaterial);
+      addPart(geometry, material, host);
     }
   }
   for (const host of windowBoxes) {
