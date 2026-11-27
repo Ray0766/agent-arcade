@@ -2,7 +2,7 @@
 
 const { createSocialView } = require('./social-view.cjs');
 
-function mountSocial({window, WebContentsView, session, configuration, saveImage, pickGroupCard, readSendShortcut}) {
+function mountSocial({window, WebContentsView, session, configuration, saveImage, pickGroupCard, readSendShortcut, Notification}) {
   let guest, wanted = false, loaded = false, loading, top = 0, visibilityEpoch = 0;
 
   function fit() {
@@ -32,7 +32,7 @@ function mountSocial({window, WebContentsView, session, configuration, saveImage
     if (mainFrame && !inPlace) hide();
   });
 
-  return async ({active, headerBottom, focus = false, imageFeedback = false, aiChatAccount} = {}) => {
+  return async ({active, headerBottom, focus = false, imageFeedback = false, aiChatAccount, noticeTarget} = {}) => {
     if (!active) { hide(); return true; }
     if (!Number.isFinite(headerBottom) || headerBottom < 1 || headerBottom > 200) return false;
     const epoch=visibilityEpoch;
@@ -44,6 +44,13 @@ function mountSocial({window, WebContentsView, session, configuration, saveImage
       const view = createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, readSendShortcut,
         pickCrop:signal=>require('./chat-capture/picker.cjs').pickChatCrop(window,signal),
         visitFriend:request=>window.webContents.send('arcade:storeFriendVisit',request),
+        Notification,noticeFocused:()=>window.isVisible()&&window.isFocused(),
+        openNotice:target=>{
+          if(window.isDestroyed()||guest!==view)return;
+          if(window.isMinimized())window.restore();
+          window.show();window.focus();
+          window.webContents.send('arcade:storeConversationNotice',target);
+        },
         isActive:()=>wanted&&guest===view&&!window.isDestroyed() });
       guest=view;
       const contents = guest.view.webContents;
@@ -73,6 +80,7 @@ function mountSocial({window, WebContentsView, session, configuration, saveImage
       if(focus===true)guest.view.webContents.focus();
       if(imageFeedback===true)await guest.openImageFeedback(()=>wanted&&epoch===visibilityEpoch);
       if(aiChatAccount)await guest.openWorldAiChat(aiChatAccount,()=>wanted&&epoch===visibilityEpoch);
+      if(noticeTarget)await guest.openConversationNotice(noticeTarget,()=>wanted&&epoch===visibilityEpoch);
       return true;
     }
     if (!loading) {
@@ -93,6 +101,7 @@ function mountSocial({window, WebContentsView, session, configuration, saveImage
       await guest.openImageFeedback(()=>wanted&&epoch===visibilityEpoch);
     if(ready&&wanted&&aiChatAccount&&epoch===visibilityEpoch)
       await guest.openWorldAiChat(aiChatAccount,()=>wanted&&epoch===visibilityEpoch);
+    if(ready&&noticeTarget)await guest.openConversationNotice(noticeTarget,()=>wanted&&epoch===visibilityEpoch);
     return ready;
   };
 }

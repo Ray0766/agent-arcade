@@ -481,3 +481,49 @@ test('local crop is tied to one active chat visit and discards a late PNG', {ski
   const third=open(event);pending(Uint8Array.of(3));assert.deepEqual(await third,Uint8Array.of(3));
   assert.equal(starts,3);
 });
+
+test('conversation notices check desktop focus, current account and mute before showing generic copy',async()=>{
+  const origin='https://social.arcade-example.com';
+  const id='12345678-1111-2222-3333-123456789abc';
+  const shown=[], opened=[];
+  let focused=true, muted=false, validAccount=true;
+  const browserSession={
+    setPermissionRequestHandler(){},setPermissionCheckHandler(){},webRequest:{onBeforeRequest(){}},on(){},
+    async fetch(url,options){
+      assert.equal(url,origin+'/api/v1/conversations/'+id);
+      assert.equal(options.headers['X-Social-Account'],'notices_a');
+      return {ok:validAccount,json:async()=>({conversation:{id,unreadThrough:21,muted}})};
+    },
+  };
+  class NativeNotice extends EventEmitter {
+    static isSupported(){return true;}
+    constructor(options){super();this.options=options;}
+    show(){shown.push(this);}
+    close(){this.emit('close');}
+  }
+  class Guest {
+    constructor(){
+      this.webContents=Object.assign(new EventEmitter(),{
+        ipc:Object.assign(new EventEmitter(),{handle(){}}),mainFrame:{url:origin+'/#chat/'+id},isDestroyed:()=>false,setWindowOpenHandler(){},
+      });
+    }
+  }
+  const {view}=createSocialView({WebContentsView:Guest,session:{fromPartition:()=>browserSession},
+    configuration:{mode:'store',origin},Notification:NativeNotice,isActive:()=>true,
+    noticeFocused:()=>focused,openNotice:target=>opened.push(target)});
+  const c=view.webContents,event={sender:c,senderFrame:c.mainFrame};
+  const show=c.ipc.listeners('arcade:conversationNotice')[0];
+  const input={account:'notices_a',chat:id,through:21};
+  await show(event,input);
+  focused=false;muted=true;await show(event,input);
+  muted=false;await show(event,{...input,through:20});
+  assert.equal(shown.length,0);
+  await show(event,input);
+  assert.deepEqual(shown[0].options,{title:'Agent Arcade',body:'你有一条新消息。',silent:true});
+  validAccount=false;
+  await shown[0].listeners('click')[0]();
+  assert.deepEqual(opened,[]);
+  validAccount=true;
+  await shown[0].listeners('click')[0]();
+  assert.deepEqual(opened,[{account:'notices_a',id}]);
+});

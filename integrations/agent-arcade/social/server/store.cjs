@@ -674,6 +674,7 @@ class SocialStore {
     const readThrough=Math.max(c.since,this.one('SELECT through FROM conversation_reads WHERE chat=? AND account=?',id,a)?.through??0);
     const unreadThrough=last?.id>readThrough?this.one(`SELECT id FROM messages
       WHERE chat=? AND id>? AND id<=? AND sender<>? AND removed=0 ORDER BY id DESC LIMIT 1`,id,readThrough,last.id,a)?.id??null:null;
+    const muted=!!this.one('SELECT 1 FROM muted_conversations WHERE chat=? AND account=?',id,a);
     const permission=c.type==='direct'&&this.directAiConsent(a,id);
     const cloudChat=permission&&{enabled:!!permission.enabled,revision:permission.revision};
     const peer=c.type==='direct'&&!permission?this.connectedAi(a,id):undefined;
@@ -686,11 +687,19 @@ class SocialStore {
     const search=hasAi&&this.webSearchSetting(id);
     const webSearch=hasAi&&{enabled:!!search?.enabled,revision:search?.revision??0,canManage:c.type==='direct'||c.owner===a};
     return {id, type:c.type, title:c.type === 'direct' ? members.find(m => m.number !== a).displayName : c.title,
-      ownerNumber:c.owner, members, lastMessage:last ? this.message(last) : null, readThrough, unreadThrough, ...(cloudChat&&{cloudChat}),
+      ownerNumber:c.owner, members, lastMessage:last ? this.message(last) : null, readThrough, unreadThrough, muted, ...(cloudChat&&{cloudChat}),
       ...(c.friendRemoved&&{friendRemoved:true}),
       ...(aiProvider&&{aiProvider}),...(requiresAiCloudConsent&&{requiresAiCloudConsent}),...(webSearch&&{webSearch}),
       ...(personal&&{personalAi:true,personalAiOwner:personal.owner===a,
         personalCloudAllowed:personal.owner===a||Boolean(personal.guestCloud)})};
+  }
+  setConversationMute(a,id,{expectedAccount,muted}) {
+    if(expectedAccount!==a)fail(409,'notice_session','账号已切换，请重新打开会话');
+    this.access(a,id);
+    if(typeof muted!=='boolean')fail(400,'notice_mute','免打扰状态无效');
+    if(muted)this.run('INSERT OR IGNORE INTO muted_conversations(chat,account) VALUES(?,?)',id,a);
+    else this.run('DELETE FROM muted_conversations WHERE chat=? AND account=?',id,a);
+    return {muted};
   }
   markConversationRead(a,id,{expectedAccount,through}) {
     if(expectedAccount!==a)fail(409,'read_session','账号已切换，请重新打开会话');

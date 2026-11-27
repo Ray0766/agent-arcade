@@ -192,6 +192,7 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
     if (parts.length === 2 && method === 'GET') return {conversation:conversationView(store.conversation(a,id))};
     if (parts.length===3&&method==='POST'&&action==='remove-friend')return store.removeFriend(a,id,body);
     if (parts.length===3&&method==='POST'&&action==='friend-remark')return store.saveFriendRemark(a,id,body);
+    if(parts.length===3&&action==='mute'&&method==='POST')return store.setConversationMute(a,id,body);
     if (parts.length === 3 && action === 'read' && method === 'POST') return store.markConversationRead(a,id,body);
     if (parts.length === 3 && action === 'history-search' && method === 'GET') {
       const page=store.historySearch(a,id,params);
