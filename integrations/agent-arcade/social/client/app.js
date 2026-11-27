@@ -1846,6 +1846,7 @@ function renderHistory(scroll) {
     .map(node=>[Number(node.dataset.voiceId),node]));
   const focusedVoice=document.activeElement?.dataset?.voiceId?document.activeElement:null;
   const focusedAction=document.activeElement?.dataset?.messageAction;
+  const focusedFileReturn=document.activeElement?.hasAttribute('data-group-files-return');
   const focusedReaction=document.activeElement?.dataset?.messageReaction;
   const focusedAnchor=document.activeElement?.classList.contains('history-anchor')?historyContext?.anchor:undefined;
   const focusedOlder=document.activeElement===olderButton;
@@ -1946,6 +1947,12 @@ function renderHistory(scroll) {
       '本条没有收到 AI 回复。消息已发到群里。':paused?'AI 未能回复。':'AI 未能回复。你可以再发一条。','meta'));
     if(!message.removed&&message.aiReply==='pending'&&!paused)content.append(el('p','正在等 AI 回复…','meta'));
     if(!message.removed&&message.reactions?.length)content.append(messageReactionSummary(message));
+    const fileOrigin=historyContext?.groupFilesOrigin;
+    if(fileOrigin?.messageId===message.id&&canResumeGroupFiles(fileOrigin)){
+      const back=button('返回群文件',()=>showGroupFiles(fileOrigin),'outline');
+      back.dataset.groupFilesReturn='';
+      content.append(back);
+    }
     nodes.push(bubble);
   }
   historyView.replaceChildren(...nodes);
@@ -1953,6 +1960,7 @@ function renderHistory(scroll) {
   if(!resolveMessageAction())messageActions.hidePopover();
   if(focusedVoice?.isConnected)focusedVoice.focus({preventScroll:true});
   if(focusedAction)historyView.querySelector('[data-message-action="'+focusedAction+'"]')?.focus({preventScroll:true});
+  if(focusedFileReturn)historyView.querySelector('[data-group-files-return]')?.focus({preventScroll:true});
   if(focusedReaction){
     const action=focusedReaction.split('/')[0];
     (historyView.querySelector('[data-message-reaction="'+focusedReaction+'"]')??
@@ -2612,7 +2620,8 @@ function highlightHistoryHit(element,text,query){
   element.append(text.slice(i,end).toWellFormed(),end<text.length?'…':'');
 }
 function displayOriginal(page,messageId){
-  historyContext={anchor:messageId,messages:mergeHistoryRows(page.messages,[],false),older:page.older};
+  historyContext={anchor:messageId,messages:mergeHistoryRows(page.messages,[],false),older:page.older,
+    groupFilesOrigin:page.groupFilesOrigin};
   resetOlderPage();
   renderHistory('end');
   focusOriginal(historyView.querySelector('[data-history-message="'+messageId+'"]'));
@@ -2633,9 +2642,15 @@ async function locateQuotedMessage(messageId){
       '原消息已移除或不可查看。':textError(error);
   }
 }
-$('#group-shared-files').addEventListener('click',()=>{
+function canResumeGroupFiles({id,account,epoch,visit,revision,floor}){
+  return generation===epoch&&chatVisit===visit&&chat===id&&routeId()===id&&user?.number===account&&
+    conversation?.type==='group'&&membershipRevision===revision&&historyFloor===floor;
+}
+function showGroupFiles(resume){
   if(!user||!chat||conversation?.type!=='group'||!membershipRevision)return;
+  if(resume&&!canResumeGroupFiles(resume))return;
   const id=chat,account=user.number,epoch=generation,visit=chatVisit,revision=membershipRevision;
+  const context={id,account,epoch,visit,revision,floor:historyFloor};
   const form=el('form',null,'history-search-form');
   const label=el('label','文件名'),input=el('input');
   input.type='search';
@@ -2648,51 +2663,97 @@ $('#group-shared-files').addEventListener('click',()=>{
   status.setAttribute('role','status');
   const more=button('加载更多',()=>void load());
   const scope=openDialog('群文件',[form,list,status,more],id);
-  const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&chatVisit===visit&&
-    chat===id&&user?.number===account&&membershipRevision===revision;
-  let query='',before=null,version=0;
+  const current=()=>dialog.open&&dialogGeneration===scope&&canResumeGroupFiles(context);
+  let query=resume?.query??'',ceiling=resume?.ceiling??null,before=ceiling,version=0,pages=0,restoring=Boolean(resume);
+  input.value=query;
   form.addEventListener('submit',event=>{
     event.preventDefault();
     if(!current())return;
     query=input.value.trim();
-    before=null;
+    before=ceiling=null;
+    pages=0;
+    restoring=false;
     list.replaceChildren();
     void load();
   });
+  function jumpToFile(row,control){
+    const serial=version;
+    const origin={...context,query,ceiling,pages,messageId:row.id,scrollTop:dialog.scrollTop,
+      offset:control.getBoundingClientRect().top-dialog.getBoundingClientRect().top,
+      following:[...list.children].map(item=>Number(item.dataset.groupMediaId)).filter(id=>id<row.id)};
+    void perform(async()=>{
+      const params=new URLSearchParams({account,around:row.id});
+      try{
+        const page=await api(thread(id)+'/history-search?'+params,undefined,{expectedAccount:account});
+        if(!current()||serial!==version)return;
+        if(page.anchor!==row.id||page.membershipRevision!==revision||page.historyFloor!==context.floor||
+          removedMessages.has(row.id)||!page.messages.some(item=>item.id===row.id&&!item.removed&&item.attachment?.type==='file'))
+          throw Error('unknown_message');
+        closeDialog();
+        displayOriginal({...page,groupFilesOrigin:origin},row.id);
+      }catch(error){
+        if(!current()||serial!==version)return;
+        if([403,404,409].includes(error.status)||error.message==='unknown_message')showGroupFiles(origin);
+        else status.textContent=textError(error);
+      }
+    },control,scope);
+  }
+  function restorePosition(){
+    const find=id=>list.querySelector('[data-group-media-id="'+id+'"] [data-group-file-original]');
+    const selected=find(resume.messageId);
+    const focus=selected??resume.following.map(find).find(Boolean);
+    dialog.scrollTop=resume.scrollTop;
+    if(focus)dialog.scrollTop+=focus.getBoundingClientRect().top-dialog.getBoundingClientRect().top-resume.offset;
+    (focus??input).focus({preventScroll:true});
+    if(!selected)status.textContent='原文件已不在当前结果中。'+status.textContent;
+  }
   async function load(){
     if(!current())return;
     const serial=++version,active=()=>current()&&serial===version;
     more.hidden=true;
     status.textContent='正在读取群文件…';
     try{
-      const params=new URLSearchParams({...query&&{q:query},...before&&{before}});
-      const page=await api(thread(id)+'/shared-media/files?'+params,undefined,{expectedAccount:account});
-      if(!active())return;
-      if(page.membershipRevision!==revision)throw Error('membership_changed');
-      for(const row of page.items){
-        if(removedMessages.has(row.id))continue;
-        const item=el('div',null,'request');
-        const {name,bytes}=row.attachment;
-        const save=el('a','保存文件');
-        save.download=name;
-        save.href='./api/v1'+thread(id)+'/messages/'+row.id+'/file/download?'+new URLSearchParams({account});
-        item.append(el('strong',name,'chat-file-name'),
-          el('p',row.sender.displayName+' · '+time(row.createdAt)+' · '+fileSize(bytes),'minor'),save);
-        list.append(item);
-      }
-      before=page.nextBefore;
+      do{
+        const params=new URLSearchParams({...query&&{q:query},...before&&{before}});
+        const page=await api(thread(id)+'/shared-media/files?'+params,undefined,{expectedAccount:account});
+        if(!active())return;
+        if(page.membershipRevision!==revision)throw Error('membership_changed');
+        const firstId=page.items[0]?.id;
+        if(!pages&&ceiling===null&&Number.isSafeInteger(firstId+1))ceiling=firstId+1;
+        for(const row of page.items){
+          if(removedMessages.has(row.id))continue;
+          const item=el('div',null,'request');
+          item.dataset.groupMediaId=row.id;
+          const {name,bytes}=row.attachment;
+          const save=el('a','保存文件');
+          save.download=name;
+          save.href='./api/v1'+thread(id)+'/messages/'+row.id+'/file/download?'+new URLSearchParams({account});
+          const jump=button('查看原消息',()=>jumpToFile(row,jump),'outline');
+          jump.dataset.groupFileOriginal='';
+          const actions=el('div',null,'actions');
+          actions.append(jump,save);
+          item.append(el('strong',name,'chat-file-name'),
+            el('p',row.sender.displayName+' · '+time(row.createdAt)+' · '+fileSize(bytes),'minor'),actions);
+          list.append(item);
+        }
+        pages++;
+        before=page.nextBefore;
+      }while(restoring&&before!==null&&pages<resume.pages);
       more.hidden=before===null;
       status.textContent=list.childElementCount?'':query?'没有匹配的文件。':'暂无可查看的群文件。';
+      if(restoring){restorePosition();restoring=false;}
     }catch(error){
       if(!active())return;
       if([403,404,409].includes(error.status)||error.message==='membership_changed'){
         list.replaceChildren();
         status.textContent='群会话权限已变化，请重新打开群会话。';
+        input.focus();
       }else status.textContent=textError(error);
     }
   }
   void load();
-});
+}
+$('#group-shared-files').addEventListener('click',()=>showGroupFiles());
 const historySearchButton=$('#history-search');
 // A cached page can load this script before it has the search control.
 if(historySearchButton)historySearchButton.hidden=false;
