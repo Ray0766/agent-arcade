@@ -159,7 +159,10 @@ dialog:has(.ai-role-library) #dialog-body > button {
 .attachment-preview{max-height:42dvh}
 dialog:has(.original-image){width:min(96vw,960px)}
 .history-search-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px}
-.history-search-form label{grid-column:1/-1}.history-search-form input{min-width:0}
+.history-search-form label{grid-column:1/-1;min-width:0}.history-search-form input,.history-search-form select{min-width:0;max-width:100%}
+.history-search-form label :is(input,select){display:block;width:100%}
+.history-search-form select{min-height:44px;padding:0 .75rem;color:var(--ink);background:var(--paper);border:1px solid #d8cadb;border-radius:12px;font:inherit}
+.history-search-form select:focus-visible{outline:2px solid var(--plum);outline-offset:2px}
 .history-search-results{
   list-style:none;
   margin:0;

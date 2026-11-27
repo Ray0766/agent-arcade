@@ -750,8 +750,18 @@ class SocialStore {
       if(!/^[1-9]\d*$/u.test(raw)||!Number.isSafeInteger(value))fail(400,'cursor','消息位置无效');
       return value;
     };
+    const filters=['q','sender','from','until','before'];
+    if(params.has('senders')){
+      if(params.has('around')||filters.some(key=>params.has(key)))fail(400,'cursor','请选择一种查询方式');
+      const senders=this.all(`SELECT u.number,u.name AS displayName FROM users u JOIN (
+        SELECT account AS number FROM members WHERE chat=?
+        UNION
+        SELECT sender FROM messages WHERE chat=? AND id>? AND removed=0
+      ) visible ON visible.number=u.number ORDER BY u.name,u.number`,id,id,chat.since);
+      return {...scope,senders};
+    }
     if(params.has('around')){
-      if(params.has('q')||params.has('before'))fail(400,'cursor','请选择一种查询方式');
+      if(filters.some(key=>params.has(key)))fail(400,'cursor','请选择一种查询方式');
       const target=readId('around',null);
       const original=this.one('SELECT * FROM messages WHERE chat=? AND id=? AND id>? AND removed=0',id,target,chat.since);
       if(!original)fail(404,'unknown_message','这条消息已移除或不可查看');
@@ -760,12 +770,23 @@ class SocialStore {
       return {...scope,anchor:target,older:before.length>25,
         messages:[...before.slice(0,25).reverse(),original,...after].map(row=>this.message(row))};
     }
-    const query=string(params.get('q'),100,'搜索关键词');
+    const query=params.has('q')?string(params.get('q'),100,'搜索关键词'):null;
+    const sender=params.has('sender')?number(params.get('sender')):null;
+    const from=params.get('from'),until=params.get('until');
+    if(from!==null||until!==null){
+      const valid=value=>/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)&&
+        Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
+      if(!valid(from)||!valid(until)||until<=from||Date.parse(until)-Date.parse(from)>48*3600000)
+        fail(400,'history_date','搜索日期无效');
+    }
+    if(!query&&!sender&&!from)fail(400,'invalid_text','请选择日期或发送人，或填写关键词');
     const before=readId('before',Number.MAX_SAFE_INTEGER), limit=20;
     const matches=this.all(`SELECT m.id,m.body AS text,m.created AS createdAt,u.name AS sender
       FROM messages m JOIN users u ON u.number=m.sender
-      WHERE m.chat=? AND m.id>? AND m.id<? AND m.removed=0 AND instr(lower(m.body),lower(?))>0
-      ORDER BY m.id DESC LIMIT ?`,id,chat.since,before,query,limit+1);
+      WHERE m.chat=? AND m.id>? AND m.id<? AND m.removed=0
+        AND (? IS NULL OR m.sender=?) AND (? IS NULL OR (m.created>=? AND m.created<?))
+        AND (? IS NULL OR instr(lower(m.body),lower(?))>0)
+      ORDER BY m.id DESC LIMIT ?`,id,chat.since,before,sender,sender,from,from,until,query,query,limit+1);
     const results=matches.slice(0,limit);
     return {...scope,results,next:matches.length>limit?results.at(-1).id:null};
   }
