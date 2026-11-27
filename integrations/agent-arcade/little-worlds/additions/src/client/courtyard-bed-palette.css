@@ -1,0 +1,10 @@
+#bed-palette-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 8px;
+  margin-block: 10px;
+}
+#bed-palette-tools label { grid-column: 1 / -1; }
+#bed-palette-tools select { width: 100%; }
+#save-bed-palette { white-space: nowrap; }

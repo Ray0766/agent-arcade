@@ -448,17 +448,18 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..2de821815f0778f87788a9483f051467
   }};
  }
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c63ae9a336 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..775393f5b61364a46449658d8006a8068899e403 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
-@@ -1,15 +1,24 @@
+@@ -1,15 +1,25 @@
++import './courtyard-bed-palette.css';
 +import {addTownExterior} from './town-exterior.ts';
  import { localizedOption, setAttribute, setText, translate } from './i18n.ts';
  import { makePlacementPreview } from './placement-preview.ts';
 +import { createCourtyardInspiration } from './courtyard-inspiration.ts';
 +import type { CourtyardChoice } from './courtyard-inspiration.ts';
-+import { COURTYARD_PLANTINGS, courtyardPlanting } from '../shared/courtyard-plantings.ts';
-+import { addCourtyardPlantingArt } from './courtyard-planting-art.ts';
++import { COURTYARD_BED_PALETTES, COURTYARD_PLANTINGS, courtyardPlanting, isCourtyardBedPalette, type CourtyardBedPalette } from '../shared/courtyard-plantings.ts';
++import { addCourtyardPlantingArt, setCourtyardBedPalette } from './courtyard-planting-art.ts';
  import { PlacedObjectShadows } from './placed-shadows.ts';
  import * as T from 'three';
  import {fieldOf,objectSeat} from '../shared/terrain.ts';
@@ -477,7 +478,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
  import type { Workshop } from './workshop.ts';
  import { canAcceptUniverse } from './sync.ts';
  import {lazyPanel,openPanel} from './lazy-panel.ts';
-@@ -32,8 +41,9 @@ const el = <E extends HTMLElement = HTMLElement>(id:string) => document.getEleme
+@@ -32,8 +42,9 @@ const el = <E extends HTMLElement = HTMLElement>(id:string) => document.getEleme
  export interface ColonyBridge {
    canvas: HTMLCanvasElement; camera: T.Camera; scene: T.Scene;
    ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
@@ -488,7 +489,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
    universe:(u:Universe)=>void; bearing:(id:string)=>void;
    flush: () => Promise<void>; notice: (text:string) => void;
-@@ -42,6 +52,10 @@ export interface ColonyBridge {
+@@ -42,6 +53,10 @@ export interface ColonyBridge {
    cameraCutaway?:boolean;
  }
  type Draft = Omit<PlacedObject,'position'|'version'> & {position:Vec3|null;version?:number};
@@ -499,7 +500,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
  export class Colony {
    universe: Universe | null = null;
    building = false; syncing = true; busy = false;
-@@ -53,19 +67,42 @@ export class Colony {
+@@ -50,22 +65,46 @@ export class Colony {
+   private pathPreview = new T.Group();
+   private cutawayController:TownCameraCutaway|undefined;
+   get cutaway(){return this.cutawayController;}
++  private bedPaletteDraft: { id:string; original:CourtyardBedPalette; palette:CourtyardBedPalette } | null = null;
    private objects = new Map<string,T.Group>(); private draft: Draft | null = null;
    private shadows = new PlacedObjectShadows(PRESENTATION.ground.garden.shadowExtent * .75);
    private placing = false; private selected: string | null = null;
@@ -543,10 +548,29 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
      el<HTMLSelectElement>('region-select').onchange=()=>{this.cards='';this.starMap();};
      el('open-map').onclick=()=>{el<HTMLDialogElement>('menu-dialog').close();bridge.pause(this.building);this.cards='';if(this.universe)this.starMap();this.map.showModal();void this.poll();};
-@@ -82,12 +119,30 @@ export class Colony {
+@@ -82,12 +121,49 @@ export class Colony {
      el('move-object').after(editStructure);editStructure.onclick=()=>{if(this.selected)void this.openStructureWorkshop(this.selected);};
      el('cancel-object').onclick=()=>{if(!this.discardPlacement())return;this.clearDraft();this.editor();};
      el('save-object').onclick=()=>void this.save();
++    const paletteTools = document.createElement('div');
++    paletteTools.id = 'bed-palette-tools';
++    paletteTools.className = 'edit-row';
++    paletteTools.hidden = true;
++    const paletteLabel = document.createElement('label');
++    paletteLabel.htmlFor = 'bed-palette-choice';
++    setText(paletteLabel, 'Flower bed colours');
++    const paletteChoice = document.createElement('select');
++    paletteChoice.id = 'bed-palette-choice';
++    const paletteNames = { original: 'Original mix', coral: 'Coral with gold accents', gold: 'Gold with coral accents' };
++    for (const palette of COURTYARD_BED_PALETTES) paletteChoice.add(localizedOption(paletteNames[palette], palette));
++    const paletteSave = document.createElement('button');
++    paletteSave.id = 'save-bed-palette';
++    paletteSave.className = 'primary';
++    setText(paletteSave, 'Save flower colours');
++    paletteChoice.onchange = () => this.previewBedPalette(paletteChoice.value);
++    paletteSave.onclick = () => void this.saveBedPalette();
++    paletteTools.append(paletteLabel, paletteChoice, paletteSave);
++    el('object-tools').append(paletteTools);
 +    const chooseArrival=document.createElement('button');
 +    chooseArrival.id='choose-courtyard-arrival';chooseArrival.className='quiet';
 +    setText(chooseArrival,'Set courtyard arrival point');
@@ -575,7 +599,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
      }
      bridge.canvas.addEventListener('pointerdown',e=>{
        this.pointer=this.building&&!this.busy&&!document.querySelector('dialog[open]')&&e.button===0&&e.isPrimary!==false?{id:e.pointerId,x:e.clientX,y:e.clientY}:null;
-@@ -109,6 +164,7 @@ export class Colony {
+@@ -109,6 +185,7 @@ export class Colony {
      void this.poll();
    }
    get paused() { return this.building || this.map.open || this.busy || this.workshop?.opened; }
@@ -583,7 +607,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
    private setKitCollapsed(collapsed:boolean){
      const panel=el('builder'),choices=el('building-kit-choices'),toggle=el('toggle-building-kit');
      panel.classList.toggle('kit-collapsed',collapsed);toggle.setAttribute('aria-expanded',String(!collapsed));
-@@ -116,8 +172,30 @@ export class Colony {
+@@ -116,8 +193,30 @@ export class Colony {
      // Move keyboard focus before its selected catalogue control is visually hidden.
      if(collapsed&&choices.contains(document.activeElement))toggle.focus();
    }
@@ -611,12 +635,83 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
 +    this.editor();
 +    this.setKitCollapsed(innerWidth<=700);
 +  }
-+  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;this.pickingArrival=false;this.arrivalDraft=null;this.arrivalMarker.visible=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
++  private clearDraft(){this.clearBedPalettePreview();this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;this.pickingArrival=false;this.arrivalDraft=null;this.arrivalMarker.visible=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
 +  private hasDraft(){if(this.arrivalDraft&&!this.arrivalDraft.problem)return true;const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
    private discardPlacement(){return !this.hasDraft()||window.confirm(translate('Discard the unsaved building placement or changes?'));}
    private setBuilding(value:boolean,force=false){
      if(!value&&!force&&!this.discardPlacement())return false;
-@@ -188,7 +266,7 @@ export class Colony {
+@@ -165,6 +264,7 @@ export class Colony {
+   }
+   accept(next:Universe){
+     if(!canAcceptUniverse(this.universe,next)||!this.bridge.applyPlayer(next.player))return;
++    const previousPlanet=this.universe?.currentPlanet;
+     const changed=this.universe?.currentPlanet.id!==next.currentPlanet.id;
+     this.universe=next;el('open-history').hidden=!next.currentPlanet.mine;el('open-terrain').hidden=!next.currentPlanet.mine||next.player.flight.mode!=='ground';this.syncing=true;this.bridge.universe(next);
+     if(changed){this.setBuilding(false,true);this.clearDraft();}
+@@ -177,8 +277,62 @@ export class Colony {
+         this.commitObjects(next.currentPlanet,objects,cutaway);
+       }catch(error){cutaway?.dispose();for(const group of objects.values())disposeGeometry(group);throw error;}
+     }
++    if (!changed && this.painted === key) this.applyBedPalettes(next.currentPlanet, previousPlanet);
+     this.hud();this.editor();this.starMap();
+   }
++  private applyBedPalettes(planet: PlanetView, previous?: PlanetView) {
++    for (const id of new Set([...Object.keys(planet.courtyardBedPalettes ?? {}), ...Object.keys(previous?.courtyardBedPalettes ?? {})])) {
++      const saved = planet.courtyardBedPalettes?.[id];
++      if (saved === previous?.courtyardBedPalettes?.[id] || this.bedPaletteDraft?.id === id) continue;
++      const group = this.objects.get(id);
++      if (group) setCourtyardBedPalette(group, saved, this.cutawayController);
++    }
++  }
++
++  private get selectedBed() {
++    const d = this.draft;
++    return this.canArrangeCourtyard() && !this.placing && d?.version && d.kind === 'structure' &&
++      d.blueprintHash === COURTYARD_PLANTINGS.bed.hash ? d : null;
++  }
++
++  private previewBedPalette(palette: unknown) {
++    const bed = this.selectedBed, planet = this.universe?.currentPlanet;
++    if (this.busy || !this.syncing || !bed || !planet || !isCourtyardBedPalette(palette)) return;
++    const original = this.bedPaletteDraft?.original ?? planet.courtyardBedPalettes?.[bed.id] ?? 'original';
++    if (palette === original) this.clearBedPalettePreview();
++    else {
++      this.bedPaletteDraft = { id: bed.id, original, palette };
++      const group = this.objects.get(bed.id);
++      if (group) setCourtyardBedPalette(group, palette, this.cutawayController);
++      if (this.ghost) this.ghost.visible = false;
++    }
++    this.editor();
++  }
++
++  private clearBedPalettePreview() {
++    const draft = this.bedPaletteDraft;
++    if (!draft) return;
++    const group = this.objects.get(draft.id);
++    if (group) setCourtyardBedPalette(group, this.universe?.currentPlanet.courtyardBedPalettes?.[draft.id], this.cutawayController);
++    if (this.ghost) this.ghost.visible = true;
++    this.bedPaletteDraft = null;
++  }
++
++  private async saveBedPalette() {
++    const u = this.universe, bed = this.selectedBed, draft = this.bedPaletteDraft;
++    if (!u || !bed || !draft || draft.id !== bed.id) return;
++    const location = u.player.location;
++    const saved = await this.command('courtyard/bed-palette', {
++      planetId: u.currentPlanet.id, visitEpoch: location?.visitEpoch ?? 0, objectId: bed.id,
++      expectedVersion: bed.version, expectedPalette: draft.original, palette: draft.palette,
++    });
++    if (saved) {
++      this.clearDraft();
++      this.editor();
++      this.bridge.notice('Flower bed colours saved.');
++    }
++  }
++
+   private commitObjects(planet:PlanetView,objects:Map<string,T.Group>,cutaway?:TownCameraCutaway){
+     this.previewPaths([]);this.painted=worldVisualSignature(planet);
+     this.bridge.canvas.dataset.placedAssetKit=SHARED_ASSET_VERSION;this.bridge.canvas.dataset.placedAssetKinds=planet.objects.map(o=>o.kind).join(',');
+@@ -188,10 +342,16 @@ export class Colony {
      this.shadows.clear();for(const child of [...this.layer.children])disposeGeometry(child);this.layer.clear();this.objects=objects;
      for(const group of objects.values())this.layer.add(group);this.shadows.replace(objects);
      const list=el<HTMLSelectElement>('built-list');list.replaceChildren(localizedOption('Select a saved object…', ''));
@@ -625,7 +720,16 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
      this.bridge.obstacles(planet.objects.filter(o=>o.kind!=='structure'&&objectHeight(o)>.6).map(o=>({point:new T.Vector3(...o.position),radius:objectRadius(o),height:objectHeight(o)})));
      if(this.selected&&!planet.objects.some(o=>o.id===this.selected))this.clearDraft();
      this.cutawayController=cutaway;
-@@ -224,7 +302,17 @@ export class Colony {
++    const current=this.universe?.currentPlanet;
++    this.applyBedPalettes(current?.id === planet.id ? current : planet, planet);
++    const paletteDraft = this.bedPaletteDraft;
++    const bed = paletteDraft && this.objects.get(paletteDraft.id);
++    if (bed && paletteDraft) setCourtyardBedPalette(bed, paletteDraft.palette, this.cutawayController);
++
+   }
+   async prepareObjects(planet:PlanetView,options:{signal:AbortSignal;yieldFrame:()=>Promise<void>;onProgress?:(done:number,total:number)=>void;budgetMs?:number}){
+     const root=new T.Group(),objects=new Map<string,T.Group>();let released=false,cutaway:TownCameraCutaway|undefined;
+@@ -224,7 +384,17 @@ export class Colony {
    private async poll(){
      if(this.pollBusy||this.busy||this.workshop?.opened)return;this.pollBusy=true;
      const before=this.universe;
@@ -644,7 +748,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
    }
    private async command(route:string,body:unknown){
      if(this.busy||!this.syncing)return false;this.busy=true;this.editor();this.hud();
-@@ -237,7 +325,10 @@ export class Colony {
+@@ -237,7 +407,10 @@ export class Colony {
      if(!this.universe)return;
      if(await this.command('planets/claim',{planetId:this.universe.currentPlanet.id})){this.bridge.notice('This world is yours. Enter Build mode when you are ready.');}
    }
@@ -656,7 +760,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
    private problem(d:Draft){
      const planet=this.universe?.currentPlanet,field=fieldOf(planet?.environment,planet?.radius),blueprints={...planet?.blueprints,...(d.blueprintHash?{[d.blueprintHash]:this.parts(d.blueprintHash)}:{})};
      const spacing=placementProblem(d.kind,d.position,planet?.objects??[],d.id,d.radius,planet?.radius,d.assetVersion??1,{rotation:d.rotation,blueprintHash:d.blueprintHash,blueprints,field,terrainSeating:!!planet?.environment});
-@@ -269,13 +360,20 @@ export class Colony {
+@@ -269,13 +442,20 @@ export class Colony {
    }
    private renderObject(obj:PlacedObject,planet=this.universe!.currentPlanet,cameraCutaway=false){
      if(obj.kind!=='structure'){const group=builtObject(obj.kind,obj.assetVersion??1);this.locate(group,obj.position,obj.rotation,planet);if(planet.environment)group.position.set(...obj.position).multiplyScalar(objectSeat(fieldOf(planet.environment,planet.radius),obj,planet.blueprints).baseRadius+.015);return group;}
@@ -676,11 +780,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
 +    const finish=buildStructureFinish(parts,worldMaterials(),{cameraPartSlots:slots});model.object.add(finish.object);
 +    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
 +    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
-+    if(preset)addCourtyardPlantingArt(model.object,preset,parts);
++    if(preset)addCourtyardPlantingArt(model.object,preset,parts,planet.courtyardBedPalettes?.[obj.id]);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
      model.object.position.fromArray(transform.position);model.object.quaternion.fromArray(transform.quaternion);
      model.object.userData.disposeOwned=()=>{finish.dispose();model.dispose();};
-@@ -291,6 +389,11 @@ export class Colony {
+@@ -291,6 +471,11 @@ export class Colony {
    }
    private point(x:number,y:number){
      this.ray.setFromCamera(new T.Vector2(x/innerWidth*2-1,-y/innerHeight*2+1),this.bridge.camera);
@@ -692,7 +796,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
      if(this.placing&&this.draft){const hit=this.ray.intersectObject(this.bridge.ground())[0];if(hit){this.draft.position=hit.point.normalize().toArray() as Vec3;this.preview();this.editor();}return;}
      const hit=this.ray.intersectObjects([...this.objects.values()],true)[0];
      const surface=this.ray.intersectObject(this.bridge.ground())[0];
-@@ -312,17 +415,66 @@ export class Colony {
+@@ -312,18 +497,74 @@ export class Colony {
      const body={planetId:this.universe.currentPlanet.id,objectId:d.id,position:d.position,rotation:d.rotation,...(d.version?{expectedVersion:d.version}:{kind:d.kind,...(d.blueprintHash?{blueprintHash:d.blueprintHash}:{})})};
      if(await this.command(route,body)){this.clearDraft();this.editor();this.bridge.notice('Saved. Everyone visiting can see your change.');}
    }
@@ -759,11 +863,20 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c6
      setText(el('save-object'), this.busy?'Saving…':d?.version?'Save changes':'Place object');
      el<HTMLButtonElement>('move-object').hidden=!d?.version;el<HTMLButtonElement>('remove-object').hidden=!d?.version;
 -    el<HTMLButtonElement>('edit-structure').hidden=!d?.version||d.kind!=='structure';
+-    for(const id of ['rotate-object','move-object','edit-structure','remove-object','cancel-object'])el<HTMLButtonElement>(id).disabled=this.busy||!this.syncing;
++    const bed = this.selectedBed, paletteChanged = !!this.bedPaletteDraft;
++    const paletteChoice = el<HTMLSelectElement>('bed-palette-choice');
++    el('bed-palette-tools').hidden = !bed;
++    paletteChoice.disabled = !bed || this.busy || !this.syncing;
++    if (bed) paletteChoice.value = this.bedPaletteDraft?.palette ?? this.universe?.currentPlanet.courtyardBedPalettes?.[bed.id] ?? 'original';
++    el<HTMLButtonElement>('save-bed-palette').disabled = !paletteChanged || this.busy || !this.syncing;
++    if (paletteChanged) el<HTMLButtonElement>('save-object').disabled = true;
 +    el<HTMLButtonElement>('edit-structure').hidden=!d?.version||d.kind!=='structure'||!!courtyardPlanting(d.blueprintHash);
-     for(const id of ['rotate-object','move-object','edit-structure','remove-object','cancel-object'])el<HTMLButtonElement>(id).disabled=this.busy||!this.syncing;
++    for(const id of ['rotate-object','move-object','edit-structure','remove-object','cancel-object'])el<HTMLButtonElement>(id).disabled=this.busy||!this.syncing||(paletteChanged&&id!=='cancel-object');
      document.querySelectorAll<HTMLButtonElement>('.catalogue-item').forEach(b=>{b.disabled=this.busy||!this.syncing;b.setAttribute('aria-pressed',String(b.dataset.kind===d?.kind));});
    }
-@@ -338,6 +490,10 @@ export class Colony {
+   private hud(){
+@@ -338,6 +579,10 @@ export class Colony {
      el<HTMLButtonElement>('claim-planet').disabled=this.busy||!this.syncing;
      el<HTMLButtonElement>('build-mode').hidden=!p.mine;setText(el('build-mode'), this.building?'Building…':'Build on my planet');
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
@@ -1179,7 +1292,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..e92faf55ae358b779c096b9a437ec976f77965f8 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..86926fb76050a2e85dd8ad625e2ace9d13a6e622 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -30,6 +30,8 @@ import { createTutorialRoute } from './tutorial-route.ts';
@@ -1383,7 +1496,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..e92faf55ae358b779c096b9a437ec976
 +  const bouquetScope = visitVisible && !garden.mine && !flight?.active && groundWorld && bothouseResidents.canPhotographVisit(groundWorld,epoch)
 +    ? garden.id+'/'+epoch : null;
 +  const bouquetContext = bouquetScope && garden && groundWorld && standing ? {
-+    world:groundWorld, pose:standing, objects:garden.objects, getModel:(id:string)=>colony?.savedObjectModel(id),
++    world:groundWorld, pose:standing, objects:garden.objects, bedPalettes:garden.courtyardBedPalettes, getModel:(id:string)=>colony?.savedObjectModel(id),
 +  } : null;
 +  bouquet.frame(bouquetScope,bouquetContext,!!bouquetContext && !benchRest && canGreetVisitor(),!overview && !benchRest && canSceneInput());
 +
@@ -1560,7 +1673,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..e92faf55ae358b779c096b9a437ec976
  async function startInitialVisit(){
    initialStateReady=false;welcomeCommitted=false;welcome.stage('connecting');
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986a7f08393 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..54ebdc04bb890317dc91fc96829063a1e6751417 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
 @@ -1,6 +1,8 @@
@@ -1595,7 +1708,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986
    "Could not open photo mode.": "暂时无法进入照片模式。",
    "Photo export is unavailable.": "当前无法导出照片。",
    "Photo export failed.": "照片导出失败。",
-@@ -1031,6 +1042,28 @@ export const messages: Record<string, string> = {
+@@ -1031,6 +1042,35 @@ export const messages: Record<string, string> = {
    "A little world awaits": "一颗小星球在等你",
    "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
    "Make this my planet": "认领这颗星球",
@@ -1607,6 +1720,13 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986
 +  "Pathside welcome": "路边迎客",
 +  "Flower-viewing corner": "观花角",
 +  "Coral and gold flowers, low stone edging and a golden tree frame the grass beside the courtyard path.": "珊瑚色和金色花叶铺在草地上，近处是低矮石边，后面是一棵金叶树。",
++  "Flower bed colours": "花圃配色",
++  "Original mix": "原有混色",
++  "Coral with gold accents": "珊瑚主花 · 金色配花",
++  "Gold with coral accents": "金色主花 · 珊瑚配花",
++  "Save flower colours": "保存配色",
++  "Flower bed colours saved.": "花圃配色已保存。",
++  "This flower bed changed. Select it again.": "这座花圃已有改动，请重新选中。",
 +  "Flower drift": "双色花圃",
 +  "Lay the flowers across the grass to make a broad band of colour.": "沿草地横摆，让两色花叶连成一片。",
 +  "Low stone edging": "矮石边",
@@ -1624,7 +1744,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986
    "Build on my planet": "在我的星球建造",
    "Mark my planet ↗": "标记我的星球 ↗",
    "Try a delivery": "体验投递任务",
-@@ -1172,6 +1205,25 @@ export const messages: Record<string, string> = {
+@@ -1172,6 +1212,25 @@ export const messages: Record<string, string> = {
    "Saving your change…": "正在保存改动…",
    "Connection lost. Building is paused.": "连接已断开，建造已暂停。",
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
@@ -1650,7 +1770,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
    "Saving…": "正在保存…",
    "Save changes": "保存改动",
-@@ -1233,6 +1285,7 @@ export const messages: Record<string, string> = {
+@@ -1233,6 +1292,7 @@ export const messages: Record<string, string> = {
 
  // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
@@ -1658,7 +1778,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
    ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
    ["{0} · Your saved home","{0} · 你保存的家园"], ["{0} · Public starport","{0} · 公共星港"], ["{0} · Visit only · building belongs to its owner","{0} · 可参观，建筑由主人管理"], ["{0} · An unclaimed world to explore","{0} · 可探索的未认领星球"],
-@@ -1293,6 +1346,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1293,6 +1353,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
      "Turn: {0}°",
      "朝向：{0}°"
    ],
@@ -1670,7 +1790,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986
    [
      "{0} / {1} objects",
      "{0} / {1} 个物件"
-@@ -1479,6 +1537,9 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1479,6 +1544,9 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
      "Custom structure {0}",
      "自定义建筑 {0}"
    ],
@@ -2360,15 +2480,21 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a06a15475 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..0615a6f25de0cc5f33cae02ad3c9aac7c4822efc 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
-@@ -3,3 +3,3 @@ import { createHash, randomBytes } from 'node:crypto';
+@@ -1,7 +1,7 @@
+ import { createServer } from 'node:http';
+ import { createHash, randomBytes } from 'node:crypto';
  import { readFile } from 'node:fs/promises';
 -import { resolve, extname } from 'node:path';
 +import { resolve, extname, sep } from 'node:path';
  import { marked } from 'marked';
-@@ -14,2 +14,8 @@ import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
+ import { BLUEPRINT_BODY_LIMIT } from '../shared/blueprints.ts';
+ import { presenceStore } from './presence.ts';
+@@ -12,6 +12,12 @@ import { workerScript } from './worker-script.ts';
+ import { createGuideHelp } from './guide-help.ts';
+ import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
  import {guideConfiguration} from './guide-config.ts';
 +import {serveResidentArt,withResidentArt} from './resident-art.ts';
 +import {readFriendsOrigins} from './friends-origins.ts';
@@ -2377,7 +2503,11 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +import {planetResidents} from './planet-residents.ts';
 +import {jsonBody,residentSettings} from './resident-http.ts';
  import { businessLog } from './business-log.ts';
-@@ -27,2 +33,8 @@ if (store.migrationBackup) console.log(`Before migration, saved a consistent bac
+
+ const homeSample=process.env.HOME_SAMPLE==='1';
+@@ -25,6 +31,12 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
+ const cookieName=homeSample?(samplePort===8126?'little_home_sample':`little_home_sample_p${samplePort}`):'little_post';
+ if (store.migrationBackup) console.log(`Before migration, saved a consistent backup: ${store.migrationBackup}`);
  const audit=businessLog(databasePath);
 +const residentSources=planetResidents(store.db);
 +const appResidentLinks=appResidents(store.db,residentSources);
@@ -2386,12 +2516,16 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +  homeSample ? (player,bind)=>store.createPrepared(player,Date.now(),0,bind) : undefined);
 +const residents=withResidentArt(store.db,{...residentSources,read:appResidentLinks.read});
  const guideHelp=createGuideHelp();
-@@ -55,3 +67,3 @@ const server = createServer(async (req, res) => {
+ // Default off; production requires explicit approval configuration and the transferred ledger.
+ const aiConfig=guideConfiguration(process.env);
+@@ -53,25 +65,116 @@ const server = createServer(async (req, res) => {
+   try {
+     const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
 -    if (url.pathname.startsWith('/api/')) {
 +    if (url.pathname.startsWith('/api/')||url.pathname==='/resident-settings') {
        auditRoute=url.pathname.slice(5);
-@@ -59,4 +71,85 @@ const server = createServer(async (req, res) => {
+       auditContext={planetId:url.searchParams.get('planetId')};
        const cookie = new RegExp('(?:^|;\\s*)'+cookieName+'=([a-f0-9]{64})(?:;|$)').exec(req.headers.cookie ?? '')?.[1];
 -      let id = cookie ? hash(cookie) : '';
 +      const cookieDigest=cookie ? hash(cookie) : '';
@@ -2478,13 +2612,37 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +        }
 +      }
        if (url.pathname === '/api/state' && req.method === 'GET') {
-@@ -65,4 +158,3 @@ const server = createServer(async (req, res) => {
+         if (!id || !store.has(id)) {
+           const token = randomBytes(32).toString('hex'); id = hash(token); const created = store.integratedWorld?store.createArrival(id):await store.createPrepared(id);
            auditIdentity=id;auditCreated=true;
 -          const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
 -          res.setHeader('Set-Cookie', `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000${secure}`);
 +          setSession(token,req.headers['x-forwarded-proto']==='https');
            send(200, created); return;
-@@ -97,8 +189,9 @@ const server = createServer(async (req, res) => {
+         }
+         send(200, store.state(id)); return;
+       }
+       if (url.pathname === '/api/universe' && req.method === 'GET') {
+         if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
+-        send(200, store.universe(id)); return;
++        const universe=store.universe(id),planet=universe.currentPlanet;
++        if(!planet.mine && universe.player.flight.mode==='ground' && universe.player.location?.kind!=='interior' &&
++           Object.keys(store.courtyardBedPalettes(planet.id)).length){
++          const access=await residentVisitAccess(planet.id).catch((error:unknown)=>{
++            if(error instanceof RequestError && (error.status===403 || error.status===503))return 'closed';
++            throw error;
++          });
++          if(access==='friend'){
++            send(200,{...universe,currentPlanet:{...planet,courtyardBedPalettes:store.courtyardBedPalettes(planet.id)}});return;
++          }
++        }
++        send(200,universe);return;
+       }
+       if (url.pathname === '/api/blueprints' && req.method === 'GET') {
+         if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
+@@ -95,12 +198,13 @@ const server = createServer(async (req, res) => {
+       if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
+       else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
 -      const chunks: Buffer[] = []; let byteLength = 0;
 -      for await (const chunk of req) { const bytes = Buffer.from(chunk); byteLength += bytes.length; if (byteLength > bodyLimit) throw new RequestError(413, 'Request too large.'); chunks.push(bytes); }
@@ -2500,20 +2658,39 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +        throw new RequestError(400,'Choose a resident connection action.');
 +      }
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
-@@ -143,2 +236,3 @@ const server = createServer(async (req, res) => {
+       if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
+       if(url.pathname==='/api/guide/ask'){
+@@ -141,6 +245,8 @@ const server = createServer(async (req, res) => {
+       else if(url.pathname==='/api/trip/change')send(200,store.changeTrip(id,body));
+       else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
        else if(url.pathname==='/api/planets/rename')send(200,store.renamePlanet(id,body));
++      else if(url.pathname==='/api/courtyard/bed-palette')send(200,store.setCourtyardBedPalette(id,body));
 +      else if(url.pathname==='/api/courtyard/arrival')send(200,store.saveCourtyardArrival(id,body));
        else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
-@@ -170,3 +264,3 @@ const server = createServer(async (req, res) => {
+       else if (url.pathname === '/api/flight/checkpoint') send(200,store.flight(id,body));
+       else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
+@@ -168,7 +274,7 @@ const server = createServer(async (req, res) => {
+       type = 'text/html; charset=utf-8';
+     } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
 -      if (!path.startsWith(root + '/')) throw new RequestError(404, 'Not found.');
 +      if (!path.startsWith(root + sep)) throw new RequestError(404, 'Not found.');
        try { body = await readFile(path); } catch { throw new RequestError(404, 'Not found.'); }
+       type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
+     }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7e95afc92 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..95cde52e86fa6ddfed519f26ec100ca117a76e82 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -187,3 +187,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -1,3 +1,5 @@
++import { courtyardBedPaletteStore } from './courtyard-bed-palettes.ts';
++import { isCourtyardBedPalette } from '../shared/courtyard-plantings.ts';
+ import { createHash, randomUUID } from 'node:crypto';
+ import { encodeBlueprint, hashInput } from '../shared/blueprint-codec.ts';
+ import { canonicalJson } from '../assets/claude-geometry/core/doc.ts';
+@@ -185,9 +187,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       migrateArrivalHomes(db);
+       migrateTrips(db);
        migrateAppearances(db);
 -      db.exec('PRAGMA user_version=20; COMMIT;');
 +      db.exec(`CREATE TABLE IF NOT EXISTS courtyard_arrivals (
@@ -2521,7 +2698,14 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        route TEXT NOT NULL
 +      ); PRAGMA user_version=${STORE_SCHEMA}; COMMIT;`);
      } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
-@@ -210,2 +213,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   }
++  const bedPalettes=courtyardBedPaletteStore(db);
+   const history = historyStore(db);
+   const ships = shipStore(db);
+   const blueprints = blueprintStore(db);
+@@ -208,6 +214,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     if (!result) throw new RequestError(401, 'Your session has expired. Reload to start a new visit.');
+     return result;
    };
 +  function enrollArrival(id:string,now:number){
 +    db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
@@ -2529,21 +2713,43 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +    appearances.enroll(id);
 +  }
    const state = (id: string): PlayerState => {
-@@ -330,2 +338,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     row(id);const flight=navigation.flight(id);
+     const location=homeEnabled?homes.location(id):undefined;
+@@ -291,7 +302,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       if(heavy)void prepareStation(heavy,owned).catch(error=>console.error('Station preparation deferred:',error instanceof Error?error.message:error));
+       else teleport.ensureHomeStation(owned);
+     }
+-    const player = state(id); return { player, planets: planets.list(id), ownedPlanetId: planets.owned(id), currentPlanet: planets.view(id, player.planetId) };
++    const player=state(id),currentPlanet=planets.view(id,player.planetId);
++    const courtyardBedPalettes=currentPlanet.mine && player.flight.mode==='ground' && player.location?.kind!=='interior' ? bedPalettes.list(currentPlanet.id) : undefined;
++    return {player,planets:planets.list(id),ownedPlanetId:planets.owned(id),currentPlanet:{...currentPlanet,...(courtyardBedPalettes && {courtyardBedPalettes})}};
+   };
+   return {
+     db, state, universe, migrationBackup, homeSample, integratedWorld,
+@@ -328,14 +341,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     flight(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.checkpoint(id,clean,now);return state(id);},
+     land(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.land(id,clean,now);homes.movedExterior(id);return universe(id);},
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
 +    enrollFriendsPlayer(id:string){
 +      if(!integratedWorld||!db.isTransaction)throw new RequestError(409,'Open an integrated world to link Friends.');
 +      enrollArrival(id,Date.now());
 +    },
      /** Establish identity and Hub spawn before any expensive home generation. */
-@@ -336,4 +348,4 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     createArrival(id:string,now=Date.now()){
+       if(this.has(id))return state(id);
+       if(!integratedWorld)return this.create(id,now);
+       db.exec('BEGIN IMMEDIATE');
        try{
 -        db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
 -        arrivalHomes.enroll(id,now);appearances.enroll(id);db.exec('COMMIT');
 +        enrollArrival(id,now);
 +        db.exec('COMMIT');
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
-@@ -362,4 +374,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       return state(id);
+     },
+@@ -360,8 +377,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     /** The same arrival as `create`, with the home layout and its station search run on the worker so other
+      * players are answered meanwhile. Every write still happens here, after re-checking what was read: the
       * home, its owner and the new player's place at the door in one transaction, then the station. */
 -    async createPrepared(id: string, now = Date.now(), attempt = 0): Promise<PlayerState> {
 -      const work=heavy;if(!homeEnabled||!work)return this.create(id,now);
@@ -2553,18 +2759,42 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        return this.create(id,now);
 +      }
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
-@@ -376,3 +391,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       try{
+         const inputs=homes.generationInputs(planetId,id);
+@@ -374,12 +394,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           const door=homes.door(planetId);
+           if(!door)throw new RequestError(409,'The sample home could not be prepared.');
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
 -          homes.movedExterior(id);db.exec('COMMIT');
 +          homes.movedExterior(id);bind?.();db.exec('COMMIT');
          }catch(error){
-@@ -381,3 +396,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           if(db.isTransaction)db.exec('ROLLBACK');
+           // Rare: the reserved planet was claimed meanwhile. Prepare another one, twice at most.
            if(error instanceof RequestError&&error.status===409&&!this.has(id)){
 -            if(attempt<2)return this.createPrepared(id,now,attempt+1);
 +            if(attempt<2)return this.createPrepared(id,now,attempt+1,bind);
              throw new RequestError(503,BUSY);
-@@ -449,2 +464,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           }
+           throw error;
+@@ -447,6 +467,28 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       homes.movedExterior(id);return universe(id);
+     },
      terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
++    courtyardBedPalettes:(planetId:string)=>bedPalettes.list(planetId),
++    setCourtyardBedPalette(id:string,body:Record<string,unknown>) {
++      const { planetId, objectId, expectedVersion, expectedPalette, palette } = body;
++      if (typeof planetId !== 'string' || planets.owned(id) !== planetId)
++        throw new RequestError(403,'Only the planet owner can change flower colours.');
++      if (Object.keys(body).some(key=>!['planetId','visitEpoch','objectId','expectedVersion','expectedPalette','palette'].includes(key)) ||
++          typeof objectId !== 'string' || !Number.isSafeInteger(expectedVersion) ||
++          !isCourtyardBedPalette(expectedPalette) || !isCourtyardBedPalette(palette))
++        throw new RequestError(400,'Choose a valid flower bed and colour.');
++      homes.exterior(id,body.visitEpoch);
++      if (row(id).planet_id !== planetId || navigation.flight(id).mode !== 'ground')
++        throw new RequestError(409,'Land on your home planet first.');
++      bedPalettes.set({ playerId:id,planetId,objectId,expectedVersion:Number(expectedVersion),expectedPalette,palette });
++      return universe(id);
++    },
 +    saveCourtyardArrival(id:string,body:Record<string,unknown>){
 +      homes.exterior(id,body.visitEpoch);
 +      if(row(id).planet_id!==body.planetId||navigation.flight(id).mode!=='ground')
@@ -2573,6 +2803,8 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +      return universe(id);
 +    },
      claim(id: string, planetId: unknown) { row(id); planets.claim(id, planetId); if(homeSample){homes.initialise(String(planetId));teleport.ensureHomeStation(String(planetId));} return universe(id); },
+     createObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.create(id, body); return universe(id); },
+     updateObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.update(id, body); return universe(id); },
 diff --git a/src/shared/town-resident-motion.ts b/src/shared/town-resident-motion.ts
 index 30b342267729476ac36ece59318dd512aa98f329..220d883f09acba1b6517ecd7d996b7b6399fe3c0 100644
 --- a/src/shared/town-resident-motion.ts
@@ -3164,13 +3396,17 @@ index 441fc1bc451816aea76c162e01ff16dc58e762d7..137d9ff162d8b02451631755f60574e4
 +export const STORE_SCHEMA=21;
  export function migrateArrivalHomes(db:DatabaseSync){
 diff --git a/src/server/business-log.ts b/src/server/business-log.ts
-index 3419b40c794c32ee5d9a99e69f5be3fb3eb798bd..56166825821eec9ea86ff97dbcf2675cffa4d4cd 100644
+index 3419b40c794c32ee5d9a99e69f5be3fb3eb798bd..7594673f17313d13784795c2c88717620fc83ef7 100644
 --- a/src/server/business-log.ts
 +++ b/src/server/business-log.ts
-@@ -22,2 +22,3 @@ const routes: Record<string, string> = {
+@@ -20,6 +20,7 @@ const routes: Record<string, string> = {
+   'teleport/station/preview': 'station.preview', 'teleport/station/confirm': 'station.built',
+   'planets/visit': 'travel.withdrawn', 'planets/claim': 'planet.claimed',
    'objects/create': 'object.created', 'objects/update': 'object.updated', 'objects/delete': 'object.deleted',
-+  'courtyard/arrival': 'courtyard.arrival.saved',
++  'courtyard/arrival': 'courtyard.arrival.saved', 'courtyard/bed-palette':'courtyard.bed-palette.saved',
  };
+ const sampled = new Set(['ground.walked', 'home.walked', 'flight.checkpoint', 'presence']);
+ const quietReads = new Set(['world.read', 'blueprint.read']);
 diff --git a/src/server/planets.ts b/src/server/planets.ts
 index 58abbc123c08374e6d02e3c5a795ed67338760b5..b4fb62da4c54828ab8fd282430162c771bd0d2b4 100644
 --- a/src/server/planets.ts
@@ -3216,18 +3452,31 @@ index 58abbc123c08374e6d02e3c5a795ed67338760b5..b4fb62da4c54828ab8fd282430162c77
 +  return api;
  }
 diff --git a/src/shared/planets.ts b/src/shared/planets.ts
-index c604ffe65eb1aa58f611c58decadadfbe3b363dd..289bee97e274cd249b0d48f3fa56855ec06e8e1a 100644
+index c604ffe65eb1aa58f611c58decadadfbe3b363dd..d88ddca62733bb6099a4895446ef484c27329aa9 100644
 --- a/src/shared/planets.ts
 +++ b/src/shared/planets.ts
-@@ -11,2 +11,3 @@ import type { HomeDoorState } from './home-door.ts';
+@@ -1,3 +1,4 @@
++import type { CourtyardBedPalette } from './courtyard-plantings.ts';
+ import { QUICK_PARTS } from './quick-parts.ts';
+ import { PRIVATE_CAPACITY } from './world-capacity.ts';
+ import { distance, normalize, SPAWN, validPosition } from './world.ts';
+@@ -9,6 +10,7 @@ import type { PathPlacementCache } from './path-structure-placement.ts';
+ import { StructurePlacementCache, structurePlacementProblem, structurePlacementRadius } from './structure-placement.ts';
+ import type { HomeDoorState } from './home-door.ts';
  import type { HomeDescriptor, HomeInfrastructureManifest } from './home.ts';
 +import type { HomeSurfaceRoute } from './home-layout.ts';
 
-@@ -28,3 +29,3 @@ export const objectHeight = (o: Pick<PlacedObject, 'kind' | 'height' | 'assetVer
+ export const CATALOGUE = {
+   cottage: { name: 'Cottage', icon: '⌂', radius: 1.05, height: 2.5, description: 'Panelled cabin · shared Sunseed components' },
+@@ -26,7 +28,7 @@ export const objectName = (o: Pick<PlacedObject, 'kind'>) => o.kind === 'structu
+ export const objectRadius = (o: Pick<PlacedObject, 'kind' | 'radius' | 'assetVersion'>) => o.kind === 'structure' ? o.radius ?? 0 : o.assetVersion===2?(o.kind==='lamp'?.3694:QUICK_PARTS[o.kind]?.radius??CATALOGUE[o.kind].radius):CATALOGUE[o.kind].radius;
+ export const objectHeight = (o: Pick<PlacedObject, 'kind' | 'height' | 'assetVersion'>) => o.kind === 'structure' ? o.height ?? 0 : o.assetVersion===2?(o.kind==='lamp'?2.2:QUICK_PARTS[o.kind]?.height??CATALOGUE[o.kind].height):CATALOGUE[o.kind].height;
  export interface PlanetSummary { id: string; name: string; kind: 'hub' | 'garden'; claimed: boolean; mine: boolean; revision: number; objectCount: number; center:Vec3; slot:number; radius?:number; environment?:string|null; publicTown?: { objects:number; structures:number; districts:number; version:number } }
 -export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest }
-+export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest; courtyardArrival?: HomeSurfaceRoute }
++export interface PlanetView extends PlanetSummary { courtyardBedPalettes?: Record<string,CourtyardBedPalette>; objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest; courtyardArrival?: HomeSurfaceRoute }
  export interface Universe { player: PlayerState; planets: PlanetSummary[]; ownedPlanetId: string | null; currentPlanet: PlanetView }
+ export function isBuildKind(value: unknown): value is BuildKind { return typeof value === 'string' && Object.hasOwn(CATALOGUE, value); }
+ export interface PlacementDetails { rotation:number; blueprintHash?:string; blueprints:BlueprintContents; field:HeightField; terrainSeating?:boolean; cache?:PathPlacementCache; structureCache?:StructurePlacementCache }
 diff --git a/src/client/world-guide.css b/src/client/world-guide.css
 index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83174bd804 100644
 --- a/src/client/world-guide.css

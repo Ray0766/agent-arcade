@@ -20,6 +20,7 @@ interface PieceData {
   triangles: number;
 }
 interface Piece {
+  texture: string;
   geometry: T.BufferGeometry;
   material: T.MeshStandardMaterial;
 }
@@ -71,7 +72,7 @@ function pieces(data: readonly PieceData[]) {
       geometry.setIndex(new T.BufferAttribute(new Uint16Array(bytes(piece.i)), 1));
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
-      return { geometry, material: materialFor(piece.t, piece.mask) };
+      return { geometry, material: materialFor(piece.t, piece.mask), texture: piece.t };
     });
     geometries.set(data, parts);
   }

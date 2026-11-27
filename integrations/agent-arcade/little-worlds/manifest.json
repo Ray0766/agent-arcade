@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "9e0577632d706f65728b12cd2910301d443f38d5",
-  "worldTree": "3dd0227ae6c64cfd8ab9054954b9db083d5e6eaa",
-  "patchSHA256": "a0babca5c53d073f5611c5f448384ee0a76a6004b9c68cbab608d80fdb20321f",
+  "worldRevision": "00146de3c6b3001e76b0ddbb783b90a655c6b8e7",
+  "worldTree": "c283403b9ff323bad38ba8fc12bde20582875300",
+  "patchSHA256": "5d3231749843fd7c197acd838cffaf4ebe3460d3f309d837c238ad76c680db73",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -547,8 +547,14 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "c87199f83150689967c763079550b8c63ae9a336",
-      "sha256": "e4bce38843b9f16d421377f8c3ed359c99bc95cb04782060207fcad1265403d1"
+      "blob": "775393f5b61364a46449658d8006a8068899e403",
+      "sha256": "2d09e4c75f653722e3dd9f969065572e64e92b6ed0411a27a4e5ad41fe7e6d63"
+    },
+    {
+      "action": "A",
+      "path": "src/client/courtyard-bed-palette.css",
+      "blob": "9248aeee7c07c0811e471a7893ef90fe1fe1440c",
+      "sha256": "cf418afe4f21d575795cf6ead9f10910f69dba7bc6d90b6b11eaeaa903d9df96"
     },
     {
       "action": "A",
@@ -564,6 +570,12 @@
     },
     {
       "action": "A",
+      "path": "src/client/courtyard-petal-material.ts",
+      "blob": "b91aafbeba21cec26e8f403e16f5a1886b1652eb",
+      "sha256": "053c4861b731f10e118a6193156f91cc50da54c6817a66b441180efe7f85ba3d"
+    },
+    {
+      "action": "A",
       "path": "src/client/courtyard-placement-impact.ts",
       "blob": "bb64953e339854be4c5da50faaffc324c3921335",
       "sha256": "a587ddc259cd49281713374b49fc7c2048a22ee09d533c016c8d7ae05204f190"
@@ -571,8 +583,8 @@
     {
       "action": "A",
       "path": "src/client/courtyard-planting-art.ts",
-      "blob": "8b970e1affd7f27dc20086a00eb9db55e8b4b295",
-      "sha256": "b4e0c7b01df88fb5e87f1ff6a9120283173e2e5611a3b8cada8a52f744c02c76"
+      "blob": "d9cbec72bb2e25f8faea4eafd2db29d2995a4c8f",
+      "sha256": "f544ec492f65e1a1f989668ff195de6d74f9ee27cc8d2f194c6ce4199c7de0a6"
     },
     {
       "action": "M",
@@ -625,20 +637,20 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "e92faf55ae358b779c096b9a437ec976f77965f8",
-      "sha256": "463649d4c61a15982d79f268bd31f555c1ce5e529af810157e5207e94bac0542"
+      "blob": "86926fb76050a2e85dd8ad625e2ace9d13a6e622",
+      "sha256": "1860ba8159898edcabca990b5a2d02f1bad02a8e9c98a736cb9f514b90781d13"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "dda2bb244deedee7b77147fd921e1986a7f08393",
-      "sha256": "8ff46dcf11d521bb65475bdef9d92cc4762f78e6176a323b163eb09e63fcd29a"
+      "blob": "54ebdc04bb890317dc91fc96829063a1e6751417",
+      "sha256": "aa77ef0f1bf01a642234be8e9245443b22073046ebfde32111e20db02fdcef57"
     },
     {
       "action": "A",
       "path": "src/client/nature-art.ts",
-      "blob": "404fe98ac5b8e8b5f80a1f8b5b796c6d55a7c76c",
-      "sha256": "061c4b4e2b7609074bb286172b96a0662561172c1e43679b23c8c8f5f602e474"
+      "blob": "d8ecb0af9582f19ea17dea55dec7a9592c803f25",
+      "sha256": "56ce5c72f2b5ad428f99fe9aac1ca81fe844324a0456e150619e81227e239b25"
     },
     {
       "action": "M",
@@ -751,8 +763,8 @@
     {
       "action": "A",
       "path": "src/client/visitor-flower-bouquet.ts",
-      "blob": "dc621a837392cef4053b0d7e4abdc1e187374937",
-      "sha256": "e029b7d54321bd6251aa118830bb7b0e592c5d46c4054323cd0bff04bcaf36ab"
+      "blob": "59020f1b9f236941945e0fa7126ee84514ee8d11",
+      "sha256": "4090d34d06167afdf8ed9fcf68b5200f120974d49de59847d524fe276a30ada3"
     },
     {
       "action": "M",
@@ -787,8 +799,14 @@
     {
       "action": "M",
       "path": "src/server/business-log.ts",
-      "blob": "56166825821eec9ea86ff97dbcf2675cffa4d4cd",
-      "sha256": "43ea05f6cdb0021b5426b270d2aa9e6c5ebef24fb689fa68cc1b9a17ed498bd2"
+      "blob": "7594673f17313d13784795c2c88717620fc83ef7",
+      "sha256": "6855ffd891c3594f439572730ec505d219024b98fae09aacaea93bb50b2bae78"
+    },
+    {
+      "action": "A",
+      "path": "src/server/courtyard-bed-palettes.ts",
+      "blob": "e5b5d3c47e697f34eecc22d5c094e4a04d98a46a",
+      "sha256": "aedaa0481d54ce6894cb6a0c46cbb7ed9e2529e6eca6593de1fae418b95c5b35"
     },
     {
       "action": "A",
@@ -805,8 +823,8 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "e4d054a91c00d77aa2a9c17b150fda8a06a15475",
-      "sha256": "014113509c49f6e2616d5904c4a9224a31abd54006a3853ccd79b236dc5fc697"
+      "blob": "0615a6f25de0cc5f33cae02ad3c9aac7c4822efc",
+      "sha256": "4f81a4adba5f10905035ce9e5266e79d220851b9932d3cd5291aed355a077093"
     },
     {
       "action": "A",
@@ -835,8 +853,8 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "0a679fcba74b10ca6fedb33b0efb56c7e95afc92",
-      "sha256": "e2fac63f5ac814221f9436648a29afb6eb6f67585397fb6df1ce884328a18a71"
+      "blob": "95cde52e86fa6ddfed519f26ec100ca117a76e82",
+      "sha256": "e615d194fe6a0baf6f28fae9bd49ff89e69f6a5a5a35cb72a9625fc401b4559f"
     },
     {
       "action": "A",
@@ -847,8 +865,8 @@
     {
       "action": "A",
       "path": "src/shared/courtyard-plantings.ts",
-      "blob": "2cf0fe32a44b63470179bd492ada8ca03b30dd01",
-      "sha256": "7730d4f9aa1ba5a38470e3deb39d6666a89f03efe39681e1a1c756c7fd21472c"
+      "blob": "33643a7c799d22be01c24f58a2f2ed26126c7ee6",
+      "sha256": "b8dad265fe7b14304ad94e4c0b1b9c7216b9f1f9913966fa4cd2aeaad2c25745"
     },
     {
       "action": "A",
@@ -859,8 +877,8 @@
     {
       "action": "M",
       "path": "src/shared/planets.ts",
-      "blob": "289bee97e274cd249b0d48f3fa56855ec06e8e1a",
-      "sha256": "ee2337c3af7ec859ec1b66e90d9d407769484e8079b46b60c97b9282346d9af9"
+      "blob": "d88ddca62733bb6099a4895446ef484c27329aa9",
+      "sha256": "19d5fc57942192d33f948110729477668772541202b9221d25001035fbb5aaf0"
     },
     {
       "action": "A",
