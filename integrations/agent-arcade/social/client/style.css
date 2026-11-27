@@ -459,3 +459,21 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .message-quote strong { display:block; font-size:.85em; }
 .reply-target:not([hidden]) { display:flex; align-items:center; gap:.5rem; grid-column:1/-1; }
 .reply-target span { flex:1; }
+
+.chat-video-bubble {
+  display: grid;
+  gap: .3rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: .55rem .7rem;
+  text-align: start;
+}
+.chat-video-name { overflow-wrap: anywhere; }
+.chat-video-preview:empty { display: none; }
+.chat-video-player:not([hidden]) {
+  display: block;
+  width: 100%;
+  max-height: 58dvh;
+  background: #161417;
+  border-radius: 8px;
+}

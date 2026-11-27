@@ -233,6 +233,11 @@ CREATE TABLE IF NOT EXISTS ai_image_turns (
 );
 CREATE INDEX IF NOT EXISTS ai_image_turn_time ON ai_image_turns(started,chat);
 CREATE UNIQUE INDEX IF NOT EXISTS ai_image_pending ON ai_image_turns(chat) WHERE state='pending';
+CREATE TABLE IF NOT EXISTS message_videos (
+  message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL,
+  duration_ms INTEGER NOT NULL, digest TEXT NOT NULL, bytes BLOB
+);
 CREATE TABLE IF NOT EXISTS message_files (
   message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
   name TEXT NOT NULL, digest TEXT NOT NULL,
