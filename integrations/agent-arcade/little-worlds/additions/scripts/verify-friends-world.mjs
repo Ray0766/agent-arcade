@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import {randomBytes, randomUUID, createHash} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
-import {mkdtemp} from 'node:fs/promises';
+import {mkdtemp, realpath, rm} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {dirname, join, resolve} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {setTimeout as delay} from 'node:timers/promises';
 import {defaultAppearance} from '../src/shared/appearance.ts';
@@ -105,11 +105,35 @@ try {
   await stop();await start(process.cwd());
   const reopen=await verify('friends-session',newcomer,ticket({account:newcomer}));
   assert.equal(await getHome(reopen.cookie),garden);
-  const location=await verify('friends-home',newcomer,ticket({account:newcomer}));
-  assert.deepEqual(location.data,{ok:true,account:newcomer,planetId:garden});assert(!location.cookie);
-  assert.equal((await verify('friends-home',newcomer,ticket({account:newcomer,instanceId:randomUUID()}))).data.planetId,null);
-  assert.equal((await verify('friends-home',newcomer,'0'.repeat(64))).status,403);
+  const readDestination=()=>verify('friends-home',newcomer,ticket({account:newcomer}));
+  const location=await readDestination();
+  const publicName=withDb(db=>db.prepare('SELECT name FROM planets WHERE id=?').get(garden).name);
+  assert.equal(location.status,200);
+  assert.deepEqual(location.data,{ok:true,account:newcomer,planetId:garden,planetName:publicName});
+  assert(!location.cookie);
+  const noBinding=await verify('friends-home',newcomer,ticket({account:newcomer,instanceId:randomUUID()}));
+  assert.equal(noBinding.status,200);
+  assert.deepEqual(noBinding.data,{ok:true,account:newcomer,planetId:null,planetName:null});
+  withDb(db=>db.prepare('UPDATE planets SET name=? WHERE id=?').run('   ',garden));
+  try {
+    const unnamed=await readDestination();
+    assert.equal(unnamed.status,200);
+    assert.deepEqual(unnamed.data,{ok:true,account:newcomer,planetId:garden,planetName:null});
+  } finally {
+    withDb(db=>db.prepare('UPDATE planets SET name=? WHERE id=?').run(publicName,garden));
+  }
+  const refused=await verify('friends-home',newcomer,'0'.repeat(64));
+  assert.equal(refused.status,403);
+  assert(!Object.hasOwn(refused.data,'planetName'));
   assert.equal(players(),before+1);
-  summary.reopened={planet:garden,homeAvailableWithoutPublisher:true,unrelatedInstance:null,playersAddedByLookup:0};
+  summary.reopened={planet:garden,planetName:location.data.planetName,unnamed:null,refused:refused.status,
+    homeAvailableWithoutPublisher:true,unrelatedInstance:null,playersAddedByLookup:0};
   console.log(JSON.stringify({passed:true,...summary},null,2));
-} finally {await stop();authority.closeAllConnections();await new Promise(r=>authority.close(r));}
+} finally {
+  await stop();
+  authority.closeAllConnections();
+  await new Promise(r=>authority.close(r));
+  const scratch=await realpath(dir);
+  assert.equal(dirname(scratch),await realpath(tmpdir()));
+  await rm(scratch,{recursive:true,force:true,maxRetries:3});
+}
