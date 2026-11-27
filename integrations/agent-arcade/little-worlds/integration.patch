@@ -1961,10 +1961,15 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
 +      input.courtyard?.planet.revision]);
      if (nextKey !== key) { rebuild(input); key = nextKey; }
 diff --git a/src/client/world-guide.ts b/src/client/world-guide.ts
-index f533e71cfc73d2be94e83498c99214dc9d9a3057..f3782ed473efa789704b2e9f255dee9288f539b7 100644
+index f533e71cfc73d2be94e83498c99214dc9d9a3057..8f2ff032f0618459fd48c25e60e92ae0b469eb74 100644
 --- a/src/client/world-guide.ts
 +++ b/src/client/world-guide.ts
-@@ -6,21 +6,58 @@ import type { GroundWorld } from '../shared/physics/world.ts';
+@@ -1,3 +1,4 @@
++import { residentBodyLooks } from '../shared/planet-residents.ts';
+ import * as T from 'three';
+ import { courier } from './character.ts';
+ import { createTutorialRoute } from './tutorial-route.ts';
+@@ -6,21 +7,58 @@ import type { GroundWorld } from '../shared/physics/world.ts';
  import type { Universe } from '../shared/planets.ts';
  import {distance,type Vec3} from '../shared/world.ts';
  import {BOARD_RADIUS,portPoint} from '../shared/ports.ts';
@@ -1989,7 +1994,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..f3782ed473efa789704b2e9f255dee92
 +  left: { en: 'This resident is no longer here.', zh: '这位居民已离开。' },
 +};
 +const topicName = (topic: Exclude<Topic, 'resident'>, lang: 'en' | 'zh') => topic === 'courtyard' ? courtyardName[lang] : names[lang][GUIDE_TOPICS.indexOf(topic)];
-+export type ResidentGuideRow = ResidentGuideEntry & { activityLabel?: string };
++export type ResidentGuideRow = ResidentGuideEntry & { activityLabel?: string; appearanceKey?: string };
  interface Frame {
    universe: Universe; position: Vec3; world: GroundWorld; enabled: boolean; visible: boolean; time: number; reducedMotion: boolean;
 +  approvedCourtyard?: boolean;
@@ -2025,7 +2030,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..f3782ed473efa789704b2e9f255dee92
    const actor=courier('fern');actor.root.name='world-guide';actor.root.visible=false;scene.add(actor.root);
    const route=createTutorialRoute(scene,{surfacePoint(normal,offset=0){const w=current?.world;return normal.clone().setLength(w?w.support(normal.toArray() as Vec3,w.radius(normal.toArray() as Vec3)+.45).radius+offset:10+offset);}});
    const open=document.createElement('button');open.id='world-guide-open';open.type='button';document.querySelector('.minimal-bar')?.append(open);
-@@ -28,69 +65,249 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -28,69 +66,272 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    const homeOpen=document.createElement('button');homeOpen.id='world-guide-home';homeOpen.type='button';homeOpen.hidden=true;document.body.append(homeOpen);
    const homeChat=document.createElement('button');homeChat.id='world-guide-chat-home';homeChat.type='button';homeChat.hidden=true;document.body.append(homeChat);
    const bubble=document.createElement('section');bubble.id='world-guide-dialog';bubble.hidden=true;bubble.dataset.i18nVerbatim='';bubble.setAttribute('role','dialog');bubble.setAttribute('aria-modal','false');bubble.setAttribute('aria-labelledby','world-guide-title');
@@ -2121,7 +2126,20 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..f3782ed473efa789704b2e9f255dee92
 +      const activity = document.createElement('small');
 +      activity.id = 'world-guide-resident-activity-' + entry.id;
 +      activity.hidden = true;
-+      button.append(name,activity);
++      const portrait = document.createElement('span');
++      portrait.className = 'guide-resident-portrait';
++      portrait.hidden = true;
++      const image = document.createElement('img');
++      image.alt = '';
++      image.decoding = 'async';
++      image.onload = () => { portrait.hidden = false; };
++      image.onerror = () => { portrait.hidden = true; };
++      portrait.append(image);
++      const text = document.createElement('span');
++      text.className = 'guide-resident-copy';
++      text.append(name,activity);
++      button.append(portrait,text);
++
 +      button.setAttribute('aria-label',name);
 +      button.dataset.residentId = entry.id;
 +      button.setAttribute('aria-pressed', 'false');
@@ -2137,7 +2155,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..f3782ed473efa789704b2e9f255dee92
 -    homeChat.textContent=chatOpen.textContent=zh?'聊天 · DeepSeek':'Chat · DeepSeek';el('chat-close').setAttribute('aria-label',zh?'收起聊天':'Close chat');
 +    const roster = current?.residentRoster ?? [];
 +    const rosterKey = JSON.stringify([lang, roster.map(({id,name})=>[id,name])]);
-+    const activityKey = JSON.stringify(roster.map(({activityLabel})=>activityLabel));
++    const activityKey = JSON.stringify(roster.map(({appearanceKey,activityLabel})=>[appearanceKey,activityLabel]));
 +    const help=el<HTMLDetailsElement>('help'), feedback=el('route-feedback');
 +    const key=[lang,topic,selected,visitorHome,help.open,canGuideToCourtyard,available,aboard,nearShip,current?.indoor,current?.online,route.diagnostics.reason,actor.root.visible,talking,ai?.revision,rosterKey,activityKey,residentId,notice?.kind,notice?.resident?.name].join('|');if(key===lastPaint)return;lastPaint=key;
 +    el('visit-home').hidden=!visitorHome;
@@ -2156,10 +2174,20 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..f3782ed473efa789704b2e9f255dee92
 +    el('return-ship').textContent=zh?'寻找返航飞船':'Find the ship back';
 +    el('return-ship').setAttribute('aria-pressed',String(selected==='visit'));
 +    paintRoster(roster,lang,rosterKey);
-+    const activityByResident = new Map(roster.map(({id,activityLabel})=>[id,activityLabel]));
++    const rowsById = new Map(roster.map(row => [row.id, row]));
 +    for (const button of el('residents').querySelectorAll('button')) {
 +      button.setAttribute('aria-pressed',String(button.dataset.residentId === residentId));
-+      const label = activityByResident.get(button.dataset.residentId!);
++      const row = rowsById.get(button.dataset.residentId!);
++      const look = row?.appearanceKey === 'default' ? 'default' :
++        residentBodyLooks.find(key => key === row?.appearanceKey);
++      const src = look ? '/resident-body-previews/' + look + '.webp' : null;
++      const image = button.querySelector('img')!;
++      if (src !== image.getAttribute('src')) {
++        image.parentElement!.hidden = true;
++        if (src) image.src = src;
++        else image.removeAttribute('src');
++      }
++      const label = row?.activityLabel;
 +      const activity = button.querySelector('small')!;
 +      activity.textContent = label ? ' · ' + label : '';
 +      activity.hidden = !label;
@@ -3182,16 +3210,22 @@ index c604ffe65eb1aa58f611c58decadadfbe3b363dd..289bee97e274cd249b0d48f3fa56855e
 +export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest; courtyardArrival?: HomeSurfaceRoute }
  export interface Universe { player: PlayerState; planets: PlanetSummary[]; ownedPlanetId: string | null; currentPlanet: PlanetView }
 diff --git a/src/client/world-guide.css b/src/client/world-guide.css
-index d278b7997d1a0d93aee240860913b8a73f16fb6a..23d5274adbd1e01642809c8912a722af63f80019 100644
+index d278b7997d1a0d93aee240860913b8a73f16fb6a..fc476eb63607ca3944a05e5a164173e6342c2351 100644
 --- a/src/client/world-guide.css
 +++ b/src/client/world-guide.css
-@@ -4,3 +4,3 @@
+@@ -2,7 +2,7 @@
+ #world-guide-dialog{position:fixed;z-index:46;width:min(340px,calc(100vw - 24px));max-height:48dvh;overflow:auto;box-sizing:border-box;padding:16px;border-radius:20px 20px 20px 4px;border:1px solid #b0c3a6;background:#fff9edee;color:#293c38;box-shadow:0 6px 24px #173b2833;backdrop-filter:blur(5px)}
+ #world-guide-dialog[hidden],#world-guide-home[hidden],#world-guide-hud[hidden]{display:none}
  #world-guide-dialog h2{font:700 18px/1.3 system-ui;margin:0 32px 8px 0}#world-guide-dialog p{font:13px/1.5 system-ui;margin:8px 0}#world-guide-answer{border-left:3px solid #64a28a;padding-left:10px}#world-guide-dialog #world-guide-ai-status{font-size:11px;color:#52695f}
 -#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true]{outline:2px solid #378f79}
 +#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics,#world-guide-residents{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true],#world-guide-residents button[aria-pressed=true]{outline:2px solid #378f79}
  #world-guide-dialog button,#world-guide-hud button,#world-guide-home{min-height:44px;border-radius:10px;border:1px solid #acbcaa;padding:7px 10px;cursor:pointer;background:#f5f1e2;color:#293c38;font:13px system-ui}
-@@ -43,2 +43,11 @@
-
+ #world-guide-question-label{font:12px system-ui} .world-guide-input{display:flex;gap:6px;margin-top:5px}#world-guide-question{box-sizing:border-box;min-width:0;width:100%;min-height:44px;border:1px solid #acbcaa;border-radius:8px;padding:6px;font:14px system-ui}#world-guide-walk{width:100%;margin-top:5px}
+ #world-guide-hud{position:fixed;left:16px;top:78px;z-index:22;width:260px;box-sizing:border-box;padding:10px 12px;border-radius:14px;background:#fbf5e7ed;color:#293c38;box-shadow:0 5px 18px #173b281a}#world-guide-hud p{font:12px/1.5 system-ui;margin:0 0 8px}#world-guide-hud button{margin-right:4px}
+@@ -41,4 +41,40 @@
+ @media(max-width:700px){#world-guide-chat{height:52dvh;max-height:52dvh;gap:5px}#world-guide-chat #world-guide-messages{min-height:60px;max-height:none}#world-guide-disclosure{max-height:17dvh}#world-guide-chat #world-guide-ai-quota{font-size:10px}#world-guide-chat footer button{padding:6px 9px}}
+ @media(max-width:700px){#world-guide-disclosure{max-height:13dvh}}
+ 
 +#world-guide-visit-home button{overflow-wrap:anywhere}
 +#world-guide-courtyard,#world-guide-return-ship{width:100%;text-align:left}
 +#world-guide-dialog #world-guide-courtyard{background:#e0eee2;border-color:#96b6a3}
@@ -3202,3 +3236,30 @@ index d278b7997d1a0d93aee240860913b8a73f16fb6a..23d5274adbd1e01642809c8912a722af
 +}
 +
  #ambient-music{border-top:1px solid #acbcaa;padding-top:12px;margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}#ambient-music h3{width:100%;margin:0;font:600 15px system-ui}#ambient-music label,#ambient-music p{font:12px/1.5 system-ui}#ambient-music input{max-width:180px;min-height:44px;accent-color:#285e49}#ambient-music p{width:100%;margin:0}#ambient-music button{min-height:44px}
++
++
++#world-guide-residents > button {
++  display: flex;
++  align-items: center;
++  flex: 1 1 100%;
++  gap: 9px;
++  text-align: start;
++}
++.guide-resident-copy { min-width: 0; overflow-wrap: anywhere; }
++.guide-resident-copy small { white-space: nowrap; }
++.guide-resident-portrait {
++  position: relative;
++  flex: 0 0 40px;
++  height: 40px;
++  overflow: hidden;
++  border-radius: 7px;
++  background: #e8e5d9;
++}
++.guide-resident-portrait[hidden] { display: none; }
++.guide-resident-portrait img {
++  position: absolute;
++  width: 418%;
++  max-width: none;
++  left: -61%;
++  top: -22%;
++}
