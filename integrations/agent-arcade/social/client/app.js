@@ -1413,6 +1413,7 @@ function showChatHeader() {
   $('#ai-cloud').textContent=awaitingAiConsent?'开启云聊天':paused?'恢复云聊天':'关闭云聊天';
   const cloudAction=$('#ai-cloud'),cloudHolder=paused||awaitingAiConsent?$('#chat-consent-action'):chatSettings;
   if(cloudAction.parentElement!==cloudHolder)cloudHolder.prepend(cloudAction);
+  $('#group-shared-files').hidden=meta.type!=='group';
   const hasSettings=!!chatSettings.querySelector('button:not([hidden])');
   $('#chat-settings-toggle').hidden=!hasSettings;
   if(!hasSettings)chatSettings.hidePopover();
@@ -2730,6 +2731,66 @@ async function locateQuotedMessage(messageId){
       '原消息已移除或不可查看。':textError(error);
   }
 }
+$('#group-shared-files').addEventListener('click',()=>{
+  if(!user||!chat||conversation?.type!=='group'||!membershipRevision)return;
+  const id=chat,account=user.number,epoch=generation,visit=chatVisit,revision=membershipRevision;
+  const form=el('form',null,'history-search-form');
+  const label=el('label','文件名'),input=el('input');
+  input.type='search';
+  input.maxLength=100;
+  label.append(input);
+  const search=el('button','查找','primary');
+  search.type='submit';
+  form.append(label,search);
+  const list=el('div'),status=el('p',null,'minor');
+  status.setAttribute('role','status');
+  const more=button('加载更多',()=>void load());
+  const scope=openDialog('群文件',[form,list,status,more],id);
+  const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&chatVisit===visit&&
+    chat===id&&user?.number===account&&membershipRevision===revision;
+  let query='',before=null,version=0;
+  form.addEventListener('submit',event=>{
+    event.preventDefault();
+    if(!current())return;
+    query=input.value.trim();
+    before=null;
+    list.replaceChildren();
+    void load();
+  });
+  async function load(){
+    if(!current())return;
+    const serial=++version,active=()=>current()&&serial===version;
+    more.hidden=true;
+    status.textContent='正在读取群文件…';
+    try{
+      const params=new URLSearchParams({...query&&{q:query},...before&&{before}});
+      const page=await api(thread(id)+'/shared-media/files?'+params,undefined,{expectedAccount:account});
+      if(!active())return;
+      if(page.membershipRevision!==revision)throw Error('membership_changed');
+      for(const row of page.items){
+        if(removedMessages.has(row.id))continue;
+        const item=el('div',null,'request');
+        const {name,bytes}=row.attachment;
+        const save=el('a','保存文件');
+        save.download=name;
+        save.href='./api/v1'+thread(id)+'/messages/'+row.id+'/file/download?'+new URLSearchParams({account});
+        item.append(el('strong',name,'chat-file-name'),
+          el('p',row.sender.displayName+' · '+time(row.createdAt)+' · '+fileSize(bytes),'minor'),save);
+        list.append(item);
+      }
+      before=page.nextBefore;
+      more.hidden=before===null;
+      status.textContent=list.childElementCount?'':query?'没有匹配的文件。':'暂无可查看的群文件。';
+    }catch(error){
+      if(!active())return;
+      if([403,404,409].includes(error.status)||error.message==='membership_changed'){
+        list.replaceChildren();
+        status.textContent='群会话权限已变化，请重新打开群会话。';
+      }else status.textContent=textError(error);
+    }
+  }
+  void load();
+});
 const historySearchButton=$('#history-search');
 // A cached page can load this script before it has the search control.
 if(historySearchButton)historySearchButton.hidden=false;

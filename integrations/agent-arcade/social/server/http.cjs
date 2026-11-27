@@ -3,6 +3,7 @@ const {stockTaskReceiver}=require('./bothouse/stock-tasks.cjs');
 const {createWorkOrders,isAssignment}=require('./bothouse/work-orders.cjs');
 const {commentPage,commentsRoute}=require('./feed-comments.cjs');
 const {chatFeedbackReview} = require('./chat-feedback-review.cjs');
+const {groupSharedFiles}=require('./group-shared-media.cjs');
 
 const http = require('node:http');
 const fs = require('node:fs/promises');
@@ -389,6 +390,13 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       }
       if (!['GET','POST'].includes(req.method)) fail(405,'method','请求方法无效');
       const [collection,chat,action,message,asset,variant]=parts;
+      if(collection==='conversations'&&parts.length===4&&action==='shared-media'&&message==='files'&&req.method==='GET'){
+        const account=current(store,req);
+        if(req.headers['x-social-account']!==account)fail(409,'file_session','账号已切换，请重新打开群文件');
+        const page=groupSharedFiles(store,account,chat,url.searchParams);
+        res.setHeader('Content-Type','application/json; charset=utf-8');
+        return res.end(JSON.stringify(page));
+      }
       if(collection==='conversations'&&parts.length===3&&action==='files'&&req.method==='POST'){
         const account=current(store,req);
         if(req.headers['x-social-account']!==account)fail(409,'file_session','账号已切换，请重新打开会话');
