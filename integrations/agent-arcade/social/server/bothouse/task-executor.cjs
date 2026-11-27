@@ -3,16 +3,24 @@ const {execFile,spawn}=require('node:child_process');
 const path=require('node:path');
 const {textTask}=require('./text-delivery.cjs');
 
+class BoardProcessDeadline extends Error {}
+
 function callBoard(board,action,text,claim){
   return new Promise((resolve,reject)=>{
     const env={};
     for(const key of ['SystemRoot','WINDIR','PATH','TMP','TEMP','TMPDIR','LANG','LC_ALL'])
       if(process.env[key])env[key]=process.env[key];
+    let exited=false;
     const proc=execFile(board.python,['-I','-B','-X','utf8',path.join(__dirname,'work_board.py'),
       board.gate,board.scope,board.role,board.key,action],{windowsHide:true,timeout:6000,maxBuffer:65536,env},(err,stdout)=>{
-      if(err)return reject(Error('Bothouse work board unavailable'));
+      if(err){
+        // A deadline exits by our SIGTERM. Spawn and output-limit errors have their own code.
+        if(exited&&err.code===null&&err.killed===true&&err.signal==='SIGTERM')return reject(new BoardProcessDeadline('Bothouse work board deadline expired'));
+        return reject(Error('Bothouse work board unavailable'));
+      }
       try{resolve(JSON.parse(stdout));}catch{reject(Error('Invalid board receipt'));}
     });
+    proc.once('exit',()=>{exited=true;});
     proc.stdin.on('error',()=>{});
     proc.stdin.end(JSON.stringify({sender:board.sender,location:board.location,text,claim}));
   });
@@ -85,4 +93,4 @@ if(require.main===module)(async()=>{
   await executeClaim(board,claim,text,(prompt,signal)=>transport({...request,text:prompt},{signal}),new AbortController());
 })().catch(()=>{process.exitCode=1;});
 
-module.exports={callBoard,executeClaim,launchBoardTask};
+module.exports={callBoard,BoardProcessDeadline,executeClaim,launchBoardTask};
