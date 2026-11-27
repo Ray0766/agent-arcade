@@ -143,7 +143,7 @@ function goldenFoliage(source: T.MeshStandardMaterial) {
 }
 
 export function courtyardFoliage(kind: 'flowers' | 'tree' | 'bush', golden: boolean) {
-  const data = shapeData(kind === 'tree' ? 'leafy' : 'flowers', 'distant');
+  const data = shapeData(kind === 'tree' ? 'leafy' : kind, 'distant');
   const group = new T.Group();
   pieces(data).forEach(({ geometry, material }, index) => {
     const t = data[index].t;
