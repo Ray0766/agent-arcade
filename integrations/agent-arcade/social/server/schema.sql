@@ -357,6 +357,10 @@ CREATE TABLE IF NOT EXISTS message_removals (
   message INTEGER NOT NULL UNIQUE REFERENCES messages
 );
 CREATE INDEX IF NOT EXISTS chat_removal_history ON message_removals(chat,id);
+CREATE TABLE IF NOT EXISTS recalled_message_text (
+  message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+  body TEXT NOT NULL
+);
 CREATE TRIGGER IF NOT EXISTS record_message_removal
 AFTER UPDATE OF removed ON messages WHEN OLD.removed=0 AND NEW.removed=1
 BEGIN

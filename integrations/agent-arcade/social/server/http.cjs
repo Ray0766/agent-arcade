@@ -238,6 +238,10 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
         return {message,directTurn,groupTurn,personalTurn,abortProactive,bothouseTurn};
       }
     }
+    if(parts.length===5&&action==='messages'&&method==='POST'&&/^[1-9]\d*$/u.test(msg)){
+      if(sub==='recall')return store.recallMessage(a,id,Number(msg),body);
+      if(sub==='recall-text')return store.recalledMessageText(a,id,Number(msg),body);
+    }
     if(parts.length===5&&action==='messages'&&sub==='reaction'&&method==='POST'&&/^[1-9]\d*$/u.test(msg))
       return store.setMessageReaction(a,id,Number(msg),body);
     if(parts.length===5&&action==='messages'&&sub==='task-retry'&&method==='POST'&&/^[1-9]\d*$/u.test(msg))

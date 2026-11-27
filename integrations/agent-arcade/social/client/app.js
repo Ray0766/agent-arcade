@@ -31,7 +31,7 @@ let inlineVoice, messageAction;
 let feedScope='friends', feedCursor=null, feedRead=0, pendingPost;
 let feedRoles=[], feedFollowFlight=false;
 const postDraftKey='arcade.friendPost.pending';
-const removedMessages=new Set();
+const removedMessages=new Set(),recalledMessages=new Set();
 let authMode = 'login', authFlight = false;
 const drafts = new Map(), sending = new Set();
 const chatDraftKey = 'arcade.chat.drafts';
@@ -363,6 +363,7 @@ function leaveSession({discardFeedback=false,expired=false}={}) {
   readThrough.clear();
   readFlights.clear();
   removedMessages.clear();
+  recalledMessages.clear();
   drafts.clear();
   persistChatDrafts();
   sending.clear();
@@ -1689,6 +1690,7 @@ async function openChat(id,expectedAccount,reload=false) {
   moderationCursor=historyFloor=historyAfter=0;
   membershipRevision=undefined;
   removedMessages.clear();
+  recalledMessages.clear();
   historyFlight=undefined;
   root.classList.toggle('in-chat',!!id);
   messageBox.value='';
@@ -1885,7 +1887,13 @@ function renderHistory(scroll) {
       control.setAttribute('aria-expanded',String(messageActions.matches(':popover-open')&&messageAction?.id===message.id));
       meta.append(control);
     }
-    if(message.attachment?.type==='image'&&!message.removed){
+    if(message.recalled){
+      const notice=el('div',null,'message-recalled');
+      notice.append(el('span',mine?'你撤回了一条消息':sender+'撤回了一条消息'));
+      if(mine&&canUseMessageRecall())
+        notice.append(button('重新编辑',()=>void editRecalledMessage(message)));
+      content.append(meta,notice);
+    }else if(message.attachment?.type==='image'&&!message.removed){
       let open=imageButtons.get(message.id);
       if(!open){
         const preview=el('img');preview.alt=message.attachment.sticker?.label||
@@ -2070,6 +2078,8 @@ function showMessageActions(id,control){
   const reply=$('#reply-message');
   if(reply)reply.hidden=messageBox.readOnly||sending.has(chat)||!$('#reply-target');
   $('#copy-message').hidden=!!row.attachment;
+  $('#recall-message').hidden=!canUseMessageRecall()||row.sender.number!==user.number||
+    !row.text.trim()||!!(row.attachment||row.task||row.imageQuestion);
   const favorite=$('#save-message-sticker');
   favorite.hidden=row.attachment?.type!=='image';
   favorite.disabled=false;favorite.textContent='收藏为表情';
@@ -2077,6 +2087,82 @@ function showMessageActions(id,control){
   messageActions.showPopover({source:control});
   positionMessageActions();
   messageActions.querySelector('button:not([hidden])').focus();
+}
+function canUseMessageRecall(){
+  return user?.kind==='human'&&Boolean(membershipRevision)&&canAttach(conversation);
+}
+function messageRecallContext(){
+  const id=chat,account=user.number,revision=membershipRevision,visit=chatVisit,epoch=generation;
+  return {
+    id,account,revision,
+    current:()=>chat===id&&chatVisit===visit&&generation===epoch&&user?.number===account&&
+      membershipRevision===revision&&canUseMessageRecall(),
+  };
+}
+$('#recall-message').addEventListener('click',()=>{
+  const row=resolveMessageAction();
+  if(!row||$('#recall-message').hidden||!canUseMessageRecall())return;
+  const {id,account,revision,current}=messageRecallContext();
+  messageActions.hidePopover();
+  const submit=button('确认撤回',()=>void perform(async()=>{
+    if(!current())return;
+    const {recalledMessage}=await api(thread(id)+'/messages/'+row.id+'/recall',{expectedAccount:account,revision});
+    if(!current())return;
+    if(dialogGeneration===scope)closeDialog();
+    merge([recalledMessage],'keep',[],Boolean(historyContext));
+    void sync();
+  },submit,scope),'primary');
+  const actions=el('div',null,'actions');
+  actions.append(button('取消',closeDialog),submit);
+  const scope=openDialog('撤回消息',[el('p','会话成员会看到你撤回了一条消息。撤回后，你可以重新编辑正文。'),actions],id);
+});
+async function editRecalledMessage(row){
+  if(!canUseMessageRecall()||row.sender.number!==user.number)return;
+  const {id,account,revision,current}=messageRecallContext();
+  const status=el('p','正在取回正文…','minor');
+  status.setAttribute('role','status');
+  const form=el('form',null,'recall-editor'),label=el('label','消息正文'),input=el('textarea');
+  input.required=true;
+  input.maxLength=4000;
+  input.rows=5;
+  label.append(input);
+  const send=el('button','发送新消息','primary');
+  send.type='submit';
+  const actions=el('div',null,'actions');
+  actions.append(button('取消',closeDialog),send);
+  form.append(label,actions);
+  form.hidden=true;
+  const scope=openDialog('重新编辑',[status,form],id);
+  const editing=()=>current()&&dialog.open&&dialogGeneration===scope;
+  try{
+    const {text}=await api(thread(id)+'/messages/'+row.id+'/recall-text',{expectedAccount:account,revision});
+    if(!editing())return;
+    input.value=text;
+    status.textContent='发送后会新增一条消息。原输入框里的草稿会保留。';
+    form.hidden=false;
+    input.focus();
+  }catch(error){
+    if(editing())status.textContent=textError(error);
+    return;
+  }
+  let attempt;
+  form.addEventListener('submit',event=>{
+    event.preventDefault();
+    const text=input.value.trim();
+    if(!editing()||!text||event.isComposing)return;
+    if(attempt?.text!==text)attempt={text,clientId:clientNonce()};
+    void perform(async()=>{
+      input.readOnly=true;
+      try{
+        const response=await api(thread(id)+'/messages',{...attempt,membershipRevision:revision},
+          {expectedAccount:account,timeoutMs:65000});
+        if(!current())return;
+        if(editing())closeDialog();
+        merge([response.message,...(response.reply?[response.reply]:[])],'end');
+        void sync();
+      }finally{input.readOnly=false;}
+    },send,scope);
+  });
 }
 messageActions.addEventListener('toggle',event=>{
   if(event.newState==='closed'){
@@ -2145,7 +2231,9 @@ function mergeHistoryRows(previous,rows,append){
   let changed=false;
   for(const row of rows) {
     const previous=known.get(row.id);
-    if(!previous?append:previous.aiReply==='pending'&&['answered','failed'].includes(row.aiReply)){
+    const replaces=previous&&(row.removed&&!previous.removed||
+      previous.aiReply==='pending'&&['answered','failed'].includes(row.aiReply));
+    if(previous?replaces:append){
       known.set(row.id,previous?{...row,reactions:previous.reactions}:row);
       changed=true;
     }
@@ -2155,16 +2243,22 @@ function mergeHistoryRows(previous,rows,append){
       known.set(id,{...row,quote:{unavailable:true}});
       changed=true;
     }
-    if(!row.removed&&removedMessages.has(id)){
-      known.set(id,{...row,quote:undefined,attachment:undefined,removed:true,text:'[已移除]'});
+    const recalled=recalledMessages.has(id);
+    if(!row.removed&&removedMessages.has(id)||recalled&&!row.recalled){
+      const {sender,conversationId,createdAt}=row;
+      known.set(id,{id,sender,conversationId,createdAt,removed:true,recalled,text:recalled?'[已撤回]':'[已移除]'});
       changed=true;
     }
   }
   return changed?[...known.values()].sort((a,b)=>a.id-b.id):previous;
 }
-function merge(rows,scroll,removedIds=[],intoContext=false){
+function merge(rows,scroll,removedIds=[],intoContext=false,recalledIds=[]){
   for(const id of removedIds)removedMessages.add(id);
-  for(const row of rows)if(row.removed)removedMessages.add(row.id);
+  for(const id of recalledIds)recalledMessages.add(id);
+  for(const row of rows){
+    if(row.removed)removedMessages.add(row.id);
+    if(row.recalled)recalledMessages.add(row.id);
+  }
   if(removedIds.length)showReplyTarget();
   historyFinder?.removeResults();
   if(dialogMessage?.chatId===chat&&removedMessages.has(dialogMessage.messageId))closeDialog();
@@ -2207,7 +2301,7 @@ async function syncHistory(loadOlder=false) {
       olderButton.textContent='加载更早消息';
     }else historyAfter=Math.max(historyAfter,data.messages.at(-1)?.id??0);
     const nearEnd=historyView.scrollHeight-historyView.scrollTop-historyView.clientHeight<100;
-    merge(data.messages,loadOlder?'prepend':nearEnd?'end':'keep',data.moderation?.removedIds,loadOlder&&!!context);
+    merge(data.messages,loadOlder?'prepend':nearEnd?'end':'keep',data.moderation?.removedIds,loadOlder&&!!context,data.moderation?.recalledIds);
     if(reactionAtStart===reactionMutation)applyReactionUpdates(data.reactionUpdates);
     if(!loadOlder&&nearEnd)void acknowledgeRead();
     return true;
