@@ -37,8 +37,27 @@ jobs:
       - name: Unit tests
         shell: bash
         run: |
-          files=$(ls test/*.test.cjs | grep -v '^test/qq-supervisor-component-repair')
-          node scripts/test.cjs --test-concurrency=2 --test-timeout=300000 $files
+          parallel=()
+          native=()
+          for file in test/*.test.cjs; do
+            case "$file" in
+              test/qq-supervisor-component-repair*) continue ;; # separate step below
+              test/qq-node-host.test.cjs|test/qq-pending-update-lock-crash.test.cjs|test/qq-shell-owner-live.test.cjs|test/qq-shell-orphan-live.test.cjs|test/qq-supervisor-orphan-live.test.cjs|test/qq-transfer-service.test.cjs)
+                if [[ "$RUNNER_OS" == Windows ]]; then
+                  native+=("$file")
+                  continue
+                fi ;;
+            esac
+            parallel+=("$file")
+          done
+          # Run real Windows process, CIM and crash fixtures without a second
+          # test file competing for process startup, disk flushes or CPU.
+          status=0
+          if (( ${#native[@]} )); then
+            node scripts/test.cjs --test-concurrency=1 --test-timeout=300000 "${native[@]}" || status=1
+          fi
+          node scripts/test.cjs --test-concurrency=2 --test-timeout=300000 "${parallel[@]}" || status=1
+          exit "$status"
       # The supervisor component-repair files are the most load-sensitive; they
       # run afterwards, one file at a time.
       - name: Unit tests (serial group)
