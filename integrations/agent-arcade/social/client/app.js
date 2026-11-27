@@ -2135,7 +2135,7 @@ function canBookmarkMessage(row){
   if(!row||row.removed)return false;
   const type=row.attachment?.type;
   if(!type)return Boolean(row.text.trim()||row.webResults?.length);
-  return type==='image'||row.sender.kind==='human'&&(type==='voice'||type==='file');
+  return type==='image'||row.sender.kind==='human'&&(type==='voice'||type==='file'||type==='video');
 }
 $('#save-message-bookmark')?.addEventListener('click',async event=>{
   const row=resolveMessageAction(),control=event.currentTarget;
@@ -2537,7 +2537,7 @@ function showMessageBookmarks() {
   input.type='search';
   input.id='bookmark-keyword';
   input.maxLength=100;
-  input.placeholder='输入文字、链接、文件名或私人备注';
+  input.placeholder='输入文字、链接、文件名、片名或私人备注';
   label.htmlFor=input.id;
   const submit=el('button','搜索','primary');
   submit.type='submit';
@@ -2557,7 +2557,7 @@ function showMessageBookmarks() {
   const more=button('加载更多',()=>void load(),'outline');
   more.hidden=true;
   let type='',query='',next=null,serial=0;
-  for(const [value,name] of [['','全部'],['image','图片'],['voice','语音'],['file','文件']]){
+  for(const [value,name] of [['','全部'],['image','图片'],['voice','语音'],['file','文件'],['video','短视频']]){
     const choice=button(name,()=>{
       if(type===value)return;
       type=value;
@@ -2603,9 +2603,10 @@ function showMessageBookmarks() {
       image.addEventListener('error',()=>image.replaceWith(el('p','原图目前不可查看。','minor')),{once:true});
       image.src=imageUrl(row)+'?'+new URLSearchParams({account});
       item.append(image);
-    }else if(kind==='file'){
+    }else if(kind==='file'||kind==='video'){
       item.prepend(el('strong',row.attachment.name,'bookmark-text'));
-      item.append(el('p','文件 · '+fileSize(row.attachment.bytes),'minor'));
+      const description=kind==='video'?'短视频 · '+chatVideoLength(row.attachment.durationMs):'文件';
+      item.append(el('p',description+' · '+fileSize(row.attachment.bytes),'minor'));
     }else if(kind==='voice'){
       item.prepend(el('strong','语音 '+Math.ceil(row.attachment.durationMs/1000)+' 秒'));
     }else{
@@ -2620,7 +2621,8 @@ function showMessageBookmarks() {
     const jump=button('查看原消息',()=>void perform(async()=>{
       const checked=await api('/message-bookmarks?'+new URLSearchParams({account,id:row.bookmarkId}),undefined,options);
       if(!current())return;
-      if(!checked.bookmarks.some(b=>b.id===row.id&&b.conversationId===row.conversationId))throw Error('bookmark_source');
+      if(!checked.bookmarks.some(b=>b.id===row.id&&b.conversationId===row.conversationId&&
+        (kind!=='video'||b.attachment?.type==='video')))throw Error('bookmark_source');
       closeDialog();
       const opening=goChat(row.conversationId,false,account),visit=chatVisit;
       await opening;
