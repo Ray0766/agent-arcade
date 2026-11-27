@@ -10,6 +10,7 @@ import { createBothouseResidentModel } from './bothouse-resident-model.ts';
 import { ResidentBodySettings } from './resident-body-settings.ts';
 import { landingSites, nearbyDoorstepFlower, residentWalkEnd } from './bothouse-resident-sites.ts';
 import { planResidentBench, type ResidentBenchPlan } from './resident-bench-rest.ts';
+import type { SeatedBenchCompanion } from './bench-rest.ts';
 import { distance } from '../shared/world.ts';
 import type { ResidentGuideEntry } from './resident-guide-target.ts';
 
@@ -48,6 +49,7 @@ class ResidentFigure {
   private nextBenchPause=4;
   private bench: { plan: ResidentBenchPlan; started: number; sat?: number } | null = null;
   get restBenchId() { return this.bench?.plan.id; }
+  get occupiedBench() { return this.bench?.sat !== undefined ? this.bench.plan : null; }
   get benchPose() { return this.bench ? this.bench.sat === undefined ? 'approaching' : 'seated' : 'standing'; }
   private waveStart=-Infinity;
   private step=0;
@@ -327,6 +329,18 @@ export class BothouseResidents {
     }
     return false;
   }
+  seatedBenchCompanions(world: GroundWorld, epoch: number): SeatedBenchCompanion[] {
+    if (!this.hasApprovedVisit(world) || !this.friendVisitAllowed || !this.closure.hidden ||
+        this.visit !== world.planetId+'/'+epoch+'/'+world.revision) return [];
+    const companions: SeatedBenchCompanion[] = [];
+    for (const figure of this.figures.values()) {
+      const bench = figure.occupiedBench;
+      if (bench && figure.motion.valid && figure.role.activity === 'idle') {
+        companions.push({ residentId: figure.role.id, name: figure.role.displayName, benchId: bench.id, model: bench.model, seat: bench.seat });
+      }
+    }
+    return companions;
+  }
   hasApprovedVisit(world: GroundWorld) {
     return world === this.visitorWorld && this.visitorAllowed;
   }
@@ -434,7 +448,7 @@ export class BothouseResidents {
       const badgeImage=badge?.visible?badge.material.map?.image as HTMLImageElement|undefined:undefined;
       return {id:f.role.id,model:root.name,body:root.uuid,badge:badgeImage?.getAttribute('src')??null,look:f.key,activity:f.role.activity,position:root.position.toArray(),
         rotation:root.quaternion.toArray(),armAngle:root.getObjectByName('upper1')!.rotation.z,
-        moving:f.motion.moving,meshes,sprites,center:center.toArray(),benchPose:f.benchPose,
+        moving:f.motion.moving,meshes,sprites,center:center.toArray(),benchPose:f.benchPose,occupiedBench:f.occupiedBench?.id??null,
         kneeAngle:root.getObjectByName('knee1')!.rotation.x,ledgerVisible:root.getObjectByName('work-ledger')!.visible,
         checkingFlowers:root.getObjectByName('body')!.rotation.x>.25,flower:f.flower};
     });
