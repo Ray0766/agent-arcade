@@ -8,6 +8,8 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
   const join=panel.querySelector('[data-voice-join]');
   const camera=panel.querySelector('[data-voice-camera]');
   const cameraNotice=panel.querySelector('#group-voice-camera-notice');
+  const shareWindow=panel.querySelector('[data-share-window]');
+  const windowNotice=panel.querySelector('#group-voice-window-notice');
   const stage=panel.querySelector('#group-video-stage');
   const tiles=new Map();
   const mute=panel.querySelector('[data-voice-mute]');
@@ -30,7 +32,7 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     }
     if(!visible)return;
     for(const person of people){
-      const {entryId,displayName,videoStream,cameraEnabled,cameraState}=person;
+      const {entryId,displayName,videoStream,cameraEnabled,cameraState,videoSource}=person;
       let tile=tiles.get(entryId);
       if(!tile){
         const element=document.createElement('figure');
@@ -57,7 +59,8 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
           const ready=Boolean(tile.stream&&video.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA&&video.videoWidth);
           video.hidden=!ready;
           fallback.hidden=ready;
-          detail.textContent=ready?'摄像头已开':tile.cameraState==='on'?'等待画面':
+          detail.textContent=tile.videoSource==='window'?(ready?'正在共享窗口':'正在共享窗口，等待画面'):
+            ready?'摄像头已开':tile.cameraState==='on'?'等待画面':
             tile.cameraState==='unavailable'?'摄像头不可用':'仅语音';
         };
         video.addEventListener('loadeddata',updatePicture);
@@ -69,7 +72,9 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
       }
       const stream=cameraEnabled?videoStream??null:null;
       tile.cameraState=cameraEnabled?'on':cameraState;
-      if(tile.stream!==stream){
+      if(tile.stream!==stream||tile.videoSource!==videoSource){
+        tile.videoSource=videoSource;
+        tile.video.srcObject=null;
         tile.stream=stream;
         tile.video.srcObject=stream;
         if(stream)void tile.video.play().catch(()=>{});
@@ -93,7 +98,7 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     const confirmed=call&&state.phase==='active';
     const people=participants.flatMap(member=>{
       const person=context.members.find(item=>item.number===member.number);
-      return person?[{...person,entryId:member.id,cameraEnabled:member.cameraEnabled,cameraState:member.cameraState,videoStream:member.videoStream}]:[];
+      return person?[{...person,entryId:member.id,cameraEnabled:member.cameraEnabled,cameraState:member.cameraState,videoSource:member.videoSource,videoStream:member.videoStream}]:[];
     });
     title.textContent=detached?context.title+' · 群语音':'群语音';
     status.textContent=message||state.notice||(joining&&!confirmed?'正在加入…':
@@ -116,7 +121,12 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     const hasCamera=Boolean(confirmed&&people.some(person=>person.cameraEnabled));
     showCameras(people,hasCamera&&!detached);
     camera.hidden=!confirmed||(!state.videoCapable&&!state.cameraEnabled)||(detached&&!state.cameraEnabled);
-    camera.disabled=Boolean(state.cameraPending);
+    camera.disabled=Boolean(state.cameraPending||state.windowPending||state.windowSharing);
+    shareWindow.hidden=!confirmed||(!state.windowSharing&&(detached||!state.windowCapable||!state.videoCapable));
+    shareWindow.disabled=Boolean(state.windowPending||state.cameraPending);
+    shareWindow.textContent=state.windowPending==='stop'?'正在停止共享…':state.windowSharing?'停止共享窗口':state.windowPending?'正在选择窗口…':'共享窗口';
+    windowNotice.textContent=state.windowNotice??'';
+    windowNotice.hidden=!confirmed||!state.windowNotice;
     camera.textContent=state.cameraEnabled?'关闭摄像头':'打开摄像头';
     camera.setAttribute('aria-pressed',String(Boolean(state.cameraEnabled)));
     cameraNotice.textContent=state.cameraNotice??'';
@@ -157,8 +167,10 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
   }
   async function getController(){
     if(controller)return controller;
-    controllerFlight??=import('./group-voice.js').then(({mountGroupVoice})=>{
-      controller=mountGroupVoice({api,account,onChange:next=>{
+    controllerFlight??=import('./group-voice.js').then(async({mountGroupVoice})=>{
+      const startWindowShare=window.arcadeCallWindowAvailable
+        ?(await import('./window-share.js').catch(()=>null))?.startWindowShare:undefined;
+      controller=mountGroupVoice({api,account,startWindowShare,onChange:next=>{
         state=next;
         if(state.phase==='idle'&&!joining){
           active=undefined;
@@ -195,6 +207,7 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
     paint();
     void discover();
   });
+  shareWindow.addEventListener('click',()=>void controller?.toggleWindowShare());
   camera.addEventListener('click',()=>{
     if(state.phase==='active'&&!state.cameraPending)void controller?.setCameraEnabled(!state.cameraEnabled);
   });
