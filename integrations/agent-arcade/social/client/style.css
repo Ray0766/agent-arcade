@@ -148,7 +148,70 @@ dialog:has(.ai-role-library) #dialog-body > button {
 .ai-markdown :is(code,pre){background:var(--tint);border-radius:4px}
 .ai-markdown code{padding:.08em .25em}.ai-markdown pre{white-space:pre-wrap;padding:.5em .65em;overflow-wrap:anywhere}
 .ai-markdown pre code{padding:0}.ai-markdown hr{border:0;border-top:1px solid var(--line)}
-.voice-bubble{max-width:100%;min-height:44px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.voice-bubble {
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  width:15rem;
+  max-width:100%;
+  padding:.42rem .65rem;
+  text-align:left;
+  color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.voice-bubble:hover { border-color:var(--plum); }
+.voice-bubble:focus-visible { outline:2px solid var(--plum); outline-offset:3px; }
+.voice-bubble-icon {
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:var(--plum);
+  color:var(--paper);
+}
+.voice-bubble-icon::before {
+  content:'';
+  width:10px;
+  height:12px;
+  background:currentColor;
+  clip-path:polygon(0 0,100% 50%,0 100%);
+  transform:translateX(1px);
+}
+.voice-bubble:is([data-voice-state=playing],[data-voice-state=buffering]) .voice-bubble-icon::before {
+  clip-path:polygon(0 0,32% 0,32% 100%,68% 100%,68% 0,100% 0,100% 100%,0 100%);
+  transform:none;
+}
+.voice-bubble[data-voice-state=loading] .voice-bubble-icon::before {
+  height:10px;
+  clip-path:none;
+  transform:none;
+}
+.voice-bubble-detail { display:grid; gap:5px; }
+.voice-bubble-readout {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:2px 8px;
+  font-size:.78rem;
+}
+.voice-bubble-status { font-weight:650; }
+.voice-bubble-time { color:var(--muted); white-space:nowrap; }
+.voice-playhead {
+  display:block;
+  width:100%;
+  height:4px;
+  appearance:none;
+  border:0;
+  border-radius:4px;
+  background:var(--line);
+  color:var(--plum);
+}
+.voice-playhead::-webkit-progress-bar { background:var(--line); border-radius:4px; }
+.voice-playhead::-webkit-progress-value { background:var(--plum); border-radius:4px; }
+.voice-playhead::-moz-progress-bar { background:var(--plum); border-radius:4px; }
 .voice-settings,.voice-settings label{display:grid;gap:8px}
 .voice-settings select{width:100%;min-height:44px;padding:0 .6rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;font:inherit}
 .image-bubble{display:block;min-height:44px;max-width:100%;padding:0;overflow:hidden;border-color:var(--line);background:var(--paper)}
