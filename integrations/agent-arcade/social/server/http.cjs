@@ -403,8 +403,8 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       if(collection==='conversations'&&action==='messages'&&asset==='video'&&parts.length===5&&req.method==='GET'&&/^[1-9]\d*$/u.test(message)){
         const account=current(store,req);
         if(req.headers['x-social-account']!==account)fail(409,'video_session','账号已切换，请重新打开视频');
-        const {bytes}=store.messageVideo(account,chat,Number(message));
-        res.setHeader('Content-Type','video/webm');
+        const {bytes,mime}=store.messageVideo(account,chat,Number(message));
+        res.setHeader('Content-Type',mime);
         res.setHeader('Content-Length',bytes.byteLength);
         res.setHeader('Cross-Origin-Resource-Policy','same-origin');
         res.setHeader('X-Content-Type-Options','nosniff');

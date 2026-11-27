@@ -48,6 +48,10 @@ class SocialStore {
     this.db = new DatabaseSync(filename);
     const oldVoiceTable=this.one("SELECT 1 FROM sqlite_schema WHERE name='message_voices' AND type='table'");
     this.db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+    if(!this.one("SELECT 1 FROM pragma_table_info('message_videos') WHERE name='mime'"))this.transaction(()=>{
+      if(!this.one("SELECT 1 FROM pragma_table_info('message_videos') WHERE name='mime'"))
+        this.db.exec("ALTER TABLE message_videos ADD COLUMN mime TEXT NOT NULL DEFAULT 'video/webm' CHECK(mime IN ('video/webm','video/mp4'))");
+    });
     if(this.one('PRAGMA user_version').user_version===0)this.transaction(()=>{
       if(oldVoiceTable)this.db.exec(`
         ALTER TABLE message_voices RENAME TO message_voices_v0;
@@ -464,7 +468,7 @@ class SocialStore {
       'SELECT duration_ms AS durationMs,length(bytes) AS bytes FROM message_voices WHERE message=?',r.id);
     const file=!r.removed && !image && !voice && r.body==='' &&
       this.one('SELECT name,length(bytes) AS bytes FROM message_files WHERE message=?',r.id);
-    const video=!r.removed&&r.body==='[短视频]'&&this.one(`SELECT name,width,height,duration_ms AS durationMs,
+    const video=!r.removed&&r.body==='[短视频]'&&this.one(`SELECT name,mime,width,height,duration_ms AS durationMs,
       length(bytes) AS bytes FROM message_videos WHERE message=? AND bytes IS NOT NULL`,r.id);
     const {label,source_code,drawing,...picture}=image||{};
     const credit=source_code?JSON.parse(source_code):null;
@@ -476,7 +480,7 @@ class SocialStore {
     };
     const attachment=image?{type:'image',...picture,...(label&&{sticker:{label,...(source&&{source}),...(drawingSource&&{drawingSource})}}),
       ...(drawing!==null&&{drawing:{title:drawing}})}:
-      voice?{type:'voice',mime:'audio/wav',...voice}:video?{type:'video',mime:'video/webm',...video}:file&&{type:'file',...file};
+      voice?{type:'voice',mime:'audio/wav',...voice}:video?{type:'video',...video}:file&&{type:'file',...file};
     const webResults=!r.removed&&r.nonce.startsWith('ai-reply-')&&
       this.one('SELECT sources FROM message_web_results WHERE message=?',r.id)?.sources;
     return {id:r.id, conversationId:r.chat, sender:this.messagePerson(r.sender), clientId:r.nonce,
@@ -627,13 +631,13 @@ class SocialStore {
     }
     const row=this.run('INSERT INTO messages(chat,sender,nonce,body,created) VALUES(?,?,?,?,?)',
       id,account,video.clientId,'[短视频]',now());
-    this.run('INSERT INTO message_videos(message,name,width,height,duration_ms,digest,bytes) VALUES(?,?,?,?,?,?,?)',
-      row.lastInsertRowid,video.name,video.width,video.height,video.durationMs,video.digest,video.bytes);
+    this.run('INSERT INTO message_videos(message,name,width,height,duration_ms,digest,bytes,mime) VALUES(?,?,?,?,?,?,?,?)',
+      row.lastInsertRowid,video.name,video.width,video.height,video.durationMs,video.digest,video.bytes,video.mime??'video/webm');
     return this.message(this.one('SELECT * FROM messages WHERE id=?',row.lastInsertRowid));
   }
   messageVideo(account,id,message){
     const chat=this.access(account,id);
-    const video=this.user(account).kind==='human'&&this.one(`SELECT v.bytes FROM message_videos v JOIN messages m ON m.id=v.message
+    const video=this.user(account).kind==='human'&&this.one(`SELECT v.bytes,v.mime FROM message_videos v JOIN messages m ON m.id=v.message
       WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0 AND v.bytes IS NOT NULL`,id,message,chat.since);
     if(!video)fail(404,'unknown_video','这段视频已无法查看');
     return video;
