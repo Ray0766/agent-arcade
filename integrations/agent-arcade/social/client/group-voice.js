@@ -3,7 +3,7 @@ const POLL_MS=900;
 const ICE_TIMEOUT=8000;
 const SIGNAL_TIMEOUT=20000;
 
-export function mountGroupVoice({api,account,onChange=()=>{}}){
+export function mountGroupVoice({api,account,startWindowShare,onChange=()=>{}}){
   const device=globalThis.crypto?.randomUUID?.();
   let session,notice='';
   function getState(){
@@ -13,14 +13,17 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       notice,chatId:s?.chatId,roomId:s?.roomId,memberId:s?.memberId,muted:!!s?.muted,
       videoCapable:!!s?.members.some(m=>m.id===s.memberId&&m.video),
       cameraEnabled:!!s?.camera,cameraPending:!!s?.cameraPending,cameraNotice:s?.cameraNotice??'',
+      windowCapable:!!startWindowShare&&!!window.arcadeCallWindowAvailable,
+      windowSharing:!!s?.windowShare,windowPending:s?.windowPending,windowNotice:s?.windowNotice??'',
       audioBlocked:!!s&&[...s.peers.values()].some(peer=>peer.audioBlocked),
-      members:s?.members.map(({id,number,camera})=>{
+      members:s?.members.map(({id,number,camera,videoSource})=>{
         const local=id===s.memberId,peer=s.peers.get(id);
-        const cameraState=local?(s.camera?'on':s.cameraState??'off'):camera??'off';
-        const stream=local?s.camera:peer?.videoStream, track=stream?.getVideoTracks()[0];
+        const cameraState=local?(s.windowShare||s.camera?'on':s.cameraState??'off'):camera??'off';
+        const source=local?(s.windowShare?'window':undefined):videoSource;
+        const stream=local?s.windowShare?.stream??s.camera:peer?.videoStream, track=stream?.getVideoTracks()[0];
         const videoStream=cameraState==='on'&&track?.readyState==='live'&&!track.muted?stream:null;
         return {id,number,connection:local?'local':peer?.pc.connectionState??'new',
-          cameraEnabled:cameraState==='on',cameraState,videoStream};
+          cameraEnabled:cameraState==='on',cameraState,videoSource:source,videoStream};
       })??[],
     };
   }
@@ -56,6 +59,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     session=undefined;
     notice=message;
     clearTimeout(s.timer);
+    releaseWindow(s);
     stopCamera(s);
     for(const peer of s.peers.values())closePeer(peer);
     s.peers.clear();
@@ -167,7 +171,12 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
           const track=cameraTrack(s);
           if(track){
             try{await video.sender.replaceTrack(track);}
-            catch{if(isPeer(s,peer)&&cameraTrack(s)===track)cameraUnavailable(s);}
+            catch{
+              if(isPeer(s,peer)&&cameraTrack(s)===track){
+                if(s.windowShare)void endWindowShare(s,s.windowShare,'无法共享给新加入的成员。');
+                else cameraUnavailable(s);
+              }
+            }
           }
         }
         if(isPeer(s,peer))await prepareDescription(s,peer,'answer');
@@ -302,7 +311,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     return true;
   }
   function cameraTrack(s){
-    return (s.nextCamera??s.camera)?.getVideoTracks()[0];
+    return s.windowShare?.track??(s.nextCamera??s.camera)?.getVideoTracks()[0];
   }
   function stopCamera(s){
     for(const stream of [s.nextCamera,s.camera])stream?.getTracks().forEach(track=>track.stop());
@@ -327,13 +336,19 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       if(s.cameraUpdate&&s.cameraUpdate!==update)void flushCamera(s);
     }
   }
-  function publishCamera(s,state){
+  function publishCamera(s,state,source){
     s.cameraState=state;
     s.cameraVersion=(s.cameraVersion??0)+1;
-    s.cameraUpdate={state,version:s.cameraVersion};
+    s.cameraUpdate={state,version:s.cameraVersion,...(source&&{source})};
     void flushCamera(s);
   }
   function cameraUnavailable(s){
+    if(s.windowShare){
+      stopCamera(s);
+      s.cameraNotice='原摄像头已断开，窗口分享继续。';
+      notify();
+      return;
+    }
     detachCamera(s);
     s.cameraNotice='摄像头不可用，仍可继续语音通话。';
     publishCamera(s,'unavailable');
@@ -341,7 +356,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
   }
   async function setCameraEnabled(enabled){
     const s=session;
-    if(typeof enabled!=='boolean'||!s?.stream||!isCurrent(s)||s.cameraPending||
+    if(typeof enabled!=='boolean'||!s?.stream||!isCurrent(s)||s.cameraPending||s.windowPending||s.windowShare||
        !s.members.some(m=>m.id===s.memberId&&m.video)||enabled===!!s.camera)return false;
     s.cameraNotice='';
     if(!enabled){
@@ -358,11 +373,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       s.nextCamera=stream;
       const track=stream.getVideoTracks()[0];
       if(track?.readyState!=='live')throw Error('camera unavailable');
-      await Promise.all([...s.peers.values()].map(async peer=>{
-        if(!peer.videoSender||peer.closed)return;
-        try{await peer.videoSender.replaceTrack(track);}
-        catch(error){if(isPeer(s,peer))throw error;}
-      }));
+      await replaceVideoTracks(s,track);
       if(!isCurrent(s)||s.nextCamera!==stream||track.readyState!=='live'){
         throw Error('camera interrupted');
       }
@@ -382,9 +393,84 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       if(isCurrent(s))notify();
     }
   }
+  async function replaceVideoTracks(s,track){
+    await Promise.all([...s.peers.values()].map(async peer=>{
+      if(!peer.videoSender||peer.closed)return;
+      try{await peer.videoSender.replaceTrack(track);}
+      catch(error){if(isPeer(s,peer))throw error;}
+    }));
+  }
+  function releaseWindow(s){
+    const share=s.windowShare;
+    s.windowShare=null;
+    share?.unsubscribe?.();
+    share?.stop();
+    s.windowAbort?.abort();
+    s.windowAbort=null;
+  }
+  async function endWindowShare(s,share,message=''){
+    if(!isCurrent(s)||s.windowShare!==share)return false;
+    s.windowPending='stop';
+    releaseWindow(s);
+    const camera=cameraTrack(s);
+    s.windowNotice=message;
+    publishCamera(s,camera?.readyState==='live'?'on':'off');
+    notify();
+    try{
+      await replaceVideoTracks(s,camera?.readyState==='live'?camera:null);
+    }catch{
+      if(isCurrent(s))cameraUnavailable(s);
+    }finally{
+      s.windowPending=false;
+      if(isCurrent(s))notify();
+    }
+    return true;
+  }
+  async function toggleWindowShare(){
+    const s=session;
+    if(!s?.stream||!isCurrent(s)||s.cameraPending||s.windowPending)return false;
+    if(s.windowShare)return endWindowShare(s,s.windowShare);
+    if(!startWindowShare||!window.arcadeCallWindowAvailable||
+       !s.members.some(member=>member.id===s.memberId&&member.video))return false;
+    const abort=new AbortController();
+    s.windowAbort=abort;
+    s.windowPending='start';
+    s.windowNotice='';
+    notify();
+    let share;
+    try{
+      const result=await startWindowShare({account:s.account,device,roomId:s.roomId,self:s.memberId,revision:s.revision},
+        {signal:abort.signal});
+      if(!result)return false;
+      if(!isCurrent(s)||abort.signal.aborted){result.stop();return false;}
+      if(result.track.kind!=='video'||result.track.readyState!=='live'){
+        result.stop();
+        throw Error('window_track_unavailable');
+      }
+      share=s.windowShare={track:result.track,stop:result.stop,stream:new MediaStream([result.track])};
+      const ended=()=>void endWindowShare(s,share,'窗口分享已结束。');
+      share.unsubscribe=result.onEnded(ended);
+      result.track.addEventListener('ended',ended,{once:true});
+      if(s.windowShare!==share)return false;
+      await replaceVideoTracks(s,result.track);
+      if(!isCurrent(s)||s.windowShare!==share)return false;
+      publishCamera(s,'on','window');
+      return true;
+    }catch{
+      if(s.windowShare===share&&share)await endWindowShare(s,share,'暂时无法共享窗口。');
+      else if(isCurrent(s))s.windowNotice='暂时无法共享窗口。';
+      return false;
+    }finally{
+      if(s.windowAbort===abort||!share){
+        s.windowPending=false;
+        if(!s.windowShare&&s.windowAbort===abort)s.windowAbort=null;
+      }
+      if(isCurrent(s))notify();
+    }
+  }
   function resumeAudio(){
     if(session)for(const peer of session.peers.values())play(session,peer);
   }
   window.addEventListener('pagehide',reset);
-  return {discover,join,leave,setMuted,setCameraEnabled,getState,resumeAudio,reset};
+  return {discover,join,leave,setMuted,setCameraEnabled,toggleWindowShare,getState,resumeAudio,reset};
 }
