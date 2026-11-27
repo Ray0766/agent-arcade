@@ -69,6 +69,21 @@
    </div></details>
    <div id="chat-consent-action"></div>
    <button id="chat-settings-toggle" class="chat-tool" type="button" popovertarget="chat-settings" hidden>会话设置</button>
+  <div id="group-voice-dock">
+   <section id="group-voice" aria-label="群语音" hidden>
+    <div class="group-voice-summary">
+     <strong>群语音</strong><p role="status"></p>
+     <ul aria-label="通话成员" hidden></ul>
+    </div>
+    <div class="group-voice-actions">
+     <button type="button" data-voice-resume hidden>播放声音</button>
+     <button type="button" data-voice-back class="outline" hidden>返回群聊</button>
+     <button type="button" data-voice-mute class="outline" aria-pressed="false" hidden>静音</button>
+     <button type="button" data-voice-leave class="outline" hidden>离开</button>
+     <button type="button" data-voice-join class="primary">发起语音</button>
+    </div>
+   </section>
+  </div>
   </header>
   <div id="history" class="history" aria-label="聊天记录" tabindex="-1" hidden></div>
   <form id="composer" class="composer" hidden>

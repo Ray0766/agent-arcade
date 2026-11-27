@@ -2,7 +2,7 @@
 const {randomUUID}=require('node:crypto');
 const {fail}=require('./store.cjs');
 
-function createLiveCalls(store){
+function createLiveCalls(store,groupBusy=()=>false){
   const byAccount=new Map();
   const remove=call=>{
     byAccount.delete(call.caller);
@@ -33,7 +33,7 @@ function createLiveCalls(store){
       const peer=chat.first_user===account?chat.second_user:chat.first_user;
       if(chat.type!=='direct'||store.user(peer).kind!=='human'||!['audio','video'].includes(body.kind))
         fail(403,'call_unavailable','只能呼叫真人好友');
-      if(call||active(peer))fail(409,'call_busy','已有通话，请稍后重试');
+      if(call||active(peer)||groupBusy(account)||groupBusy(peer))fail(409,'call_busy','已有通话，请稍后重试');
       call={id:randomUUID(),chat:chat.id,kind:body.kind,caller:account,callee:peer,callerOwner:owner,
         revisions:{[account]:chat.membershipRevision,[peer]:store.access(peer,chat.id).membershipRevision},
         callerUntil:Date.now()+45000,calleeUntil:Date.now()+45000};
@@ -79,6 +79,6 @@ function createLiveCalls(store){
       if([call.callerOwner,call.calleeOwner].some(owner=>owner?.startsWith(session+'/')))remove(call);
     }
   }
-  return {handle,disconnect,close:()=>clearInterval(sweep)};
+  return {handle,disconnect,isBusy:account=>!!active(account),close:()=>clearInterval(sweep)};
 }
 module.exports={createLiveCalls};

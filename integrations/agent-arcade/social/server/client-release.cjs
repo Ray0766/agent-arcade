@@ -6,7 +6,7 @@ const path=require('node:path');
 
 const directory='_friends';
 const entryFiles=['index.html','client-start.js','style.css','app.js','vendor/bothouse/rh-md.js',
-  'avatar-image.js','feed-comments.js','message-reply.js','voice-queue-player.js','voice-recorder.js','voice-worklet.js','conversation-list.js','live-calls.js'];
+  'avatar-image.js','feed-comments.js','message-reply.js','voice-queue-player.js','voice-recorder.js','voice-worklet.js','conversation-list.js','live-calls.js','group-voice-panel.js','group-voice.js'];
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 
 function appWithBuild(bytes) {
@@ -18,7 +18,7 @@ function clientRelease(files) {
   for(const name of entryFiles){
     const bytes=files.get(name);
     // Preserve archived release URLs when later optional modules did not exist.
-    if(!bytes && ['avatar-image.js','feed-comments.js','message-reply.js','conversation-list.js','live-calls.js'].includes(name))continue;
+    if(!bytes && ['avatar-image.js','feed-comments.js','message-reply.js','conversation-list.js','live-calls.js','group-voice-panel.js','group-voice.js'].includes(name))continue;
     hash.update(name+'\0');
     hash.update(bytes?sha256(bytes):'-');
   }
