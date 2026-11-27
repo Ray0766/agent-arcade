@@ -155,6 +155,7 @@ function build(args) {
   fs.copyFileSync(path.join(__dirname,'main.cjs'),path.join(app,'store-main.cjs'));
   for (const name of ['endpoint.cjs','social-view.cjs','social-host.cjs','privacy-preload.cjs'])
     fs.copyFileSync(path.join(__dirname,name),path.join(app,name));
+  fs.cpSync(path.join(__dirname,'window-share'),path.join(app,'window-share'),{recursive:true});
   fs.cpSync(path.join(__dirname,'chat-capture'),path.join(app,'chat-capture'),{recursive:true});
   for (const name of ['src','LICENSE','LICENSE-MIT-HISTORICAL','THIRD_PARTY_NOTICES.md','LICENSES'])
     fs.cpSync(path.join(packageRoot,name),path.join(app,name),{recursive:true});
