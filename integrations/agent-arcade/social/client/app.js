@@ -1841,6 +1841,8 @@ function sameRun(a,b){
 }
 function renderHistory(scroll) {
   const oldTop=historyView.scrollTop, oldHeight=historyView.scrollHeight;
+  const focusedCorrection=document.activeElement?.dataset?.viewCorrection;
+  const focusedReplyReturn=document.activeElement?.dataset?.replyReturn;
   const imageButtons=new Map([...historyView.querySelectorAll('[data-image-id]')]
     .map(node=>[Number(node.dataset.imageId),node]));
   const voiceButtons=new Map([...historyView.querySelectorAll('[data-voice-id]')]
@@ -1879,6 +1881,7 @@ function renderHistory(scroll) {
     stamp.dateTime=message.createdAt;
     stamp.title=time(message.createdAt,reportDate);
     meta.append(label,stamp);
+    if(message.isCorrection&&!message.removed)meta.append(el('span','订正消息','history-search-category'));
     if(!message.removed){
       const control=button('⋯',()=>showMessageActions(message.id,control),'message-action-trigger');
       control.dataset.messageAction=message.id;
@@ -1890,7 +1893,14 @@ function renderHistory(scroll) {
     if(message.recalled){
       const notice=el('div',null,'message-recalled');
       notice.append(el('span',mine?'你撤回了一条消息':sender+'撤回了一条消息'));
-      if(mine&&canUseMessageRecall())
+      const correctionId=message.correctionId;
+      if(correctionId&&!removedMessages.has(correctionId)){
+        const open=button('查看订正',()=>void locateQuotedMessage(correctionId,{kind:'correction',id:message.id},
+          row=>row.isCorrection===true&&!row.removed));
+        open.dataset.viewCorrection=message.id;
+        notice.append(open);
+      }
+      if(mine&&!correctionId&&canUseMessageRecall())
         notice.append(button('重新编辑',()=>void editRecalledMessage(message)));
       content.append(meta,notice);
     }else if(message.attachment?.type==='image'&&!message.removed){
@@ -1942,6 +1952,12 @@ function renderHistory(scroll) {
       results.append(info);
       content.append(meta,results);
     }else content.append(meta,textBubble(message,text));
+    if(historyContext?.anchor===message.id&&historyContext.replySource?.kind==='correction'){
+      const source=historyContext.replySource;
+      const back=button('返回撤回位置',()=>void returnToRecalledMessage(source.id),'outline reply-return');
+      back.dataset.replyReturn=String(source.id);
+      content.append(back);
+    }
     if(message.quote&&!message.removed)meta.after(quoteControl(message.quote,locateQuotedMessage));
     if(mine&&!message.removed&&message.personalVoiceOffer)content.append(voiceOfferControls(message));
     if(message.imageQuestion){
@@ -1960,6 +1976,8 @@ function renderHistory(scroll) {
   if(!resolveMessageAction())messageActions.hidePopover();
   if(focusedVoice?.isConnected)focusedVoice.focus({preventScroll:true});
   if(focusedAction)historyView.querySelector('[data-message-action="'+focusedAction+'"]')?.focus({preventScroll:true});
+  if(focusedReplyReturn)historyView.querySelector('[data-reply-return="'+focusedReplyReturn+'"]')?.focus({preventScroll:true});
+  if(focusedCorrection)historyView.querySelector('[data-view-correction="'+focusedCorrection+'"]')?.focus({preventScroll:true});
   if(focusedReaction){
     const action=focusedReaction.split('/')[0];
     (historyView.querySelector('[data-message-reaction="'+focusedReaction+'"]')??
@@ -2126,7 +2144,7 @@ async function editRecalledMessage(row){
   input.maxLength=4000;
   input.rows=5;
   label.append(input);
-  const send=el('button','发送新消息','primary');
+  const send=el('button','确认发送订正','primary');
   send.type='submit';
   const actions=el('div',null,'actions');
   actions.append(button('取消',closeDialog),send);
@@ -2138,7 +2156,7 @@ async function editRecalledMessage(row){
     const {text}=await api(thread(id)+'/messages/'+row.id+'/recall-text',{expectedAccount:account,revision});
     if(!editing())return;
     input.value=text;
-    status.textContent='发送后会新增一条消息。原输入框里的草稿会保留。';
+    status.textContent='订正将作为新消息发到当前会话，对方可从撤回位置查看。原输入框里的草稿会保留。';
     form.hidden=false;
     input.focus();
   }catch(error){
@@ -2150,15 +2168,21 @@ async function editRecalledMessage(row){
     event.preventDefault();
     const text=input.value.trim();
     if(!editing()||!text||event.isComposing)return;
-    if(attempt?.text!==text)attempt={text,clientId:clientNonce()};
+    if(attempt?.text!==text)attempt={text,clientId:clientNonce(),expectedAccount:account,
+      membershipRevision:revision,correctionOf:row.id};
     void perform(async()=>{
       input.readOnly=true;
       try{
-        const response=await api(thread(id)+'/messages',{...attempt,membershipRevision:revision},
+        const response=await api(thread(id)+'/messages',attempt,
           {expectedAccount:account,timeoutMs:65000});
         if(!current())return;
         if(editing())closeDialog();
-        merge([response.message,...(response.reply?[response.reply]:[])],'end');
+        merge([{...row,correctionId:response.message.id},response.message],'end');
+        void sync();
+      }catch(error){
+        if(!editing())return;
+        if(error.message!=='correction_exists')throw error;
+        status.textContent='这条已撤回的消息已有订正。关闭窗口后，可在原位置查看。';
         void sync();
       }finally{input.readOnly=false;}
     },send,scope);
@@ -2232,6 +2256,7 @@ function mergeHistoryRows(previous,rows,append){
   for(const row of rows) {
     const previous=known.get(row.id);
     const replaces=previous&&(row.removed&&!previous.removed||
+      row.recalled&&previous.recalled&&row.correctionId!==previous.correctionId||
       previous.aiReply==='pending'&&['answered','failed'].includes(row.aiReply));
     if(previous?replaces:append){
       known.set(row.id,previous?{...row,reactions:previous.reactions}:row);
@@ -2246,7 +2271,8 @@ function mergeHistoryRows(previous,rows,append){
     const recalled=recalledMessages.has(id);
     if(!row.removed&&removedMessages.has(id)||recalled&&!row.recalled){
       const {sender,conversationId,createdAt}=row;
-      known.set(id,{id,sender,conversationId,createdAt,removed:true,recalled,text:recalled?'[已撤回]':'[已移除]'});
+      const recalledKind=row.attachment?.type==='video'?'video':undefined;
+      known.set(id,{id,sender,conversationId,createdAt,removed:true,recalled,recalledKind,text:recalled?'[已撤回]':'[已移除]'});
       changed=true;
     }
   }
@@ -2268,6 +2294,28 @@ function merge(rows,scroll,removedIds=[],intoContext=false,recalledIds=[]){
   if(historyContext)historyContext.messages=mergeHistoryRows(historyContext.messages,rows,intoContext);
   if(visibleHistory()!==before||scroll==='prepend')renderHistory(historyContext&&!intoContext?'keep':scroll);
 }
+let correctionPollVisit, correctionPollAfter=0;
+function correctionPollIds(){
+  if(correctionPollVisit!==chatVisit){correctionPollVisit=chatVisit;correctionPollAfter=0;}
+  const ids=visibleHistory().filter(row=>row.recalled&&row.recalledKind!=='video').map(row=>row.id);
+  const start=ids.findIndex(id=>id>correctionPollAfter);
+  const batch=(start>0?[...ids.slice(start),...ids.slice(0,start)]:ids).slice(0,100);
+  correctionPollAfter=batch.at(-1)??0;
+  return batch;
+}
+function applyCorrectionUpdates(ids,updates){
+  if(!updates)return false;
+  const requested=new Set(ids);
+  let changed=false;
+  const apply=rows=>rows.map(row=>{
+    if(!row.recalled||!requested.has(row.id)||row.correctionId===updates[row.id])return row;
+    changed=true;
+    return {...row,correctionId:updates[row.id]};
+  });
+  messages=apply(messages);
+  if(historyContext)historyContext.messages=apply(historyContext.messages);
+  return changed;
+}
 async function syncHistory(loadOlder=false) {
   const context=historyContext;
   if(!chat||!conversation||loadOlder&&!(context?.older??older)) return true;
@@ -2283,7 +2331,8 @@ async function syncHistory(loadOlder=false) {
     const after=pending?Math.min(pending.id-1,historyAfter):historyAfter;
     const cursor=loadOlder?'before='+(context?.messages??messages)[0].id:'after='+after;
     const reactionIds=loadOlder?'':visibleReactionIds(), reactionAtStart=reactionMutation;
-    const data=await api(thread(id)+'/messages?'+cursor+'&limit='+pageSize+'&removedAfter='+moderationCursor+
+    const correctionIds=loadOlder?[]:correctionPollIds();
+    const data=await api(thread(id)+'/messages?'+cursor+'&limit='+pageSize+'&removedAfter='+moderationCursor+(correctionIds.length?'&correctionIds='+correctionIds.join(','):'')+
       (reactionIds?'&reactionIds='+reactionIds:''),undefined,{expectedAccount:user.number});
     if(generation!==epoch||chatVisit!==visit||loadOlder&&historyContext!==context) return false;
     if(data.moderation&&(data.moderation.historyFloor!==historyFloor||
@@ -2303,6 +2352,7 @@ async function syncHistory(loadOlder=false) {
     const nearEnd=historyView.scrollHeight-historyView.scrollTop-historyView.clientHeight<100;
     merge(data.messages,loadOlder?'prepend':nearEnd?'end':'keep',data.moderation?.removedIds,loadOlder&&!!context,data.moderation?.recalledIds);
     if(reactionAtStart===reactionMutation)applyReactionUpdates(data.reactionUpdates);
+    if(applyCorrectionUpdates(correctionIds,data.correctionUpdates))renderHistory('keep');
     if(!loadOlder&&nearEnd)void acknowledgeRead();
     return true;
   } catch(error) {
@@ -2704,23 +2754,42 @@ function highlightHistoryHit(element,text,query){
   }
   element.append(text.slice(i,end).toWellFormed(),end<text.length?'…':'');
 }
-function displayOriginal(page,messageId){
-  historyContext={anchor:messageId,messages:mergeHistoryRows(page.messages,[],false),older:page.older};
+function displayOriginal(page,messageId,replySource){
+  historyContext={anchor:messageId,replySource,messages:mergeHistoryRows(page.messages,[],false),older:page.older};
   resetOlderPage();
   renderHistory('end');
   focusOriginal(historyView.querySelector('[data-history-message="'+messageId+'"]'));
 }
 let quoteNavigation=0;
-async function locateQuotedMessage(messageId){
-  const visit=chatVisit,epoch=generation,serial=++quoteNavigation;
-  const current=()=>visit===chatVisit&&epoch===generation&&serial===quoteNavigation;
+async function returnToRecalledMessage(messageId){
+  const account=user.number,id=chat,visit=chatVisit,epoch=generation,serial=++quoteNavigation;
+  const current=()=>visit===chatVisit&&epoch===generation&&serial===quoteNavigation&&chat===id&&user?.number===account;
+  try{
+    const {messages,moderation}=await api(thread(id)+'/messages?'+new URLSearchParams({
+      before:messageId+1,limit:pageSize,removedAfter:'latest',
+    }),undefined,{expectedAccount:account});
+    if(!current())return;
+    if(moderation?.membershipRevision!==membershipRevision||moderation?.historyFloor!==historyFloor||
+      !messages.some(row=>row.id===messageId&&row.recalled))throw Error('unknown_message');
+    displayOriginal({messages,older:messages.length===pageSize},messageId);
+  }catch(error){
+    if(current())$('#send-error').textContent=error.status===404||error.message==='unknown_message'?
+      '原撤回位置已不可查看。':textError(error);
+  }
+}
+async function locateQuotedMessage(messageId,replySource,isTarget){
+  const account=user?.number,id=chat,visit=chatVisit,epoch=generation,serial=++quoteNavigation;
+  if(!account||!id)return;
+  const current=()=>visit===chatVisit&&epoch===generation&&serial===quoteNavigation&&chat===id&&user?.number===account;
   try{
     const params=new URLSearchParams({account:user.number,around:messageId});
     const page=await api(thread(chat)+'/history-search?'+params);
     if(!current())return;
+    const target=page.messages.find(row=>row.id===messageId);
     if(page.anchor!==messageId||page.historyFloor!==historyFloor||page.membershipRevision!==membershipRevision||
-      removedMessages.has(messageId))throw Error('unknown_message');
-    displayOriginal(page,messageId);
+      (isTarget?!target||!isTarget(target):removedMessages.has(messageId)))throw Error('unknown_message');
+    displayOriginal(page,messageId,replySource);
+    return target;
   }catch(error){
     if(current())$('#send-error').textContent=error.status===404||error.message==='unknown_message'?
       '原消息已移除或不可查看。':textError(error);
@@ -2789,7 +2858,7 @@ historySearchButton?.addEventListener('click',()=>{
         const snippet=el('span',null,'history-search-snippet');
         highlightHistoryHit(snippet,hit.text,query);
         const open=button('',()=>void jumpTo(hit.id),'history-search-hit');
-        open.append(el('span',hit.sender+'　'+time(hit.createdAt),'minor'),snippet);
+        open.append(el('span',hit.sender+'　'+time(hit.createdAt)+(hit.isCorrection?' · 订正消息':''),'minor'),snippet);
         const entry=el('li');
         entry.dataset.historyHit=hit.id;
         entry.append(open);results.append(entry);
