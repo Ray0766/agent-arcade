@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
-  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
+  "worldRevision": "ba67c96ab807e391db55b90e53a84bde2bd5efa5",
+  "worldTree": "c863a307da3e2600d9b5e609f8991bdc083057ad",
+  "patchSHA256": "581c2a7df0b110085c1ffd866f197372ef4604920871a42cee739bb27a55eb54",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -153,6 +153,12 @@
       "path": "spec/courtyard-landmark.test.ts",
       "blob": "a74d7c44e8cdb6cf0b5e34c4bd1959011d4a16b0",
       "sha256": "099429d466337922061c24036cd55e953d8e1485b2c2f6e90072ff45301f0e44"
+    },
+    {
+      "action": "M",
+      "path": "spec/ground-recovery.test.ts",
+      "blob": "0e78e60e41f6e4adbfc10a54f2917fada6e2bf61",
+      "sha256": "7d5219741a5aeb284aa07f25792debbaf005a833caa9b753915eef586085e03b"
     },
     {
       "action": "M",
@@ -771,6 +777,12 @@
       "path": "src/server/friends-session.ts",
       "blob": "986ea594b03eb325dc0b00be582d9d45b492f7cc",
       "sha256": "54aac812a80ce1486c4f5bc0069e3b99969c56dccd595019d0a208f2435b58b1"
+    },
+    {
+      "action": "M",
+      "path": "src/server/ground.ts",
+      "blob": "da2937728a82a729f7c5b3eec01b800a69e148d2",
+      "sha256": "a0026c227d7f4068b2c883b1906781a09d11d89ee81e16966b4440f34fa0f543"
     },
     {
       "action": "M",
