@@ -14,6 +14,7 @@ type Site = {
   pose: GroundPose;
   waterScope: string | null;
   waterHere: boolean;
+  nextStamp?: CourtyardStamp;
 };
 type Collection = {
   visit: CourtyardCardVisit;
@@ -107,6 +108,12 @@ export class CourtyardStampCard {
     }
     this.site = site;
     this.paint();
+  }
+
+  finishingIn(scope: string) {
+    const entry = this.collection;
+    return this.scope === scope && this.opened && !!entry &&
+      (entry.saved === 3 || !!entry.saved && entry.busy && (this.earned | entry.saved) === 3);
   }
 
   watered(waterScope: string) {
@@ -207,7 +214,9 @@ export class CourtyardStampCard {
     const saved = entry?.saved ?? 0;
     const stamps = this.earned | saved;
     const markedPlaque = !!(stamps & STAMP_BIT.plaque), markedWater = !!(stamps & STAMP_BIT.water);
-    const key = JSON.stringify([hasSite, opened, zh, plaque, water, named, stamps, this.earned, entry?.saved, entry?.busy, entry?.error]);
+    const next = this.site?.nextStamp;
+    const pendingStamp = next && !(stamps & STAMP_BIT[next]) ? next : undefined;
+    const key = JSON.stringify([hasSite, opened, zh, plaque, water, named, stamps, this.earned, entry?.saved, entry?.busy, entry?.error, pendingStamp]);
     if (key === this.lastPaint) return;
     this.lastPaint = key;
     this.root.hidden = !hasSite;
@@ -215,7 +224,9 @@ export class CourtyardStampCard {
     this.panel.hidden = !opened;
     this.entry.hidden = opened;
 
-    this.entry.textContent = this.title.textContent = zh ? '院落寻景卡' : 'Courtyard stamp card';
+    this.title.textContent = zh ? '院落寻景卡' : 'Courtyard stamp card';
+    this.entry.textContent = pendingStamp === 'water' ? (zh ? '院落寻景卡 · 补浇花章' : 'Courtyard card · Water stamp') :
+      pendingStamp === 'plaque' ? (zh ? '院落寻景卡 · 补院落牌章' : 'Courtyard card · Sign stamp') : this.title.textContent;
     this.close.textContent = zh ? '收起' : 'Close';
     this.plaqueTitle.textContent = zh ? '认院落牌' : 'Find the courtyard sign';
     this.waterTitle.textContent = zh ? '亲手浇一盆花' : 'Water a flowerpot';

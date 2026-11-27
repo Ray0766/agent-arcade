@@ -704,10 +704,16 @@ index e56a89e92190efaab22096861abb75c51ac8688a..431c9c7fcb46481d0dad9b9db8301f4f
 +  border-top: 1px solid var(--ui-dialog-border);
 +}
 diff --git a/src/client/flight.ts b/src/client/flight.ts
-index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff12a129cd5 100644
+index eeb7d88eabbcb938873d370abbcf3434b7202330..7527b01ab0043429ea8d92e0bec840eff69a799d 100644
 --- a/src/client/flight.ts
 +++ b/src/client/flight.ts
-@@ -25,16 +25,25 @@ import {FlightControls,shipHeading} from './flight-controls.ts';
+@@ -1,4 +1,5 @@
+ import { setText } from './i18n.ts';
++import { stampNextVisit } from './stamp-next-visit.ts';
+ import * as T from 'three';
+ import { ORBIT_VISIBLE_BUDGET,regionFor } from '../shared/regions.ts';
+ import { makeShip } from './ship-model.ts';
+@@ -25,16 +26,28 @@ import {FlightControls,shipHeading} from './flight-controls.ts';
  
  import {flightCheckpointDelay} from './flight-checkpoint.ts';
  const el=<E extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as E;
@@ -721,7 +727,7 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
 +  visitDestination:(planetId:string)=>Promise<FriendDestination>;
    apply:(p:PlayerState)=>void; applyUniverse:(u:Universe)=>void; flushGround:()=>Promise<void>;
 -  clearGround:()=>void; canBoard:()=>boolean; failed:(error:unknown)=>void; notice:(message:string)=>void;
-+  clearGround:()=>void; canBoard:()=>boolean; findShip:()=>void; failed:(error:unknown)=>void; notice:(message:string)=>void;
++  clearGround:()=>void; canBoard:()=>boolean; findShip:()=>void; showStampDeparture:()=>boolean; failed:(error:unknown)=>void; notice:(message:string)=>void;
  }
  export class SpaceFlight {
    scene=new T.Scene();camera=new T.PerspectiveCamera(58,innerWidth/innerHeight,.1,18000);
@@ -731,26 +737,30 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
 +  private friendDestination: FriendDestination | null = null;
 +  private friendCheck: Promise<void> | null = null;
 +  private friendCheckedAt = -Infinity;
++  private friendCheckId: string | null = null;
++  private stampDialogPlanet: string | null = null;
++  private lastStampPlanet: string | null = null;
    private route:Vec3[]=[];private routeIndex=0;private travelling=false;private routeNote='Choose a destination. The ship handles takeoff and landing.';
    private travelSelect=document.createElement('select');private travelButton=document.createElement('button');private travelStatus=document.createElement('p');
    private departureSelect=document.createElement('select');private preview=document.createElement('p');private requestId=crypto.randomUUID();
-@@ -55,11 +64,33 @@ export class SpaceFlight {
+@@ -55,11 +68,35 @@ export class SpaceFlight {
      this.orbitNotice.className='orbit-preparation';this.orbitNotice.hidden=true;this.orbitNotice.setAttribute('role','status');this.orbitNotice.setAttribute('aria-live','polite');
      this.orbitNotice.innerHTML='<span></span><progress></progress><button type="button" hidden></button>';el('flight-hud').append(this.orbitNotice);
      configureSpace(this.scene,bridge.renderer);this.scene.fog=null;this.scene.add(this.ship.root);this.drawing=createVillageDrawing(bridge.renderer,this.scene,this.camera,true);
-+    if(this.friendPlanet){
-+      this.friendRoute.id='friend-visit-route';
-+      this.friendRoute.type='button';this.friendRoute.hidden=true;
-+      this.friendRoute.onclick=()=>{
-+        if(!this.friendPlanet||this.friendDestination?.planetId!==this.friendPlanet)return;
-+        if(!this.active&&!this.bridge.canBoard()){
-+          this.bridge.findShip();
-+          return;
-+        }
-+        this.mark(this.friendPlanet);
-+      };
-+      el('travel-guidance').prepend(this.friendRoute);
-+    }
++    this.friendRoute.id='friend-visit-route';
++    this.friendRoute.type='button';
++    this.friendRoute.hidden=true;
++    this.friendRoute.onclick=()=>{
++      const planet=this.routeFriendPlanet();
++      if(!planet||this.friendDestination?.planetId!==planet)return;
++      if(!this.active&&!this.bridge.canBoard()){
++        this.bridge.findShip();
++        return;
++      }
++      this.mark(planet);
++    };
++    el('travel-guidance').prepend(this.friendRoute);
++    stampNextVisit.addEventListener('change',()=>this.syncStampVisit());
 +    const language = this.dialog.querySelector(':scope > .dialog-language');
 +    if (language) this.dialog.append(language);
 +    const title = el('flight-title');
@@ -758,29 +768,27 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
 +    title.autofocus = true;
 +    this.dialog.setAttribute('aria-describedby', 'flight-detail');
      el('board-ship').onclick=()=>this.openLaunch();
-     el('cancel-flight').onclick=()=>this.dialog.close();el('confirm-flight').onclick=()=>void this.transition();
-     this.dialog.addEventListener('cancel',e=>{if(this.busy)e.preventDefault();});
+-    el('cancel-flight').onclick=()=>this.dialog.close();el('confirm-flight').onclick=()=>void this.transition();
+-    this.dialog.addEventListener('cancel',e=>{if(this.busy)e.preventDefault();});
++    el('cancel-flight').onclick=()=>{this.cancelStampDeparture();this.dialog.close();this.checkFriendDestination();};el('confirm-flight').onclick=()=>void this.transition();
++    this.dialog.addEventListener('cancel',e=>{if(this.busy)e.preventDefault();else this.cancelStampDeparture();});
      this.departureSelect.id='trip-departure';this.departureSelect.setAttribute('aria-label','Destination');this.preview.id='trip-preview';
 -    el('flight-detail').after(this.departureSelect,this.preview);this.departureSelect.onchange=()=>this.updatePreview();
 +    el('flight-detail').after(this.departureSelect,this.preview);this.departureSelect.onchange=()=>{
-+      if(this.departureSelect.value===this.friendPlanet)this.checkFriendDestination(true);
++      if(this.departureSelect.value===stampNextVisit.current?.planetId) this.stampDialogPlanet=this.departureSelect.value;
++      this.checkFriendDestination(true);
 +      this.updatePreview();
 +    };
      const navigation=document.createElement('section');navigation.className='flat-flight-navigation';navigation.setAttribute('aria-label','Automatic journey');
      const label=document.createElement('label');setText(label,'Destination');this.travelSelect.id='flight-destination';label.htmlFor=this.travelSelect.id;
      this.travelButton.id='flight-travel';this.travelButton.type='button';setText(this.travelButton,'Resume journey');this.travelButton.onclick=()=>void this.startTravel();
-@@ -96,11 +127,21 @@ export class SpaceFlight {
+@@ -96,11 +133,17 @@ export class SpaceFlight {
    }
    universe(u:Universe){
      this.planets=u.planets;
-+    if(this.friendPlanet){
-+      const friend=u.planets.find(p=>p.id===this.friendPlanet&&p.kind==='garden'&&p.claimed);
-+      if(friend&&u.player.flight.mode==='ground'&&u.currentPlanet.id===friend.id){
-+        this.friendRoute.hidden=true;this.friendPlanet=null;this.friendDestination=null;this.pendingTarget=null;
-+        this.bridge.notice('You are on your friend’s planet.');
-+      }else {
-+        this.checkFriendDestination();
-+      }
++    if(this.friendPlanet&&u.player.flight.mode==='ground'&&u.currentPlanet.id===this.friendPlanet){
++      this.friendPlanet=null;this.pendingTarget=null;
++      this.bridge.notice('You are on your friend’s planet.');
 +    }
      const selected=this.travelSelect.value,departure=this.departureSelect.value;
      const ordered=[...u.planets].sort((a,b)=>(a.kind==='hub'?0:a.mine?1:a.claimed?2:3)-(b.kind==='hub'?0:b.mine?1:b.claimed?2:3));
@@ -788,27 +796,48 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
      this.travelSelect.value=u.player.trip?.status==='active'?u.player.trip.targetId:selected||u.ownedPlanetId||'hub';
 -    this.departureSelect.value=this.dialog.open?departure:this.pendingTarget??u.ownedPlanetId??'hub';this.renameButton.hidden=!u.ownedPlanetId;
 +    this.departureSelect.value=this.dialog.open?departure:this.pendingTarget??this.availableVisitPlanet()?.id??u.ownedPlanetId??'hub';this.renameButton.hidden=!u.ownedPlanetId;
++    this.checkFriendDestination();
 +    this.paintFriendDestination();
      if(!this.busy&&this.dialog.open&&this.action==='retarget'&&(u.player.trip?.status!=='active'||u.player.trip.revision!==this.confirmRevision)){this.dialog.close();this.bridge.notice('Your trip changed. Refresh its destination before trying again.');}
      if(this.travelling&&this.routeTrip!==this.tripKey())this.clear();this.updatePreview();
      let changed=false;
-@@ -180,7 +221,66 @@ export class SpaceFlight {
+@@ -180,7 +223,125 @@ export class SpaceFlight {
      })();
    }
    private tripKey(){const t=this.bridge.player()?.trip;return t?`${t.id}:${t.revision}`:'';}
 -  private updatePreview(){const p=this.planets.find(p=>p.id===this.departureSelect.value);if(!p)return;this.preview.style.setProperty('--destination-color',p.kind==='hub'?'#ddc78f':p.mine?'#73ad80':'#8fb6b8');setText(this.preview,`${p.name} · ${p.kind==='hub'?'Public starport':p.mine?'Your saved home':p.claimed?'Visit only · building belongs to its owner':'An unclaimed world to explore'}`);}
-+  private availableVisitPlanet() {
-+    return this.planets.find(p=>p.id===this.friendPlanet&&p.kind==='garden'&&p.claimed&&!p.mine);
++  private routeFriendPlanet() {
++    return stampNextVisit.current?.planetId ?? this.friendPlanet;
 +  }
-+  private checkFriendDestination(force=false) {
-+    const planet=this.availableVisitPlanet();
-+    if(!planet||this.friendCheck||!this.bridge.online()||(!force&&performance.now()-this.friendCheckedAt<2200))return;
-+    const id=planet.id;
-+    const request=this.bridge.visitDestination(id);
++  private isFriendPlanet(id: string | null) {
++    return !!id && (id===this.friendPlanet || id===stampNextVisit.current?.planetId);
++  }
++  private availableVisitPlanet(id=this.routeFriendPlanet()) {
++    return this.planets.find(p=>p.id===id&&p.kind==='garden'&&p.claimed&&!p.mine);
++  }
++  private visitCheckTarget() {
++    const trip=this.bridge.player()?.trip;
++    const chosen=this.dialog.open ? (this.action==='launch'?this.departureSelect.value:this.confirmTarget) : null;
++    if(this.isFriendPlanet(chosen))return chosen;
++    if(trip?.status==='active'&&this.isFriendPlanet(trip.targetId))return trip.targetId;
++    const id=this.routeFriendPlanet(), player=this.bridge.player();
++    return player?.flight.mode==='ground'&&player.planetId===id ? null : id;
++  }
++  private checkFriendDestination(force=false,id=this.visitCheckTarget()) {
++    const planet=this.availableVisitPlanet(id);
++    if(!planet||!this.bridge.online())return;
++    if(this.friendCheckId!==planet.id){
++      this.friendCheckId=planet.id;
++      this.friendCheck=null;
++      this.friendDestination=null;
++      this.friendCheckedAt=-Infinity;
++    }
++    if(this.friendCheck||(!force&&performance.now()-this.friendCheckedAt<2200))return;
++    const request=this.bridge.visitDestination(planet.id);
 +    const pending=request.then(result=>{
-+      if (this.friendCheck===pending&&this.friendPlanet===id) this.friendDestination=result.planetId===id ? result : null;
++      if(this.friendCheck===pending&&this.isFriendPlanet(planet.id))this.friendDestination=result.planetId===planet.id?result:null;
 +    },()=>{
-+      if(this.friendCheck===pending&&this.friendPlanet===id)this.friendDestination=null;
++      if(this.friendCheck===pending&&this.isFriendPlanet(planet.id))this.friendDestination=null;
 +    }).finally(()=>{
 +      if(this.friendCheck!==pending)return;
 +      this.friendCheck=null;
@@ -818,30 +847,69 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
 +    });
 +    this.friendCheck=pending;
 +  }
++  private syncStampVisit() {
++    const id=stampNextVisit.current?.planetId??null, previous=this.lastStampPlanet;
++    this.lastStampPlanet=id;
++    if(previous!==id){
++      if(id||this.pendingTarget===previous)this.pendingTarget=null;
++      if(!this.dialog.open&&this.departureSelect.value===previous){
++        this.departureSelect.value=this.availableVisitPlanet()?.id??this.planets.find(p=>p.mine)?.id??'hub';
++      }
++    }
++    if(this.friendCheckId&&!this.isFriendPlanet(this.friendCheckId)){
++      this.friendCheck=null;this.friendCheckId=null;this.friendDestination=null;this.friendCheckedAt=-Infinity;
++    }
++    this.checkFriendDestination();
++    this.paintFriendDestination();
++    this.updatePreview();
++  }
++  private cancelStampDeparture() {
++    const id=this.action==='launch'&&this.stampDialogPlanet===stampNextVisit.current?.planetId?this.stampDialogPlanet:null;
++    if(id&&!this.busy) void stampNextVisit.cancel(id).catch(()=>this.bridge.notice(
++      document.documentElement.lang.startsWith('zh')?'补章计划未能取消，请稍后重试。':'The stamp visit could not be cancelled. Try again.'));
++  }
 +  private paintFriendDestination() {
-+    if(!this.friendPlanet)return;
-+    const planet=this.availableVisitPlanet(), allowed=planet&&this.friendDestination?.planetId===planet.id;
-+    this.friendRoute.hidden=false;
++    const id=this.routeFriendPlanet(), next=stampNextVisit.current;
++    const player=this.bridge.player();
++    const planet=this.availableVisitPlanet(id), allowed=planet&&this.friendDestination?.planetId===id;
++    const zh=document.documentElement.lang.startsWith('zh');
++    const outside=!!player&&player.location?.kind!=='interior';
++    const alreadyThere=player?.flight.mode==='ground'&&player.planetId===id;
++    this.friendRoute.hidden=!id||!outside||alreadyThere||(player?.trip?.status==='active' && player.trip.targetId===id)||!!next&&(this.active||!this.bridge.showStampDeparture());
 +    this.friendRoute.disabled=!allowed;
-+    setText(this.friendRoute,allowed?'Visit friend · '+(this.friendDestination?.displayName??planet.name):
-+      this.friendCheckedAt===-Infinity&&planet?'Checking visit permission…':unavailableVisit);
-+    const option=[...this.departureSelect.options].find(entry=>entry.value===this.friendPlanet);
-+    if(option){
-+      option.disabled=!allowed;
-+      setText(option,allowed?'Friend’s planet · '+planet.name:'Visit permission unavailable');
++    if(next){
++      const stamp=next.missing==='water'?(zh?'浇花章':'water stamp'):(zh?'院落牌章':'sign stamp');
++      this.friendRoute.textContent=allowed?
++        (zh?`去码头登船 · ${next.planetName} · 补${stamp}`:`Find your ship · ${next.planetName} · ${stamp}`):
++        this.friendCheckId!==id||this.friendCheckedAt===-Infinity?
++          (zh?'正在核对补章目的地…':'Checking your stamp destination…'):
++          (zh?'暂时无法拜访 · 可从好友重新进入':'Visit unavailable · reopen from Friends');
++      this.friendRoute.dataset.i18nVerbatim='';
++    }else{
++      delete this.friendRoute.dataset.i18nVerbatim;
++      setText(this.friendRoute,allowed?'Visit friend · '+(this.friendDestination?.displayName??planet.name):
++        this.friendCheckedAt===-Infinity&&planet?'Checking visit permission…':unavailableVisit);
++    }
++    for(const option of this.departureSelect.options){
++      if(!this.isFriendPlanet(option.value))continue;
++      const destination=this.availableVisitPlanet(option.value);
++      option.disabled=!destination||this.friendCheckId===option.value&&this.friendCheckedAt!==-Infinity&&!this.friendCheck&&this.friendDestination?.planetId!==option.value;
++      setText(option,destination?'Friend’s planet · '+destination.name:'Visit permission unavailable');
 +    }
 +  }
 +  private updatePreview(){
 +    if(!this.dialog.open&&this.action==='retarget')return;
 +    const chosen=this.action==='launch'?this.departureSelect.value:this.confirmTarget;
 +    const p=this.planets.find(p=>p.id===chosen);
-+    const friend=!!chosen&&chosen===this.friendPlanet;
-+    const allowed=friend&&p&&this.friendDestination?.planetId===chosen;
++    const expiredStamp=!!chosen&&chosen===this.stampDialogPlanet&&chosen!==stampNextVisit.current?.planetId;
++    const friend=this.isFriendPlanet(chosen)||expiredStamp;
++    const checkingStamp=chosen===stampNextVisit.current?.planetId&&this.friendCheckId===chosen&&!!this.friendCheck;
++    const allowed=friend&&!expiredStamp&&!checkingStamp&&p&&this.friendDestination?.planetId===chosen;
 +    const name=allowed?this.friendDestination?.displayName:undefined;
 +    el<HTMLButtonElement>('confirm-flight').disabled=this.busy||!p||(friend&&!allowed);
 +    this.preview.hidden=this.action==='retarget'||friend;
 +    if(friend){
-+      const waiting=this.friendCheckedAt===-Infinity&&!!this.friendCheck;
++      const waiting=!expiredStamp&&this.friendCheckId===chosen&&!!this.friendCheck;
 +      setText(el('flight-title'),allowed?(name?`Visit ${name}?`:'Visit your friend’s planet?'):waiting?'Checking visit permission…':unavailableVisit);
 +      setText(el('flight-detail'),allowed
 +        ? this.action==='retarget'&&name?`Fly to ${name} · ${p.name}? Your current trip stays unchanged until you confirm.`:`Destination: ${p.name}. Confirm to depart.`
@@ -860,23 +928,47 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
    async startTravel(){
      if(!this.pilot||this.busy||!this.bridge.online())return;
      const trip=this.bridge.player()?.trip;
-@@ -206,20 +306,49 @@ export class SpaceFlight {
+@@ -194,32 +355,78 @@ export class SpaceFlight {
+     const t=this.bridge.player()?.trip;if(!t||t.status!=='active'||this.busy||!this.bridge.online())return;
+     this.busy=true;this.clear();this.routeNote='Preparing destination… Arrival waits for server confirmation and scene loading.';
+     try{await this.flush();const u=await this.bridge.command('trip/finish',{tripId:t.id,revision:t.revision,visitEpoch:this.bridge.player()?.location?.visitEpoch??0});this.bridge.applyUniverse(u);this.dialog.close();this.arrivalFailed=false;}
+-    catch(error){this.arrivalFailed=true;this.routeNote='Arrival could not be prepared. Retry arrival or return to departure.';this.bridge.failed(error);}
++    catch(error){
++      this.arrivalFailed=true;
++      this.routeNote='Arrival could not be prepared. Retry arrival or return to departure.';
++      if(error instanceof Error&&'status' in error&&error.status===403){
++        void stampNextVisit.refresh().catch(()=>{});
++        this.bridge.notice(unavailableVisit);
++      }else this.bridge.failed(error);
++    }
+     finally{this.busy=false;}
+   }
+   private async returnTrip(){
+     const t=this.bridge.player()?.trip;if(!t||t.status!=='active'||this.busy)return;this.busy=true;this.clear();
+-    try{await this.flush();const u=await this.bridge.command('trip/change',{tripId:t.id,revision:t.revision,action:'return',visitEpoch:this.bridge.player()?.location?.visitEpoch??0});this.bridge.applyUniverse(u);this.busy=false;await this.startTravel();}catch(error){this.bridge.failed(error);}finally{this.busy=false;}
++    try{await this.flush();const u=await this.bridge.command('trip/change',{tripId:t.id,revision:t.revision,action:'return',visitEpoch:this.bridge.player()?.location?.visitEpoch??0});this.bridge.applyUniverse(u);if(stampNextVisit.current)void stampNextVisit.refresh().catch(()=>{});this.busy=false;await this.startTravel();}catch(error){this.bridge.failed(error);}finally{this.busy=false;}
+   }
+   mark(id:string){
+     if(!this.planets.some(p=>p.id===id)||this.busy)return;
      const trip=this.bridge.player()?.trip;
      if(this.active&&trip?.status==='active'){
        this.travelSelect.value=trip.targetId;if(id===trip.targetId)return;this.action='retarget';this.confirmTarget=id;this.confirmRevision=trip.revision;this.departureSelect.hidden=true;this.preview.hidden=true;
 -      setText(el('flight-title'),'Change destination?');setText(el('flight-detail'),`Fly to ${this.planets.find(p=>p.id===id)!.name}? Your current trip stays unchanged until you confirm.`);setText(el('confirm-flight'),'Change destination');setText(el('cancel-flight'),'Keep destination');this.dialog.showModal();
-+      setText(el('flight-title'),'Change destination?');setText(el('flight-detail'),`Fly to ${this.planets.find(p=>p.id===id)!.name}? Your current trip stays unchanged until you confirm.`);setText(el('confirm-flight'),'Change destination');setText(el('cancel-flight'),'Keep destination');this.dialog.showModal();if(id===this.friendPlanet)this.checkFriendDestination(true);this.updatePreview();
++      setText(el('flight-title'),'Change destination?');setText(el('flight-detail'),`Fly to ${this.planets.find(p=>p.id===id)!.name}? Your current trip stays unchanged until you confirm.`);setText(el('confirm-flight'),'Change destination');setText(el('cancel-flight'),'Keep destination');this.stampDialogPlanet=stampNextVisit.current?.planetId===id?id:null;this.dialog.showModal();if(this.isFriendPlanet(id))this.checkFriendDestination(true,id);this.updatePreview();
      }else{this.pendingTarget=id;this.departureSelect.value=id;this.openLaunch();}
    }
    setDesign(design:ShipDesign){this.ship.setDesign(design);el('flight-hud').dataset.shipDesign=this.ship.document;setText(document.querySelector('.flight-ident b')!,design.registration||design.name);setText(document.querySelector('.flight-ident span')!,design.name);}
-   openLaunch(){if(this.busy||!this.bridge.player())return;if(!this.active&&!this.bridge.canBoard()){this.bridge.notice('Walk to the boarding gate beside your parked ship.');return;}this.clear();this.bridge.clearGround();this.action='launch';this.openTripDialog();}
+-  openLaunch(){if(this.busy||!this.bridge.player())return;if(!this.active&&!this.bridge.canBoard()){this.bridge.notice('Walk to the boarding gate beside your parked ship.');return;}this.clear();this.bridge.clearGround();this.action='launch';this.openTripDialog();}
 -  private openTripDialog(){this.requestId=crypto.randomUUID();this.departureSelect.hidden=false;this.preview.hidden=false;setText(el('flight-title'),'Where would you like to go?');setText(el('flight-detail'),'Choose a planet. Takeoff, flight and landing are automatic. You can look around, skip after loading, or return to departure.');setText(el('confirm-flight'),'Depart');setText(el('cancel-flight'),this.active?'Cancel':'Stay here');this.updatePreview();this.dialog.showModal();}
++  openLaunch(){if(this.busy||this.dialog.open||!this.bridge.player())return;if(!this.active&&!this.bridge.canBoard()){this.bridge.notice('Walk to the boarding gate beside your parked ship.');return;}this.clear();this.bridge.clearGround();this.action='launch';this.openTripDialog();}
 +  private openTripDialog(){
 +    this.requestId=crypto.randomUUID();
 +    this.departureSelect.hidden=false;
 +    const friend=this.availableVisitPlanet();
 +    if (friend&&!this.pendingTarget) this.departureSelect.value=friend.id;
-+    if(this.departureSelect.value===this.friendPlanet)this.checkFriendDestination(true);
++    const selected=this.departureSelect.value;
++    this.stampDialogPlanet=selected===stampNextVisit.current?.planetId?selected:null;
++    if(this.isFriendPlanet(selected))this.checkFriendDestination(true,selected);
 +    setText(el('cancel-flight'),this.active?'Cancel':'Stay here');
 +    this.updatePreview();
 +    this.dialog.showModal();
@@ -886,8 +978,10 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
 -    if(this.busy||!this.bridge.online())return;this.busy=true;el<HTMLButtonElement>('confirm-flight').disabled=true;el<HTMLButtonElement>('cancel-flight').disabled=true;
 +    if(this.busy||!this.bridge.online())return;
 +    const action=this.action, targetId=action==='launch'?this.departureSelect.value:this.confirmTarget;
-+    const friendVisit=!!targetId&&targetId===this.friendPlanet;
-+    if(!targetId||(friendVisit&&this.friendDestination?.planetId!==targetId))return;
++    const forStamp=!!targetId&&targetId===stampNextVisit.current?.planetId;
++    const friendVisit=this.isFriendPlanet(targetId);
++    if(!targetId||(targetId===this.stampDialogPlanet&&!forStamp)||(forStamp&&this.friendCheckId===targetId&&this.friendCheck)||
++       (friendVisit&&this.friendDestination?.planetId!==targetId))return;
 +    this.busy=true;
 +    this.departureSelect.disabled=true;
 +    this.updatePreview();
@@ -898,14 +992,20 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff1
 -      const u=await this.bridge.command(this.action==='launch'?'trip/start':'trip/change',body);this.bridge.applyUniverse(u);this.dialog.close();this.busy=false;await this.startTravel();
 -    }catch(error){this.bridge.failed(error);}finally{this.busy=false;el<HTMLButtonElement>('confirm-flight').disabled=false;el<HTMLButtonElement>('cancel-flight').disabled=false;}
 +      const body=action==='launch'?{targetId,journey:p.flight.journey,requestId:this.requestId,visitEpoch:p.location?.visitEpoch??0}:{tripId:t?.id,revision:this.confirmRevision,targetId,action:'retarget',visitEpoch:p.location?.visitEpoch??0};
-+      const u=await this.bridge.command(action==='launch'?'trip/start':'trip/change',{...body,...(friendVisit&&{friendVisit:true})});this.bridge.applyUniverse(u);this.dialog.close();this.busy=false;await this.startTravel();
++      const u=await this.bridge.command(action==='launch'?'trip/start':'trip/change',{...body,...(friendVisit&&{friendVisit:true}),...(forStamp&&{stampNextVisit:true})});this.bridge.applyUniverse(u);this.dialog.close();
++      if(forStamp||stampNextVisit.current){this.pendingTarget=null;void stampNextVisit.refresh().catch(()=>{});}
++      this.busy=false;await this.startTravel();
 +    }catch(error){
 +      if(friendVisit&&error instanceof Error&&'status' in error&&[401,403,503].some(status=>status===error.status)){
 +        this.friendDestination=null;
 +        this.friendCheck=null;
 +        this.friendCheckedAt=performance.now();
 +        this.paintFriendDestination();
++        if(forStamp)void stampNextVisit.refresh().catch(()=>{});
 +        this.bridge.notice(unavailableVisit);
++      }else if(forStamp&&error instanceof Error&&'status' in error&&error.status===409){
++        void stampNextVisit.refresh().catch(()=>{});
++        this.bridge.notice(document.documentElement.lang.startsWith('zh')?'补章目的地已变更，请重新确认。':'Your stamp destination changed. Confirm it again.');
 +      }else this.bridge.failed(error);
 +    }finally{
 +      this.busy=false;
@@ -1378,10 +1478,15 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505056fe9b3 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..545506a2d5a7dc3a705be77461d34fb24e0a12eb 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -30,6 +30,9 @@ import { createTutorialRoute } from './tutorial-route.ts';
+@@ -1,3 +1,4 @@
++import { stampNextVisit } from './stamp-next-visit.ts';
+ import {mountAmbientMusic} from './ambient-music.ts';
+ import {mountSceneShortcuts,restoreSceneFocus} from './scene-shortcuts.ts';
+ import {CharacterEntry} from './character-entry.ts';
+@@ -30,6 +31,9 @@ import { createTutorialRoute } from './tutorial-route.ts';
  import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
  import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
@@ -1391,7 +1496,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
  import { GroundPresence } from './presence.ts';
  import { PresenceVisitGate } from './presence-visit.ts';
  import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
-@@ -75,6 +78,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
+@@ -75,6 +79,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
  import {createVillageDrawing} from './village-drawing.ts';
  import {buildCameraFrame} from './build-camera.ts';
  import {arrivalViewScore} from './arrival-camera.ts';
@@ -1399,7 +1504,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
  import { HomeSetup } from './home-setup.ts';
  import { TeleportStations } from './teleport-station.ts';
  import { SaveProgress } from './save-progress.ts';
-@@ -144,6 +148,9 @@ let residentConversationKey='';
+@@ -144,6 +149,9 @@ let residentConversationKey='';
  let queue: Promise<unknown> = Promise.resolve();
  const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
@@ -1409,7 +1514,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
  function renderSaveProgress(){
    if(!state||physicsMismatch)return;
-@@ -264,20 +271,24 @@ function accept(next: PlayerState) {
+@@ -264,20 +272,25 @@ function accept(next: PlayerState) {
      walker.facing.copy(walker.north);started=false;
    }
    if(previousPlanet!==state.planetId||previousMode!==state.flight.mode||locationChanged)presence.clear();
@@ -1421,6 +1526,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
 -  physicsMismatch=false;online = navigator.onLine; renderSaveProgress(); renderTask();
 +  // An accepted world response proves this server is reachable, even on a local-only network.
 +  physicsMismatch=false;online=true;renderSaveProgress();renderTask();
++  if(reconnecting||justLanded)void stampNextVisit.refresh().catch(()=>{});
    homeInterior?.receive(state);homeInterior?.setOnline(online);homeControls?.receivePlayer(state);
    placeHomeDoor(exteriorHomeDoor,state.flight.mode==='ground'?state.home:null);
    return true;
@@ -1440,7 +1546,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
  }
  function renderTask() {
-@@ -317,6 +328,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+@@ -317,6 +330,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
  setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
  worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
@@ -1448,7 +1554,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
  const practical=createWorldPracticalLights();scene.add(practical.group);
  const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
-@@ -341,7 +353,7 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
+@@ -341,19 +355,35 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
    return point;
  }});
  const villagePolish=createVillagePolish(scene,{surfacePoint});
@@ -1457,9 +1563,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
  function tutorialContext(){
    const u=colony?.universe;if(!u||!state||u.currentPlanet.id!==state.planetId)return null;
    return {universe:u.player===state?u:{...u,player:state},online:online&&colony!.syncing,
-@@ -349,11 +361,15 @@ function tutorialContext(){
+     ready:initialStateReady&&!state.appearanceRequired&&!worldPending&&!sceneLoadingActive()&&!homeInterior?.preparing&&!homeTransition&&!graphicsLost,
      paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
  }
++function stampPlanHere(planet: PlanetView | undefined, world: GroundWorld | null) {
++  const next = stampNextVisit.current;
++  if (!next || !planet || planet.mine || !world || planet.id !== world.planetId ||
++      planet.id !== activePlanet || planet.id !== state?.planetId || next.planetId !== planet.id ||
++      state.flight.mode !== 'ground' || state.location?.kind !== 'exterior' ||
++      state.trip?.status !== 'arrived' || state.trip.targetId !== next.planetId || state.trip.journey !== state.flight.journey ||
++      !online || !colony?.syncing || worldPending || document.hidden || graphicsLost || homeTransition ||
++      !bothouseResidents.hasLandedFriendPermission(world,state.location.visitEpoch)) return null;
++  return next;
++}
  function frameVillageGuide(){
 -  tutorial?.frame(tutorialContext());
 +  const context=tutorialContext(),planet=colony?.universe?.currentPlanet;
@@ -1471,17 +1587,20 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
 -  const context=tutorialContext(),planet=colony?.universe?.currentPlanet,guideTarget=tutorial?.target??null;
 +  const courtyard=visible&&context?.ready&&planet?.id===activePlanet&&!indoorRoomView.room&&groundWorld&&bothouseResidents.hasApprovedVisit(groundWorld)
 +    ? {planet,world:groundWorld} : undefined;
++  const stampCourtyard=visible&&context?.ready&&!indoorRoomView.room&&stampPlanHere(planet,groundWorld)
++    &&planet&&groundWorld ? {planet,world:groundWorld}:undefined;
 +  const courtyardName=courtyard&&context?.online&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'
-+    &&bothouseResidents.hasCurrentFriendVisit(courtyard.world,state.location?.visitEpoch??0)?courtyard.planet.name:undefined;
-+  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard,courtyardName});
++    &&bothouseResidents.hasCurrentFriendVisit(courtyard.world,state.location?.visitEpoch??0)?courtyard.planet.name:stampCourtyard?.planet.name;
++  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard:courtyard??stampCourtyard,courtyardName});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
      visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
      homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
-@@ -362,12 +378,15 @@ function frameVillageGuide(){
+@@ -362,12 +392,16 @@ function frameVillageGuide(){
    if(context&&planet&&groundWorld&&walker){
      const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
 +      approvedCourtyard:!!courtyard,
++      stampCourtyard:!!stampCourtyard,
 +      residentRoster:context.online&&context.ready&&!indoor&&state?.flight.mode==='ground'
 +        ? bothouseResidents.guideRoster(groundWorld,state.location?.visitEpoch??0) : [],
        visible:context.ready&&!photoPaused&&!colony?.paused&&!flight?.active&&!departure&&(!homeInterior?.active||!!room),enabled:context.ready&&online&&!photoPaused&&!colony?.paused&&!document.querySelector('dialog[open]'),
@@ -1494,17 +1613,20 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
-@@ -470,6 +489,9 @@ function prepareSurface(planet:PlanetView){
+@@ -470,6 +504,12 @@ function prepareSurface(planet:PlanetView){
  }
  configureGround();
  const player = courier('clay');scene.add(player.root);
 +const courtyardStampCard = new CourtyardStampCard(() => { mouseLook?.release(); clearInput(); });
++setInterval(() => {
++  if (online && !document.hidden && stampNextVisit.current) void stampNextVisit.refresh().catch(()=>{});
++}, 4200);
 +const watering = new VisitorWatering(scene, interaction, () => { mouseLook?.release(); clearInput(); },
 +  scope => courtyardStampCard.watered(scope));
  // The same head/coat/shoulder/satchel/parcel set as the independent upper-body
  // framing contract. Bounds follow the actual current animation, including yaw.
  const cameraUpperMeshes:T.Mesh[]=[];
-@@ -544,6 +566,10 @@ window.addEventListener('keydown',event=> {
+@@ -544,6 +584,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
@@ -1515,7 +1637,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
      event.preventDefault();keys.add(key);target=null;
      if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
    }
-@@ -584,7 +610,7 @@ lookButton.onclick=()=>{clearInput();mouseLook?.request();lookButton.blur();};
+@@ -584,7 +628,7 @@ lookButton.onclick=()=>{clearInput();mouseLook?.request();lookButton.blur();};
  renderer.domElement.addEventListener('pointerdown',e=> {
    if(!canSceneInput()||e.button!==0)return;
    if(mouseLook.locked())return;
@@ -1524,7 +1646,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    pointerStart={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,dragged:false};renderer.domElement.setPointerCapture(e.pointerId);
  });
  renderer.domElement.addEventListener('pointermove',e=>{
-@@ -597,7 +623,12 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+@@ -597,7 +641,12 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
  renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
  renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
@@ -1538,7 +1660,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +729,50 @@ async function interact() {
+@@ -698,7 +747,50 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1590,7 +1712,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +795,48 @@ setInterval(async()=>{
+@@ -721,17 +813,79 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1602,6 +1724,8 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
  
++let stampArrivalHint = '';
++let stampGroundLease: {scope: string; tripId: string; journey: number} | null = null;
  let previous=performance.now(),elapsed=0,uiTick=0,started=false;
  function animate(now:number) {
    requestAnimationFrame(animate);
@@ -1612,18 +1736,47 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
 +  if (!visitVisible || photoPaused) interaction.removeAttribute('data-visitor-greeting');
 +  bothouseResidents.frame(visitVisible?groundWorld:null,landedGarden,state?.location?.visitEpoch??0,now,!!garden?.mine&&garden.id===activePlanet&&online,garden?.objects);
 +  const visitEpoch = state?.location?.visitEpoch ?? 0;
-+  const wateringScope = visitVisible && !garden.mine && groundWorld && bothouseResidents.hasCurrentFriendVisit(groundWorld, visitEpoch)
-+    ? groundWorld.planetId+'/'+visitEpoch+'/'+groundWorld.revision : null;
++  const visitKey = visitVisible && !garden.mine && groundWorld && bothouseResidents.hasCurrentFriendVisit(groundWorld, visitEpoch)
++    ? groundWorld.planetId+'/'+visitEpoch : null;
++  const activeStampPlan = visitVisible ? stampPlanHere(garden,groundWorld) : null;
++  const currentStampTrip = state?.trip;
++  const currentGroundScope = visitVisible && groundWorld && !garden.mine && state.location?.kind === 'exterior'
++    ? groundWorld.planetId+'/'+visitEpoch : null;
++  const sameStampTrip = currentStampTrip?.status === 'arrived' && currentStampTrip.targetId === groundWorld?.planetId &&
++    currentStampTrip.journey === state.flight.journey;
++  if(activeStampPlan && currentGroundScope && sameStampTrip) {
++    stampGroundLease = {scope:currentGroundScope,tripId:currentStampTrip.id,journey:currentStampTrip.journey};
++  }else if(stampGroundLease && (!currentGroundScope || currentGroundScope!==stampGroundLease.scope ||
++    !sameStampTrip || currentStampTrip.id!==stampGroundLease.tripId || currentStampTrip.journey!==stampGroundLease.journey ||
++    !groundWorld || !bothouseResidents.hasLandedFriendPermission(groundWorld,visitEpoch) ||
++    !courtyardStampCard.finishingIn(stampGroundLease.scope))) {
++    stampGroundLease = null;
++  }
++  const stampVisitKey = visitKey ?? stampGroundLease?.scope ?? null;
++  const waterVisitKey = visitKey ?? (activeStampPlan?.missing === 'water' ? stampVisitKey : null);
++  const wateringScope = waterVisitKey && groundWorld ? waterVisitKey+'/'+groundWorld.revision : null;
 +  const wateringReady = !!wateringScope && !benchRest && !photoPaused && canGreetVisitor();
 +  watering.setScope(wateringScope, wateringReady);
-+  const stampScope = wateringScope && state.location?.kind === 'exterior' &&
++  const stampScope = state?.flight.mode === 'ground' && state.location?.kind === 'exterior' &&
 +    document.querySelector('#friend-visit-closure:not([hidden])') === null
 +    ? state.planetId + '/' + visitEpoch : null;
-+  const stampVisible = !!stampScope && !flight?.active && !photoPaused && !overview && !colony?.paused &&
++  const stampVisible = !!stampVisitKey && !flight?.active && !photoPaused && !overview && !colony?.paused &&
 +    !worldGuide.talking && !document.querySelector('dialog[open]') && !homeInterior?.active && !homeInterior?.preparing;
++  const arrivedForStamp = stampVisible && !!stampScope && stampScope === stampVisitKey ? activeStampPlan : null;
 +  courtyardStampCard.frame(stampScope, stampVisible && garden && groundWorld && standing ? {
 +    planet: garden, world: groundWorld, pose: standing, waterScope: wateringScope, waterHere: watering.canWaterHere,
++    nextStamp: arrivedForStamp?.missing,
 +  } : null);
++  if (!stampNextVisit.current) stampArrivalHint = '';
++  if (arrivedForStamp && standing?.grounded && !sceneLoadingActive()) {
++    const key = stampScope + '/' + state.trip!.id + '/' + arrivedForStamp.missing;
++    if (key !== stampArrivalHint) {
++      stampArrivalHint = key;
++      const zh = document.documentElement.lang.startsWith('zh');
++      notice(zh ? `已到「${arrivedForStamp.planetName}」。打开院落寻景卡补${arrivedForStamp.missing === 'water' ? '浇花章' : '院落牌章'}。` :
++        `You reached “${arrivedForStamp.planetName}”. Open the courtyard stamp card to collect the missing stamp.`, 6500);
++    }
++  }
 +  if (measureCamera) renderer.domElement.dataset.visitorWatering = JSON.stringify(watering.snapshot());
 +  visitPhotoButton.hidden=!canTakeVisitPhoto();
 +  if (benchRest && (!visitVisible || !groundWorld || !standing?.grounded ||
@@ -1642,7 +1795,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +884,7 @@ function animate(now:number) {
+@@ -779,7 +933,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1651,7 +1804,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -799,6 +904,16 @@ function animate(now:number) {
+@@ -799,6 +953,16 @@ function animate(now:number) {
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
@@ -1668,7 +1821,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +986,7 @@ function animate(now:number) {
+@@ -871,7 +1035,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1677,7 +1830,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +1023,14 @@ function animate(now:number) {
+@@ -908,11 +1072,14 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1692,7 +1845,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1082,18 @@ function animate(now:number) {
+@@ -964,7 +1131,18 @@ function animate(now:number) {
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
@@ -1712,7 +1865,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1105,24 @@ function animate(now:number) {
+@@ -976,6 +1154,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1737,12 +1890,12 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1177,17 @@ function ensureColony() {
+@@ -1030,15 +1226,17 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
-+  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,visitDestination:id=>request('visit-destination?planetId='+encodeURIComponent(id)),findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
++  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,visitDestination:id=>request('visit-destination?planetId='+encodeURIComponent(id)),findShip:()=>worldGuide.findShip(),showStampDeparture:()=>online&&!homeTransition&&!homeInterior?.active&&!homeInterior?.preparing,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
    flight.setDesign((state.ship??defaultShip()).design);flight.receive(state.flight);scene.environment=flight.scene.environment;scene.environmentIntensity=groundPresentation(activePlanet,activeRadius).environmentIntensity;
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
@@ -1757,7 +1910,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..b1c0e36441a1edf92980cb9a0d49b505
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1208,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1257,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -2492,10 +2645,10 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..287c1a8548eab7ccc3c0faed110f0b45
      root.visible = input.visible !== false;
      details.visible = input.quality === 'beautiful' && diagnostics.detailTriangles > 0;
 diff --git a/src/client/world-guide.ts b/src/client/world-guide.ts
-index f533e71cfc73d2be94e83498c99214dc9d9a3057..479e67a0d45fd7307d2ef6675d52340e6200c0c2 100644
+index f533e71cfc73d2be94e83498c99214dc9d9a3057..4a4458368917127f65713906670d4c42872db14b 100644
 --- a/src/client/world-guide.ts
 +++ b/src/client/world-guide.ts
-@@ -6,21 +6,56 @@ import type { GroundWorld } from '../shared/physics/world.ts';
+@@ -6,21 +6,58 @@ import type { GroundWorld } from '../shared/physics/world.ts';
  import type { Universe } from '../shared/planets.ts';
  import {distance,type Vec3} from '../shared/world.ts';
  import {BOARD_RADIUS,portPoint} from '../shared/ports.ts';
@@ -2523,6 +2676,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..479e67a0d45fd7307d2ef6675d52340e
  interface Frame {
    universe: Universe; position: Vec3; world: GroundWorld; enabled: boolean; visible: boolean; time: number; reducedMotion: boolean;
 +  approvedCourtyard?: boolean;
++  stampCourtyard?: boolean;
 +  residentRoster: readonly ResidentGuideEntry[];
    scene: T.Scene; camera: T.Camera; feet: T.Vector3; up: T.Vector3; forward: T.Vector3;
    roomKey: string; indoor: boolean; online: boolean; stand(point:T.Vector3):T.Vector3|null;
@@ -2536,6 +2690,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..479e67a0d45fd7307d2ef6675d52340e
 +  const embedded = hostChat || ['zh', 'en'].includes(entry.get('appLang') ?? '');
 +  const friendPlanet = entry.get('visit');
 +  let checkedPlanet: Universe['currentPlanet'] | undefined, checkedWorld:GroundWorld|undefined;
++  let guestCourtyardEnabled=false;
 +  let routes:ReturnType<typeof courtyardRoutes>=[];
 +  let courtyard: ReturnType<typeof courtyardTarget> = null, routeVisitEpoch: number | undefined;
 +  let canGuideToCourtyard = false;
@@ -2555,7 +2710,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..479e67a0d45fd7307d2ef6675d52340e
    const actor=courier('fern');actor.root.name='world-guide';actor.root.visible=false;scene.add(actor.root);
    const route=createTutorialRoute(scene,{surfacePoint(normal,offset=0){const w=current?.world;return normal.clone().setLength(w?w.support(normal.toArray() as Vec3,w.radius(normal.toArray() as Vec3)+.45).radius+offset:10+offset);}});
    const open=document.createElement('button');open.id='world-guide-open';open.type='button';document.querySelector('.minimal-bar')?.append(open);
-@@ -28,69 +63,201 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
+@@ -28,69 +65,203 @@ export function createWorldGuide(scene: T.Scene, release: () => void) {
    const homeOpen=document.createElement('button');homeOpen.id='world-guide-home';homeOpen.type='button';homeOpen.hidden=true;document.body.append(homeOpen);
    const homeChat=document.createElement('button');homeChat.id='world-guide-chat-home';homeChat.type='button';homeChat.hidden=true;document.body.append(homeChat);
    const bubble=document.createElement('section');bubble.id='world-guide-dialog';bubble.hidden=true;bubble.dataset.i18nVerbatim='';bubble.setAttribute('role','dialog');bubble.setAttribute('aria-modal','false');bubble.setAttribute('aria-labelledby','world-guide-title');
@@ -2742,13 +2897,15 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..479e67a0d45fd7307d2ef6675d52340e
 +      if (selected === 'resident') finishResident();
 +      else { selected=null;route.root.visible=false; }
 +    }
-+    if (checkedPlanet !== currentPlanet||checkedWorld!==input.world) {
++    const allowGuestCourtyard = currentPlanet.id === friendPlanet || !!input.stampCourtyard;
++    if (checkedPlanet !== currentPlanet||checkedWorld!==input.world||guestCourtyardEnabled!==allowGuestCourtyard) {
++      guestCourtyardEnabled=allowGuestCourtyard;
 +      checkedPlanet = currentPlanet;
 +      checkedWorld=input.world;
-+      courtyard = currentPlanet.id === friendPlanet ? courtyardVisit(currentPlanet,input.world)?.target??null : null;
++      courtyard = allowGuestCourtyard ? courtyardVisit(currentPlanet,input.world)?.target??null : null;
 +      routes=courtyardRoutes(currentPlanet);
 +    }
-+    canGuideToCourtyard = !!courtyard && !!input.approvedCourtyard && !input.indoor && player.location?.kind !== 'interior' && player.flight.mode === 'ground'
++    canGuideToCourtyard = !!courtyard && (!!input.approvedCourtyard || !!input.stampCourtyard) && !input.indoor && player.location?.kind !== 'interior' && player.flight.mode === 'ground'
 +      && !visitClosed;
 +    if (selected === 'courtyard' && (!canGuideToCourtyard || routeVisitEpoch !== player.location?.visitEpoch)) selected = null;
 +    if (topic === 'courtyard' && !canGuideToCourtyard) topic = 'home';
@@ -2792,10 +2949,11 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..479e67a0d45fd7307d2ef6675d52340e
    }};
  }
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23fe03c3e2 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..7b502717e1b1955879548785adb6c597ee3d3fdf 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
-@@ -1,7 +1,7 @@
+@@ -1,7 +1,8 @@
++import { stampNextVisitStore } from './stamp-next-visit.ts';
  import { createServer } from 'node:http';
  import { createHash, randomBytes } from 'node:crypto';
  import { readFile } from 'node:fs/promises';
@@ -2804,7 +2962,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
  import { marked } from 'marked';
  import { BLUEPRINT_BODY_LIMIT } from '../shared/blueprints.ts';
  import { presenceStore } from './presence.ts';
-@@ -12,7 +12,14 @@ import { workerScript } from './worker-script.ts';
+@@ -12,7 +13,14 @@ import { workerScript } from './worker-script.ts';
  import { createGuideHelp } from './guide-help.ts';
  import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
  import {guideConfiguration} from './guide-config.ts';
@@ -2819,12 +2977,13 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
  
  const homeSample=process.env.HOME_SAMPLE==='1';
  const samplePort=Number(process.env.HOME_SAMPLE_PORT??8126);
-@@ -25,6 +32,13 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
+@@ -25,6 +33,14 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
  const cookieName=homeSample?(samplePort===8126?'little_home_sample':`little_home_sample_p${samplePort}`):'little_post';
  if (store.migrationBackup) console.log(`Before migration, saved a consistent backup: ${store.migrationBackup}`);
  const audit=businessLog(databasePath);
 +const residentSources=planetResidents(store.db);
 +const stampCards = courtyardStampCollection(store.db);
++const stampPlans = stampNextVisitStore(store.db);
 +const appResidentLinks=appResidents(store.db,residentSources);
 +const friendsAuthority=friendsIdentity(readFriendsOrigins(databasePath,process.env));
 +const friendsWorld=friendsPlayers(store.db,store.enrollFriendsPlayer,
@@ -2833,7 +2992,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
  const guideHelp=createGuideHelp();
  // Default off; production requires explicit approval configuration and the transferred ledger.
  const aiConfig=guideConfiguration(process.env);
-@@ -53,18 +67,114 @@ const server = createServer(async (req, res) => {
+@@ -53,18 +69,114 @@ const server = createServer(async (req, res) => {
    try {
      const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
@@ -2952,10 +3111,25 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
            send(200, created); return;
          }
          send(200, store.state(id)); return;
-@@ -73,6 +183,33 @@ const server = createServer(async (req, res) => {
+@@ -73,6 +185,54 @@ const server = createServer(async (req, res) => {
          if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
          send(200, store.universe(id)); return;
        }
++      const checkedStampPlan = async () => {
++        const selected = stampPlans.current(id);
++        if (!selected) return null;
++        try {
++          const destination = await friendDestination(selected.planetId);
++          const latest = stampPlans.current(id);
++          if (latest?.planetId !== selected.planetId) throw new RequestError(409,'Your next stop changed.');
++          return { ...latest, ...destination };
++        } catch (error) {
++          if (!(error instanceof RequestError) || error.status !== 403) throw error;
++          // A window without a Friends credential cannot invalidate another window's authorized choice.
++          if (friendsWorld.visitCheck(id,cookieDigest,selected.planetId)?.access) stampPlans.cancel(id,selected.planetId);
++          return null;
++        }
++      };
 +      const requireFriendDestination = async (planetId: string) => {
 +        const access = friendsWorld.visitCheck(id, cookieDigest, planetId)?.access;
 +        if (!access || !await friendsAuthority.canReadVisit(access, planetId))
@@ -2963,6 +3137,12 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
 +        if (friendsWorld.resolve(cookieDigest) !== id || friendsWorld.visitCheck(id, cookieDigest, planetId)?.access !== access)
 +          throw new RequestError(401, 'Reload to reconnect your visit.');
 +      };
++      if (url.pathname === '/api/stamp-next-visit' && req.method === 'GET') {
++        auditRoute=undefined;
++        if (!id || !store.has(id)) throw new RequestError(401,'Open your own world.');
++        if (url.search) throw new RequestError(400,'Read your own next stop.');
++        send(200,{next:await checkedStampPlan()}); return;
++      }
 +      if (url.pathname === '/api/home/stamp-album' && req.method === 'GET') {
 +        auditRoute=undefined;
 +        if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your study.');
@@ -2986,7 +3166,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
        if (url.pathname === '/api/blueprints' && req.method === 'GET') {
          if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
          send(200, store.library(id)); return;
-@@ -95,12 +232,13 @@ const server = createServer(async (req, res) => {
+@@ -95,12 +255,13 @@ const server = createServer(async (req, res) => {
        if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
        else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
@@ -3006,23 +3186,61 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
        if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
        if(url.pathname==='/api/guide/ask'){
-@@ -137,10 +275,30 @@ const server = createServer(async (req, res) => {
+@@ -137,10 +298,67 @@ const server = createServer(async (req, res) => {
        }
        else if(url.pathname==='/api/ground/recover'){const result=store.recoverGround(id,body);presence.leave(id);send(200,result);}
        else if (url.pathname === '/api/interact') send(200, store.interact(id, body.action));
 -      else if(url.pathname==='/api/trip/start'){const u=store.startTrip(id,body);presence.leave(id);send(200,u);}
 -      else if(url.pathname==='/api/trip/change')send(200,store.changeTrip(id,body));
+-      else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
++      else if (url.pathname === '/api/stamp-next-visit') {
++        auditRoute=undefined;
++        if (!req.headers.origin || req.headers['sec-fetch-site']==='cross-site')
++          throw new RequestError(403,'Use this world’s own page.');
++        const {action,planetId} = body;
++        if (url.search || Object.keys(body).length!==2 || typeof planetId!=='string' ||
++            (action!=='cancel' && action!=='select')) throw new RequestError(400,'Choose a card action.');
++        if (action==='cancel') {
++          stampPlans.cancel(id,planetId);
++          send(200,{next:await checkedStampPlan()});
++        } else {
++          requireOwnStampAlbum(store.state(id));
++          const card=stampCards.read(id,planetId);
++          if (!card || card.stamps===3) throw new RequestError(409,'Choose one of your unfinished cards.');
++          const previous=stampPlans.current(id)?.planetId;
++          const destination=await friendDestination(planetId);
++          requireOwnStampAlbum(store.state(id));
++          if (stampPlans.current(id)?.planetId!==previous) throw new RequestError(409,'Your next stop changed.');
++          stampPlans.select(id,planetId);
++          send(200,{next:{...stampPlans.current(id),...destination}});
++        }
++      }
 +      else if(url.pathname==='/api/trip/start'||url.pathname==='/api/trip/change'){
-+        const {friendVisit,...tripBody}=body;
++        const {friendVisit,stampNextVisit,...tripBody}=body;
++        const previous=stampPlans.current(id);
++        if (stampNextVisit!==undefined && (stampNextVisit!==true || friendVisit!==true ||
++            !previous || tripBody.targetId!==previous.planetId || tripBody.action==='return'))
++          throw new RequestError(409,'Choose your current stamp destination again.');
 +        if (friendVisit !== undefined) {
 +          if (friendVisit !== true) throw new RequestError(400,'Choose a valid friend destination.');
 +          await friendDestination(tripBody.targetId);
++          if (stampNextVisit && stampPlans.current(id)?.planetId!==tripBody.targetId)
++            throw new RequestError(409,'Your next stop changed.');
 +        }
 +        if (url.pathname.endsWith('/start')) {
-+          const u=store.startTrip(id,tripBody);presence.leave(id);send(200,u);
-+        } else send(200,store.changeTrip(id,tripBody));
++          const u=store.startTrip(id,tripBody,undefined,stampNextVisit===true?cookieDigest:undefined,stampNextVisit===true);
++          if (previous && u.player.trip?.targetId!==previous.planetId) stampPlans.cancel(id,previous.planetId);
++          presence.leave(id);send(200,u);
++        } else {
++          const u=store.changeTrip(id,tripBody,stampNextVisit===true?cookieDigest:undefined,stampNextVisit===true);
++          if (previous && u.player.trip?.targetId!==previous.planetId) stampPlans.cancel(id,previous.planetId);
++          send(200,u);
++        }
 +      }
-       else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
++      else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body,Date.now(),async (target,session)=>{
++        if (session!==cookieDigest || (await checkedStampPlan())?.planetId!==target)
++          throw new RequestError(403,'Choose a currently approved destination.');
++      });presence.leave(id);send(200,u);}
        else if(url.pathname==='/api/planets/rename')send(200,store.renamePlanet(id,body));
 +      else if (url.pathname === '/api/courtyard/stamp-card') {
 +        const { planetId, visitEpoch, action, stamps } = body;
@@ -3039,7 +3257,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
        else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
        else if (url.pathname === '/api/flight/checkpoint') send(200,store.flight(id,body));
        else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
-@@ -168,7 +326,7 @@ const server = createServer(async (req, res) => {
+@@ -168,7 +386,7 @@ const server = createServer(async (req, res) => {
        type = 'text/html; charset=utf-8';
      } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
@@ -3049,10 +3267,12 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c342d0b5524859d75501070c99fb9c23
        type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
      }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7e95afc92 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..6304cb57e752d36a570479d1626de157c77e1fa0 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -187,3 +187,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -185,7 +185,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       migrateArrivalHomes(db);
+       migrateTrips(db);
        migrateAppearances(db);
 -      db.exec('PRAGMA user_version=20; COMMIT;');
 +      db.exec(`CREATE TABLE IF NOT EXISTS courtyard_arrivals (
@@ -3060,7 +3280,11 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        route TEXT NOT NULL
 +      ); PRAGMA user_version=${STORE_SCHEMA}; COMMIT;`);
      } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
-@@ -210,2 +213,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   }
+   const history = historyStore(db);
+@@ -208,6 +211,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     if (!result) throw new RequestError(401, 'Your session has expired. Reload to start a new visit.');
+     return result;
    };
 +  function enrollArrival(id:string,now:number){
 +    db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
@@ -3068,21 +3292,59 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +    appearances.enroll(id);
 +  }
    const state = (id: string): PlayerState => {
-@@ -330,2 +338,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     row(id);const flight=navigation.flight(id);
+     const location=homeEnabled?homes.location(id):undefined;
+@@ -296,18 +304,22 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   return {
+     db, state, universe, migrationBackup, homeSample, integratedWorld,
+     requireAppearance:(id:string)=>appearances.requireComplete(id),
+-    startTrip(id:string,body:Record<string,unknown>,now=Date.now()){
++    startTrip(id:string,body:Record<string,unknown>,now=Date.now(),friendSession?:string,stampVisit=false){
+       const clean={...body};delete clean.visitEpoch;
+       const prior=trips.read(id);
+       if(prior?.requestId!==body.requestId){homes.exterior(id,body.visitEpoch);if(navigation.flight(id).mode==='ground'&&!ground.read(id).grounded)throw new RequestError(409,'Land on your feet before boarding.');}
+-      trips.start(id,clean,now);if(prior?.requestId!==body.requestId){ground.reset(id);homes.movedExterior(id);}return universe(id);
++      trips.start(id,clean,now,friendSession,stampVisit);if(prior?.requestId!==body.requestId){ground.reset(id);homes.movedExterior(id);}return universe(id);
+     },
+-    changeTrip(id:string,body:Record<string,unknown>){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;trips.change(id,clean);return universe(id);},
+-    async finishTrip(id:string,body:Record<string,unknown>,now=Date.now()){
++    changeTrip(id:string,body:Record<string,unknown>,friendSession?:string,stampVisit=false){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;trips.change(id,clean,friendSession,stampVisit);return universe(id);},
++    async finishTrip(id:string,body:Record<string,unknown>,now=Date.now(),checkStamp?:(target:string,session?:string)=>Promise<void>){
+       const clean={...body};delete clean.visitEpoch;const trip=trips.current(id,clean);
+       if(trip.status==='arrived')return universe(id);
+       homes.exterior(id,body.visitEpoch);
+       if(heavy)await prepareWorld(heavy,trip.targetId);else ground.world(trip.targetId);
++      if (trip.stampVisit) {
++        if (!checkStamp) throw new RequestError(403,'Confirm your stamp visit.');
++        await checkStamp(trip.targetId,trip.friendSession);
++      }
+       // Recheck the exact trip revision after asynchronous work. A retarget wins over stale completion.
+       trips.finish(id,clean,now);homes.movedExterior(id);return universe(id);
+     },
+@@ -328,14 +340,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     flight(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.checkpoint(id,clean,now);return state(id);},
+     land(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.land(id,clean,now);homes.movedExterior(id);return universe(id);},
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
 +    enrollFriendsPlayer(id:string){
 +      if(!integratedWorld||!db.isTransaction)throw new RequestError(409,'Open an integrated world to link Friends.');
 +      enrollArrival(id,Date.now());
 +    },
      /** Establish identity and Hub spawn before any expensive home generation. */
-@@ -336,4 +348,4 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     createArrival(id:string,now=Date.now()){
+       if(this.has(id))return state(id);
+       if(!integratedWorld)return this.create(id,now);
+       db.exec('BEGIN IMMEDIATE');
        try{
 -        db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
 -        arrivalHomes.enroll(id,now);appearances.enroll(id);db.exec('COMMIT');
 +        enrollArrival(id,now);
 +        db.exec('COMMIT');
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
-@@ -362,4 +374,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       return state(id);
+     },
+@@ -360,8 +376,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     /** The same arrival as `create`, with the home layout and its station search run on the worker so other
+      * players are answered meanwhile. Every write still happens here, after re-checking what was read: the
       * home, its owner and the new player's place at the door in one transaction, then the station. */
 -    async createPrepared(id: string, now = Date.now(), attempt = 0): Promise<PlayerState> {
 -      const work=heavy;if(!homeEnabled||!work)return this.create(id,now);
@@ -3092,17 +3354,26 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        return this.create(id,now);
 +      }
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
-@@ -376,3 +391,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       try{
+         const inputs=homes.generationInputs(planetId,id);
+@@ -374,12 +393,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           const door=homes.door(planetId);
+           if(!door)throw new RequestError(409,'The sample home could not be prepared.');
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
 -          homes.movedExterior(id);db.exec('COMMIT');
 +          homes.movedExterior(id);bind?.();db.exec('COMMIT');
          }catch(error){
-@@ -381,3 +396,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           if(db.isTransaction)db.exec('ROLLBACK');
+           // Rare: the reserved planet was claimed meanwhile. Prepare another one, twice at most.
            if(error instanceof RequestError&&error.status===409&&!this.has(id)){
 -            if(attempt<2)return this.createPrepared(id,now,attempt+1);
 +            if(attempt<2)return this.createPrepared(id,now,attempt+1,bind);
              throw new RequestError(503,BUSY);
-@@ -449,2 +464,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           }
+           throw error;
+@@ -447,6 +466,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       homes.movedExterior(id);return universe(id);
+     },
      terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
 +    saveCourtyardArrival(id:string,body:Record<string,unknown>){
 +      homes.exterior(id,body.visitEpoch);
@@ -3112,6 +3383,8 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +      return universe(id);
 +    },
      claim(id: string, planetId: unknown) { row(id); planets.claim(id, planetId); if(homeSample){homes.initialise(String(planetId));teleport.ensureHomeStation(String(planetId));} return universe(id); },
+     createObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.create(id, body); return universe(id); },
+     updateObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.update(id, body); return universe(id); },
 diff --git a/src/shared/town-resident-motion.ts b/src/shared/town-resident-motion.ts
 index 30b342267729476ac36ece59318dd512aa98f329..220d883f09acba1b6517ecd7d996b7b6399fe3c0 100644
 --- a/src/shared/town-resident-motion.ts
@@ -3789,3 +4062,48 @@ index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83
 -#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true]{outline:2px solid #378f79}
 +#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics,#world-guide-residents{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true],#world-guide-residents button[aria-pressed=true]{outline:2px solid #378f79}
  #world-guide-dialog button,#world-guide-hud button,#world-guide-home{min-height:44px;border-radius:10px;border:1px solid #acbcaa;padding:7px 10px;cursor:pointer;background:#f5f1e2;color:#293c38;font:13px system-ui}
+diff --git a/src/server/trips.ts b/src/server/trips.ts
+index 69099e05580acd108b297c0c588623300cf2a914..f7642038e5376052c8f2e2cc06b59ad297b9b9a6 100644
+--- a/src/server/trips.ts
++++ b/src/server/trips.ts
+@@ -5,25 +5,33 @@ import {portPoint} from '../shared/ports.ts';
+ import {RequestError} from './errors.ts';
+ import type {navigationStore} from './navigation.ts';
+ import type {planetStore} from './planets.ts';
++type SavedTrip = ShipTrip & { friendSession?: string; stampVisit?: true };
++
+ export function migrateTrips(db:DatabaseSync){db.exec('CREATE TABLE IF NOT EXISTS ship_trips (player_id TEXT PRIMARY KEY REFERENCES players(id), document TEXT NOT NULL)');}
+ export function tripStore(db:DatabaseSync,planets:ReturnType<typeof planetStore>,navigation:ReturnType<typeof navigationStore>){
+- const read=(id:string):ShipTrip|null=>{const r=db.prepare('SELECT document FROM ship_trips WHERE player_id=?').get(id);return r?JSON.parse(String(r.document)):null;};
+- const save=(id:string,t:ShipTrip)=>{db.prepare('INSERT INTO ship_trips(player_id,document) VALUES(?,?) ON CONFLICT(player_id) DO UPDATE SET document=excluded.document').run(id,JSON.stringify(t));db.prepare('UPDATE players SET revision=revision+1 WHERE id=?').run(id);return t;};
++ const readSaved=(id:string):SavedTrip|null=>{const r=db.prepare('SELECT document FROM ship_trips WHERE player_id=?').get(id);return r?JSON.parse(String(r.document)):null;};
++ const read=(id:string):ShipTrip|null=>{
++  const trip=readSaved(id);
++  if(!trip)return null;
++  const {friendSession: _private, stampVisit: _stamp, ...view}=trip;
++  return view;
++ };
++ const save=(id:string,t:SavedTrip)=>{db.prepare('INSERT INTO ship_trips(player_id,document) VALUES(?,?) ON CONFLICT(player_id) DO UPDATE SET document=excluded.document').run(id,JSON.stringify(t));db.prepare('UPDATE players SET revision=revision+1 WHERE id=?').run(id);return t;};
+  const transaction=<T>(fn:()=>T)=>{db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}};
+- const current=(id:string,body:Record<string,unknown>)=>{const t=read(id);if(!t||t.id!==body.tripId||t.revision!==body.revision)throw new RequestError(409,'Your trip changed. Refresh its destination before trying again.');return t;};
++ const current=(id:string,body:{tripId?:unknown;revision?:unknown})=>{const t=readSaved(id);if(!t||t.id!==body.tripId||t.revision!==body.revision)throw new RequestError(409,'Your trip changed. Refresh its destination before trying again.');return t;};
+  const strict=(body:Record<string,unknown>,keys:string[])=>{if(Object.keys(body).some(k=>!keys.includes(k)))throw new RequestError(400,'Unexpected trip field.');};
+  return {read,current,
+- start(id:string,body:Record<string,unknown>,now=Date.now()){
++ start(id:string,body:Record<string,unknown>,now=Date.now(),friendSession?:string,stampVisit=false){
+   strict(body,['targetId','journey','requestId']);if(typeof body.requestId!=='string'||!/^[0-9a-f-]{36}$/i.test(body.requestId))throw new RequestError(400,'Include a trip request identifier.');
+   const prior=read(id);if(prior?.requestId===body.requestId){if(prior.initialTarget!==body.targetId)throw new RequestError(409,'This request was used for another destination.');return prior;}
+   if(prior?.status==='active')throw new RequestError(409,'A trip is already active. Change its destination instead.');
+   const target=planets.planet(body.targetId),r=db.prepare('SELECT planet_id FROM players WHERE id=?').get(id),f=navigation.flight(id);
+   if(f.journey!==body.journey)throw new RequestError(409,'Your departure changed. Reconnect first.');
+   if(f.mode==='ground'&&r!.planet_id===target.id)throw new RequestError(409,'You are already on this planet.');
+-  return transaction(()=>{if(f.mode==='ground')navigation.takeoff(id,{planetId:r!.planet_id,journey:f.journey},now);const trip:ShipTrip={id:randomUUID(),requestId:body.requestId as string,initialTarget:target.id,originId:String(r!.planet_id),targetId:target.id,journey:navigation.flight(id).journey,revision:1,status:'active'};return save(id,trip);});
++  return transaction(()=>{if(f.mode==='ground')navigation.takeoff(id,{planetId:r!.planet_id,journey:f.journey},now);const trip:SavedTrip={id:randomUUID(),requestId:body.requestId as string,initialTarget:target.id,originId:String(r!.planet_id),targetId:target.id,journey:navigation.flight(id).journey,revision:1,status:'active',friendSession,stampVisit:stampVisit || undefined};return save(id,trip);});
+  },
+- change(id:string,body:Record<string,unknown>){
+-  strict(body,['tripId','revision','targetId','action']);return transaction(()=>{const t=current(id,body);if(t.status!=='active')throw new RequestError(409,'This trip has already arrived.');if(body.action!=='return'&&body.action!=='retarget')throw new RequestError(400,'Choose a trip action.');const target=planets.planet(body.action==='return'?t.originId:body.targetId);return save(id,{...t,targetId:target.id,revision:t.revision+1});});
++ change(id:string,body:Record<string,unknown>,friendSession?:string,stampVisit=false){
++  strict(body,['tripId','revision','targetId','action']);return transaction(()=>{const t=current(id,body);if(t.status!=='active')throw new RequestError(409,'This trip has already arrived.');if(body.action!=='return'&&body.action!=='retarget')throw new RequestError(400,'Choose a trip action.');const target=planets.planet(body.action==='return'?t.originId:body.targetId);return save(id,{...t,targetId:target.id,revision:t.revision+1,friendSession:body.action==='retarget'?friendSession:undefined,stampVisit:stampVisit || undefined});});
+  },
+  finish(id:string,body:Record<string,unknown>,now=Date.now()){
+   strict(body,['tripId','revision']);return transaction(()=>{const t=current(id,body);if(t.status==='arrived')return t;const f=navigation.flight(id);if(f.mode!=='space'||f.journey!==t.journey)throw new RequestError(409,'This flight is no longer current.');

@@ -443,6 +443,10 @@ export class BothouseResidents {
     return world === this.visitorWorld && this.friendVisitAllowed
       && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
   }
+  /** Current private roster response, checked against the landed ground scene even without a chat launch. */
+  hasLandedFriendPermission(world: GroundWorld, epoch: number) {
+    return this.friendVisitAllowed && this.closure.hidden && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
+  }
   hasCurrentFriendVisit(world: GroundWorld, epoch: number) {
     return world === this.visitorWorld && this.friendVisitAllowed && this.closure.hidden
       && this.visit === world.planetId+'/'+epoch+'/'+world.revision;
