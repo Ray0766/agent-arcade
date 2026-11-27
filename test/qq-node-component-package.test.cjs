@@ -26,7 +26,7 @@ async function fixture(t,options={}){
     return new Promise((resolve,reject)=>{const request=http.get({host:'127.0.0.1',port:server.address().port,path:url.includes('api.github.com')?'/metadata':'/asset',headers,signal},response=>resolve({statusCode:response.statusCode,headers:response.headers,body:response}));request.once('error',reject);});
   };
   t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));assert(fs.realpathSync(root).startsWith(fs.realpathSync(os.tmpdir())+path.sep));fs.rmSync(root,{recursive:true,force:true});});
-  return {root,state,transport,manager:new QQComponentPackages({component:'napcat-node',root,transport,timeoutMs:1500}),dir:path.join(root,'qq-component-packages','napcat-node','4.18.42')};
+  return {root,state,transport,manager:new QQComponentPackages({component:'napcat-node',root,transport}),dir:path.join(root,'qq-component-packages','napcat-node','4.18.42')};
 }
 test('production catalogue accepts only the exact official Node version, asset, size and API digest',async t=>{
   const f=await fixture(t,{metadata:metadata(PIN)}),manager=new Production({component:'napcat-node',root:f.root,transport:f.transport});const manifest=await manager.inspect();assert.equal(manifest.size,PIN.size);assert.equal(manifest.sha256,PIN.sha256);assert.equal(manifest.assetId,691263447);assert.equal(manifest.url,assetURL);assert.equal(f.state.calls.length,1);assert.deepEqual(fs.readdirSync(f.root),[]);
@@ -70,6 +70,25 @@ test('cancellation and total timeout clean only their own partial file and prese
   let begun;const started=new Promise(resolve=>{begun=resolve;});const f=await fixture(t,{handle:({isMetadata,response})=>{if(!isMetadata){response.writeHead(200);response.write(payload.subarray(0,7));begun();return true;}}});fs.writeFileSync(path.join(f.root,'keep-login-data'),'unchanged');
   const controller=new AbortController(),operation=f.manager.stage({signal:controller.signal});await started;controller.abort();await assert.rejects(operation,{code:'cancelled'});assert.deepEqual(fs.readdirSync(f.dir),[]);assert.equal(fs.readFileSync(path.join(f.root,'keep-login-data'),'utf8'),'unchanged');
   const timeout=new QQComponentPackages({component:'napcat-node',root:f.root,transport:()=>new Promise(()=>{}),timeoutMs:20});await assert.rejects(timeout.inspect(),{code:'timeout'});assert.equal(f.state.calls.length,2);
+});
+test('the staging deadline removes its partial file while the asset response is pending',async t=>{
+  let signalAsset;
+  const assetRequested=new Promise(resolve=>{signalAsset=resolve;});
+  const f=await fixture(t,{handle:({isMetadata,response})=>{
+    if(isMetadata)return false;
+    response.writeHead(200);
+    response.write(payload.subarray(0,7));
+    signalAsset();
+    return true;
+  }});
+  t.mock.timers.enable({apis:['setTimeout']});
+  const expired=assert.rejects(f.manager.stage(),{code:'timeout'});
+  await assetRequested;
+  assert(fs.readdirSync(f.dir).some(name=>name.endsWith('.part')));
+  t.mock.timers.tick(f.manager.timeoutMs);
+  await expired;
+  assert.deepEqual(fs.readdirSync(f.dir),[]);
+  assert.equal(f.state.calls.length,2);
 });
 test('conflicting artifacts and receipts are never overwritten',async t=>{
   const f=await fixture(t);fs.mkdirSync(f.dir,{recursive:true});const file=path.join(f.dir,'NapCat.Shell.Windows.Node.zip');fs.writeFileSync(file,'original-installed-data-is-not-a-package');await assert.rejects(f.manager.stage(),{code:'artifact_conflict'});assert.equal(fs.readFileSync(file,'utf8'),'original-installed-data-is-not-a-package');assert.equal(f.state.calls.length,1);

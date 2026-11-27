@@ -12,21 +12,61 @@ function png(){const h=Buffer.alloc(13);h.writeUInt32BE(1);h.writeUInt32BE(1,4);
 const PIXEL=png();
 const picture=(sender=SELF,extra={})=>({self_id:SELF,user_id:sender,sender:{user_id:sender},message_type:'private',sub_type:'friend',message_id:123,real_seq:'100',time:1700000000,message:[{type:'image',data:{file:'same-name.png',file_size:PIXEL.length,sub_type:0,summary:'[图片]',url:URL_A}}],...extra});
 const wait=()=>new Promise(r=>setImmediate(r));
-async function until(f){for(let n=0;n<2000;n++){if(f())return;await wait();}throw Error('Bounded fixture wait did not reach state');}
+const {setTimeout: delay}=require('node:timers/promises');
+async function waitForPhase(entered,operation){
+ const timer=new AbortController();
+ try{
+  await Promise.race([
+   entered,
+   operation.then(()=>{throw Error('Preview finished before reaching the fixture gate');}),
+   delay(5000,undefined,{signal:timer.signal}).then(()=>{throw Error('Preview did not reach the fixture gate');}),
+  ]);
+ }finally{timer.abort();}
+}
 async function fixture(t){
- const server=new WebSocketServer({host:'127.0.0.1',port:0});await once(server,'listening');
- const state={requests:[],downloads:[],decoded:[],released:0,now:1,account:SELF,owner:OWNER,online:true,row:picture(),history:null,verify:async()=>({verified:true}),prepares:0};
+ const server=new WebSocketServer({host:'127.0.0.1',port:0});
+ const gates=new Set();
+ let manager,closing;
+ function hold(value){
+  const blocked=Promise.withResolvers();
+  const entered=Promise.withResolvers();
+  const release=()=>{gates.delete(release);blocked.resolve(value);};
+  // Own the gate before the asynchronous verify, prepare or history callback can enter it.
+  if(closing)release();
+  else gates.add(release);
+  return {
+   enter(){entered.resolve();return blocked.promise;},
+   release,
+   waitFor(operation){return waitForPhase(entered.promise,operation);},
+  };
+ }
+ function close(){
+  closing??=(async()=>{
+   for(const release of gates)release();
+   const retiring=manager?.close();
+   for(const socket of server.clients)socket.terminate();
+   const closed=server.address()&&new Promise((resolve,reject)=>{
+    server.close(error=>error?reject(error):resolve());
+   });
+   await Promise.all([retiring,closed]);
+   assert(!state?.serverError,state?.serverError?.message);
+  })();
+  return closing;
+ }
+ let state;
+ t.after(close);
+ await once(server,'listening');
+ state={requests:[],downloads:[],decoded:[],released:0,now:1,account:SELF,owner:OWNER,online:true,row:picture(),history:null,verify:async()=>({verified:true}),prepares:0};
  server.on('connection',socket=>socket.on('message',async b=>{try{const q=JSON.parse(b);state.requests.push(q);let data;
   if(q.action==='get_login_info')data={user_id:state.account};else if(q.action==='get_status')data={online:state.online,good:true};else if(q.action==='get_friend_list')data=[{user_id:state.owner}];else if(q.action==='get_friend_msg_history'){data=state.history?await state.history(q):{messages:[structuredClone(state.row)]};}else throw Error('Unexpected network action '+q.action);
   if(socket.readyState===1)socket.send(JSON.stringify({status:'ok',retcode:0,echo:q.echo,data}));
  }catch(e){state.serverError=e;socket.close();}}));
  const stable={profileId:'synthetic',profile:{},generation:1,characterId:'whale',runtime:{},installation:{},runtimeEpoch:1,bridgeRevision:'rev',endpointId:'endpoint',qqAccountId:SELF,ownerId:OWNER,url:`ws://127.0.0.1:${server.address().port}/`,token:'synthetic-private-token',channel:'qq',status:'disconnected'};
  const clients=[],transport=new HistoryImageTransport({createDownloader:()=>({download:async(url,options)=>{assert.equal(url,URL_A.replace('rkey=synthetic-A','rkey='+new URL(url).searchParams.get('rkey')));options.assertCurrent();const bytes=Buffer.from(PIXEL);state.downloads.push(bytes);await state.download?.(options);return {bytes,extension:'.png',resourceDigest:imageSource(url).resourceDigest};},close(){state.released++;}}),prepare:async bytes=>{state.prepares++;const prepared=Buffer.from(bytes);state.decoded.push(prepared);await state.prepare?.();return {bytes:prepared,width:1,height:1};}});
- const manager=new QQOwnerHistorySession({capture:v=>({...stable,panelId:v.panelId}),verifyContext:(_b,o)=>state.verify(o),clientFactory:options=>{const c=new QQClient({...options,timeoutMs:1000,socketFactory:(url,options)=>new WebSocket(url,options)});clients.push(c);return c;},imageTransport:transport,monotonic:()=>state.now});
+ manager=new QQOwnerHistorySession({capture:v=>({...stable,panelId:v.panelId}),verifyContext:(_b,o)=>state.verify(o),clientFactory:options=>{const c=new QQClient({...options,timeoutMs:1000,socketFactory:(url,options)=>new WebSocket(url,options)});clients.push(c);return c;},imageTransport:transport,monotonic:()=>state.now});
  const input={accountId:'synthetic',panelId:PANEL};
- t.after(async()=>{state.release?.();await manager.close();for(const c of server.clients)c.terminate();await new Promise(r=>server.close(r));assert(!state.serverError,state.serverError?.message);});
  const read=async(cursor=null)=>manager.read({...input,cursor}),selection=p=>({...input,pageId:p.page.pageId,imageId:p.page.rows.find(r=>r.parts.some(p=>p.imageId)).parts.find(p=>p.imageId).imageId,requestId:randomUUID()});
- return {state,stable,manager,clients,input,read,selection};
+ return {state,stable,manager,clients,input,read,selection,hold,close,listening:()=>Boolean(server.address())};
 }
 test('owner history offers opaque one-image handles without media I/O, and explicit outgoing preview fixes the owner peer',async t=>{
  const f=await fixture(t),p=await f.read(),args=f.selection(p);assert.equal(f.state.downloads.length,0);assert.equal(f.state.prepares,0);assert.doesNotMatch(JSON.stringify(p),/https:|same-name|resource-A|synthetic-private|real_seq/);assert.equal(p.page.mediaLoaded,false);
@@ -57,17 +97,39 @@ test('refresh, cached page selection, expiry and renderer-injected URLs cannot a
  f.state.now+=300000;await assert.rejects(f.manager.imagePreview(f.selection(second)),{code:'image_expired'});assert.equal(f.state.downloads.length,0);
 });
 test('switching cached pages revokes an active selection; selecting A again does not revive the prior request',async t=>{
- const f=await fixture(t),first=await f.read();f.state.row=picture(OWNER,{message_id:122,real_seq:'99'});const second=await f.read(first.page.nextCursor);f.manager.imagePage({...f.input,pageId:first.page.pageId});let release;f.state.verify=()=>new Promise(r=>{release=r;f.state.release=()=>r({verified:true});});
- const args=f.selection(first),pending=f.manager.imagePreview(args);await until(()=>release);f.manager.imagePage({...f.input,pageId:second.page.pageId});f.manager.imagePage({...f.input,pageId:first.page.pageId});release({verified:true});await assert.rejects(pending);assert.equal(f.state.downloads.length,0);
+ const f=await fixture(t),first=await f.read();f.state.row=picture(OWNER,{message_id:122,real_seq:'99'});const second=await f.read(first.page.nextCursor);f.manager.imagePage({...f.input,pageId:first.page.pageId});const gate=f.hold({verified:true});f.state.verify=gate.enter;
+ const args=f.selection(first),pending=f.manager.imagePreview(args);await gate.waitFor(pending);f.manager.imagePage({...f.input,pageId:second.page.pageId});f.manager.imagePage({...f.input,pageId:first.page.pageId});gate.release();await assert.rejects(pending);assert.equal(f.state.downloads.length,0);
 });
 test('cancel before preflight completion prevents network and the following preview waits for old preparation to finish',async t=>{
- const f=await fixture(t),p=await f.read(),a=f.selection(p);let release;f.state.prepare=()=>new Promise(r=>{release=r;f.state.release=r;});const first=f.manager.imagePreview(a);await until(()=>release);const closed=f.manager.imageClose({...f.input,pageId:a.pageId,requestId:a.requestId});
+ const f=await fixture(t),p=await f.read(),a=f.selection(p);const gate=f.hold();f.state.prepare=gate.enter;const first=f.manager.imagePreview(a);await gate.waitFor(first);const closed=f.manager.imageClose({...f.input,pageId:a.pageId,requestId:a.requestId});
  const before=f.state.requests.length,b=f.selection(p),second=f.manager.imagePreview(b);await wait();assert.equal(f.state.requests.length,before,'Second preflight waits for owned old decode/cleanup');assert.equal(f.state.downloads.length,1);
- const lateOldClose=f.manager.imageClose({...f.input,pageId:a.pageId,requestId:a.requestId});await lateOldClose;f.state.prepare=null;release();await assert.rejects(first);await closed;assert((await second).preview);assert(f.state.decoded.every(bytes=>bytes.every(v=>v===0)));
+ const lateOldClose=f.manager.imageClose({...f.input,pageId:a.pageId,requestId:a.requestId});await lateOldClose;f.state.prepare=null;gate.release();await assert.rejects(first);await closed;assert((await second).preview);assert(f.state.decoded.every(bytes=>bytes.every(v=>v===0)));
 });
 test('closing during second observation waits for cleanup and cannot expose late image pixels',async t=>{
- const f=await fixture(t),p=await f.read();let release,queries=0;f.state.history=()=>++queries===2?new Promise(r=>{release=()=>r({messages:[structuredClone(f.state.row)]});f.state.release=release;}):{messages:[structuredClone(f.state.row)]};
- const pending=f.manager.imagePreview(f.selection(p));await until(()=>release);const closing=f.manager.closeOwned(f.input);release();await assert.rejects(pending);await closing;assert(f.state.downloads[0].every(v=>v===0));assert.equal(f.state.prepares,0);assert.equal(f.clients[0].closed,true);
+ const f=await fixture(t),p=await f.read();const gate=f.hold();let queries=0;f.state.history=async()=>{if(++queries===2)await gate.enter();return {messages:[structuredClone(f.state.row)]};};
+ const pending=f.manager.imagePreview(f.selection(p));await gate.waitFor(pending);const closing=f.manager.closeOwned(f.input);gate.release();await assert.rejects(pending);await closing;assert(f.state.downloads[0].every(v=>v===0));assert.equal(f.state.prepares,0);assert.equal(f.clients[0].closed,true);
+});
+test('fixture teardown closes the server when a preview enters a gate after cleanup starts',{timeout:10000},async t=>{
+ const f=await fixture(t),page=await f.read();
+ const beforeRegistration=f.hold();
+ let reachedLateGate=false;
+ f.state.prepare=async()=>{
+  await beforeRegistration.enter();
+  reachedLateGate=true;
+  await f.hold().enter();
+ };
+ const pending=f.manager.imagePreview(f.selection(page));
+ await beforeRegistration.waitFor(pending);
+ assert.equal(reachedLateGate,false);
+ const closing=f.close();
+ await assert.rejects(pending,{code:'cancelled'});
+ await closing;
+ assert.equal(reachedLateGate,true);
+ assert.equal(f.listening(),false);
+ assert.equal(f.clients[0].closed,true);
+ assert.equal(f.state.released,1);
+ assert(f.state.downloads[0].every(byte=>byte===0));
+ assert(f.state.decoded[0].every(byte=>byte===0));
 });
 test('scope changes after download and decode errors remain sanitized and release all owned buffers',async t=>{
  for(const kind of ['changed','decoder']){const f=await fixture(t),p=await f.read();f.state.prepare=()=>{if(kind==='changed')f.stable.generation++;else throw Object.assign(Error('PRIVATE_DECODER_PATH'),{code:'image_invalid'});};const r=await historyImageResult(f.selection(p),()=>f.manager.imagePreview(f.selection(p)));assert.equal(r.ok,false);assert.doesNotMatch(JSON.stringify(r),/PRIVATE|token|resource-A|same-name/);assert(f.state.downloads[0].every(v=>v===0));if(kind==='changed')assert(f.state.decoded[0].every(v=>v===0));}
