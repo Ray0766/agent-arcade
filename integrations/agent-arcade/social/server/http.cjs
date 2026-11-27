@@ -4,6 +4,7 @@ const {createWorkOrders,isAssignment}=require('./bothouse/work-orders.cjs');
 const {commentPage,commentsRoute}=require('./feed-comments.cjs');
 const {chatFeedbackReview} = require('./chat-feedback-review.cjs');
 const {groupSharedFiles}=require('./group-shared-media.cjs');
+const {materialTaskPreview,confirmedMaterialTask}=require('./group-task-materials.cjs');
 
 const http = require('node:http');
 const fs = require('node:fs/promises');
@@ -221,6 +222,8 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
           ...(ids.length&&{reactionUpdates:store.reactionSummaries(a,id,ids.map(Number))})};
       }
       if (method === 'POST') {
+        if(route.materialRole&&confirmedMaterialTask(store,a,id,body,route.materialRole)!==body.text)
+          fail(409,'group_task_material_changed','交办材料或角色已变化，请重新核对');
         if(!bothouse&&!claudeUi)guard(store.directAiConsent(a,id)?.ai);
         let directTurn=false,groupTurn,personalTurn,abortProactive,bothouseTurn;
         const message=store.send(a,id,body,row=>{
@@ -321,6 +324,17 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
   const auth = makeAuth(store,Boolean(publicOrigin));
   const residents=planetPublishers({store,bothouse,socialOrigin:()=>publicOrigin||'http://127.0.0.1:'+server.address().port});
   const workOrders=createWorkOrders(store,taskReceiver);
+  async function requireTaskRole(account,chat,number){
+    const target=store.access(account,chat);
+    const peer=target.first_user===account?target.second_user:target.first_user;
+    const role=target.type==='direct'&&!target.friendRemoved&&await bothouse?.resolveMember(account,peer);
+    const stable=role&&(role.legacyNumber===role.number?
+      store.one('SELECT native FROM bothouse_native_numbers WHERE legacy=?',role.number)?.native:role.number);
+    if(typeof number!=='string'||!role||stable!==number||
+       !await workOrders.directoryRoleAvailable(account,role,chat))
+      fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
+    return role;
+  }
   const web=createConversationWeb(store,webSearchFetch);
   const voiceReplies = createAiVoice(store,voiceEngine);
   const personal=createPersonalAi(store,personalAiFetch,voiceReplies);
@@ -541,7 +555,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         fail(403,'personal_ai_https','请用 HTTPS 或本机入口管理个人 AI 密钥');
       const privateCardSave=key==='personal-ai/private-profile'&&req.method==='POST';
       if(privateCardSave)current(store,req);
-      const body = req.method === 'POST' ? await jsonBody(req,cardSave||privateCardSave?
+      let body = req.method === 'POST' ? await jsonBody(req,cardSave||privateCardSave?
         65536+PORTRAIT_BASE64_LIMIT:undefined) : null;
       let result;
       if(req.method==='POST'&&key==='world-session-ticket/redeem'){
@@ -609,7 +623,8 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         if(req.method==='GET'&&key==='ai-contacts/task-targets'){
           if(req.headers['x-social-account']!==account)fail(409,'account_changed','请回到当前账号');
           const source={chatId:url.searchParams.get('chatId'),messageId:Number(url.searchParams.get('messageId')),
-            membershipRevision:url.searchParams.get('membershipRevision')};
+            membershipRevision:url.searchParams.get('membershipRevision'),
+            ...(url.searchParams.has('fileMessageId')&&{fileMessageId:Number(url.searchParams.get('fileMessageId'))})};
           store.checkGroupTaskSource(account,source);
           const revision=bothousePairing.active(store,account)?.revision;
           const directory=await bothouse?.list(account)??{contacts:[],directoryStatus:'offline'};
@@ -633,6 +648,17 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
           res.setHeader('Content-Type','application/json; charset=utf-8');
           res.setHeader('Cache-Control','no-store');
           return res.end(JSON.stringify({directoryStatus:directory.directoryStatus,contacts}));
+        }
+        if(req.method==='POST'&&collection==='conversations'&&action==='task-material-preview'&&parts.length===3){
+          if(req.headers['x-social-account']!==account||body.expectedAccount!==account)
+            fail(409,'message_session','账号已切换，请重新打开会话');
+          store.checkGroupTaskSource(account,body.taskSource);
+          const role=await requireTaskRole(account,chat,body.taskRole);
+          if(current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          res.setHeader('Cache-Control','no-store');
+          const preview=materialTaskPreview(store,account,chat,body,role);
+          res.setHeader('Content-Type','application/json; charset=utf-8');
+          return res.end(JSON.stringify(preview));
         }
         if(req.method==='POST'&&key==='ai-contacts/start'&&body.taskSource!==undefined){
           if(req.headers['x-social-account']!==account)fail(409,'account_changed','请回到当前账号');
@@ -738,6 +764,12 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         }
         const sendingMessage=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3;
         const fromGroup=sendingMessage&&body.taskSource!==undefined;
+        const withMaterials=fromGroup&&body.taskSource?.fileMessageId!==undefined;
+        if(sendingMessage&&(body.materialReview!==undefined||withMaterials)&&(!withMaterials||
+          typeof body.materialReview!=='string'||!/^[a-f0-9]{64}$/u.test(body.materialReview)||
+          Object.keys(body).some(key=>!['expectedAccount','membershipRevision','taskSource','taskRole',
+            'requirement','aiConsentRevision','materialReview','clientId'].includes(key))))
+          fail(400,'group_task_material_review','请先核对实际将发送的材料');
         const handback=sendingMessage&&body.taskHandback!==undefined;
         if(handback){
           if(req.headers['x-social-account']!==account)fail(409,'message_session','账号已切换，请重新打开会话');
@@ -752,19 +784,17 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         if(fromGroup){
           if(req.headers['x-social-account']!==account)fail(409,'message_session','账号已切换，请重新打开会话');
           const source=store.checkGroupTaskSource(account,body.taskSource);
-          if(typeof body.text!=='string'||!isAssignment(body.text))fail(400,'group_task_text','请填写交办内容');
-          const original='给你一个任务：\n'+source.text;
-          if(body.text!==original&&!body.text.startsWith(original+'\n\n补充要求：\n'))
-            fail(400,'group_task_text','交办内容与所选群消息不一致，请重新打开草稿');
-          const target=store.access(account,chat);
-          const peer=target.first_user===account?target.second_user:target.first_user;
-          const role=target.type==='direct'&&!target.friendRemoved&&await bothouse?.resolveMember(account,peer);
-          const stable=role&&(role.legacyNumber===role.number?
-            store.one('SELECT native FROM bothouse_native_numbers WHERE legacy=?',role.number)?.native:role.number);
-          if(typeof body.taskRole!=='string'||!role||stable!==body.taskRole||
-             !await workOrders.directoryRoleAvailable(account,role,chat))
-            fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
-          selectedRole=role;
+          if(!withMaterials){
+            if(typeof body.text!=='string'||!isAssignment(body.text))fail(400,'group_task_text','请填写交办内容');
+            const original='给你一个任务：\n'+source.text;
+            if(body.text!==original&&!body.text.startsWith(original+'\n\n补充要求：\n'))
+              fail(400,'group_task_text','交办内容与所选群消息不一致，请重新打开草稿');
+          }
+          selectedRole=await requireTaskRole(account,chat,body.taskRole);
+          if(withMaterials){
+            if(current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+            body={...body,text:confirmedMaterialTask(store,account,chat,body,selectedRole)};
+          }
         }
         const preparedTask=sendingMessage&&!handback?await workOrders.prepare(account,chat,body):undefined;
         if(fromGroup){
@@ -776,7 +806,8 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
             fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
         }
         if(preparedTask&&current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
-        const handle = () => dispatch(store,account,{method:req.method,parts,claudeUi,preparedTask,friendRolesUi:req.headers['x-social-ai-friend-roles']==='1'},body,url.searchParams,build,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders);
+        const handle = () => dispatch(store,account,{method:req.method,parts,claudeUi,preparedTask,
+          materialRole:withMaterials?selectedRole:null,friendRolesUi:req.headers['x-social-ai-friend-roles']==='1'},body,url.searchParams,build,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders);
         result = req.method === 'POST' ? store.transaction(handle) : handle();
         if(result.cancelWebChat){
           web.cancel(result.cancelWebChat);

@@ -403,27 +403,39 @@ class SocialStore {
     }
     return this.conversation(a,direct.id);
   }
-  checkGroupTaskSource(account,source) {
+  checkGroupTaskSource(account,source,{materialAnchor=false}={}) {
     const unavailable=()=>fail(404,'group_task_source','原群消息已移除或不可查看');
     if(typeof source?.chatId!=='string'||!Number.isSafeInteger(source.messageId)||source.messageId<1||
        typeof source.membershipRevision!=='string'||this.user(account).kind!=='human')unavailable();
     const from=this.access(account,source.chatId);
     if(from.type!=='group'||from.membershipRevision!==source.membershipRevision)unavailable();
-    const row=this.one('SELECT * FROM messages WHERE chat=? AND id=? AND id>? AND sender=? AND removed=0',
-      source.chatId,source.messageId,from.since,account);
+    const withFile=source.fileMessageId!==undefined;
+    const row=this.one(`SELECT * FROM messages WHERE chat=? AND id=? AND id>? AND (? OR sender=?) AND removed=0`,
+      source.chatId,source.messageId,from.since,Number(withFile||materialAnchor),account);
     if(!row)unavailable();
     const message=this.message(row);
-    if(!row.body.trim()||message.attachment||message.task||message.imageQuestion)unavailable();
+    if(message.sender.kind!=='human'||!row.body.trim()||message.attachment||message.task||message.imageQuestion)unavailable();
+    if(withFile)this.groupTaskMaterialFile(source.chatId,source.fileMessageId,from.since);
     return message;
   }
+  groupTaskMaterialFile(chat,id,since){
+    const file=Number.isSafeInteger(id)&&this.one(`SELECT f.name,f.digest,length(f.bytes) AS size,m.sender
+      FROM message_files f JOIN messages m ON m.id=f.message
+      JOIN users u ON u.number=m.sender AND u.kind='human'
+      WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0 AND m.body=''`,chat,id,since);
+    if(!file)fail(404,'group_task_file','所选群文件已移除或不可查看');
+    return file;
+  }
   reviewGroupTaskSource(account,prompt){
-    const anchor=this.one(`SELECT s.source_chat AS chatId,s.source_message AS messageId
+    const anchor=this.one(`SELECT s.source_chat AS chatId,s.source_message AS messageId,review.prompt IS NOT NULL AS materialAnchor
       FROM bothouse_work_order_group_sources s JOIN bothouse_work_orders w ON w.prompt=s.prompt
+      LEFT JOIN bothouse_work_order_material_reviews review ON review.prompt=s.prompt
       WHERE s.prompt=? AND w.human=?`,prompt,account);
     if(!anchor)fail(404,'group_task_source','这条回件没有可用的原群消息');
     const group=this.group(account,anchor.chatId);
-    const message=this.checkGroupTaskSource(account,{...anchor,membershipRevision:group.membershipRevision});
-    const [{quote}]=this.withReplyPreviews(account,anchor.chatId,[message]);
+    const message=this.checkGroupTaskSource(account,{...anchor,membershipRevision:group.membershipRevision},
+      {materialAnchor:Boolean(anchor.materialAnchor)});
+    const quote=anchor.materialAnchor?null:this.withReplyPreviews(account,anchor.chatId,[message])[0].quote;
     const questionSender=quote?.id&&this.one('SELECT sender FROM messages WHERE id=?',quote.id)?.sender;
     const question=questionSender&&questionSender!==account?{id:quote.id,text:quote.text,author:quote.name}:undefined;
     return {group:{id:anchor.chatId,title:group.title,membershipRevision:group.membershipRevision},
@@ -438,7 +450,9 @@ class SocialStore {
         AND result.nonce='work_'||w.request||'_'||w.attempt||'_returned'
       JOIN messages prompt ON prompt.id=w.prompt AND prompt.chat=w.chat AND prompt.sender=w.human
       JOIN members viewer ON viewer.chat=link.source_chat AND viewer.account=w.human
-      JOIN messages source ON source.id=link.source_message AND source.chat=viewer.chat AND source.sender=w.human
+      LEFT JOIN bothouse_work_order_material_reviews review ON review.prompt=w.prompt
+      JOIN messages source ON source.id=link.source_message AND source.chat=viewer.chat
+        AND (source.sender=w.human OR review.prompt IS NOT NULL)
       WHERE w.chat=? AND w.human=? AND w.state='returned' AND result.id=?
         AND result.id>? AND result.removed=0 AND prompt.id>? AND prompt.removed=0
         AND source.id>viewer.since AND source.removed=0`,id,account,result,direct.since,direct.since);

@@ -101,6 +101,8 @@ function createWorkOrders(store,receiver){
       const source=store.checkGroupTaskSource(account,body.taskSource);
       store.run('INSERT INTO bothouse_work_order_group_sources(prompt,source_chat,source_message) VALUES(?,?,?)',
         m.id,source.conversationId,source.id);
+      if(body.materialReview)store.run('INSERT INTO bothouse_work_order_material_reviews(prompt,review) VALUES(?,?)',
+        m.id,body.materialReview);
     }
     return true;
   }

@@ -569,4 +569,8 @@ CREATE TABLE IF NOT EXISTS bothouse_work_order_group_sources (
   source_chat TEXT NOT NULL REFERENCES chats(id),
   source_message INTEGER NOT NULL REFERENCES messages(id)
 );
+CREATE TABLE IF NOT EXISTS bothouse_work_order_material_reviews (
+  prompt INTEGER PRIMARY KEY REFERENCES bothouse_work_order_group_sources(prompt) ON DELETE CASCADE,
+  review TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS bothouse_work_due ON bothouse_work_orders(state,next_check);
