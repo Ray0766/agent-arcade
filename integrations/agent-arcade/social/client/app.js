@@ -18,7 +18,9 @@ const chatSettings=$('#chat-settings'), messageActions=$('#message-actions');
 const personalAiProfileButton=$('#personal-ai-direct-profile');
 const tabs = [...root.querySelectorAll('[data-tab]')];
 const groupVoiceNotice=$('#group-voice-notice');
+const groupVoiceReadingReturn=$('[data-voice-reading-origin]');
 const ignoredVoiceRooms=new Set();
+let groupVoiceReadingOrigin,groupVoiceReturning,lastReadingFocus;
 const labels = {messages:'消息', contacts:'通讯录', feed:'好友动态', profile:'我'};
 const aiProviderNames = {deepseek:'DeepSeek',openai:'OpenAI（GPT）',anthropic:'Claude（Anthropic）'};
 const aiService=provider=>aiProviderNames[provider]||'云服务';
@@ -33,7 +35,9 @@ let preserveChatReadState=false;
 let socialVisible=true;
 const calls=mountLiveCalls({api,account:()=>user?.number,chat:()=>chat,goChat,groupVoiceBusy:()=>groupVoice.isBusy()});
 const groupVoice=mountGroupVoicePanel({
-  api,account:()=>user?.number,privateCallBusy:calls.isBusy,openChat:id=>goChat(id,false,user?.number),
+  api,account:()=>user?.number,privateCallBusy:calls.isBusy,
+  openChat:id=>goChat(id,false,user?.number,{preserveRead:groupVoiceReadingOrigin?.group===id}),
+  dockedReading:id=>groupVoiceReadingOrigin?.group===id&&routeId()===groupVoiceReadingOrigin.id,
   personAvatar:person=>personAvatar(person),
   scope:()=>{
     if(user?.kind!=='human'||conversation?.type!=='group'||routeId()!==chat||!membershipRevision)return;
@@ -380,6 +384,8 @@ function leaveSession({discardFeedback=false,expired=false}={}) {
   chat = conversation = historyContext = historyFinder = undefined;
   friends = incoming = outgoing = conversations = messages = [];
   ignoredVoiceRooms.clear();
+  groupVoiceReadingOrigin=groupVoiceReturning=lastReadingFocus=undefined;
+  renderGroupVoiceReadingReturn();
   renderGroupVoiceNotice();
   readThrough.clear();
   readFlights.clear();
@@ -608,8 +614,10 @@ function renderGroupVoiceNotice(){
   const live=conversations.filter(item=>item.groupVoice?.numbers.length);
   const ids=new Set(live.map(item=>item.groupVoice.id));
   for(const id of ignoredVoiceRooms)if(!ids.has(id))ignoredVoiceRooms.delete(id);
-  const item=user&&(tab!=='messages'||chat)&&live.find(item=>
-    (tab!=='messages'||item.id!==chat)&&!item.muted&&!item.groupVoice.numbers.includes(user.number)&&!ignoredVoiceRooms.has(item.groupVoice.id));
+  const eligible=item=>
+    (tab!=='messages'||item.id!==chat)&&!item.muted&&!item.groupVoice.numbers.includes(user.number)&&!ignoredVoiceRooms.has(item.groupVoice.id);
+  const prior=groupVoiceReadingOrigin;
+  const item=user&&(tab!=='messages'||chat)&&(live.find(item=>item.groupVoice.id===prior?.room&&eligible(item))??live.find(eligible));
   groupVoiceNotice.hidden=!item;
   if(!item){
     groupVoiceNotice.removeAttribute('data-room');
@@ -618,6 +626,7 @@ function renderGroupVoiceNotice(){
   }
   groupVoiceNotice.dataset.room=item.groupVoice.id;
   groupVoiceNotice.querySelector('strong').textContent=item.title;
+  groupVoiceNotice.querySelector('[data-view]').textContent=item.groupVoice.id===prior?.room?'返回群聊':'查看';
   const names=item.groupVoice.numbers.map(number=>item.members.find(member=>member.number===number)?.displayName??number);
   groupVoiceNotice.querySelector('span').textContent=names.join('、')+'正在语音';
 }
@@ -632,11 +641,16 @@ groupVoiceNotice.querySelector('[data-view]').onclick=async()=>{
   const revision=conversations.find(item=>item.groupVoice?.id===id)?.draftAnchor?.revision;
   const stillHere=()=>generation===epoch&&chatVisit===visit&&dialogGeneration===scope&&tab===origin&&groupVoiceNotice.dataset.room===id;
   if(!account||!id||!revision)return;
+  const source=conversation?.type==='direct'&&captureReadingOrigin();
+  const editorFocused=lastReadingFocus?.visit===visit&&lastReadingFocus.element===messageBox;
+  const selection=editorFocused?[messageBox.selectionStart,messageBox.selectionEnd,messageBox.selectionDirection]:undefined;
   try{
     const result=await api('/conversations',undefined,{expectedAccount:account});
     if(!stillHere())return;
     const item=result.conversations.find(item=>item.groupVoice?.id===id);
     if(item?.draftAnchor?.revision!==revision){ignoredVoiceRooms.add(id);renderGroupVoiceNotice();return;}
+    if(source&&readingOriginTitle(source))
+      groupVoiceReadingOrigin={...source,group:item.id,room:id,groupRevision:revision,selection};
     await goChat(item.id,false,account,{preserveRead:true});
   }catch{
     if(stillHere())groupVoiceNotice.querySelector('span').textContent='暂时无法查看，可稍后重试。';
@@ -644,6 +658,7 @@ groupVoiceNotice.querySelector('[data-view]').onclick=async()=>{
 };
 function renderDirectory() {
   if(!user) return;
+  renderGroupVoiceReadingReturn();
   renderGroupVoiceNotice();
   conversationList.scope(user.number,tab==='messages');
   contactSearch.hidden=tab!=='contacts';
@@ -729,15 +744,102 @@ function routeId() {
   if(!location.hash.startsWith('#chat/')) return undefined;
   try { return decodeURIComponent(location.hash.slice(6)) || undefined; } catch {return undefined;}
 }
-async function goChat(id,focusEditor=false,expectedAccount,{preserveRead=false}={}) {
+async function goChat(id,focusEditor=false,expectedAccount,{historyTarget,preserveRead=false}={}) {
   tab='messages';
   const route='#chat/'+encodeURIComponent(id);
   if(location.hash!==route) window.history.pushState(null,'',route);
-  await openChat(id,expectedAccount,preserveRead,{preserveRead});
+  await openChat(id,expectedAccount,Boolean(historyTarget)||preserveRead,{historyTarget,preserveRead});
   const active=document.activeElement;
   if(focusEditor&&chat===id&&conversation&&!dialog.open&&
      (active===document.body||active.id==='back'||active.dataset.chatId===id)){
     (messageBox.readOnly?historyView:messageBox).focus({preventScroll:true});
+  }
+}
+function captureReadingOrigin() {
+  if(!user||tab!=='messages'||routeId()!==chat||!conversation||conversation.friendRemoved||!membershipRevision)return;
+  const anchor=visibleMessageIds(12).find(id=>!removedMessages.has(id));
+  const row=anchor&&historyView.querySelector('[data-history-message="'+anchor+'"]');
+  return {account:user.number,id:chat,revision:membershipRevision,floor:historyFloor,
+    ...(row&&{anchor,offset:row.getBoundingClientRect().top-historyView.getBoundingClientRect().top})};
+}
+function readingOriginTitle(origin,items=conversations) {
+  if(origin.account!==user?.number)return;
+  const item=items.find(row=>row.id===origin.id);
+  if(item&&!item.friendRemoved&&item.draftAnchor?.revision===origin.revision&&item.draftAnchor.floor===origin.floor)
+    return item.title;
+}
+for(const element of [historyView,messageBox])
+  element.addEventListener('focusin',()=>{lastReadingFocus={visit:chatVisit,element};});
+
+function hasGroupReadingRoom(origin,items=conversations) {
+  return items.some(item=>item.id===origin.group&&item.draftAnchor?.revision===origin.groupRevision&&
+    item.groupVoice?.id===origin.room);
+}
+function renderGroupVoiceReadingReturn() {
+  const source=groupVoiceReadingOrigin;
+  const name=source&&readingOriginTitle(source);
+  if(source&&(!name||!hasGroupReadingRoom(source)))groupVoiceReadingOrigin=undefined;
+  const visible=Boolean(groupVoiceReadingOrigin&&routeId()===source.group);
+  groupVoiceReadingReturn.hidden=!visible;
+  groupVoiceReadingReturn.disabled=visible&&groupVoiceReturning===source;
+  groupVoiceReadingReturn.textContent=visible?'回到与'+name+'的聊天':'';
+}
+groupVoiceReadingReturn.onclick=async()=>{
+  const source=groupVoiceReadingOrigin,visit=chatVisit,dialogScope=dialogGeneration;
+  if(!source||groupVoiceReturning===source||routeId()!==source.group)return;
+  const current=()=>groupVoiceReadingOrigin===source;
+  const stillOpening=()=>current()&&chatVisit===visit&&dialogGeneration===dialogScope;
+  groupVoiceReturning=source;
+  renderGroupVoiceReadingReturn();
+  try{
+    const result=await api('/conversations',undefined,{expectedAccount:source.account});
+    if(!stillOpening())return;
+    if(!hasGroupReadingRoom(source,result.conversations)||!readingOriginTitle(source,result.conversations)){
+      groupVoiceReadingOrigin=undefined;
+      return;
+    }
+    const returned=await openReadingOrigin(source,stillOpening);
+    if(!current())return;
+    if(returned===false)groupVoiceReadingOrigin=undefined;
+    if(returned&&routeId()===source.id){
+      if(source.selection&&!messageBox.readOnly){
+        messageBox.focus({preventScroll:true});
+        messageBox.setSelectionRange(...source.selection);
+      }else historyView.focus({preventScroll:true});
+    }
+  }catch(error){
+    if(stillOpening())$('#sync-status').textContent=textError(error);
+  }finally{
+    if(groupVoiceReturning===source)groupVoiceReturning=undefined;
+    renderGroupVoiceReadingReturn();
+  }
+};
+async function openReadingOrigin(origin,stillReturning){
+  const epoch=generation,visit=chatVisit,route=location.hash;
+  const current=()=>generation===epoch&&chatVisit===visit&&location.hash===route&&stillReturning();
+  if(!readingOriginTitle(origin))return false;
+  const path=thread(origin.id);
+  const options={expectedAccount:origin.account};
+  try{
+    let page;
+    if(origin.anchor){
+      const params=new URLSearchParams({account:origin.account,around:origin.anchor});
+      try{page=await api(path+'/history-search?'+params,undefined,options);}
+      catch(error){if(error.status!==404)throw error;}
+    }
+    if(!current())return;
+    const access=page??(await api(path+'/messages?limit=1&removedAfter=latest',undefined,options)).moderation;
+    if(!current())return;
+    if(access?.membershipRevision!==origin.revision||access.historyFloor!==origin.floor||!readingOriginTitle(origin))
+      return false;
+    const historyTarget=page?.anchor===origin.anchor&&page?.messages.some(row=>row.id===origin.anchor&&!row.removed)?
+      {...page,readingOffset:origin.offset}:undefined;
+    await goChat(origin.id,false,origin.account,{historyTarget,preserveRead:true});
+    return routeId()===origin.id&&conversation?.id===origin.id;
+  }catch(error){
+    if(!current())return;
+    if(error.status===401||error.status===403||error.status===404)return false;
+    $('#sync-status').textContent=textError(error);
   }
 }
 function goTab(next) {
@@ -1742,7 +1844,7 @@ $('#ai-proactive').addEventListener('click',async()=>{
     if(current())body.textContent=textError(error);
   }
 });
-async function openChat(id,expectedAccount,reload=false,{preserveRead=false}={}) {
+async function openChat(id,expectedAccount,reload=false,{historyTarget,preserveRead=false}={}) {
   if(!user) return;
   preserveChatReadState=preserveRead;
   if(!reload&&id===chat && (conversation||!id)) {renderDirectory();showChatHeader();return;}
@@ -1791,7 +1893,14 @@ async function openChat(id,expectedAccount,reload=false,{preserveRead=false}={})
     historyAfter=messages.at(-1)?.id??0;
     readThrough.set(id,Math.max(readThrough.get(id)??0,conversation.readThrough??0));
     showChatHeader();
-    renderHistory('end');
+    if(historyTarget&&historyTarget.historyFloor===historyFloor&&historyTarget.membershipRevision===membershipRevision&&
+       !conversation.friendRemoved&&!messages.some(row=>row.removed&&row.id===historyTarget.anchor)){
+      displayOriginal(historyTarget,historyTarget.anchor);
+      const anchor=historyView.querySelector('[data-history-message="'+historyTarget.anchor+'"]');
+      if(anchor&&Number.isFinite(historyTarget.readingOffset)){
+        historyView.scrollTop+=anchor.getBoundingClientRect().top-historyView.getBoundingClientRect().top-historyTarget.readingOffset;
+      }
+    }else renderHistory('end');
     void loadChatPortrait(id,visit);
     if(matchMedia('(max-width: 680px)').matches&&document.activeElement===document.body)
       $('#back').focus({preventScroll:true});
@@ -2106,15 +2215,18 @@ async function changeMessageReaction(message,emoji){
     if(current())(inMenu&&messageAction?.id===row.id?$('#message-action-status'):$('#send-error')).textContent=textError(error);
   }finally {pendingReactions.delete(token);}
 }
-function visibleReactionIds(){
+function visibleMessageIds(limit){
   const viewport=historyView.getBoundingClientRect(), ids=[];
   for(const bubble of historyView.querySelectorAll('[data-history-message]')){
     const rect=bubble.getBoundingClientRect();
     if(rect.top>=viewport.bottom)break;
-    if(rect.bottom>viewport.top)ids.push(bubble.dataset.historyMessage);
-    if(ids.length===100)break;
+    if(rect.bottom>viewport.top)ids.push(Number(bubble.dataset.historyMessage));
+    if(ids.length===limit)break;
   }
-  return ids.join(',');
+  return ids;
+}
+function visibleReactionIds(){
+  return visibleMessageIds(100).join(',');
 }
 function resolveMessageAction(){
   if(messageAction?.chat===chat)return visibleHistory().find(row=>row.id===messageAction.id&&!row.removed);
