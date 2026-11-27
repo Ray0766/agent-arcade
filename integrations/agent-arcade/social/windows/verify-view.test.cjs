@@ -393,7 +393,7 @@ test('a planet visit uses the peer in the current active human conversation',asy
     async fetch(url,{headers}){
       assert.equal(url,origin+'/api/v1/conversations/'+chat);assert.equal(headers['X-Social-Account'],'visitor');
       if(changeDuringRead)view.webContents.mainFrame.url=origin+'/';
-      return Response.json({conversation:{type:'direct',members:[{number:'visitor',kind:'human'},{number:'friend',kind:'human'}]}});
+      return Response.json({conversation:{id:chat,type:'direct',members:[{number:'visitor',kind:'human'},{number:'friend',kind:'human'}]}});
     }
   });
   class Guest{

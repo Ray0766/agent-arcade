@@ -1221,6 +1221,16 @@ function showReplyTarget() {
   holder.querySelector('span').textContent=!id?'':removedMessages.has(id)?'原消息已移除':
     row?'回复 '+row.sender.displayName+' · '+[...row.text].slice(0,80).join(''):'已选原消息，发送时附上引用';
 }
+let visitPhotoDeparture;
+window.addEventListener('arcade-visit-photo-reset',()=>{visitPhotoDeparture=undefined;});
+window.arcadeWorldVisit?.onPhotoPreview?.(photo=>{
+  const departure=visitPhotoDeparture;
+  if(!departure||photo?.visitId!==departure.visitId)return;
+  visitPhotoDeparture=undefined;
+  if(!departure.current()||photo.id!==chat||photo.planet!==departure.planet||
+     !(photo.bytes instanceof ArrayBuffer)||!photo.bytes.byteLength||photo.bytes.byteLength>4194304)return;
+  photoDialog(false,new File([photo.bytes],'访友合影.png',{type:'image/png'}),undefined,departure);
+});
 const visitFriendPlanet=$('#visit-friend-planet');
 visitFriendPlanet?.addEventListener('click',async()=>{
   const visit=chatVisit,account=user?.number;
@@ -1244,11 +1254,24 @@ visitFriendPlanet?.addEventListener('click',async()=>{
       feedback.textContent='这位好友目前没有共享可拜访的星球。';
       return;
     }
-    const answer=await window.arcadeWorldVisit.open({account,number:friend.number});
+    const id=chat,epoch=generation,revision=membershipRevision,visitId=clientNonce();
+    visitPhotoDeparture={visitId,planet:destination.planetId,
+      current:()=>generation===epoch&&chatVisit===visit&&user?.number===account&&chat===id&&routeId()===id&&
+        membershipRevision===revision&&conversation?.type==='direct'&&!conversation.friendRemoved&&
+        conversation.members.some(member=>member.number===friend.number&&member.kind==='human'),
+      async authorized(){
+        const peer=await api('/friend-planet?number='+encodeURIComponent(friend.number),undefined,{expectedAccount:account});
+        return peer.account===account&&peer.number===friend.number&&peer.worldOrigin===destination.worldOrigin&&
+          peer.planetId===destination.planetId;
+      },
+    };
+    const answer=await window.arcadeWorldVisit.open({account,number:friend.number,visitId});
     if(chatVisit!==visit||user?.number!==account)return;
-    if(answer?.state!=='opened')
+    if(answer?.state!=='opened'){
+      visitPhotoDeparture=undefined;
       feedback.textContent=answer?.state==='unavailable'?'这位好友目前没有共享可拜访的星球。':
         answer?.state==='changed'?'好友或账号已变更，请重新打开私聊。':'小星球暂时无法连接，请稍后再试。';
+    }
   }catch(error){
     if(chatVisit!==visit||user?.number!==account)return;
     if(error.message==='friends_only')void openChat(chat,account,true);
@@ -1678,6 +1701,7 @@ async function openChat(id,expectedAccount,reload=false) {
   if(!reload&&id===chat && (conversation||!id)) {renderDirectory();showChatHeader();return;}
   stopVoicePlayback();
   if(dialogMessage||chat&&dialogGroup===chat)closeDialog();
+  visitPhotoDeparture=undefined;
   const epoch=generation, visit=++chatVisit;
   chatPortrait=undefined;
   chatSettings.hidePopover();
@@ -3151,7 +3175,7 @@ screenshotControl?.addEventListener('click',event=>{
   delete screenshotControl.dataset.arcadeSnipRequest;
   photoDialog(true,undefined,request);
 });
-function photoDialog(screenshot,droppedFile,snipRequest){
+function photoDialog(screenshot,droppedFile,snipRequest,visitPhoto){
   if(!canSendPhoto(conversation))return;
   const id=chat, visit=chatVisit, epoch=generation, account=user.number;
   const revision=membershipRevision;
@@ -3163,7 +3187,7 @@ function photoDialog(screenshot,droppedFile,snipRequest){
   const name=el('strong',null,'chat-file-name');
   const replacePhoto=button('更换图片',()=>input.click(),'outline');
   const submit=el('button','发送图片','primary');submit.type='submit';submit.disabled=true;
-  const direct=!screenshot && conversation.type==='direct'&&conversation.cloudChat?.enabled;
+  const direct=!screenshot&&!visitPhoto&&conversation.type==='direct'&&conversation.cloudChat?.enabled;
   const role=direct&&conversation.members.find(member=>member.kind==='ai');
   const provider=conversation.aiProvider;
   const previousDraft=messageBox.value;
@@ -3178,7 +3202,7 @@ function photoDialog(screenshot,droppedFile,snipRequest){
   if(droppedFile)form.append(el('p','发送到「'+conversation.title+'」','minor'),name,input);
   else form.append(label);
   form.append(notice,preview);
-  if(droppedFile)form.append(replacePhoto);
+  if(droppedFile&&!visitPhoto)form.append(replacePhoto);
   if(direct)form.append(questionLabel,disclose);
   form.append(submit);
   const updateSendLabel=()=>{
@@ -3199,6 +3223,34 @@ function photoDialog(screenshot,droppedFile,snipRequest){
   const scope=openDialog(screenshot?'发送截图':'发送图片',[form],id);
   const current=()=>scope===dialogGeneration&&visit===chatVisit&&epoch===generation&&routeId()===id;
   let selected,latestFile;
+  async function visitStillAllowed(){
+    if(!current()||!visitPhoto.current())return false;
+    try{return await visitPhoto.authorized()&&current()&&visitPhoto.current();}
+    catch(error){if([401,403,404,409].includes(error.status))return false;throw error;}
+  }
+  function expirePhoto(){
+    if(current()){
+      closeDialog();
+      $('#send-error').textContent='这次好友拜访已结束，请重新拜访后再带回合影。';
+    }
+  }
+  if(visitPhoto){
+    let checking=false;
+    const timer=setInterval(async()=>{
+      if(checking)return;
+      checking=true;
+      try{if(!await visitStillAllowed())expirePhoto();}
+      catch{/* Confirmation retries the permission check if the service is offline. */}
+      finally{checking=false;}
+    },5000);
+    window.addEventListener('arcade-social-deactivate',expirePhoto);
+    window.addEventListener('arcade-visit-photo-reset',expirePhoto);
+    dialogCleanup=()=>{
+      clearInterval(timer);
+      window.removeEventListener('arcade-social-deactivate',expirePhoto);
+      window.removeEventListener('arcade-visit-photo-reset',expirePhoto);
+    };
+  }
   input.addEventListener('change',()=>void selectPhoto(input.files[0]));
   if(droppedFile)void selectPhoto(droppedFile);
   if(snipRequest){
@@ -3263,6 +3315,7 @@ function photoDialog(screenshot,droppedFile,snipRequest){
     void perform(async()=>{
       try {
         if(boundToMembership&&(!revision||membershipRevision!==revision))throw Error('file_session');
+        if(visitPhoto&&!await visitStillAllowed()){expirePhoto();return;}
         const {message}=await api(thread(id)+'/images',file,{expectedAccount:account,image:{clientId,mime,...(boundToMembership&&{revision})}});
         if(!current())return;
         merge([message],'end');

@@ -2,7 +2,7 @@
 
 const { createSocialView } = require('./social-view.cjs');
 
-function mountSocial({window, WebContentsView, session, configuration, saveImage, pickGroupCard, readSendShortcut}) {
+function mountSocial({window, WebContentsView, session, configuration, saveImage, pickGroupCard, readSendShortcut, visitPhotos}) {
   let guest, wanted = false, loaded = false, loading, top = 0, visibilityEpoch = 0;
 
   function fit() {
@@ -32,7 +32,7 @@ function mountSocial({window, WebContentsView, session, configuration, saveImage
     if (mainFrame && !inPlace) hide();
   });
 
-  return async ({active, headerBottom, focus = false, imageFeedback = false, aiChatAccount} = {}) => {
+  return async ({active, headerBottom, focus = false, imageFeedback = false, aiChatAccount, photoReceipt} = {}) => {
     if (!active) { hide(); return true; }
     if (!Number.isFinite(headerBottom) || headerBottom < 1 || headerBottom > 200) return false;
     const epoch=visibilityEpoch;
@@ -43,7 +43,7 @@ function mountSocial({window, WebContentsView, session, configuration, saveImage
       remove();
       const view = createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, readSendShortcut,
         pickCrop:signal=>require('./chat-capture/picker.cjs').pickChatCrop(window,signal),
-        visitFriend:request=>window.webContents.send('arcade:storeFriendVisit',request),
+        visitPhotos,visitFriend:request=>window.webContents.send('arcade:storeFriendVisit',request),
         isActive:()=>wanted&&guest===view&&!window.isDestroyed() });
       guest=view;
       const contents = guest.view.webContents;
@@ -71,6 +71,7 @@ function mountSocial({window, WebContentsView, session, configuration, saveImage
       guest.view.setVisible(true);
       if(!wasWanted)guest.activate();
       if(focus===true)guest.view.webContents.focus();
+      if(photoReceipt&&!aiChatAccount&&!imageFeedback)visitPhotos?.receive(photoReceipt);
       if(imageFeedback===true)await guest.openImageFeedback(()=>wanted&&epoch===visibilityEpoch);
       if(aiChatAccount)await guest.openWorldAiChat(aiChatAccount,()=>wanted&&epoch===visibilityEpoch);
       return true;
