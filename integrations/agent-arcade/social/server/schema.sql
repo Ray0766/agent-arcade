@@ -223,6 +223,10 @@ CREATE TABLE IF NOT EXISTS message_bookmarks (
   UNIQUE(account,message)
 );
 CREATE INDEX IF NOT EXISTS message_bookmarks_page ON message_bookmarks(account,id);
+CREATE TABLE IF NOT EXISTS message_bookmark_notes (
+  bookmark INTEGER PRIMARY KEY REFERENCES message_bookmarks(id) ON DELETE CASCADE,
+  body TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS message_stickers (
   message INTEGER PRIMARY KEY REFERENCES message_images(message) ON DELETE CASCADE,
   label TEXT NOT NULL

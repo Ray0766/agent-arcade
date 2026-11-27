@@ -39,6 +39,20 @@ const feedAuthors=`WITH authors(number,kind) AS (
 const feedAuthorPosts=`FROM authors a JOIN friend_posts p ON p.author=a.number
   JOIN users u ON u.number=p.author AND u.kind=a.kind`;
 
+function canWriteBookmarkNote(message,body){
+  const kind=message.attachment?.type;
+  return kind==='image'||message.sender.kind==='human'&&(
+    kind==='voice'||kind==='file'||(!kind&&body.trim()&&!message.task&&!message.imageQuestion&&!message.webResults?.length));
+}
+const visibleMessageBookmarks=`FROM message_bookmarks b JOIN messages m ON m.id=b.message
+  JOIN members viewer ON viewer.chat=m.chat AND viewer.account=b.account
+    AND m.id>viewer.since AND m.removed=0`;
+const bookmarkSourceJoins=`JOIN chats c ON c.id=m.chat
+  LEFT JOIN users peer ON c.type='direct' AND peer.number=CASE WHEN c.first_user=b.account THEN c.second_user ELSE c.first_user END
+  LEFT JOIN friend_remarks r ON r.account=b.account AND r.friend=peer.number AND peer.kind='human'
+    AND NOT EXISTS (SELECT 1 FROM removed_friends WHERE chat=c.id)`;
+const bookmarkSourceColumns=`c.type AS chatType,coalesce(r.remark,peer.name,c.title) AS chatTitle,
+  peer.number AS peerNumber,peer.kind AS peerKind`;
 const savedStickerVisibility=`FROM saved_stickers s JOIN messages m ON m.id=s.message
   JOIN members viewer ON viewer.chat=m.chat AND viewer.account=s.account
   WHERE s.account=? AND m.removed=0 AND m.id>viewer.since`;
@@ -566,30 +580,89 @@ class SocialStore {
   removeSavedSticker(a,id) {
     this.run('DELETE FROM saved_stickers WHERE account=? AND id=?',a,id);
   }
-  saveMessageBookmark(a,chat,message) {
+  requireBookmarkSource(a,chat,message) {
     if(this.user(a).kind!=='human')fail(403,'bookmark_human_only','收藏夹仅供真人账号使用');
     const {since}=this.access(a,chat);
     const source=this.one('SELECT * FROM messages WHERE chat=? AND id=? AND id>? AND removed=0',chat,message,since);
     if(!source)fail(404,'bookmark_source','这条消息已不可查看');
     const row=this.message(source);
-    if(row.attachment?row.attachment.type!=='image':!row.text.trim()&&!row.webResults?.length)
-      fail(400,'bookmark_type','请选择文字、链接或图片消息');
+    const kind=row.attachment?.type;
+    const bookmarkable=kind==='image'||row.sender.kind==='human'&&(kind==='voice'||kind==='file');
+    if(kind?!bookmarkable:!row.text.trim()&&!row.webResults?.length)
+      fail(400,'bookmark_type','请选择文字、链接、图片、真人语音或文件消息');
+  }
+  saveMessageBookmark(a,chat,message) {
+    this.requireBookmarkSource(a,chat,message);
     this.run('INSERT INTO message_bookmarks(account,message) VALUES(?,?) ON CONFLICT(account,message) DO NOTHING',a,message);
     return {ok:true};
   }
-  messageBookmarkPage(a,before) {
+  messageBookmarkSource(a,{chat,chatType,chatTitle,peerNumber,peerKind}) {
+    const stable=peerKind==='ai'&&this.one('SELECT native FROM bothouse_native_numbers WHERE legacy=?',peerNumber)?.native;
+    return {conversationId:chat,title:chatTitle,type:chatType,
+      ...(peerNumber&&{peerNumber:stable||peerNumber})};
+  }
+  messageBookmarkSources(a) {
+    const rows=this.all(`SELECT m.chat,${bookmarkSourceColumns}
+      ${visibleMessageBookmarks} ${bookmarkSourceJoins}
+      WHERE b.account=? GROUP BY m.chat ORDER BY max(b.id) DESC`,a);
+    return {sources:rows.map(row=>this.messageBookmarkSource(a,row))};
+  }
+  messageBookmarkPage(a,before,keyword=null,bookmark=null,type=null,chat=null) {
     if(before!==null&&!isPostId(before))fail(400,'bookmark_cursor','收藏分页参数无效');
+    if(bookmark!==null&&!isPostId(bookmark))fail(400,'bookmark_cursor','收藏编号无效');
+    if(type!==null&&!['image','voice','file'].includes(type))fail(400,'bookmark_type','收藏筛选无效');
+    if(chat!==null&&(typeof chat!=='string'||!chat.trim()||chat.length>100))
+      fail(400,'bookmark_source','收藏来源无效');
+    const typeClause=type==='image'?"AND i.message IS NOT NULL AND m.body=''":
+      type==='voice'?"AND i.message IS NULL AND v.message IS NOT NULL AND sender.kind='human'":
+      type==='file'?'AND f.message IS NOT NULL':'';
+    const query=keyword===null?null:string(keyword,100,'搜索关键词');
     const limit=20;
-    const rows=this.all(`SELECT b.id AS bookmarkId,m.* FROM message_bookmarks b
-      JOIN messages m ON m.id=b.message
-      JOIN members viewer ON viewer.chat=m.chat AND viewer.account=b.account
-      WHERE b.account=? AND m.id>viewer.since AND m.removed=0 AND b.id<coalesce(?,9223372036854775807)
-      ORDER BY b.id DESC LIMIT ?`,a,before===null?null:Number(before),limit+1);
+    const rows=this.all(`SELECT b.id AS bookmarkId,m.*,n.body AS bookmarkNote,${bookmarkSourceColumns}
+      ${visibleMessageBookmarks} ${bookmarkSourceJoins}
+      JOIN users sender ON sender.number=m.sender
+      LEFT JOIN message_images i ON i.message=m.id
+      LEFT JOIN message_voices v ON v.message=m.id
+      LEFT JOIN message_files f ON f.message=m.id AND i.message IS NULL AND v.message IS NULL
+        AND m.body='' AND sender.kind='human'
+      LEFT JOIN message_bookmark_notes n ON n.bookmark=b.id
+      WHERE b.account=? AND b.id<coalesce(?,9223372036854775807) AND (? IS NULL OR b.id=?)
+      AND (? IS NULL OR m.chat=?)
+      ${typeClause}
+      AND (? IS NULL OR instr(lower(n.body),lower(?))>0 OR (
+        i.message IS NULL
+        AND (instr(lower(coalesce(f.name,m.body)),lower(?))>0 OR (
+          m.nonce LIKE 'ai-reply-%' AND EXISTS (
+            SELECT 1 FROM message_web_results w, json_each(w.sources) source
+            WHERE w.message=m.id AND (
+              instr(lower(json_extract(source.value,'$.title')),lower(?))>0 OR
+              instr(lower(json_extract(source.value,'$.url')),lower(?))>0
+            )
+          )
+        ))
+      ))
+      ORDER BY b.id DESC LIMIT ?`,a,before===null?null:Number(before),bookmark,bookmark,chat,chat,
+      query,query,query,query,query,limit+1);
     const bookmarks=rows.slice(0,limit).map(source=>{
-      const {id,conversationId,sender,text,createdAt,attachment,webResults}=this.message(source);
-      return {bookmarkId:source.bookmarkId,id,conversationId,sender:sender.displayName,text,createdAt,attachment,webResults};
+      const message=this.message(source);
+      const {id,conversationId,sender,text,createdAt,attachment,webResults}=message;
+      const {title:chatTitle}=this.messageBookmarkSource(a,source);
+      return {bookmarkId:source.bookmarkId,id,conversationId,chatTitle,sender:sender.displayName,text,createdAt,attachment,webResults,
+        ...(canWriteBookmarkNote(message,source.body)&&{noteEditable:true}),...(source.bookmarkNote&&{note:source.bookmarkNote})};
     });
     return {bookmarks,nextBefore:rows.length>limit?String(bookmarks.at(-1).bookmarkId):null};
+  }
+  writeMessageBookmarkNote(a,id,note){
+    if(typeof note!=='string'||!Number.isSafeInteger(id)||id<1)
+      fail(400,'bookmark_note','请选择一条支持备注的收藏并填写备注');
+    const value=note.trim()?string(note,100,'备注'):'';
+    const source=this.one(`SELECT m.* ${visibleMessageBookmarks} WHERE b.id=? AND b.account=?`,id,a);
+    if(!source)fail(404,'bookmark_source','收藏的原消息已不可查看');
+    if(!canWriteBookmarkNote(this.message(source),source.body))fail(404,'bookmark_source','收藏的原消息已不可查看');
+    if(value)this.run(`INSERT INTO message_bookmark_notes(bookmark,body) VALUES(?,?)
+      ON CONFLICT(bookmark) DO UPDATE SET body=excluded.body`,id,value);
+    else this.run('DELETE FROM message_bookmark_notes WHERE bookmark=?',id);
+    return {note:value};
   }
   removeMessageBookmark(a,id) {
     this.run('DELETE FROM message_bookmarks WHERE account=? AND id=?',a,id);

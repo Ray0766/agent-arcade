@@ -85,12 +85,18 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
     case 'GET me': return {user:store.profile(a)};
     case 'GET message-bookmarks':
       if(params.get('account')!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
-      return store.messageBookmarkPage(a,params.get('before'));
+      return store.messageBookmarkPage(a,params.get('before'),params.get('q'),params.get('id'),params.get('type'),params.get('chat'));
+    case 'GET message-bookmarks/sources':
+      if(params.get('account')!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
+      return store.messageBookmarkSources(a);
     case 'POST message-bookmarks/save':
       if(body.expectedAccount!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
       if(typeof body.chat!=='string'||!Number.isSafeInteger(body.message)||body.message<1)
         fail(400,'bookmark_type','请选择一条聊天消息');
       return store.saveMessageBookmark(a,body.chat,body.message);
+    case 'POST message-bookmarks/note':
+      if(body.expectedAccount!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
+      return store.writeMessageBookmarkNote(a,body.id,body.note);
     case 'POST message-bookmarks/remove':
       if(body.expectedAccount!==a)fail(409,'bookmark_session','账号已切换，请重新打开收藏夹');
       if(!Number.isSafeInteger(body.id)||body.id<1)fail(400,'bookmark_type','请选择一条收藏');

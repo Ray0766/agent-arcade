@@ -484,3 +484,11 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
   overflow-wrap: anywhere;
   min-width: 0;
 }
+
+.bookmark-source-filter { display:grid; gap:.25rem; margin-block:.5rem; }
+.bookmark-source-filter select { max-width:100%; }
+.bookmark-type-filters,.bookmark-actions { display:flex; flex-wrap:wrap; gap:.4rem; }
+.bookmark-type-filters button[aria-pressed=true] { color:var(--plum); background:var(--select); }
+.bookmark-note-editor:not([hidden]) { display:grid; gap:.4rem; width:100%; }
+.bookmark-note-editor label { display:grid; gap:.25rem; }
+.bookmark-photo-note { white-space:pre-wrap; overflow-wrap:anywhere; }
