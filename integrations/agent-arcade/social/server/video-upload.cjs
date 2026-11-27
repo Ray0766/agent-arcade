@@ -3,6 +3,7 @@
 const {fail}=require('./store.cjs');
 const {readAttachment}=require('./image-upload.cjs');
 const {uploadFileName}=require('./file-upload.cjs');
+const {inspectMp4}=require('./mp4-video.cjs');
 
 const invalid=()=>fail(422,'video_invalid','请选择含 VP8 画面和 Opus 声音的完整 WebM 短片');
 const limit=()=>fail(413,'video_limits','视频限 60 秒，画面最长边 4096 像素，最多 8847360 像素');
@@ -146,9 +147,9 @@ function inspectWebm(bytes){
 }
 function readVideoUpload(req){
   const name=uploadFileName(req);
-  return readAttachment(req,{kind:'video',formats:['video/webm'],maxBytes:16*1024*1024,
-    formatError:'目前支持 WebM（VP8 和 Opus）短视频',sizeError:'视频不能超过 16 MiB',
-    validate:bytes=>({...inspectWebm(bytes),name})});
+  return readAttachment(req,{kind:'video',formats:['video/webm','video/mp4'],maxBytes:16*1024*1024,
+    formatError:'请选择 H.264 和 AAC-LC 的 MP4 或 VP8 和 Opus 的 WebM',sizeError:'视频不能超过 16 MiB',
+    validate:(bytes,mime)=>({...((mime==='video/mp4'?inspectMp4:inspectWebm)(bytes)),name})});
 }
 
 module.exports={readVideoUpload,inspectWebm};

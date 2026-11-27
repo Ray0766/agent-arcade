@@ -236,7 +236,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS ai_image_pending ON ai_image_turns(chat) WHERE
 CREATE TABLE IF NOT EXISTS message_videos (
   message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
   name TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL,
-  duration_ms INTEGER NOT NULL, digest TEXT NOT NULL, bytes BLOB
+  duration_ms INTEGER NOT NULL, digest TEXT NOT NULL, bytes BLOB,
+  mime TEXT NOT NULL DEFAULT 'video/webm' CHECK(mime IN ('video/webm','video/mp4'))
 );
 CREATE TABLE IF NOT EXISTS message_files (
   message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,

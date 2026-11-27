@@ -3121,7 +3121,8 @@ function showOriginalImage(message) {
 function fileSize(bytes){
   return bytes.toLocaleString()+' 字节';
 }
-const chatVideoMime='video/webm';
+const chatVideoFormats=new Map([['mp4','video/mp4'],['webm','video/webm']]);
+const chatVideoSupport='MP4（H.264 + AAC-LC）或 WebM（VP8 + Opus）';
 const chatVideoLimit=16*1024*1024;
 function chatVideoLength(milliseconds){
   return (Math.round(milliseconds/100)/10).toLocaleString()+' 秒';
@@ -3148,9 +3149,10 @@ $('#attach-video')?.addEventListener('click',()=>chatVideoDialog());
 function chatVideoDialog(){
   if(!canSendChatVideo(conversation))return;
   const id=chat,account=user.number,visit=chatVisit,epoch=generation,revision=membershipRevision;
-  const field=el('label','选择 WebM 视频（最长 60 秒，最多 16 MiB）');
+  const field=el('label','选择短视频（最长 60 秒，最多 16 MiB）');
+  const formats=el('p','支持 '+chatVideoSupport+'。','minor');
   const input=el('input');
-  input.type='file';input.accept='.webm,video/webm';
+  input.type='file';input.accept='.mp4,video/mp4,.webm,video/webm';
   field.append(input);
   const preview=el('div',null,'chat-video-preview');
   const details=el('p',null,'chat-video-name');
@@ -3162,7 +3164,7 @@ function chatVideoDialog(){
   const controls=el('div',null,'actions');
   controls.append(cancel,send);
   send.disabled=true;
-  const scope=openDialog('发送短视频',[field,details,preview,status,controls],id);
+  const scope=openDialog('发送短视频',[field,formats,details,preview,status,controls],id);
   const current=()=>dialog.open&&scope===dialogGeneration&&visit===chatVisit&&epoch===generation&&
     user?.number===account&&routeId()===id&&membershipRevision===revision&&canSendChatVideo(conversation);
   dialogCleanup=()=>release?.();
@@ -3177,12 +3179,13 @@ function chatVideoDialog(){
     details.textContent='';
     const file=input.files[0];
     if(!file){status.textContent='';return;}
-    if(!/\.webm$/iu.test(file.name)||!file.size||file.size>chatVideoLimit){
-      status.textContent=file.size>chatVideoLimit?'这段视频超过 16 MiB。':'请选择可播放的 WebM 短视频。';
+    const mime=chatVideoFormats.get(file.name.split('.').at(-1).toLowerCase());
+    if(!mime||!file.name.includes('.')||!file.size||file.size>chatVideoLimit){
+      status.textContent=file.size>chatVideoLimit?'这段视频超过 16 MiB。':'请选择 '+chatVideoSupport+' 短片。';
       return;
     }
     const player=chatVideoPlayer('本地短视频预览');
-    const candidate={file,clientId:clientNonce(),ready:false};
+    const candidate={file,mime,clientId:clientNonce(),ready:false};
     selection=candidate;
     details.textContent=file.name;
     status.textContent='正在读取本地视频…';
@@ -3206,29 +3209,34 @@ function chatVideoDialog(){
       if(!active())return;
       candidate.ready=false;
       send.disabled=true;
-      status.textContent='这段 WebM 视频无法播放，请选择 VP8 / Opus 短片。';
+      status.textContent='这段视频无法预览。请选择 '+chatVideoSupport+' 短片。';
     });
     preview.append(player);
-    release=useChatVideo(player,file.slice(0,file.size,chatVideoMime));
+    release=useChatVideo(player,file.slice(0,file.size,mime));
   });
   async function sendVideo(){
     if(!current()||sending||!selection?.ready)return;
-    const {file,clientId}=selection;
+    const {file,mime,clientId}=selection;
     sending=input.disabled=send.disabled=cancel.disabled=true;
     status.textContent='正在发送视频…';
     preview.querySelector('video')?.pause();
     try{
       const result=await api(thread(id)+'/videos',file,{expectedAccount:account,
-        fileUpload:{name:file.name,clientId,revision,mime:chatVideoMime},timeoutMs:60000});
+        fileUpload:{name:file.name,clientId,revision,mime},timeoutMs:60000});
       if(!current())return;
       merge([result.message],'end');
       closeDialog();
       void sync();
     }catch(error){
       if(!current())return;
-      status.textContent=error.status===400||error.status===413||error.status===415||error.status===422?
-        '这段视频未能通过格式或大小检查，请换一段 VP8 / Opus WebM 短片。':textError(error);
-      send.textContent='重试发送';
+      if([400,413,415,422].includes(error.status)){
+        selection.ready=false;
+        status.textContent=error.status===413?'这段视频超过时长、画面尺寸或文件大小上限。':
+          '这段视频未通过格式检查。请选择 '+chatVideoSupport+' 短片。';
+      }else{
+        status.textContent=textError(error);
+        send.textContent='重试发送';
+      }
     }finally{
       sending=false;
       if(current())input.disabled=cancel.disabled=false;
@@ -3284,6 +3292,8 @@ async function openChatVideo(message){
     });
     if(!response.ok)throw Error('video_unavailable');
     const blob=await response.blob();
+    if(!Array.from(chatVideoFormats.values()).includes(blob.type)||
+       (message.attachment.mime&&message.attachment.mime!==blob.type))throw Error('video_unavailable');
     if(current())release=useChatVideo(player,blob);
   }catch{unavailable();}
 }
