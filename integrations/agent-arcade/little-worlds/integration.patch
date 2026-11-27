@@ -8,11 +8,12 @@ index 276fd324963f5d6c375d4fb5c7e71a2e85f9e047..de6a91eac554e31a505606b247481894
 +# Operator-installed Bothouse artwork has its own distribution terms.
 +/public/bothouse-art/
 diff --git a/ASSET-CREDITS.md b/ASSET-CREDITS.md
-index 95c6d02a4c10b9de7c542f53fcf28eb916e30454..bd3a7cf533c85f9d2eb98a086e5fcffe612c1255 100644
+index 95c6d02a4c10b9de7c542f53fcf28eb916e30454..1c1b8e6062fe0e806aa24b02a7a5c7e3bef08c9a 100644
 --- a/ASSET-CREDITS.md
 +++ b/ASSET-CREDITS.md
-@@ -2,2 +2,34 @@
- 
+@@ -1,5 +1,37 @@
+ # Asset provenance
+
 +## Kenney Furniture Kit 2.0 - private rooms
 +
 +Kenney's [Furniture Kit](https://kenney.nl/assets/furniture-kit) supplies
@@ -46,7 +47,29 @@ index 95c6d02a4c10b9de7c542f53fcf28eb916e30454..bd3a7cf533c85f9d2eb98a086e5fcffe
 +The village exterior reuses the original local cottage and lantern alongside fitted roof, timber, bench and sign meshes from the Kenney Fantasy Town Kit 2.0 (CC0). [Sources, author notice and reproducible extraction](src/assets/town-exterior/README.md).
 +
  ## R8 local workshop additions
-@@ -152 +184,20 @@ No terrain demo server patch or additional downloaded art was used.
+
+ The user-authorised Claude resource workspace supplies the 24 additional workshop
+@@ -35,6 +67,17 @@ scale. This is fictional orbital scenery, not a scientific Moon visualization.
+ The existing walkable terrain and saved placements are unchanged. NASA does not
+ endorse this project.
+
++## Traveller field uniform
++
++Original Little Worlds integration geometry in `src/client/character-sample.ts`.
++The player rig, hair options, coat colours and canvas satchel build on the
++pinned course courier. The adapted jacket, eye relief, sleeves, cuffs and hands
++are modeled in code from primitive meshes and garment profiles. The in-project
++resident costumes informed the layered collar and restrained eye proportions.
++This uniform adds no imported character, skin texture, skeleton or model pack.
++Three.js remains covered by the MIT notice below; existing course assets retain
++their original provenance.
++
+ ## Original procedural work
+
+ Ship mesh/panels/nozzles, roughness texture, engine effect, interface, distant dust
+@@ -150,3 +193,22 @@ No terrain demo server patch or additional downloaded art was used.
+ ## Original ambient music
+
  The optional background music is an original procedural bell/pad miniature implemented for Little Worlds in `src/client/ambient-music.ts`. Web Audio oscillators synthesize its notes locally; there are no sampled recordings, downloaded tracks, external audio services or new asset licences. Messenger is an atmosphere reference only; its music was not copied.
 +
 +## Bothouse residents on visited planets
@@ -342,33 +365,100 @@ index 4ac5126e36616101ce4acd38b28bcf638c114fd2..434dca5f7d35749a931c1732c274edb7
 +    return handle.object;
    }
 diff --git a/src/client/character-sample.ts b/src/client/character-sample.ts
-index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa95db123c1 100644
+index 9e2e1f9978b075934705f6aaaf25981ddaa57039..9b75f609ee57467ab6bdec74e82ca1c310082429 100644
 --- a/src/client/character-sample.ts
 +++ b/src/client/character-sample.ts
-@@ -14,3 +14,3 @@ const material=(color:string)=>{if(!materialCache.has(color)){const m=applyArtMa
+@@ -12,48 +12,119 @@ const sphere=()=>shared('sphere',()=>new T.SphereGeometry(1,12,8));
+ const capsule=()=>shared('capsule',()=>new T.CapsuleGeometry(1,1,3,8));
+ const material=(color:string)=>{if(!materialCache.has(color)){const m=applyArtMaterial(new T.MeshStandardMaterial({color,roughness:.9,metalness:0}));m.userData.sharedResource=true;materialCache.set(color,m);}return materialCache.get(color)!;};
  const eyeMaterial=new T.MeshStandardMaterial({vertexColors:true,roughness:.65,metalness:0});eyeMaterial.userData.sharedResource=true;
 -function eyeGeometry(color:string){return shared('eye:'+color,()=>{
-+function eyeGeometry(color:string,compact:boolean){return shared('eye:'+color+':'+compact,()=>{
-  const parts:Array<{color:string;scale:number[];position:number[]}>= [
-@@ -21,5 +21,8 @@ function eyeGeometry(color:string){return shared('eye:'+color,()=>{
+- const parts:Array<{color:string;scale:number[];position:number[]}>= [
++function eyeGeometry(color:string,compact:boolean,tailored:boolean){
++ return shared('eye:'+color+':'+compact+':'+tailored,()=>{
++ const parts:Array<{color:string;scale:number[];position:number[]}>= tailored ? [
++  {color:'#4a3432',scale:[.055,.026,.012],position:[0,.003,0]},
++  {color:'#f9eada',scale:[.050,.021,.011],position:[0,-.002,.005]},
++  {color,scale:[.023,.020,.008],position:[0,.001,.015]},
++  {color:'#26352f',scale:[.011,.015,.006],position:[0,.001,.020]},
++  {color:'#fffdf0',scale:[.005,.005,.004],position:[-.006,.008,.024]},
++ ] : [
+   {color:'#fff6e5',scale:[.060,.067,.023],position:[0,0,0]},
+   {color,scale:[.033,.044,.014],position:[0,-.003,.019]},
+   {color:'#26352f',scale:[.017,.031,.008],position:[0,-.003,.030]},
+   {color:'#fffdf0',scale:[.008,.010,.005],position:[-.010,.015,.037]},
   ];
 - const geometries=parts.map(p=>{const g=new T.SphereGeometry(1,10,6);g.scale(p.scale[0],p.scale[1],p.scale[2]);g.translate(p.position[0],p.position[1],p.position[2]);const c=new T.Color(p.color),values=new Float32Array(g.attributes.position.count*3);for(let i=0;i<values.length;i+=3)values.set([c.r,c.g,c.b],i);g.setAttribute('color',new T.BufferAttribute(values,3));return g;});const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());return merged;
 + const geometries=parts.map(p=>{const g=new T.SphereGeometry(1,compact?4:10,compact?3:6);g.scale(p.scale[0],p.scale[1],p.scale[2]);g.translate(p.position[0],p.position[1],p.position[2]);const c=new T.Color(p.color),values=new Float32Array(g.attributes.position.count*3);for(let i=0;i<values.length;i+=3)values.set([c.r,c.g,c.b],i);g.setAttribute('color',new T.BufferAttribute(values,3));return g;});const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());return merged;
   });}
 -export function sampleCourier(identity:Character,options:Appearance={...defaultAppearance(identity),model:'sample'}){
-+export function sampleCourier(identity:Character,options:Appearance={...defaultAppearance(identity),model:'sample'},townCoat?:string){
-+ const compact=townCoat!==undefined;
++function garmentProfile(key:string,rings:readonly (readonly [number,number])[]){
++ return shared(key,()=>new T.LatheGeometry(rings.map(([radius,y])=>new T.Vector2(radius,y)),16));
++}
++const jacket=()=>garmentProfile('courier-jacket',[
++ [0,-.244],[.177,-.244],[.210,-.225],[.211,-.190],[.197,-.113],
++ [.191,-.024],[.207,.075],[.213,.134],[.196,.181],[.145,.205],[.092,.240],[0,.240],
++]);
++const upperSleeve=()=>garmentProfile('courier-upper-sleeve',[
++ [0,-.260],[.058,-.243],[.065,-.214],[.071,-.145],[.078,-.074],
++ [.085,-.021],[.082,.018],[.055,.056],[0,.068],
++]);
++const lowerSleeve=()=>garmentProfile('courier-lower-sleeve',[
++ [0,-.185],[.047,-.185],[.051,-.150],[.059,-.085],[.064,-.040],[.061,.003],[.043,.031],[0,.041],
++]);
++const cuff=()=>garmentProfile('courier-cuff',[
++ [0,-.020],[.048,-.020],[.055,-.015],[.056,.012],[.050,.019],[0,.019],
++]);
++const lapel=()=>shared('courier-lapel',()=>{
++ const shape=new T.Shape();
++ shape.moveTo(.032,.194);shape.lineTo(.100,.211);shape.lineTo(.128,.137);
++ shape.lineTo(.112,.104);shape.lineTo(.037,.139);shape.closePath();
++ return new T.ExtrudeGeometry(shape,{depth:.009,bevelEnabled:false});
++});
++export function sampleCourier(identity:Character,options:Appearance={...defaultAppearance(identity),model:'sample'},townCoat?:string,traveller=false){
++ const compact=townCoat!==undefined, tailored=traveller&&!compact;
 + const sphereGeometry=()=>compact?shared('town-sphere',()=>new T.SphereGeometry(1,6,4)):sphere();
 + const capsuleGeometry=()=>compact?shared('town-capsule',()=>new T.CapsuleGeometry(1,1,2,5)):capsule();
   const root=new T.Group(),rig=new T.Group(),torso=new T.Group(),head=new T.Group();root.name='little-worlds-traveller';root.userData.characterVariant='sample';root.add(rig);rig.add(torso);torso.position.y=.87;
-@@ -27,4 +30,4 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  const tinted:T.Mesh[]=[];
   const add=(parent:T.Object3D,g:T.BufferGeometry,color:string,position:number[],scale:number[],tint=false)=>{const mesh=new T.Mesh(g,material(color));mesh.position.fromArray(position);mesh.scale.fromArray(scale);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);if(tint)tinted.push(mesh);return mesh;};
 - const ellipsoid=(p:T.Object3D,color:string,pos:number[],scale:number[],tint=false)=>add(p,sphere(),color,pos,scale,tint);
 - const coat=COURIER_LOOK.coats[identity],skin=SKIN_COLORS[options.skin],hair='#504338',cream='#f3e8ce',dark='#405653',leather='#865e43';
+- // Soft fitted jacket, curved hem, open cream collar and modest scarf.
+- ellipsoid(torso,coat,[0,.01,0],[.215,.29,.15],true);
+- add(torso,shared('hem',()=>new T.CylinderGeometry(.19,.23,.12,12)),coat,[0,-.20,0],[1,1,.74],true);
+- ellipsoid(torso,cream,[0,.20,.095],[.14,.10,.08]);
+- const scarf=ellipsoid(torso,'#d7b766',[.055,.16,.17],[.06,.09,.025]);scarf.rotation.z=-.3;
+- ellipsoid(torso,leather,[0,-.16,.151],[.205,.025,.022]);
+- ellipsoid(torso,'#dac794',[.035,-.16,.173],[.028,.024,.01]);
 + const ellipsoid=(p:T.Object3D,color:string,pos:number[],scale:number[],tint=false)=>add(p,sphereGeometry(),color,pos,scale,tint);
 + const coat=townCoat??COURIER_LOOK.coats[identity],skin=SKIN_COLORS[options.skin],hair='#504338',cream='#f3e8ce',dark='#405653',leather='#865e43';
-  // Soft fitted jacket, curved hem, open cream collar and modest scarf.
-@@ -37,6 +40,8 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
++ // The lined field jacket follows the same torso and parcel anchors.
++ if(tailored){
++  add(torso,jacket(),coat,[0,0,0],[1,1,.73],true);
++  ellipsoid(torso,skin,[0,.245,.014],[.084,.076,.081]);
++  ellipsoid(torso,cream,[0,.204,.047],[.131,.060,.107]);
++  for(const side of [-1,1]){
++   const fold=add(torso,lapel(),cream,[0,0,.148],[1,1,1]);
++   fold.scale.x=side;
++  }
++  const placket=ellipsoid(torso,'#61423c',[0,-.031,.143],[.014,.164,.020]);
++  placket.rotation.z=-.055;
++  for(const y of [.039,-.043,-.119])ellipsoid(torso,'#d2ac69',[.004,y,.162],[.010,.010,.009]);
++  const badge=add(torso,shared('courier-mail-badge',()=>new T.BoxGeometry(.061,.039,.007)),cream,[.098,.076,.142],[1,1,1]);
++  badge.rotation.y=.37;
++  for(const side of [-1,1]){
++   const seam=add(badge,shared('courier-mail-seam',()=>new T.BoxGeometry(.030,.004,.002)),'#a37249',[side*.012,.004,.004],[1,1,1]);
++   seam.rotation.z=side*.42;
++  }
++ }else{
++  ellipsoid(torso,coat,[0,.01,0],[.215,.29,.15],true);
++  add(torso,shared('hem',()=>new T.CylinderGeometry(.19,.23,.12,12)),coat,[0,-.20,0],[1,1,.74],true);
++  ellipsoid(torso,cream,[0,.20,.095],[.14,.10,.08]);
++  const scarf=ellipsoid(torso,'#d7b766',[.055,.16,.17],[.06,.09,.025]);scarf.rotation.z=-.3;
++  ellipsoid(torso,leather,[0,-.16,.151],[.205,.025,.022]);
++  ellipsoid(torso,'#dac794',[.035,-.16,.173],[.028,.024,.01]);
++ }
   // Diagonal strap and a rounded canvas field bag, visible from the follow view.
 - const strap=add(torso,shared('strap',()=>new T.BoxGeometry(.035,.48,.025)),leather,[0,.01,-.145],[1,1,1]);strap.rotation.z=-.48;
 - ellipsoid(torso,'#b69363',[-.16,-.10,-.15],[.135,.16,.07]);
@@ -376,31 +466,83 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 - ellipsoid(torso,leather,[-.16,-.075,-.229],[.018,.035,.008]);
 + if(!compact){
 +  const strap=add(torso,shared('strap',()=>new T.BoxGeometry(.035,.48,.025)),leather,[0,.01,-.145],[1,1,1]);strap.rotation.z=-.48;
++  if(tailored){
++   const front=add(torso,shared('courier-front-strap',()=>new T.BoxGeometry(.022,.37,.013)),leather,[-.050,.010,.151],[1,1,1]);
++   front.rotation.z=-.53;
++  }
 +  ellipsoid(torso,'#b69363',[-.16,-.10,-.15],[.135,.16,.07]);
 +  ellipsoid(torso,cream,[-.16,-.045,-.204],[.123,.055,.028]);
 +  ellipsoid(torso,leather,[-.16,-.075,-.229],[.018,.035,.008]);
 + }
   // Head: softer jaw, ears, clear eyes and a sculpted side-swept hair silhouette.
-@@ -44,3 +49,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  torso.add(head);head.position.set(0,.47,.005);
   head.scale.fromArray(options.face==='oval'?[.92,1.08,.98]:options.face==='round'?[1.06,.95,1.04]:[1,1,1]);
 - add(head,shared('head',()=>new T.SphereGeometry(1,16,12)),skin,[0,0,0],[.215,.235,.195]);
-+ add(head,compact?shared('town-head',()=>new T.SphereGeometry(1,8,6)):shared('head',()=>new T.SphereGeometry(1,16,12)),skin,[0,0,0],[.215,.235,.195]);
-  ellipsoid(head,skin,[0,-.10,.05],[.17,.14,.15]);
-@@ -51,3 +56,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+- ellipsoid(head,skin,[0,-.10,.05],[.17,.14,.15]);
++ add(head,compact?shared('town-head',()=>new T.SphereGeometry(1,8,6)):shared('head',()=>new T.SphereGeometry(1,16,12)),skin,[0,0,0],tailored?[.210,.229,.189]:[.215,.235,.195]);
++ ellipsoid(head,skin,tailored?[0,-.074,.037]:[0,-.10,.05],tailored?[.164,.147,.150]:[.17,.14,.15]);
+  for(const side of [-1,1]){
+-  ellipsoid(head,skin,[side*.208,-.015,0],[.040,.066,.035]);
++  ellipsoid(head,skin,[side*.208,-.015,0],tailored?[.032,.055,.030]:[.040,.066,.035]);
+   ellipsoid(head,new T.Color(skin).multiplyScalar(.75).getStyle(),[side*.225,-.018,.017],[.015,.036,.016]);
+-  ellipsoid(head,new T.Color(skin).lerp(new T.Color('#c46d64'),.3).getStyle(),[side*.123,-.075,.161],[.044,.020,.012]);
++  if(!tailored)ellipsoid(head,new T.Color(skin).lerp(new T.Color('#c46d64'),.3).getStyle(),[side*.123,-.075,.161],[.044,.020,.012]);
++ }
++ const eyes=[-1,1].map(side=>{
++  const eye=new T.Mesh(eyeGeometry(EYE_COLORS[options.eyes],compact,tailored),eyeMaterial);
++  eye.position.set(side*(tailored?.079:.078),tailored?.009:.015,tailored?.179:.173);
++  eye.rotation.y=side*(tailored?.27:.13);
++  eye.rotation.z=tailored?side*.09:0;
++  head.add(eye);return eye;
++ });
++ for(const side of [-1,1]){
++  const brow=ellipsoid(head,hair,[side*.081,tailored?.056:.093,tailored?.178:.169],tailored?[.044,.008,.008]:[.059,.014,.013]);
++  brow.rotation.y=tailored?side*.24:0;
++  brow.rotation.z=side*.10;
   }
 - const eyes=[-1,1].map(side=>{const eye=new T.Mesh(eyeGeometry(EYE_COLORS[options.eyes]),eyeMaterial);eye.position.set(side*.078,.015,.173);eye.rotation.y=side*.13;head.add(eye);return eye;});
-+ const eyes=[-1,1].map(side=>{const eye=new T.Mesh(eyeGeometry(EYE_COLORS[options.eyes],compact),eyeMaterial);eye.position.set(side*.078,.015,.173);eye.rotation.y=side*.13;head.add(eye);return eye;});
-  for(const side of [-1,1]){const brow=ellipsoid(head,hair,[side*.081,.093,.169],[.059,.014,.013]);brow.rotation.z=side*.10;}
-@@ -55,3 +60,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
-  const mouth=shared('smile',()=>new T.TubeGeometry(new T.QuadraticBezierCurve3(new T.Vector3(-.041,-.121,.172),new T.Vector3(0,-.140,.180),new T.Vector3(.041,-.121,.172)),8,.007,4,false));add(head,mouth,'#956b5a',[0,0,0],[1,1,1]);
+- for(const side of [-1,1]){const brow=ellipsoid(head,hair,[side*.081,.093,.169],[.059,.014,.013]);brow.rotation.z=side*.10;}
+- ellipsoid(head,skin,[0,-.038,.199],[.027,.040,.029]);
+- const mouth=shared('smile',()=>new T.TubeGeometry(new T.QuadraticBezierCurve3(new T.Vector3(-.041,-.121,.172),new T.Vector3(0,-.140,.180),new T.Vector3(.041,-.121,.172)),8,.007,4,false));add(head,mouth,'#956b5a',[0,0,0],[1,1,1]);
 - const cap=add(head,shared('hair-cap',()=>new T.SphereGeometry(1,16,9,0,Math.PI*2,0,1.70)),hair,[0,.04,-.025],[.232,.237,.213]);
++ ellipsoid(head,skin,tailored?[0,-.045,.184]:[0,-.038,.199],tailored?[.026,.027,.026]:[.027,.040,.029]);
++ const mouth=tailored
++  ?shared('courier-smile',()=>new T.TubeGeometry(new T.QuadraticBezierCurve3(new T.Vector3(-.031,-.111,.181),new T.Vector3(0,-.127,.183),new T.Vector3(.031,-.111,.181)),8,.0045,5,false))
++  :shared('smile',()=>new T.TubeGeometry(new T.QuadraticBezierCurve3(new T.Vector3(-.041,-.121,.172),new T.Vector3(0,-.140,.180),new T.Vector3(.041,-.121,.172)),8,.007,4,false));
++ add(head,mouth,'#956b5a',[0,0,0],[1,1,1]);
 + const cap=add(head,compact?shared('town-hair-cap',()=>new T.SphereGeometry(1,8,5,0,Math.PI*2,0,1.70)):shared('hair-cap',()=>new T.SphereGeometry(1,16,9,0,Math.PI*2,0,1.70)),hair,[0,.04,-.025],[.232,.237,.213]);
   if(options.hair==='swept'){
-@@ -67,9 +72,17 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
-  // Articulated limbs reuse shared low-resolution geometry and existing game API.
+   for(const [x,y,z,sx,sy,sz,rotation] of [[-.115,.148,.147,.117,.087,.062,-.58],[.008,.185,.145,.118,.068,.061,-.4],[.12,.19,.102,.105,.068,.071,.20]]){const lock=ellipsoid(head,hair,[x,y,z],[sx,sy,sz]);lock.rotation.z=rotation;}
+   for(const side of [-1,1]){const lock=ellipsoid(head,hair,[side*.196,.042,-.025],[.055,.145,.115]);lock.rotation.z=-side*.12;}
+@@ -64,21 +135,49 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+   ellipsoid(head,hair,[0,-.05,-.13],[.208,.21,.11]);
+   for(const side of [-1,1]){const lock=ellipsoid(head,hair,[side*.194,-.055,-.025],[.067,.205,.126]);lock.rotation.z=-side*.08;const fringe=ellipsoid(head,hair,[side*.113,.137,.155],[.112,.075,.05]);fringe.rotation.z=side*.38;}
+  }
+- // Articulated limbs reuse shared low-resolution geometry and existing game API.
 - const arms=[-1,1].map(side=>{const upper=new T.Group(),forearm=new T.Group();torso.add(upper);upper.position.set(side*.225,.16,0);ellipsoid(upper,coat,[side*.014,-.085,0],[.085,.145,.085],true);upper.add(forearm);forearm.position.y=-.22;add(forearm,capsule(),coat,[0,-.085,0],[.061,.067,.061],true);ellipsoid(forearm,cream,[0,-.17,0],[.066,.025,.066]);ellipsoid(forearm,skin,[0,-.226,.014],[.059,.069,.056]);return{upper,forearm};});
 - const legs=[-1,1].map(side=>{const hip=new T.Group(),knee=new T.Group();rig.add(hip);hip.position.set(side*.102,.65,0);add(hip,capsule(),dark,[0,-.125,0],[.081,.09,.078]);hip.add(knee);knee.position.y=-.25;add(knee,capsule(),dark,[0,-.115,0],[.064,.085,.064]);ellipsoid(knee,leather,[0,-.28,.040],[.091,.076,.144]);ellipsoid(knee,'#c8ae82',[0,-.33,.042],[.094,.018,.142]);return{hip,knee};});
-+ const arms=[-1,1].map(side=>{const upper=new T.Group(),forearm=new T.Group();torso.add(upper);upper.position.set(side*.225,.16,0);ellipsoid(upper,coat,[side*.014,-.085,0],[.085,.145,.085],true);upper.add(forearm);forearm.position.y=-.22;add(forearm,capsuleGeometry(),coat,[0,-.085,0],[.061,.067,.061],true);ellipsoid(forearm,cream,[0,-.17,0],[.066,.025,.066]);ellipsoid(forearm,skin,[0,-.226,.014],[.059,.069,.056]);return{upper,forearm};});
++ // Sleeve and elbow volumes intersect around the existing joint pivots.
++ const arms=[-1,1].map(side=>{
++  const upper=new T.Group(),forearm=new T.Group();
++  torso.add(upper);upper.position.set(side*.225,.16,0);
++  upper.add(forearm);forearm.position.y=-.22;
++  if(tailored){
++   add(upper,upperSleeve(),coat,[0,0,0],[1,1,.94],true);
++   ellipsoid(forearm,coat,[0,.004,0],[.062,.065,.058],true);
++   add(forearm,lowerSleeve(),coat,[0,0,0],[1,1,.92],true);
++   add(forearm,cuff(),cream,[0,-.176,0],[1,1,.90]);
++   const palm=ellipsoid(forearm,skin,[-side*.006,-.220,.009],[.044,.060,.038]);
++   palm.rotation.z=-side*.13;
++   const thumb=ellipsoid(forearm,skin,[-side*.034,-.213,.019],[.021,.036,.029]);
++   thumb.rotation.z=-side*.38;
++  }else{
++   ellipsoid(upper,coat,[side*.014,-.085,0],[.085,.145,.085],true);
++   add(forearm,capsuleGeometry(),coat,[0,-.085,0],[.061,.067,.061],true);
++   ellipsoid(forearm,cream,[0,-.17,0],[.066,.025,.066]);
++   ellipsoid(forearm,skin,[0,-.226,.014],[.059,.069,.056]);
++  }
++  return{upper,forearm};
++ });
 + const legs=[-1,1].map(side=>{const hip=new T.Group(),knee=new T.Group();rig.add(hip);hip.position.set(side*.102,.65,0);add(hip,capsuleGeometry(),dark,[0,-.125,0],[.081,.09,.078]);hip.add(knee);knee.position.y=-.25;add(knee,capsuleGeometry(),dark,[0,-.115,0],[.064,.085,.064]);ellipsoid(knee,leather,[0,-.28,.040],[.091,.076,.144]);ellipsoid(knee,'#c8ae82',[0,-.33,.042],[.094,.018,.142]);return{hip,knee};});
   const parcel=add(torso,shared('parcel',()=>new T.BoxGeometry(.34,.23,.24)),'#c6a36e',[0,-.10,.29],[1,1,1]);parcel.visible=false;
   const seal=ellipsoid(parcel,cream,[0,.045,.125],[.07,.026,.006]);seal.castShadow=false;
@@ -418,11 +560,16 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  if(shadow)shadow.visible=false;
 + },animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){
    const dt=Math.min(.05,Math.max(0,t-lastTime));lastTime=t;const stride=Math.min(1,speed/3);gait+=dt*speed*4.4;const phase=reduced?0:gait;
-@@ -80,3 +93,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+   rig.position.y=reduced?0:Math.abs(Math.sin(phase))*.018*stride;torso.rotation.set(reduced?0:.035*stride,0,reduced?0:Math.sin(phase)*.025*stride-turn*.035);
+   head.rotation.y=reduced?0:Math.sin(t*.65)*.045*(1-stride);head.rotation.z=reduced?0:Math.sin(t*.45)*.012;
+   const blink=reduced?1:(t%5.3>.08&&t%5.3<.20?.08:1);eyes.forEach(e=>e.scale.y=blink);
+   legs.forEach((leg,i)=>{const s=Math.sin(phase+i*Math.PI);leg.hip.rotation.x=s*.50*stride;leg.knee.rotation.x=Math.max(0,-s)*.62*stride;});
    arms.forEach((arm,i)=>{arm.upper.rotation.set(parcel.visible?-.92:-Math.sin(phase+i*Math.PI)*.35*stride,0,(i?1:-1)*.09);arm.forearm.rotation.x=parcel.visible?-.72:-.18;});
 -  shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
+  }};
+ }
 diff --git a/src/client/colony.ts b/src/client/colony.ts
 index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f1955aa0a0f2 100644
 --- a/src/client/colony.ts
@@ -2553,14 +2700,22 @@ index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..faf4192aa5083eaa2d78bc191a82f0b2
 +.interaction[data-bench-rest] #interact:not([hidden]),#visitor-bench-choice{min-height:44px}
 +@media(max-width:600px){#visitor-bench-choice{margin-top:6px}}
 diff --git a/src/client/character.ts b/src/client/character.ts
-index 2397a4bbd91144e845c1c8a6d9112c5559508622..518a41790130ba41a6ad6ae44a698f27b3eb1f88 100644
+index 2397a4bbd91144e845c1c8a6d9112c5559508622..2990ce37df28e47135ea777e87b214f127145c37 100644
 --- a/src/client/character.ts
 +++ b/src/client/character.ts
-@@ -15,3 +15,3 @@ export function courier(identity:Character|'mica'|'sol',initial?:Appearance){
+@@ -9,10 +9,10 @@ export const PALETTES=COURIER_LOOK.coats;
+ export function courier(identity:Character|'mica'|'sol',initial?:Appearance){
+  const named=identity==='mica'||identity==='sol',coat=named?(identity==='mica'?'clay':'sky'):identity;
+  let options:Appearance={...(initial??defaultAppearance(coat)),model:'sample'};
+- const make=()=>sampleCourier(options.coat,options);let body=make();const root=new T.Group();root.add(body.root);
++ const make=()=>sampleCourier(options.coat,options,undefined,!named);let body=make();const root=new T.Group();root.add(body.root);
+  const publish=()=>{root.userData.characterVariant='sample';root.userData.appearance={...options};};publish();
+  return{root,get head(){return body.head;},get parcel(){return body.parcel;},
    setAppearance(next:Appearance){next={...next,model:'sample'};if(named||appearanceKey(next)===appearanceKey(options))return false;const carrying=body.parcel.visible;disposeGeometry(body.root);options={...next};body=make();body.parcel.visible=carrying;root.add(body.root);publish();return true;},
 -  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
 +  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},sit(){body.sit();},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
   };
+ }
 diff --git a/src/client/photo-mode.ts b/src/client/photo-mode.ts
 index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..b827ccc218a09106f5a68c9da855fa10b73cc7eb 100644
 --- a/src/client/photo-mode.ts
