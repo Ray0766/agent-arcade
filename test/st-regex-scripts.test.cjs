@@ -150,7 +150,15 @@ test('input and output caps',()=>{
   // 3000 matches x 100 characters would exceed the output cap: the script and those after it stop.
   const grow=run('a'.repeat(3000),[S('/^a/','b'),S('/a/g','x'.repeat(100)),S('b','c')]);
   assert.equal(grow.text,'b'+'a'.repeat(2999));assert.equal(grow.applied.length,1);assert.match(grow.warnings[0],/beyond 200000 characters/);
-  assert.match(run('a'.repeat(20000),S('/(?:)/g','')).warnings[0],/matched more than 10000 times/);
   const many=Array.from({length:101},(_,index)=>S('a','a',{scriptName:'n'+index}));
   assert.match(run('a',many).warnings[0],/Only the first 100/);
+});
+
+test('zero-width matches respect the match cap', () => {
+  // Give the count check its own watchdog so it does not race the production time limit.
+  const atLimit = guardedMatches(/(?:)/g, 'a'.repeat(LIMITS.matches - 1), 1000, LIMITS.matches);
+  assert.equal(atLimit.done, true);
+  assert.equal(atLimit.matches.length, LIMITS.matches);
+  const overLimit = guardedMatches(/(?:)/g, 'a'.repeat(LIMITS.matches), 1000, LIMITS.matches);
+  assert.equal(overLimit.tooMany, true);
 });
