@@ -478,7 +478,8 @@ class SocialStore {
     const webResults=!r.removed&&r.nonce.startsWith('ai-reply-')&&
       this.one('SELECT sources FROM message_web_results WHERE message=?',r.id)?.sources;
     const recalled=r.removed&&this.one('SELECT 1 FROM recalled_message_text WHERE message=?',r.id);
-    return {id:r.id, conversationId:r.chat, sender:this.messagePerson(r.sender), clientId:r.nonce,
+    const isCorrection=!r.removed&&this.one('SELECT 1 FROM message_corrections WHERE message=?',r.id);
+    return {id:r.id, ...(isCorrection&&{isCorrection:true}), conversationId:r.chat, sender:this.messagePerson(r.sender), clientId:r.nonce,
       ...(recalled&&{recalled:true}),
       ...(webResults&&{webResults:JSON.parse(webResults)}),
       text:r.removed ? (recalled?'[已撤回]':'[已移除]') : image?(drawing!==null?'[AI 绘图]':label?'[表情图]':'[图片]'):voice?'[语音]':file?'[文件] '+file.name:r.body,
@@ -735,11 +736,12 @@ class SocialStore {
     }
     const query=string(params.get('q'),100,'搜索关键词');
     const before=readId('before',Number.MAX_SAFE_INTEGER), limit=20;
-    const matches=this.all(`SELECT m.id,m.body AS text,m.created AS createdAt,u.name AS sender
+    const matches=this.all(`SELECT m.id,m.body AS text,m.created AS createdAt,u.name AS sender,
+      EXISTS(SELECT 1 FROM message_corrections WHERE message=m.id) AS isCorrection
       FROM messages m JOIN users u ON u.number=m.sender
       WHERE m.chat=? AND m.id>? AND m.id<? AND m.removed=0 AND instr(lower(m.body),lower(?))>0
       ORDER BY m.id DESC LIMIT ?`,id,chat.since,before,query,limit+1);
-    const results=matches.slice(0,limit);
+    const results=matches.slice(0,limit).map(({isCorrection,...row})=>isCorrection?{...row,isCorrection:true}:row);
     return {...scope,results,next:matches.length>limit?results.at(-1).id:null};
   }
   historyPage(a,id,params) {
@@ -825,7 +827,11 @@ class SocialStore {
       since,id,since,...messages.map(message=>message.id));
     const quotes=new Map(rows.map(row=>[row.message,row.id===null?{unavailable:true}:
       {id:row.id,name:row.name,text:row.text}]));
-    return messages.map(message=>quotes.has(message.id)?{...message,quote:quotes.get(message.id)}:message);
+    const corrections=this.correctionTargets(a,id,messages.filter(row=>row.recalled).map(row=>row.id));
+    return messages.map(message=>{
+      if(corrections[message.id])return {...message,correctionId:corrections[message.id]};
+      return quotes.has(message.id)?{...message,quote:quotes.get(message.id)}:message;
+    });
   }
   messageRecallSource(a,id,message,{expectedAccount,revision}){
     if(expectedAccount!==a)fail(409,'recall_session','账号或会话权限已变更，请重新打开会话');
@@ -859,11 +865,40 @@ class SocialStore {
     if(!row)fail(404,'unknown_message','没有找到该消息');
     return row;
   }
+  correctionTargets(account,id,originals){
+    if(!originals.length)return {};
+    const rows=this.all(`SELECT old.id AS original,max(replacement.id) AS correction
+      FROM message_corrections relation
+      JOIN messages old ON old.id=relation.original AND old.removed=1
+      JOIN members viewer ON viewer.account=? AND viewer.chat=old.chat AND old.id>viewer.since
+      JOIN messages replacement ON replacement.id=relation.message AND replacement.chat=old.chat
+        AND replacement.sender=old.sender AND replacement.id>viewer.since AND replacement.removed=0
+      WHERE old.chat=? AND old.id IN (${originals.map(()=>'?').join(',')})
+      GROUP BY old.id`,account,id,...originals);
+    return Object.fromEntries(rows.map(({original,correction})=>[original,correction]));
+  }
+  requireCorrectionSource(account,id,body){
+    const {correctionOf,expectedAccount,membershipRevision}=body;
+    if(Object.keys(body).some(key=>!['correctionOf','expectedAccount','membershipRevision','clientId','text'].includes(key)))
+      fail(400,'correction_source','请发送一条独立的普通文字订正');
+    const source=this.messageRecallSource(account,id,correctionOf,{expectedAccount,revision:membershipRevision});
+    if(!source.removed||!this.one('SELECT 1 FROM recalled_message_text WHERE message=?',source.id))
+      fail(404,'correction_source','这条已撤回的普通文字不可订正');
+    // A database from a build with structured cards can contain archived card labels.
+    // Only these known card tables participate; older databases have none of them.
+    for(const table of ['group_preparations','group_message_events','group_message_polls','message_self_cards']){
+      if(this.one("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?",table)&&
+          this.one('SELECT 1 FROM '+table+' WHERE message=?',source.id))
+        fail(404,'correction_source','这条已撤回的普通文字不可订正');
+    }
+    return source.id;
+  }
   send(a,id,body,onInsert) {
     const chat = this.writableChat(a,id);
     if(body.membershipRevision!==undefined&&body.membershipRevision!==chat.membershipRevision)
       fail(409,'recall_session','账号或会话权限已变更，请重新打开会话');
     if (typeof body.clientId !== 'string' || !/^[a-zA-Z0-9_-]{8,100}$/.test(body.clientId)) fail(400,'client_id','消息重试编号无效');
+    const correctionOf=body.correctionOf===undefined?null:this.requireCorrectionSource(a,id,body);
     // Only a trusted AI sender may add a brief delivery note to the original reply.
     const text = string(body.text,body.text?.length>4000&&this.user(a).kind==='ai'?4096:4000,'消息');
     const original=body.replyTo===undefined?null:body.replyTo;
@@ -874,15 +909,20 @@ class SocialStore {
     if (old) {
       const oldMention=this.one('SELECT account FROM message_mentions WHERE message=?',old.id)?.account??null;
       const previous=this.one('SELECT original FROM message_replies WHERE message=?',old.id)?.original??null;
-      if (old.id <= chat.since || old.body !== text || oldMention!==mentionAccount || previous!==original) fail(409,'message_conflict','此编号已被使用');
+      const previousCorrection=this.one('SELECT original FROM message_corrections WHERE message=?',old.id)?.original??null;
+      if (old.id <= chat.since || old.body !== text || oldMention!==mentionAccount ||
+        previous!==original || previousCorrection!==correctionOf) fail(409,'message_conflict','此编号已被使用');
       return this.message(old);
     }
+    if(correctionOf!==null&&this.correctionTargets(a,id,[correctionOf])[correctionOf])
+      fail(409,'correction_exists','这条消息已有可查看的订正');
     if(original!==null&&!this.one('SELECT 1 FROM messages WHERE id=? AND chat=? AND id>? AND removed=0',original,id,chat.since))
       fail(409,'reply_unavailable','原消息已移除或不可查看。可取消引用后发送。');
     if(mentionAccount&&(chat.type!=='group'||this.user(a).kind!=='human'||
        !this.one('SELECT 1 FROM members WHERE chat=? AND account=?',id,mentionAccount)))
       fail(403,'mention_unavailable','点名对象需要是当前群成员');
     const row = this.run('INSERT INTO messages(chat,sender,nonce,body,created) VALUES(?,?,?,?,?)',id,a,body.clientId,text,now());
+    if(correctionOf!==null)this.run('INSERT INTO message_corrections(message,original) VALUES(?,?)',row.lastInsertRowid,correctionOf);
     if(original!==null)this.run('INSERT INTO message_replies(message,original) VALUES(?,?)',row.lastInsertRowid,original);
     if(mentionAccount)this.run('INSERT INTO message_mentions VALUES(?,?)',row.lastInsertRowid,mentionAccount);
     const message=this.message(this.one('SELECT * FROM messages WHERE id=?',row.lastInsertRowid));
