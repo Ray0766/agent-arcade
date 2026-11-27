@@ -8,6 +8,14 @@ button,input,textarea{font:inherit}button{cursor:pointer;color:inherit;backgroun
 form:not(.composer){display:grid;gap:13px}label{display:grid;gap:.38rem;font-weight:600;font-size:.92rem}label small{color:var(--muted);font-weight:400}
 input:not([type=checkbox]),textarea{width:100%;min-width:0;min-height:44px;background:var(--paper);border:1px solid #d8cadb;border-radius:12px;color:var(--ink);padding:.65rem .75rem;font-size:1rem}
 .workspace{display:grid;grid-template-columns:76px clamp(224px,27vw,306px) minmax(0,1fr);height:100dvh;overflow:hidden}
+body:has(> #group-voice-notice:not([hidden])) {display:flex;flex-direction:column;height:100dvh}
+#group-voice-notice:not([hidden]) + .workspace {flex:1;min-height:0}
+#group-voice-notice:not([hidden]) {display:flex;align-items:center;gap:.45rem;padding:.3rem clamp(.65rem,2vw,1.5rem);background:var(--wash);border-bottom:1px solid var(--line)}
+#group-voice-notice > div {display:grid;min-width:0;flex:1;border-inline-start:3px solid var(--plum);padding-inline-start:.65rem}
+#group-voice-notice strong,#group-voice-notice span {white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#group-voice-notice strong {font-size:.9rem}
+#group-voice-notice span {font-size:.78rem;color:var(--muted)}
+.conversation-copy > .conversation-voice-status {grid-column:1/-1;color:var(--plum);font-size:.78rem;font-weight:600}
 .sidebar{background:var(--rail);padding:15px 9px}.sidebar .brand{justify-content:center;height:48px;margin-bottom:19px}
 .sidebar nav{display:grid;gap:7px}.sidebar nav button{position:relative;display:grid;justify-items:center;align-content:center;gap:4px;min-height:56px;padding:4px;color:var(--muted);font-size:.72rem;line-height:1.2}
 @media(hover:hover){.sidebar nav button:not([aria-current=page]):hover{background:#ead8e3}}
