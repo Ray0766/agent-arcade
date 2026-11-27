@@ -2631,7 +2631,7 @@ function displayOriginal(page,messageId){
   focusOriginal(historyView.querySelector('[data-history-message="'+messageId+'"]'));
 }
 let quoteNavigation=0;
-async function locateQuotedMessage(messageId){
+async function locateQuotedMessage(messageId,accept){
   const visit=chatVisit,epoch=generation,serial=++quoteNavigation;
   const current=()=>visit===chatVisit&&epoch===generation&&serial===quoteNavigation;
   try{
@@ -2639,7 +2639,8 @@ async function locateQuotedMessage(messageId){
     const page=await api(thread(chat)+'/history-search?'+params);
     if(!current())return;
     if(page.anchor!==messageId||page.historyFloor!==historyFloor||page.membershipRevision!==membershipRevision||
-      removedMessages.has(messageId))throw Error('unknown_message');
+      removedMessages.has(messageId)||
+      (accept&&!accept(page.messages.find(row=>row.id===messageId))))throw Error('unknown_message');
     displayOriginal(page,messageId);
   }catch(error){
     if(current())$('#send-error').textContent=error.status===404||error.message==='unknown_message'?
@@ -2652,7 +2653,8 @@ async function jumpToConversationMessage(hit,account,epoch){
   const visit=chatVisit;
   await opening;
   if(generation===epoch&&chatVisit===visit&&chat===hit.chatId&&conversation)
-    await locateQuotedMessage(hit.id);
+    await locateQuotedMessage(hit.id,hit.attachmentKind==='video'?
+      row=>!row?.removed&&row?.attachment?.type==='video':undefined);
 }
 function showConversationSearch(){
   if(!socialVisible||!user||tab!=='messages')return;
@@ -2661,7 +2663,7 @@ function showConversationSearch(){
   const input=el('input'),label=el('label','关键词');
   input.type='search';
   input.id='conversation-search-keyword';
-  input.placeholder='消息正文或文件名';
+  input.placeholder='消息正文、文件名或短视频片名';
   input.required=true;
   input.maxLength=100;
   label.htmlFor=input.id;
@@ -2701,8 +2703,10 @@ function showConversationSearch(){
         const detail=el('span',null,'history-search-meta history-search-account');
         const stamp=el('time',time(hit.createdAt));
         stamp.dateTime=hit.createdAt;
-        detail.append(el('span',hit.sender),stamp);
-        if(hit.attachmentKind==='file')detail.prepend(el('span','文件','history-search-category'));
+        const video=hit.attachmentKind==='video';
+        detail.append(el('span',video?'发件人 '+hit.sender:hit.sender),stamp);
+        const attachmentLabel={file:'文件',video:'短视频'}[hit.attachmentKind];
+        if(attachmentLabel)detail.prepend(el('span',attachmentLabel,'history-search-category'));
         const excerpt=el('span',null,'history-search-snippet');
         highlightHistoryHit(excerpt,hit.text,query);
         const open=button('',()=>{
