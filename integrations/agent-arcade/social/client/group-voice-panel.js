@@ -10,6 +10,19 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
   const cameraNotice=panel.querySelector('#group-voice-camera-notice');
   const stage=panel.querySelector('#group-video-stage');
   const tiles=new Map();
+  let selectedEntry=null;
+  const allViews=document.createElement('button');
+  allViews.type='button';
+  allViews.className='outline group-video-all';
+  allViews.textContent='查看全员';
+  allViews.hidden=true;
+  stage.append(allViews);
+  allViews.addEventListener('click',()=>{
+    const previous=tiles.get(selectedEntry);
+    selectedEntry=null;
+    paint();
+    previous?.name.focus();
+  });
   const mute=panel.querySelector('[data-voice-mute]');
   const leave=panel.querySelector('[data-voice-leave]');
   const resume=panel.querySelector('[data-voice-resume]');
@@ -19,7 +32,10 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
   const key=current=>current&&JSON.stringify([account(),current.id,current.revision]);
 
   function showCameras(people,visible){
+    if(!visible||!people.some(person=>person.entryId===selectedEntry))selectedEntry=null;
+    visible=visible&&(!!selectedEntry||people.some(person=>person.cameraEnabled));
     stage.hidden=!visible;
+    allViews.hidden=!selectedEntry;
     const retained=new Set(visible?people.map(person=>person.entryId):[]);
     for(const [id,tile] of tiles){
       if(retained.has(id))continue;
@@ -47,7 +63,13 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
         video.hidden=true;
         video.setAttribute('aria-hidden','true');
         const caption=document.createElement('figcaption');
-        const name=document.createElement('strong'),detail=document.createElement('span');
+        const name=document.createElement('button'),detail=document.createElement('span');
+        name.className='group-video-select';
+        name.type='button';
+        name.addEventListener('click',()=>{
+          selectedEntry=selectedEntry===entryId?null:entryId;
+          paint();
+        });
         detail.className='group-video-caption-detail';
         caption.append(name,detail);
         screen.append(fallback,video);
@@ -75,6 +97,10 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
         if(stream)void tile.video.play().catch(()=>{});
       }
       tile.name.textContent=displayName+(person.number===account()?'（我）':'');
+      const selected=selectedEntry===entryId;
+      tile.element.classList.toggle('group-video-featured',selected);
+      tile.name.setAttribute('aria-pressed',String(selected));
+      tile.name.setAttribute('aria-label',selected?'返回全员视图':'放大'+displayName+'的画面');
       tile.updatePicture();
     }
   }
@@ -113,8 +139,7 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
         return item;
       }));
     }
-    const hasCamera=Boolean(confirmed&&people.some(person=>person.cameraEnabled));
-    showCameras(people,hasCamera&&!detached);
+    showCameras(people,confirmed&&!detached);
     camera.hidden=!confirmed||(!state.videoCapable&&!state.cameraEnabled)||(detached&&!state.cameraEnabled);
     camera.disabled=Boolean(state.cameraPending);
     camera.textContent=state.cameraEnabled?'关闭摄像头':'打开摄像头';
