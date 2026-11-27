@@ -1938,10 +1938,23 @@ index fe2d73710c28b3c18654ea14a8b1f377be925f85..fd93bd9dd610d8a1960b20fb987e8e92
 +  document.getElementById('travel-guidance')!.append(root);
    const get = <E extends HTMLElement = HTMLElement>(name: string) => root.querySelector<E>(name)!;
 diff --git a/src/client/village-polish.ts b/src/client/village-polish.ts
-index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d217801d7039f 100644
+index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..c4b3a2efab1fb0fee3dd5407616469b0581c5daa 100644
 --- a/src/client/village-polish.ts
 +++ b/src/client/village-polish.ts
-@@ -7,3 +7,8 @@ import type { Vec3 } from '../shared/world.ts';
+@@ -1,3 +1,10 @@
++import { SIGNBOARD, signBlankVillage } from '../assets/claude-geometry/blueprint/parts/home/fixtures.ts';
++import { makeKit } from '../assets/claude-geometry/blueprint/parts/kit.ts';
++import { placedTransform } from '../assets/claude-geometry/blueprint/placement.ts';
++import { structureFit } from '../shared/blueprints.ts';
++import { samplePublicVillage } from '../shared/sample-public-village.ts';
++import { fieldOf } from '../shared/terrain.ts';
++import { PartBuilder } from '../assets/claude-geometry/style/geometry.ts';
+ import * as T from 'three';
+ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+ import { mainPlanetNetwork, MAIN_PLANET_LEDGER } from '../shared/planet-plan/main-planet.ts';
+@@ -5,33 +12,117 @@ import { arc, fromLocal, heading } from '../shared/planet-plan/sphere.ts';
+ import { SPAWN } from '../shared/world.ts';
+ import type { Vec3 } from '../shared/world.ts';
  import type { HomeDescriptor } from '../shared/home.ts';
 +import type { PlanetView } from '../shared/planets.ts';
 +import type { GroundWorld } from '../shared/physics/world.ts';
@@ -1950,32 +1963,150 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
  import { ART_PALETTE, applyArtMaterial } from './art-profile.ts';
 +import { townMeshPieces } from './authored-town-mesh.ts';
  import type { TutorialSurface } from './tutorial-route.ts';
-@@ -13,2 +18,3 @@ export interface VillagePolishFrame {
+ 
+ export type VillagePolishTier = 'smooth' | 'standard' | 'beautiful';
+ export interface VillagePolishFrame {
    planetId: string; radius: number; quality: VillagePolishTier; home?: HomeDescriptor | null;
 +  courtyard?: { planet: PlanetView; world: GroundWorld };
    /** Visibility only; menus keep their scenery, interiors hide exterior art. */
-@@ -27,4 +33,4 @@ export function publicVillagePolishSites(): VillagePolishSite[] {
+   visible?: boolean; reducedMotion?: boolean; time?: number;
+ }
+-export interface VillagePolishSite { id: string; position: Vec3; toward: Vec3; label: 'post' | 'glasshouse' | 'gate' | 'home' }
+-export const VILLAGE_POLISH_BUDGET = { signs: 3, shallowRelief: .045, drawCalls: 3, animatedObjects: 30 } as const;
++export interface VillagePolishSite { id: string; position: Vec3; toward: Vec3; label: 'post' | 'glasshouse' | 'gate' | 'home' | 'ada' }
++export const VILLAGE_POLISH_BUDGET = { signs: 4, shallowRelief: .045, drawCalls: 3, animatedObjects: 30 } as const;
+ 
+ /** Existing entry anchors only. No new building, collision, reservation or
+  * ledger entry: the trim sits above existing doors and against their lintels. */
+ export function publicVillagePolishSites(): VillagePolishSite[] {
+-  return ([['post-office', 'post'], ['glasshouse', 'glasshouse'], ['teleport-station', 'gate']] as const).flatMap(([id, label]) => {
++  return ([['post-office', 'post'], ['glasshouse', 'glasshouse'], ['teleport-station', 'gate'], ['market-e-1', 'ada']] as const).flatMap(([id, label]) => {
+     const door = MAIN_PLANET_LEDGER.doorPaths.find(d => d.lot === id);
+     return door ? [{ id, position: [...door.from] as Vec3, toward: [...door.to] as Vec3, label }] : [];
+   });
  }
 -const labelRows = { post: 0, glasshouse: 1, gate: 2, home: 3 } as const;
 -const labelText = [['邮局', 'POST OFFICE'], ['温室', 'GLASSHOUSE'], ['回家 · 广场', 'HOME · SQUARE'], ['我的小屋', 'MY LITTLE HOME']];
 +const labelRows = { post: 0, glasshouse: 1, gate: 2, home: 3, courtyard: 4 } as const;
 +const labelText = [['邮局', 'POST OFFICE'], ['温室', 'GLASSHOUSE'], ['回家 · 广场', 'HOME · SQUARE'], ['我的小屋', 'MY LITTLE HOME'], ['公共院落', 'PUBLIC COURTYARD']];
-
-@@ -48,3 +54,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+ 
+ /** Always-bounded host art, separate from temporary tutorial guidance. Three
+  * shared draws at most; no lights, bloom, particle systems or per-frame mesh
+  * updates. Beautiful adds only a bounded 5 mm petal sway in the existing fine
+  * draw; reduced motion fixes its shader time. Low retains the same sign trim. */
++const staticLabelHeight = 128;
++const basketTop = labelText.length * staticLabelHeight;
++const basketHeight = 384;
++const atlasHeight = basketTop + basketHeight;
++function paintAdaBasket(context: CanvasRenderingContext2D) {
++  context.save();
++  context.translate(0, basketTop);
++  context.fillStyle = '#f4ead0';
++  context.fillRect(0, 0, 512, basketHeight);
++  context.lineCap = 'round';
++  context.lineJoin = 'round';
++
++  context.beginPath();
++  context.moveTo(145, 175);
++  context.bezierCurveTo(145, 16, 365, 16, 367, 175);
++  context.lineWidth = 15;
++  context.strokeStyle = ART_PALETTE.wood;
++  context.stroke();
++
++  for (const [x, y, angle] of [[166, 141, .72], [217, 159, -.48], [300, 144, .68], [347, 154, -.58]]) {
++    context.beginPath();
++    context.ellipse(x, y, 25, 11, angle, 0, 2 * Math.PI);
++    context.fillStyle = ART_PALETTE.leafDark;
++    context.fill();
++  }
++  for (const [x, y, color] of [[177, 109, '#bc624e'], [258, 91, '#cf9341'], [331, 114, '#bc624e']] as const) {
++    context.beginPath();
++    for (let petal = 0; petal < 5; petal++) {
++      const angle = petal * Math.PI * 2 / 5 - Math.PI / 2;
++      const px = x + Math.cos(angle) * 15, py = y + Math.sin(angle) * 15;
++      context.moveTo(px + 13, py);
++      context.arc(px, py, 13, 0, 2 * Math.PI);
++    }
++    context.fillStyle = color;
++    context.fill();
++    context.beginPath();
++    context.arc(x, y, 9, 0, 2 * Math.PI);
++    context.fillStyle = '#fff1cb';
++    context.fill();
++  }
++
++  context.beginPath();
++  context.moveTo(129, 167);
++  context.lineTo(383, 167);
++  context.lineTo(354, 222);
++  context.quadraticCurveTo(348, 233, 334, 234);
++  context.lineTo(178, 234);
++  context.quadraticCurveTo(164, 233, 158, 222);
++  context.closePath();
++  context.fillStyle = '#b67b48';
++  context.fill();
++  context.lineWidth = 9;
++  context.strokeStyle = ART_PALETTE.wood;
++  context.stroke();
++  context.beginPath();
++  context.moveTo(171, 194);
++  context.lineTo(341, 194);
++  context.moveTo(186, 214);
++  context.lineTo(326, 214);
++  context.lineWidth = 6;
++  context.strokeStyle = '#e7b76e';
++  context.stroke();
++
++  context.fillStyle = '#35453b';
++  context.textAlign = 'center';
++  context.textBaseline = 'middle';
++  context.font = '750 77px system-ui, "Microsoft YaHei UI", sans-serif';
++  context.fillText('艾达', 256, 288);
++  context.font = '700 27px system-ui, sans-serif';
++  context.fillText('ADA', 256, 347);
++  context.restore();
++}
++function labelPlane(width: number, height: number, top: number, bandHeight = staticLabelHeight) {
++  const plane = new T.PlaneGeometry(width, height), uv = plane.getAttribute('uv');
++  for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - (top + bandHeight * (1 - uv.getY(i))) / atlasHeight);
++  return plane;
++}
++
+ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface) {
+   const root = new T.Group(); root.name = 'village-focus-polish'; parent.add(root);
+   const material = applyArtMaterial(new T.MeshStandardMaterial({ vertexColors: true, roughness: .95, flatShading: true }));
+@@ -46,13 +137,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+   const base = new T.Mesh(new T.BufferGeometry(), material), details = new T.Mesh(new T.BufferGeometry(), detailMaterial);
+   const atlas = typeof document === 'undefined' ? null : document.createElement('canvas');
    if (atlas) {
 -    atlas.width = 512; atlas.height = 512; const context = atlas.getContext('2d');
-+    atlas.width = 512; atlas.height = 128 * labelText.length; const context = atlas.getContext('2d');
++    atlas.width = 512; atlas.height = atlasHeight; const context = atlas.getContext('2d');
      if (context) for (let row = 0; row < labelText.length; row++) {
-@@ -63,3 +69,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+       context.fillStyle = '#f4ead0'; context.fillRect(0, row * 128, 512, 128);
+       context.fillStyle = '#54453e'; context.textAlign = 'center'; context.textBaseline = 'middle';
+       context.font = '600 36px system-ui, sans-serif'; context.fillText(labelText[row][0], 256, row * 128 + 43, 480);
+       context.font = '600 23px system-ui, sans-serif'; context.fillText(labelText[row][1], 256, row * 128 + 92, 480);
+     }
++    if (context) paintAdaBasket(context);
+   }
+   const texture = atlas ? new T.CanvasTexture(atlas) : null;
+   if (texture) { texture.colorSpace = T.SRGBColorSpace; texture.minFilter = T.LinearFilter; texture.generateMipmaps = false; }
+@@ -61,10 +153,11 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+   for (const mesh of [base, details, signs]) { mesh.raycast = () => {}; mesh.castShadow = false; mesh.receiveShadow = true; root.add(mesh); }
+   base.name = 'village-focus-silhouette'; details.name = 'village-focus-fine-relief'; signs.name = 'village-bilingual-sign-atlas';
    let disposed = false, key = '';
 -  const diagnostics = { sites: 0, triangles: 0, detailTriangles: 0, drawCalls: 0, collision: false, animation: false };
 +  const diagnostics = { sites: 0, courtyardPosition: null as Vec3 | null, triangles: 0, detailTriangles: 0, drawCalls: 0, collision: false, animation: false };
    root.userData.villagePolish = diagnostics;
-@@ -67,2 +73,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+ 
    function rebuild(input: VillagePolishFrame) {
 +    diagnostics.courtyardPosition = null;
      const basic: T.BufferGeometry[] = [], fine: T.BufferGeometry[] = [], labels: T.BufferGeometry[] = [];
-@@ -78,7 +85,10 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+     const add = (geometry: T.BufferGeometry, color: string, transform: T.Matrix4, detailed = false) => {
+       const flat = geometry.index ? geometry.toNonIndexed() : geometry.clone(); geometry.dispose(); flat.applyMatrix4(transform);
+@@ -76,11 +169,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+     };
+     const local = (frame: T.Matrix4, x: number, y: number, z: number, rotation = 0) => frame.clone().multiply(new T.Matrix4().makeTranslation(x, y, z)).multiply(new T.Matrix4().makeRotationZ(rotation));
      const box = (frame: T.Matrix4, color: string, w: number, h: number, d: number, x: number, y: number, z: number, detailed = false) => add(new T.BoxGeometry(w, h, d), color, local(frame, x, y, z), detailed);
 -    const doorTrim = (frame: T.Matrix4, label: keyof typeof labelRows) => {
 +    const doorTrim = (frame: T.Matrix4, label: keyof typeof labelRows, twoFaces = false) => {
@@ -1989,13 +2120,75 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
 +        add(geometry, slot === 'leaf' ? ART_PALETTE.sage : ART_PALETTE.wood, cap);
 +      }
        box(frame, ART_PALETTE.wood, 1.42, .43, .065, 0, 2.37, -.04);
-@@ -95,3 +105,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+       for (const side of [-1, 1]) {
+         box(frame, ART_PALETTE.wood, .05, .48, .09, side * .69, 2.37, -.01);
+@@ -93,15 +189,61 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+         }
+       }
        const plane = new T.PlaneGeometry(1.25, .33), uv = plane.getAttribute('uv'), row = labelRows[label];
 -      for (let i = 0; i < uv.count; i++) uv.setY(i, (3 - row + uv.getY(i)) / 4);
-+      for (let i = 0; i < uv.count; i++) uv.setY(i, (labelText.length - 1 - row + uv.getY(i)) / labelText.length);
++      for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - (row + 1 - uv.getY(i)) * staticLabelHeight / atlasHeight);
 +      if (twoFaces) labels.push(plane.clone().rotateY(Math.PI).applyMatrix4(local(frame, 0, 2.37, -.079)));
        plane.applyMatrix4(local(frame, 0, 2.37, .003)); labels.push(plane);
-@@ -117,6 +128,19 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+     };
++    const basketSign = () => {
++      // Match the town renderer's fitted shop transform. The initial walking
++      // terrain can still be a placeholder when the village art first builds.
++      const village = samplePublicVillage(input.radius);
++      const shop = village.objects.find(object => object.id === 'town-market-e-1');
++      const parts = shop?.blueprintHash && village.blueprints[shop.blueprintHash];
++      if (!shop || !parts) return;
++      const fit = structureFit(parts, shop.position, shop.rotation, fieldOf(village.environment, input.radius));
++      const transform = placedTransform({ dir: shop.position, yaw: shop.rotation }, fit);
++      const frame = new T.Matrix4().compose(new T.Vector3(...transform.position), new T.Quaternion(...transform.quaternion), new T.Vector3(1, 1, 1));
++
++      // Enlarge the existing village bracket above the canopy, at the
++      // corner-side end of Ada's frontage. The fixture projects into -Z.
++      const mount = local(frame, -1.22, -3.50, 1.16)
++        .multiply(new T.Matrix4().makeRotationY(Math.PI))
++        .scale(new T.Vector3(2.4, 3.9, 4.2));
++      const builder = new PartBuilder('medium');
++      const wood = new T.MeshBasicMaterial({ color: ART_PALETTE.wood });
++      const iron = new T.MeshBasicMaterial({ color: ART_PALETTE.iron });
++      const panel = new T.MeshBasicMaterial({ color: ART_PALETTE.boards });
++      signBlankVillage(makeKit(builder, {
++        get: name => name === 'steel' ? iron : name === 'tread' ? panel : wood,
++        owned: () => [],
++        look: 'village',
++      }));
++      for (const { geometry, material } of builder.build().group.children as T.Mesh<T.BufferGeometry, T.MeshBasicMaterial>[]) {
++        add(geometry, '#' + material.color.getHexString(), mount);
++      }
++      wood.dispose();
++      iron.dispose();
++      panel.dispose();
++
++      const { z0, z1, y0, y1, t, panel: thickness, rim } = SIGNBOARD;
++      for (const side of [-1, 1]) {
++        const face = labelPlane(z0 - z1 - 2 * rim, y1 - y0 - 2 * rim, basketTop, basketHeight);
++        face.rotateY(side * Math.PI / 2);
++        face.translate(side * (t + thickness + .001), (y0 + y1) / 2, (z0 + z1) / 2);
++        labels.push(face.applyMatrix4(mount));
++      }
++    };
+     const surfaceFrame = (position: Vec3, toward: Vec3) => {
+       const up = new T.Vector3(...position), forward = new T.Vector3(...heading(position, toward)), right = new T.Vector3().crossVectors(up, forward).normalize();
+       return new T.Matrix4().makeBasis(right, up, forward).setPosition(surface.surfacePoint(up));
+     };
+     if (input.planetId === 'hub' && Math.abs(input.radius - 21.6) < .001) {
+-      const sites = publicVillagePolishSites(); sites.forEach(site => doorTrim(surfaceFrame(site.position, site.toward), site.label)); diagnostics.sites = sites.length;
++      const sites = publicVillagePolishSites();
++      for (const site of sites) {
++        if (site.label === 'ada') basketSign();
++        else doorTrim(surfaceFrame(site.position, site.toward), site.label);
++      }
++      diagnostics.sites = sites.length;
+       // Dressed fan accents stay a maximum 45 mm above the existing surface.
+       // Only the arrival plaza and its two closest authored junctions receive
+       // the accent, rather than adding geometry along every town street.
+@@ -115,10 +257,23 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+         box(frame, k % 3 ? ART_PALETTE.stone : ART_PALETTE.clay, .22, .018, .10, 0, .032, 0);
+         box(frame, ART_PALETTE.gold, .09, .009, .025, 0, .044, 0, true);
        }
 -    } else if (input.home?.planetId === input.planetId && input.home.door.frame) {
 -      const frame = input.home.door.frame;
@@ -2019,12 +2212,18 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
 +      }
 +    }
      const finish = (mesh: T.Mesh, pieces: T.BufferGeometry[]) => {
-@@ -131,3 +155,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+       const merged = pieces.length ? mergeGeometries(pieces) : null; pieces.forEach(g => g.dispose());
+       mesh.geometry.dispose(); mesh.geometry = merged ?? new T.BufferGeometry(); if (merged) merged.computeBoundingSphere(); mesh.visible = pieces.length > 0;
+@@ -129,7 +284,8 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+   }
+   function frame(input: VillagePolishFrame) {
      if (disposed) return;
 -    const nextKey = JSON.stringify([input.planetId, input.radius, input.home?.buildingId, input.home?.door.frame]);
 +    const nextKey = JSON.stringify([input.planetId, input.radius, input.home?.buildingId, input.home?.door.frame,
 +      input.courtyard?.planet.revision]);
      if (nextKey !== key) { rebuild(input); key = nextKey; }
+     root.visible = input.visible !== false;
+     details.visible = input.quality === 'beautiful' && diagnostics.detailTriangles > 0;
 diff --git a/src/client/world-guide.ts b/src/client/world-guide.ts
 index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884b266918f 100644
 --- a/src/client/world-guide.ts
@@ -3288,3 +3487,22 @@ index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83
 -#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true]{outline:2px solid #378f79}
 +#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics,#world-guide-residents{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true],#world-guide-residents button[aria-pressed=true]{outline:2px solid #378f79}
  #world-guide-dialog button,#world-guide-hud button,#world-guide-home{min-height:44px;border-radius:10px;border:1px solid #acbcaa;padding:7px 10px;cursor:pointer;background:#f5f1e2;color:#293c38;font:13px system-ui}
+diff --git a/spec/village-polish.test.ts b/spec/village-polish.test.ts
+index dde868cbd21d542f55f433735d40c7eb21e2bb21..f8b5a2c14a4f676cca92bc79a8c0e2b1b56e63ab 100644
+--- a/spec/village-polish.test.ts
++++ b/spec/village-polish.test.ts
+@@ -5,11 +5,12 @@ import { createVillagePolish, publicVillagePolishSites, VILLAGE_POLISH_BUDGET }
+ 
+ it('binds focus signs to existing entries, caps draw calls and keeps the shared layout immutable', () => {
+   const before = JSON.stringify(MAIN_PLANET_LEDGER), networkBefore = JSON.stringify(mainPlanetNetwork().junctions);
+-  const sites = publicVillagePolishSites(); expect(sites).toHaveLength(3);
++  const sites = publicVillagePolishSites(); expect(sites).toHaveLength(VILLAGE_POLISH_BUDGET.signs);
++  expect(sites.filter(site => site.label === 'ada').map(site => site.id)).toEqual(['market-e-1']);
+   expect(sites.every(site => MAIN_PLANET_LEDGER.doorPaths.some(d => d.lot === site.id && JSON.stringify(d.from) === JSON.stringify(site.position)))).toBe(true);
+   const parent = new T.Group(), polish = createVillagePolish(parent, { surfacePoint: (p, offset = 0) => p.clone().multiplyScalar(21.6 + offset) });
+   polish.frame({ planetId: 'hub', radius: 21.6, quality: 'smooth' });
+-  expect(polish.diagnostics.sites).toBe(3); expect(polish.diagnostics.drawCalls).toBeLessThanOrEqual(VILLAGE_POLISH_BUDGET.drawCalls);
++  expect(polish.diagnostics.sites).toBe(VILLAGE_POLISH_BUDGET.signs); expect(polish.diagnostics.drawCalls).toBeLessThanOrEqual(VILLAGE_POLISH_BUDGET.drawCalls);
+   const fine = polish.root.getObjectByName('village-focus-fine-relief')!; expect(fine.visible).toBe(false);
+   polish.frame({ planetId: 'hub', radius: 21.6, quality: 'beautiful', time: 2 }); expect(fine.visible).toBe(true);
+   expect(polish.diagnostics.collision).toBe(false); expect(polish.diagnostics.animation).toBe(true);
