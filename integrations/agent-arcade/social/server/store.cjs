@@ -637,7 +637,7 @@ class SocialStore {
   }
   messageFile(a,id,message) {
     const chat=this.access(a,id);
-    const file=this.one('SELECT f.name,f.bytes FROM message_files f JOIN messages m ON m.id=f.message WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0',id,message,chat.since);
+    const file=this.one('SELECT f.name,f.digest,f.bytes FROM message_files f JOIN messages m ON m.id=f.message WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0',id,message,chat.since);
     if(!file)fail(404,'unknown_file','该文件已无法下载');
     return file;
   }
@@ -833,18 +833,21 @@ class SocialStore {
   messageForwardPreview(account,source,{expectedAccount,sourceRevision,target,ids,kind='text'}){
     if(expectedAccount!==account)fail(409,'forward_session','账号已切换，请重新打开会话');
     const from=this.access(account,source);
-    const photo=kind==='photo';
-    if(kind!=='text'&&!photo)fail(400,'forward_selection','不支持转发这种消息');
-    if(photo&&from.friendRemoved)fail(403,'forward_source','来源会话已解除好友关系');
+    const photo=kind==='photo',file=kind==='file';
+    if(kind!=='text'&&!photo&&!file)fail(400,'forward_selection','不支持转发这种消息');
+    if((photo||file)&&from.friendRemoved)fail(403,'forward_source','来源会话已解除好友关系');
     if(from.membershipRevision!==sourceRevision)fail(409,'forward_session','来源会话权限已变更，请重新选择消息');
     if(this.user(account).kind!=='human'||typeof target!=='string'||!Array.isArray(ids)||
-      !ids.length||ids.length>20||new Set(ids).size!==ids.length||ids.some(id=>!Number.isSafeInteger(id)||id<1))
-      fail(400,'forward_selection',photo?'请选择 1 至 20 张本人照片':'请选择 1 至 20 条普通文字消息');
+      !ids.length||ids.length>(file?1:20)||new Set(ids).size!==ids.length||ids.some(id=>!Number.isSafeInteger(id)||id<1))
+      fail(400,'forward_selection',file?'请选择一份本人发送的文件':
+        photo?'请选择 1 至 20 张本人照片':'请选择 1 至 20 条普通文字消息');
     const to=this.writableChat(account,target);
     const conversation=this.conversation(account,target);
-    if(photo&&(target===source||conversation.members.some(member=>member.kind!=='human')))
+    const allHuman=conversation.members.every(member=>member.kind==='human');
+    if(photo&&(target===source||!allHuman))
       fail(400,'forward_target','请选择其他真人好友或全真人群聊接收照片');
-    if(to.type==='direct'&&(conversation.members.length!==2||conversation.members.some(member=>member.kind!=='human')))
+    if(file&&!allHuman)fail(403,'forward_target','请选择真人好友或全真人群聊接收文件');
+    if(to.type==='direct'&&(conversation.members.length!==2||!allHuman))
       fail(403,'forward_target','请选择真人私聊或群聊');
     const sources=this.all(`SELECT * FROM messages WHERE chat=? AND id>? AND removed=0
       AND id IN (${ids.map(()=>'?').join(',')}) ORDER BY id`,source,from.since,...ids);
@@ -858,21 +861,27 @@ class SocialStore {
         const {digest}=this.one('SELECT digest FROM message_images WHERE message=?',row.id);
         return {id:row.id,digest,caption:image.caption??''};
       }
+      if(file){
+        const attachment=message.attachment;
+        if(row.sender!==account||attachment?.type!=='file')fail(403,'forward_file','只能转发本人发送的普通文件');
+        const {digest}=this.one('SELECT digest FROM message_files WHERE message=?',row.id);
+        return {id:row.id,name:attachment.name,bytes:attachment.bytes,digest};
+      }
       if(message.attachment||message.task||message.imageQuestion||message.webResults?.length||
-        !row.body.trim()||Array.from(row.body).length>4000)
+          !row.body.trim()||Array.from(row.body).length>4000)
         fail(400,'forward_selection','批量转发仅支持普通文字和文字中的链接');
       return {id:row.id,text:row.body.trim()};
     });
     const recipient={id:target,type:to.type,title:conversation.title,members:conversation.members
       .filter(member=>member.number!==account).map(({number,displayName,kind})=>({number,displayName,kind}))};
     const snapshot=[source,sourceRevision,to.membershipRevision,recipient,entries];
-    if(photo&&to.type==='group'){
+    if((photo||file)&&to.type==='group'){
       // A member leaving and rejoining starts a new membership, even with the same account number.
       snapshot.push(this.all(`SELECT m.account,r.revision FROM members m LEFT JOIN conversation_membership_revisions r
         ON r.chat=m.chat AND r.account=m.account WHERE m.chat=? ORDER BY m.account`,target));
     }
     const review=postBodyDigest(JSON.stringify(snapshot));
-    return {recipient,entries,review};
+    return {recipient,entries:file?entries.map(({digest,...entry})=>entry):entries,review};
   }
   forwardMessages(account,source,body){
     const {expectedAccount,target,ids,review,clientId}=body;
@@ -880,7 +889,8 @@ class SocialStore {
     if(typeof clientId!=='string'||!/^[a-f0-9]{32}$/u.test(clientId)||
       typeof review!=='string'||!/^[a-f0-9]{64}$/u.test(review))
       fail(400,'forward_request','请先查看转发预览');
-    const intent=postBodyDigest(JSON.stringify([source,target,ids,review,...(body.kind==='photo'?['photo']:[])]));
+    const attachmentKind=body.kind==='photo'||body.kind==='file'?[body.kind]:[];
+    const intent=postBodyDigest(JSON.stringify([source,target,ids,review,...attachmentKind]));
     const previous=this.one('SELECT intent,count FROM message_forward_batches WHERE account=? AND nonce=?',account,clientId);
     if(previous){
       if(previous.intent!==intent)fail(409,'forward_request','本次确认与原转发请求不一致');
@@ -895,6 +905,10 @@ class SocialStore {
       if(body.kind==='photo'){
         const image=this.messageImage(account,source,entry.id);
         markForwarded(this.sendImage(account,target,nonce,image,entry.caption));
+      }else if(body.kind==='file'){
+        const file=this.messageFile(account,source,entry.id);
+        const {membershipRevision}=this.access(account,target);
+        markForwarded(this.sendFile(account,target,{...file,clientId:nonce},membershipRevision));
       }else this.send(account,target,{text:entry.text,clientId:nonce},markForwarded);
     }
     const count=confirmed.entries.length;
