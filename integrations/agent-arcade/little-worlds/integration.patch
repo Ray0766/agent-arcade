@@ -2288,7 +2288,7 @@ index fe2d73710c28b3c18654ea14a8b1f377be925f85..fd93bd9dd610d8a1960b20fb987e8e92
 +  document.getElementById('travel-guidance')!.append(root);
    const get = <E extends HTMLElement = HTMLElement>(name: string) => root.querySelector<E>(name)!;
 diff --git a/src/client/village-polish.ts b/src/client/village-polish.ts
-index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15e172827c 100644
+index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..c24e2f9f48e3b7116ad737aee6e6f3e197c1944b 100644
 --- a/src/client/village-polish.ts
 +++ b/src/client/village-polish.ts
 @@ -1,16 +1,25 @@
@@ -2318,7 +2318,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
    /** Visibility only; menus keep their scenery, interiors hide exterior art. */
    visible?: boolean; reducedMotion?: boolean; time?: number;
  }
-@@ -25,8 +34,75 @@ export function publicVillagePolishSites(): VillagePolishSite[] {
+@@ -25,8 +34,81 @@ export function publicVillagePolishSites(): VillagePolishSite[] {
      return door ? [{ id, position: [...door.from] as Vec3, toward: [...door.to] as Vec3, label }] : [];
    });
  }
@@ -2330,13 +2330,14 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
 +const staticLabelHeight = 128;
 +const wayfindingTop = staticLabelHeight * labelText.length;
 +const wayfindingRow = 168;
-+const atlasHeight = wayfindingTop + 3 * wayfindingRow;
++const atlasHeight = wayfindingTop + 4 * wayfindingRow;
 +
 +function paintWayfinding(context: CanvasRenderingContext2D) {
 +  const rows = [
 +    ['仓库边 · 找伊沃修托臂', 'Ivo · Repair the quay support', '沿码头左侧', -Math.PI / 2],
 +    ['邮局巷 · 找帕克斯分信', 'Pax · Sort mail', '沿港湾大道到抵达广场', 0],
 +    ['邮局巷 · 帕克斯', 'Post Lane · Pax', '', -Math.PI / 2],
++    ['温室巷 · 找奈尔分株', 'Greenhouse Lane · Nell', '沿右侧石板路', Math.PI / 2],
 +  ] as const;
 +  rows.forEach(([title, english, detail, angle], row) => {
 +    context.save();
@@ -2385,7 +2386,12 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
 +  const mouth = sampleAt(harbour.line, 3.55);
 +  const square = walk(mouth.p, mouth.r, 2.12, radius);
 +  const squareFace = sampleAt(harbour.line, 9).p;
-+  return { dock, dockFace: HUB_DOCK, square, squareFace };
++  const glasshouse = network.roads.find(road => road.id === 'glasshouse-lane');
++  const turn = glasshouse && TOWN_RESIDENT_ANCHORS['nell-garden'] ? sampleAt(glasshouse.line, 3.1) : null;
++  // The road curves out of sight to the right of the boarding circle.
++  const greenhouseFork = turn && walk(turn.p, turn.r, -1.85, radius);
++  const greenhouseFace = walk(HUB_DOCK, townward, -2.5, radius);
++  return { dock, dockFace: HUB_DOCK, square, squareFace, greenhouseFork, greenhouseFace };
 +}
 +
 +function labelPlane(width: number, height: number, top: number, bandHeight = staticLabelHeight) {
@@ -2396,7 +2402,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
  
  /** Always-bounded host art, separate from temporary tutorial guidance. Three
   * shared draws at most; no lights, bloom, particle systems or per-frame mesh
-@@ -46,13 +122,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -46,13 +128,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
    const base = new T.Mesh(new T.BufferGeometry(), material), details = new T.Mesh(new T.BufferGeometry(), detailMaterial);
    const atlas = typeof document === 'undefined' ? null : document.createElement('canvas');
    if (atlas) {
@@ -2412,7 +2418,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
    }
    const texture = atlas ? new T.CanvasTexture(atlas) : null;
    if (texture) { texture.colorSpace = T.SRGBColorSpace; texture.minFilter = T.LinearFilter; texture.generateMipmaps = false; }
-@@ -61,10 +138,11 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -61,10 +144,11 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
    for (const mesh of [base, details, signs]) { mesh.raycast = () => {}; mesh.castShadow = false; mesh.receiveShadow = true; root.add(mesh); }
    base.name = 'village-focus-silhouette'; details.name = 'village-focus-fine-relief'; signs.name = 'village-bilingual-sign-atlas';
    let disposed = false, key = '';
@@ -2425,7 +2431,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
      const basic: T.BufferGeometry[] = [], fine: T.BufferGeometry[] = [], labels: T.BufferGeometry[] = [];
      const add = (geometry: T.BufferGeometry, color: string, transform: T.Matrix4, detailed = false) => {
        const flat = geometry.index ? geometry.toNonIndexed() : geometry.clone(); geometry.dispose(); flat.applyMatrix4(transform);
-@@ -76,11 +154,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -76,11 +160,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
      };
      const local = (frame: T.Matrix4, x: number, y: number, z: number, rotation = 0) => frame.clone().multiply(new T.Matrix4().makeTranslation(x, y, z)).multiply(new T.Matrix4().makeRotationZ(rotation));
      const box = (frame: T.Matrix4, color: string, w: number, h: number, d: number, x: number, y: number, z: number, detailed = false) => add(new T.BoxGeometry(w, h, d), color, local(frame, x, y, z), detailed);
@@ -2443,7 +2449,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
        box(frame, ART_PALETTE.wood, 1.42, .43, .065, 0, 2.37, -.04);
        for (const side of [-1, 1]) {
          box(frame, ART_PALETTE.wood, .05, .48, .09, side * .69, 2.37, -.01);
-@@ -92,8 +173,8 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -92,8 +179,8 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
            add(new T.SphereGeometry(.028, 4, 3), petal % 2 ? ART_PALETTE.gold : '#e18c83', local(frame, side * .57 + Math.cos(a) * .065, 2.25 + Math.sin(a) * .055, .045), true);
          }
        }
@@ -2454,7 +2460,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
        plane.applyMatrix4(local(frame, 0, 2.37, .003)); labels.push(plane);
      };
      const surfaceFrame = (position: Vec3, toward: Vec3) => {
-@@ -102,6 +183,26 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -102,6 +189,29 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
      };
      if (input.planetId === 'hub' && Math.abs(input.radius - 21.6) < .001) {
        const sites = publicVillagePolishSites(); sites.forEach(site => doorTrim(surfaceFrame(site.position, site.toward), site.label)); diagnostics.sites = sites.length;
@@ -2477,11 +2483,14 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
 +        };
 +        board(surfaceFrame(wayfinding.dock, wayfinding.dockFace), 0, 2, 2.32, 2.39);
 +        board(surfaceFrame(wayfinding.square, wayfinding.squareFace), 2, 1, 1.82, 1.77);
++        if (wayfinding.greenhouseFork) {
++          board(surfaceFrame(wayfinding.greenhouseFork, wayfinding.greenhouseFace), 3, 1, 2.22, 1.68);
++        }
 +      }
        // Dressed fan accents stay a maximum 45 mm above the existing surface.
        // Only the arrival plaza and its two closest authored junctions receive
        // the accent, rather than adding geometry along every town street.
-@@ -115,10 +216,23 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -115,10 +225,23 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
          box(frame, k % 3 ? ART_PALETTE.stone : ART_PALETTE.clay, .22, .018, .10, 0, .032, 0);
          box(frame, ART_PALETTE.gold, .09, .009, .025, 0, .044, 0, true);
        }
@@ -2509,7 +2518,7 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15
      const finish = (mesh: T.Mesh, pieces: T.BufferGeometry[]) => {
        const merged = pieces.length ? mergeGeometries(pieces) : null; pieces.forEach(g => g.dispose());
        mesh.geometry.dispose(); mesh.geometry = merged ?? new T.BufferGeometry(); if (merged) merged.computeBoundingSphere(); mesh.visible = pieces.length > 0;
-@@ -129,7 +243,8 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+@@ -129,7 +252,8 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
    }
    function frame(input: VillagePolishFrame) {
      if (disposed) return;
