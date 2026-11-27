@@ -7,7 +7,7 @@ const imageDownloadPath=/^\/api\/v1\/conversations\/([a-f0-9]{8}(?:-[a-f0-9]{4})
 const fileDownloadPath=/^\/api\/v1\/conversations\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})\/messages\/[1-9]\d{0,15}\/file\/download$/u;
 const chatFragment=/^#chat\/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/u;
 
-function createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, pickCrop, readSendShortcut, visitFriend, isActive=()=>false,
+function createSocialView({ WebContentsView, session, configuration, saveImage, pickGroupCard, pickCrop, readSendShortcut, visitFriend, visitPhotos, isActive=()=>false,
   spawnSnip=require('node:child_process').spawn, openExternal=url=>require('electron').shell.openExternal(url) }) {
   const origin = serviceOrigin(configuration.origin, configuration.mode);
   const {desktopVersion} = configuration;
@@ -69,9 +69,25 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
     },
   });
   const contents = view.webContents;
+  let visitEpoch=0;
+  if(visitPhotos){
+    const invalidate=()=>{++visitEpoch;visitPhotos.clear();};
+    const cookieChanged=(_event,cookie)=>{
+      if(cookie.name==='arcade_social'){
+        invalidate();
+        if(!contents.isDestroyed()&&isTrusted(contents.mainFrame?.url))contents.mainFrame.send('arcade:visitPhotoReset');
+      }
+    };
+    contents.on('did-start-navigation',(_event,_url,_inPlace,main)=>{if(main)invalidate();});
+    browserSession.cookies.on('changed',cookieChanged);
+    contents.once('destroyed',()=>{
+      browserSession.cookies.removeListener('changed',cookieChanged);
+      invalidate();
+    });
+  }
   if(visitFriend)contents.ipc?.handle('arcade:visitFriend',async(event,input)=>{
-    const frame=event.senderFrame, address=frame?.url;
-    const current=()=>isActive()&&!contents.isDestroyed()&&event.sender===contents&&frame===contents.mainFrame&&frame.url===address;
+    const frame=event.senderFrame, address=frame?.url,epoch=visitEpoch;
+    const current=()=>isActive()&&epoch===visitEpoch&&!contents.isDestroyed()&&event.sender===contents&&frame===contents.mainFrame&&frame.url===address;
     if(!address||!current()||!isTrusted(address))return {state:'changed'};
     const url=new URL(address), valid=n=>typeof n==='string'&&/^[a-z0-9_]{4,24}$/u.test(n);
     if(url.pathname!=='/'||url.search||!chatFragment.test(url.hash)||!valid(input?.account)||!valid(input?.number))return {state:'changed'};
@@ -81,9 +97,20 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
         headers:{'X-Social-Account':input.account}});
       if(!response.ok)return {state:response.status>=500?'offline':'changed'};
       const {conversation}=await response.json();
-      if(!current()||conversation?.type!=='direct'||input.account===input.number||
+      if(!current()||conversation?.id!==url.hash.slice(6)||conversation.type!=='direct'||conversation.friendRemoved||input.account===input.number||
         ![input.account,input.number].every(n=>conversation.members?.some(m=>m.number===n&&m.kind==='human')))return {state:'changed'};
-      visitFriend({account:input.account,number:input.number});
+      const friend={account:input.account,number:input.number};
+      if(visitPhotos&&typeof input.visitId==='string'&&/^[a-f0-9]{32}$/u.test(input.visitId)){
+        friend.visitId=input.visitId;
+        const id=conversation.id;
+        visitPhotos.depart({...friend,
+          current:()=>!contents.isDestroyed()&&contents.mainFrame===frame&&frame.url===address,
+          deliver:(bytes,planet)=>{
+            if(isActive())frame.send('arcade:visitPhotoPreview',{visitId:friend.visitId,id,bytes,planet});
+          },
+        });
+      }else visitPhotos?.clear();
+      visitFriend(friend);
       return {state:'opened'};
     }catch{return {state:'offline'};}
   });

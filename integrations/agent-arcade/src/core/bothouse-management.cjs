@@ -9,6 +9,7 @@ const crypto = require('node:crypto');
 const {execFile} = require('node:child_process');
 const {promisify} = require('node:util');
 const {worldResidentControls}=require('./world-resident-controls.cjs');
+const {installVisitPhoto}=require('./visit-photo-return.cjs');
 const run = promisify(execFile);
 const fail = code => { throw Object.assign(new Error(code), {code}); };
 const outcomes = new Set(['config', 'offline', 'identity', 'dashboard', 'cancelled', 'login', 'friends-offline', 'friend-unavailable', 'original-home']);
@@ -155,7 +156,7 @@ async function openFriendsHome(friends,world,target,socialOrigin,current){
   if(result.ok!==true||result.account!==target.account)fail('login');
 }
 
-function mountBothouse({window,WebContentsView,session,dialog,profile,language,inspect=listener,littleWorldsOrigin,socialOrigin}) {
+function mountBothouse({window,WebContentsView,session,dialog,profile,language,inspect=listener,littleWorldsOrigin,socialOrigin,visitPhotos}) {
   const bindingFile=path.join(profile,'bothouse-management.json');
   const tr=(cn,en)=>language()==='zh'?cn:en;
   async function managementTarget(action,current) {
@@ -208,11 +209,13 @@ function mountBothouse({window,WebContentsView,session,dialog,profile,language,i
     const y=Math.min(height,Math.ceil(top*window.webContents.getZoomFactor()));
     guest.view.setBounds({x:0,y,width,height:height-y});
   }
-  function close(){
+  function close(photoReceipt){
     ++epoch;
     detachAccountWatch?.();detachAccountWatch=undefined;
     if(!guest)return;
     const previous=guest;guest=undefined;
+    const staged=previous.photoReceipt?.();
+    if(staged!==photoReceipt)visitPhotos?.cancel(staged);
     if(!window.isDestroyed())window.contentView.removeChildView(previous.view);
     if(!previous.view.webContents.isDestroyed())previous.view.webContents.close();
   }
@@ -221,7 +224,7 @@ function mountBothouse({window,WebContentsView,session,dialog,profile,language,i
   window.webContents.on('render-process-gone',close);
   window.webContents.on('did-start-navigation',(_e,_url,inPlace,main)=>{if(main&&!inPlace)close();});
   return async value=>{
-    if(value?.action==='close'){close();return 'closed';}
+    if(value?.action==='close'){close(value.photoReceipt);return 'closed';}
     if(['residents-open','residents-connect','residents-disconnect'].includes(value?.action)){
       return guest?.residents ? guest.residents(value.action.slice('residents-'.length)) : {state:'closed'};
     }
@@ -299,7 +302,18 @@ function mountBothouse({window,WebContentsView,session,dialog,profile,language,i
         }
         if(!current())fail('cancelled');
       }
+      const destination = new URL('/', origin);
+      if(world){
+        if(target.planet){
+          destination.searchParams.set('visit', target.planet);
+          destination.searchParams.set('appReturn', 'chat');
+        }
+        destination.searchParams.set('appChat', 'bothouse');
+        destination.searchParams.set('appLang', language() === 'zh' ? 'zh' : 'en');
+      }
+      const photoBinding=target.planet&&visitPhotos?.claim(value.friend);
       const view=new WebContentsView({webPreferences:{session:isolated,nodeIntegration:false,contextIsolation:true,sandbox:true,devTools:false,
+        ...(photoBinding&&{preload:path.join(__dirname,'visit-photo-preload.cjs'),additionalArguments:['--arcade-photo-page='+destination.href]}),
         webSecurity:true,webviewTag:false,navigateOnDragDrop:false}});
       guest={view};top=value.headerBottom;
       if(world){
@@ -361,16 +375,27 @@ function mountBothouse({window,WebContentsView,session,dialog,profile,language,i
       wc.on('render-process-gone',()=>{if(current()){close();window.webContents.send('arcade:storeBothouseUnavailable');}});
       view.setVisible(false);window.contentView.addChildView(view);fit();
       const deadline=world?setTimeout(()=>{if(current()&&!wc.isDestroyed())wc.stop();},15000):undefined;
-      const destination = new URL('/', origin);
-      if (world) {
-        if (target.planet) {
-          destination.searchParams.set('visit', target.planet);
-          destination.searchParams.set('appReturn', 'chat');
-        }
-        destination.searchParams.set('appChat', 'bothouse');
-        destination.searchParams.set('appLang', language() === 'zh' ? 'zh' : 'en');
-      }
       try { await wc.loadURL(destination.href); } finally { clearTimeout(deadline); }
+      if(!current())fail('cancelled');
+      if(photoBinding){
+        const {account,number}=value.friend;
+        guest.photoReceipt=installVisitPhoto({wc,binding:photoBinding,page:destination.href,planet:target.planet,current,
+          async authorize(){
+            const options={credentials:'include',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(7000)};
+            const friends=session.fromPartition('persist:arcade-social');
+            const [dest,access]=await Promise.all([
+              friends.fetch(socialOrigin+'/api/v1/friend-planet?number='+number,{...options,headers:{'X-Social-Account':account}}),
+              isolated.fetch(origin+'/api/planets/'+target.planet+'/residents',options),
+            ]);
+            if(dest.status>=500||access.status>=500)throw Error('offline');
+            if(!dest.ok||!access.ok)return false;
+            const [peer,visit]=await Promise.all([dest.json(),access.json()]);
+            return peer.account===account&&peer.number===number&&peer.worldOrigin===origin&&peer.planetId===target.planet&&
+              visit.friendVisitAllowed===true&&!visit.visitClosed&&!visit.visitReopen;
+          },
+          onReturn:photoReceipt=>window.webContents.send('arcade:storeBothouseReturn',{photoReceipt,visitId:value.friend.visitId}),
+        });
+      }
       if(!current())fail('cancelled');
       // The SPA may finish its lazy route after did-finish-load. Wait for a
       // real login form or dashboard navigation instead of accepting a spinner.

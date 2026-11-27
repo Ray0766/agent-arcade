@@ -156,7 +156,7 @@
       }
     }
   }
-  function leaveBothouse(){
+  function leaveBothouse(photoReceipt){
     if(!bothouseActive)return;
     bothouseActive=false;++bothouseEpoch;
     residentStrip.hidden=true;residentBusy=false;delete bar.dataset.worldResidents;
@@ -164,7 +164,7 @@
     delete document.documentElement.dataset.storeSocial;
     main.inert=false;
     bothouseBack.hidden=true;bothousePanel.hidden=true;
-    void window.arcade.storeBothouse({action:'close'}).catch(()=>{});
+    void window.arcade.storeBothouse({action:'close',photoReceipt}).catch(()=>{});
   }
   function paintSocialButtons(){
     for(const [name,button] of Object.entries(wsButtons))
@@ -258,7 +258,8 @@
       window.arcade.onStoreBothouseUnavailable?.(()=>{if(bothouseActive){residentStrip.hidden=true;delete bar.dataset.worldResidents;paintBothouse('offline');}});
       window.arcade.onStoreFriendVisit?.(friend=>{if(socialActive&&!imageFeedbackReturn)void showBothouse('world',friend);});
       window.arcade.onStoreBothouseReturn?.(intent=>{
-        if(bothouseActive)void showSocial(true,worldActive?intent?.aiChatAccount:undefined);
+        if(!bothouseActive||intent?.photoReceipt&&intent.visitId!==worldFriend?.visitId)return;
+        void showSocial(true,worldActive?intent?.aiChatAccount:undefined,worldActive?intent?.photoReceipt:undefined);
       });
     }
     add(['设备','Devices'],'store-devices','devices');
@@ -323,8 +324,8 @@
     resize.observe(bar);
     resize.observe(socialMenu);
   }
-  async function showSocial(focus=false,aiChatAccount){
-    leaveBothouse();
+  async function showSocial(focus=false,aiChatAccount,photoReceipt){
+    leaveBothouse(photoReceipt);
     toggleSocialMenu(false,{focus:false});
     const epoch=++socialEpoch;
     socialActive=true;
@@ -335,7 +336,7 @@
     paintSocialButtons();
     socialState('loading');
     let loaded=false;
-    try{loaded=await storeSocial({active:true,headerBottom:socialHeaderBottom(),focus,aiChatAccount,...(imageFeedbackReturn&&{imageFeedback:true})});}catch{}
+    try{loaded=await storeSocial({active:true,headerBottom:socialHeaderBottom(),focus,aiChatAccount,photoReceipt,...(imageFeedbackReturn&&{imageFeedback:true})});}catch{}
     if(epoch===socialEpoch){
       socialState(loaded?'ready':'error');
       if(focus&&!loaded)socialRetry.focus({preventScroll:true});

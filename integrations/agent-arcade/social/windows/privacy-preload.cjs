@@ -3,8 +3,10 @@
 const {ipcRenderer}=require('electron');
 if(process.isMainFrame&&location.pathname==='/'&&!location.search){
   if(process.argv.includes('--arcade-friend-visits')){
+    ipcRenderer.on('arcade:visitPhotoReset',()=>window.dispatchEvent(new Event('arcade-visit-photo-reset')));
     require('electron').contextBridge.exposeInMainWorld('arcadeWorldVisit',{
-      open:({account,number})=>ipcRenderer.invoke('arcade:visitFriend',{account,number}),
+      open:({account,number,visitId})=>ipcRenderer.invoke('arcade:visitFriend',{account,number,visitId}),
+      onPhotoPreview:callback=>{ipcRenderer.on('arcade:visitPhotoPreview',(_event,photo)=>callback(photo));},
     });
   }
   const versionArgument='--arcade-feedback-desktop-version=';
