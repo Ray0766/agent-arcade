@@ -83,7 +83,8 @@ function stockTaskReceiver(store,directory) {
     return {...receipt,state:'running'};
   }
 
-  return {identity,step,cancel(key){workers.get(key)?.abort();},stop(){
+  const available=async turn=>(await directory.textTaskCapability?.(turn))?.available===true;
+  return {identity,available,step,cancel(key){workers.get(key)?.abort();},stop(){
     closed=true;
     for(const controller of workers.values())controller.abort();
   }};

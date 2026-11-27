@@ -676,6 +676,14 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
           res.setHeader('Content-Type','application/json; charset=utf-8');
           return res.end(JSON.stringify(output));
         }
+        if(req.method==='GET'&&collection==='conversations'&&action==='first-task'&&parts.length===3){
+          if(req.headers['x-social-account']!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          const capability=await workOrders.sharedDirectAvailable(account,chat);
+          if(current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          res.setHeader('Content-Type','application/json; charset=utf-8');
+          res.setHeader('Cache-Control','no-store');
+          return res.end(JSON.stringify(capability));
+        }
         const preparedTask=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3
           ? await workOrders.prepare(account,chat,body):undefined;
         if(preparedTask&&current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');

@@ -54,6 +54,7 @@ function boardReceiver({resolveMember,runTextTask,startBoardTask,textTaskCapabil
   }
   return {
     identity,step,
+    async available(turn){return Boolean(runTextTask&&(await textTaskCapability?.(turn))?.available===true);},
     stop(){for(const controller of workers.values())controller?.abort();},
     cancel(request,job){
       workers.get(request)?.abort();
