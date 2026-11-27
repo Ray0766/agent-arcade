@@ -469,3 +469,24 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 #live-call video { display: block; max-width: 100%; max-height: 38vh; background: #151515; border-radius: .45rem; margin-bottom: .5rem; }
 #live-call #call-local { width: 5rem; }
 #live-call[hidden], #live-call [hidden], #call-menu[hidden] { display: none; }
+
+#chat-head:has(#group-voice:not([hidden])) {flex-wrap:wrap}
+#group-voice-dock:has(#group-voice:not([hidden])) {flex:0 0 100%;min-width:0}
+#group-voice-dock:not(:has(#group-voice:not([hidden]))) {display:none}
+#group-voice {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;
+  padding:8px 12px;background:var(--paper);border-block-end:1px solid var(--line);color:var(--ink)
+}
+#group-voice[hidden] {display:none}
+.group-voice-summary {display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;min-inline-size:0}
+.group-voice-summary p {font-size:.82rem;margin:0;color:var(--ink-soft,var(--ink))}
+.group-voice-summary ul {display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;list-style:none;margin:0;padding:0}
+.group-voice-summary ul[hidden] {display:none}
+.group-voice-summary li {display:flex;align-items:center;gap:4px;font-size:.82rem;overflow-wrap:anywhere}
+.group-voice-summary li .avatar {width:22px;height:22px;flex:0 0 22px;font-size:.68rem}
+.group-voice-actions {display:flex;gap:6px;flex-wrap:wrap}
+.group-voice-actions button {min-block-size:44px;padding:4px 10px}
+#group-voice.group-voice-detached {
+  position:fixed;z-index:9;inset-inline-end:12px;inset-block-end:12px;max-inline-size:min(400px,calc(100% - 24px));
+  border:1px solid var(--line);border-radius:10px;box-shadow:0 5px 24px #231a3029
+}

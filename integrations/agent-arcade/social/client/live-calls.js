@@ -1,5 +1,5 @@
 // The server exchanges the two complete ICE descriptions. Media travels between peers.
-export function mountLiveCalls({api,account,goChat,chat}){
+export function mountLiveCalls({api,account,goChat,chat,groupVoiceBusy=()=>false}){
   const get=id=>document.getElementById(id);
   const panel=get('live-call'), remote=get('call-remote'), local=get('call-local');
   const device=crypto.randomUUID?.();
@@ -125,6 +125,7 @@ export function mountLiveCalls({api,account,goChat,chat}){
   }
   async function dial(kind){
     if(active||dialing)return;
+    if(groupVoiceBusy()){controls('请先离开群语音，再发起好友通话。',{terminal:true});return;}
     if(!device||!navigator.mediaDevices?.getUserMedia||!window.RTCPeerConnection){
       controls('请使用本机入口或 HTTPS，并允许访问通话设备。',{terminal:true});return;
     }
@@ -141,6 +142,7 @@ export function mountLiveCalls({api,account,goChat,chat}){
   get('call-accept').onclick=async()=>{
     const c=active;
     if(!c||c.accepting)return;
+    if(groupVoiceBusy()){controls('离开群语音后即可接听。',{incoming:true});return;}
     c.accepting=true;
     controls('正在接听…');
     ++revision;
@@ -155,5 +157,5 @@ export function mountLiveCalls({api,account,goChat,chat}){
   get('call-play').onclick=()=>remote.play().then(()=>get('call-play').hidden=true).catch(()=>{});
   window.addEventListener('pagehide',()=>end());
   setInterval(()=>{if(active)void poll();},900);
-  return {poll,reset};
+  return {poll,reset,isBusy:()=>Boolean(active||dialing)};
 }

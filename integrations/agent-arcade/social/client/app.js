@@ -1,3 +1,4 @@
+import { mountGroupVoicePanel } from './group-voice-panel.js';
 import { mountLiveCalls } from './live-calls.js';
 import { mountConversationList } from './conversation-list.js';
 import { quoteControl,focusOriginal } from './message-reply.js';
@@ -27,7 +28,18 @@ let friends = [], incoming = [], outgoing = [], conversations = [], syncFlight, 
 let chatVisit=0, moderationCursor=0, historyFloor=0, historyAfter=0, dialogMessage, dialogGroup, dialogCleanup;
 let membershipRevision, historyContext, historyFinder;
 let socialVisible=true;
-const calls=mountLiveCalls({api,account:()=>user?.number,chat:()=>chat,goChat});
+const calls=mountLiveCalls({api,account:()=>user?.number,chat:()=>chat,goChat,groupVoiceBusy:()=>groupVoice.isBusy()});
+const groupVoice=mountGroupVoicePanel({
+  api,account:()=>user?.number,privateCallBusy:calls.isBusy,openChat:id=>goChat(id,false,user?.number),
+  personAvatar:person=>personAvatar(person),
+  scope:()=>{
+    if(user?.kind!=='human'||conversation?.type!=='group'||routeId()!==chat||!membershipRevision)return;
+    if(!conversation.members.every(member=>member.kind==='human'))return;
+    const {title,members}=conversation;
+    const canStart=members.length===3;
+    if(canStart||members.length===2)return {id:chat,revision:membershipRevision,title,members,canStart};
+  },
+});
 const readThrough=new Map(), readFlights=new Map();
 let inlineVoice, messageAction;
 let feedScope='friends', feedCursor=null, feedRead=0, pendingPost;
@@ -341,6 +353,7 @@ function toggleAuthMode(mode) {
 }
 function leaveSession({discardFeedback=false,expired=false}={}) {
   calls.reset();
+  groupVoice.reset();
   closeStartMenu();
   if(expired)for(const key of localDraftKeys(draftScope))refreshLocalDraft(key.slice(draftScope.prefix.length));
   interruptedDrafts=expired?suspendChatDrafts(user?.number,[...drafts],chat):undefined;
@@ -1358,6 +1371,7 @@ const remarkControl=button('好友备注',()=>{
 });
 remarkControl.hidden=true;chatSettings.append(remarkControl);
 function showChatHeader() {
+  groupVoice.refresh();
   showReplyTarget();
   renderReconnectAction();
   const available=!!conversation, meta=conversation;

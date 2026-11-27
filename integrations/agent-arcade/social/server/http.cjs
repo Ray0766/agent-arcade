@@ -12,6 +12,7 @@ const {createHash} = require('node:crypto');
 const {friendShareLookup}=require('./bothouse/friend-share-lookup.cjs');
 const {fail,number} = require('./store.cjs');
 const {createLiveCalls}=require('./live-calls.cjs');
+const {createGroupVoice}=require('./group-voice.cjs');
 const {current,makeAuth,sessionDigest} = require('./auth.cjs');
 const {planetPublishers}=require('./bothouse/planet-residents.cjs');
 const {createAiDirect} = require('./ai-direct.cjs');
@@ -317,7 +318,8 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
   groupAiProviders=[aiProvider,openaiProvider,claudeProvider].filter(Boolean),privacyContact,publicSource,voiceEngine,drawingProvider,feedClock,appointmentClock,webSearchFetch,personalAiFetch,bothouse,filename,friendLookupToken,taskReceiver=stockTaskReceiver(store,bothouse)} = {}) {
   let loadedClient;
   const clientRelease=()=>loadedClient??=loadClientRelease(client);
-  const calls=createLiveCalls(store);
+  const calls=createLiveCalls(store,number=>groupVoice.isBusy(number));
+  const groupVoice=createGroupVoice(store,calls.isBusy);
   const auth = makeAuth(store,Boolean(publicOrigin));
   const residents=planetPublishers({store,bothouse,socialOrigin:()=>publicOrigin||'http://127.0.0.1:'+server.address().port});
   const workOrders=createWorkOrders(store,taskReceiver);
@@ -547,14 +549,24 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       } else if (req.method === 'POST' && ['register','login'].includes(key)) {
         result = await auth.enter(key === 'register',body,req,res);
         calls.disconnect(sessionDigest(req));
+        groupVoice.disconnect(sessionDigest(req));
         residents.endSession(sessionDigest(req));
       } else if (req.method === 'POST' && key === 'logout') {
         result = auth.logout(req,res);
         calls.disconnect(sessionDigest(req));
+        groupVoice.disconnect(sessionDigest(req));
         residents.endSession(sessionDigest(req));
       }
       else {
         const account = current(store,req);
+        if(collection==='conversations'&&action==='group-voice'&&parts.length===4){
+          if(req.headers['x-social-account']!==account)fail(409,'call_session','账号已切换，请重新打开会话');
+          const request=req.method==='GET'?{action:'poll',revision:url.searchParams.get('revision'),
+            roomId:url.searchParams.get('roomId'),self:url.searchParams.get('self')}:body;
+          const answer=groupVoice.handle(account,sessionDigest(req),chat,message,request);
+          res.setHeader('Content-Type','application/json; charset=utf-8');
+          return res.end(JSON.stringify(answer));
+        }
         if(collection==='calls'&&parts.length===2){
           if(req.headers['x-social-account']!==account)fail(409,'call_session','账号已切换，请重新打开会话');
           const answer=calls.handle(account,sessionDigest(req),chat,body,url.searchParams.get('known'));
@@ -736,6 +748,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
     }
   });
   server.once('close',calls.close);
+  server.once('close',groupVoice.close);
   server.once('listening',workOrders.start);
   server.once('close',workOrders.stop);
   server.once('listening',residents.start);
