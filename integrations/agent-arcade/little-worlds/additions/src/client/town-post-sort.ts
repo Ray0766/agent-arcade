@@ -40,6 +40,7 @@ export class TownPostSort {
     prepare(): void;
     receive(): void;
     restoreFocus(): void;
+    starOffer?: { button:HTMLButtonElement; show(visible:boolean):void };
   }) {
     this.entry.type = this.close.type = this.submit.type = 'button';
     this.entry.id = 'pax-sort-entry';
@@ -55,6 +56,7 @@ export class TownPostSort {
     tray.append(...this.letters,...this.slots);
     footer.append(this.close,this.submit);
     this.panel.append(this.title,this.status,tray,footer);
+    if (actions.starOffer) tray.after(actions.starOffer.button);
     entryHost.append(this.entry);
     document.body.append(this.panel);
 
@@ -89,6 +91,7 @@ export class TownPostSort {
 
   private exit(focus: boolean) {
     this.panel.hidden = true;
+    this.actions.starOffer?.show(false);
     this.placed.clear();
     this.completed = false;
     this.selected = undefined;
@@ -125,6 +128,7 @@ export class TownPostSort {
     this.submit.textContent = labels.submit;
     const ready = marks.every(mark=>this.placed.get(mark)===mark);
     this.submit.hidden = !ready || this.completed;
+    this.actions.starOffer?.show(this.completed && !this.panel.hidden);
     this.status.textContent = this.completed ? labels.thanks : ready ? labels.sorted :
       [...this.placed].some(([slot,mark])=>slot!==mark) ? labels.wrong : this.selected ? labels.placing : labels.start;
     for (const [i,mark] of marks.entries()) {

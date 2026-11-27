@@ -342,15 +342,20 @@ index 4ac5126e36616101ce4acd38b28bcf638c114fd2..434dca5f7d35749a931c1732c274edb7
 +    return handle.object;
    }
 diff --git a/src/client/character-sample.ts b/src/client/character-sample.ts
-index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa95db123c1 100644
+index 9e2e1f9978b075934705f6aaaf25981ddaa57039..46cd03938acab1f7db055c50fa08023e26a4a447 100644
 --- a/src/client/character-sample.ts
 +++ b/src/client/character-sample.ts
-@@ -14,3 +14,3 @@ const material=(color:string)=>{if(!materialCache.has(color)){const m=applyArtMa
+@@ -12,21 +12,24 @@ const sphere=()=>shared('sphere',()=>new T.SphereGeometry(1,12,8));
+ const capsule=()=>shared('capsule',()=>new T.CapsuleGeometry(1,1,3,8));
+ const material=(color:string)=>{if(!materialCache.has(color)){const m=applyArtMaterial(new T.MeshStandardMaterial({color,roughness:.9,metalness:0}));m.userData.sharedResource=true;materialCache.set(color,m);}return materialCache.get(color)!;};
  const eyeMaterial=new T.MeshStandardMaterial({vertexColors:true,roughness:.65,metalness:0});eyeMaterial.userData.sharedResource=true;
 -function eyeGeometry(color:string){return shared('eye:'+color,()=>{
 +function eyeGeometry(color:string,compact:boolean){return shared('eye:'+color+':'+compact,()=>{
   const parts:Array<{color:string;scale:number[];position:number[]}>= [
-@@ -21,5 +21,8 @@ function eyeGeometry(color:string){return shared('eye:'+color,()=>{
+   {color:'#fff6e5',scale:[.060,.067,.023],position:[0,0,0]},
+   {color,scale:[.033,.044,.014],position:[0,-.003,.019]},
+   {color:'#26352f',scale:[.017,.031,.008],position:[0,-.003,.030]},
+   {color:'#fffdf0',scale:[.008,.010,.005],position:[-.010,.015,.037]},
   ];
 - const geometries=parts.map(p=>{const g=new T.SphereGeometry(1,10,6);g.scale(p.scale[0],p.scale[1],p.scale[2]);g.translate(p.position[0],p.position[1],p.position[2]);const c=new T.Color(p.color),values=new Float32Array(g.attributes.position.count*3);for(let i=0;i<values.length;i+=3)values.set([c.r,c.g,c.b],i);g.setAttribute('color',new T.BufferAttribute(values,3));return g;});const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());return merged;
 + const geometries=parts.map(p=>{const g=new T.SphereGeometry(1,compact?4:10,compact?3:6);g.scale(p.scale[0],p.scale[1],p.scale[2]);g.translate(p.position[0],p.position[1],p.position[2]);const c=new T.Color(p.color),values=new Float32Array(g.attributes.position.count*3);for(let i=0;i<values.length;i+=3)values.set([c.r,c.g,c.b],i);g.setAttribute('color',new T.BufferAttribute(values,3));return g;});const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());return merged;
@@ -361,14 +366,18 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 + const sphereGeometry=()=>compact?shared('town-sphere',()=>new T.SphereGeometry(1,6,4)):sphere();
 + const capsuleGeometry=()=>compact?shared('town-capsule',()=>new T.CapsuleGeometry(1,1,2,5)):capsule();
   const root=new T.Group(),rig=new T.Group(),torso=new T.Group(),head=new T.Group();root.name='little-worlds-traveller';root.userData.characterVariant='sample';root.add(rig);rig.add(torso);torso.position.y=.87;
-@@ -27,4 +30,4 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  const tinted:T.Mesh[]=[];
   const add=(parent:T.Object3D,g:T.BufferGeometry,color:string,position:number[],scale:number[],tint=false)=>{const mesh=new T.Mesh(g,material(color));mesh.position.fromArray(position);mesh.scale.fromArray(scale);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);if(tint)tinted.push(mesh);return mesh;};
 - const ellipsoid=(p:T.Object3D,color:string,pos:number[],scale:number[],tint=false)=>add(p,sphere(),color,pos,scale,tint);
 - const coat=COURIER_LOOK.coats[identity],skin=SKIN_COLORS[options.skin],hair='#504338',cream='#f3e8ce',dark='#405653',leather='#865e43';
 + const ellipsoid=(p:T.Object3D,color:string,pos:number[],scale:number[],tint=false)=>add(p,sphereGeometry(),color,pos,scale,tint);
 + const coat=townCoat??COURIER_LOOK.coats[identity],skin=SKIN_COLORS[options.skin],hair='#504338',cream='#f3e8ce',dark='#405653',leather='#865e43';
   // Soft fitted jacket, curved hem, open cream collar and modest scarf.
-@@ -37,6 +40,8 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  ellipsoid(torso,coat,[0,.01,0],[.215,.29,.15],true);
+  add(torso,shared('hem',()=>new T.CylinderGeometry(.19,.23,.12,12)),coat,[0,-.20,0],[1,1,.74],true);
+@@ -35,25 +38,27 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  ellipsoid(torso,leather,[0,-.16,.151],[.205,.025,.022]);
+  ellipsoid(torso,'#dac794',[.035,-.16,.173],[.028,.024,.01]);
   // Diagonal strap and a rounded canvas field bag, visible from the follow view.
 - const strap=add(torso,shared('strap',()=>new T.BoxGeometry(.035,.48,.025)),leather,[0,.01,-.145],[1,1,1]);strap.rotation.z=-.48;
 - ellipsoid(torso,'#b69363',[-.16,-.10,-.15],[.135,.16,.07]);
@@ -381,22 +390,29 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  ellipsoid(torso,leather,[-.16,-.075,-.229],[.018,.035,.008]);
 + }
   // Head: softer jaw, ears, clear eyes and a sculpted side-swept hair silhouette.
-@@ -44,3 +49,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  torso.add(head);head.position.set(0,.47,.005);
   head.scale.fromArray(options.face==='oval'?[.92,1.08,.98]:options.face==='round'?[1.06,.95,1.04]:[1,1,1]);
 - add(head,shared('head',()=>new T.SphereGeometry(1,16,12)),skin,[0,0,0],[.215,.235,.195]);
 + add(head,compact?shared('town-head',()=>new T.SphereGeometry(1,8,6)):shared('head',()=>new T.SphereGeometry(1,16,12)),skin,[0,0,0],[.215,.235,.195]);
   ellipsoid(head,skin,[0,-.10,.05],[.17,.14,.15]);
-@@ -51,3 +56,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  for(const side of [-1,1]){
+   ellipsoid(head,skin,[side*.208,-.015,0],[.040,.066,.035]);
+   ellipsoid(head,new T.Color(skin).multiplyScalar(.75).getStyle(),[side*.225,-.018,.017],[.015,.036,.016]);
+   ellipsoid(head,new T.Color(skin).lerp(new T.Color('#c46d64'),.3).getStyle(),[side*.123,-.075,.161],[.044,.020,.012]);
   }
 - const eyes=[-1,1].map(side=>{const eye=new T.Mesh(eyeGeometry(EYE_COLORS[options.eyes]),eyeMaterial);eye.position.set(side*.078,.015,.173);eye.rotation.y=side*.13;head.add(eye);return eye;});
 + const eyes=[-1,1].map(side=>{const eye=new T.Mesh(eyeGeometry(EYE_COLORS[options.eyes],compact),eyeMaterial);eye.position.set(side*.078,.015,.173);eye.rotation.y=side*.13;head.add(eye);return eye;});
   for(const side of [-1,1]){const brow=ellipsoid(head,hair,[side*.081,.093,.169],[.059,.014,.013]);brow.rotation.z=side*.10;}
-@@ -55,3 +60,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  ellipsoid(head,skin,[0,-.038,.199],[.027,.040,.029]);
   const mouth=shared('smile',()=>new T.TubeGeometry(new T.QuadraticBezierCurve3(new T.Vector3(-.041,-.121,.172),new T.Vector3(0,-.140,.180),new T.Vector3(.041,-.121,.172)),8,.007,4,false));add(head,mouth,'#956b5a',[0,0,0],[1,1,1]);
 - const cap=add(head,shared('hair-cap',()=>new T.SphereGeometry(1,16,9,0,Math.PI*2,0,1.70)),hair,[0,.04,-.025],[.232,.237,.213]);
 + const cap=add(head,compact?shared('town-hair-cap',()=>new T.SphereGeometry(1,8,5,0,Math.PI*2,0,1.70)):shared('hair-cap',()=>new T.SphereGeometry(1,16,9,0,Math.PI*2,0,1.70)),hair,[0,.04,-.025],[.232,.237,.213]);
   if(options.hair==='swept'){
-@@ -67,9 +72,17 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+   for(const [x,y,z,sx,sy,sz,rotation] of [[-.115,.148,.147,.117,.087,.062,-.58],[.008,.185,.145,.118,.068,.061,-.4],[.12,.19,.102,.105,.068,.071,.20]]){const lock=ellipsoid(head,hair,[x,y,z],[sx,sy,sz]);lock.rotation.z=rotation;}
+   for(const side of [-1,1]){const lock=ellipsoid(head,hair,[side*.196,.042,-.025],[.055,.145,.115]);lock.rotation.z=-side*.12;}
+@@ -65,20 +70,28 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+   for(const side of [-1,1]){const lock=ellipsoid(head,hair,[side*.194,-.055,-.025],[.067,.205,.126]);lock.rotation.z=-side*.08;const fringe=ellipsoid(head,hair,[side*.113,.137,.155],[.112,.075,.05]);fringe.rotation.z=side*.38;}
+  }
   // Articulated limbs reuse shared low-resolution geometry and existing game API.
 - const arms=[-1,1].map(side=>{const upper=new T.Group(),forearm=new T.Group();torso.add(upper);upper.position.set(side*.225,.16,0);ellipsoid(upper,coat,[side*.014,-.085,0],[.085,.145,.085],true);upper.add(forearm);forearm.position.y=-.22;add(forearm,capsule(),coat,[0,-.085,0],[.061,.067,.061],true);ellipsoid(forearm,cream,[0,-.17,0],[.066,.025,.066]);ellipsoid(forearm,skin,[0,-.226,.014],[.059,.069,.056]);return{upper,forearm};});
 - const legs=[-1,1].map(side=>{const hip=new T.Group(),knee=new T.Group();rig.add(hip);hip.position.set(side*.102,.65,0);add(hip,capsule(),dark,[0,-.125,0],[.081,.09,.078]);hip.add(knee);knee.position.y=-.25;add(knee,capsule(),dark,[0,-.115,0],[.064,.085,.064]);ellipsoid(knee,leather,[0,-.28,.040],[.091,.076,.144]);ellipsoid(knee,'#c8ae82',[0,-.33,.042],[.094,.018,.142]);return{hip,knee};});
@@ -416,13 +432,19 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  legs.forEach(({hip,knee})=>{hip.rotation.x=-Math.PI/2;knee.rotation.x=Math.PI/2;});
 +  arms.forEach(({upper,forearm},i)=>{upper.rotation.set(-.32,0,(i?1:-1)*.08);forearm.rotation.x=-.72;});
 +  if(shadow)shadow.visible=false;
-+ },animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){
++ },animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true,carryingProp=false){
    const dt=Math.min(.05,Math.max(0,t-lastTime));lastTime=t;const stride=Math.min(1,speed/3);gait+=dt*speed*4.4;const phase=reduced?0:gait;
-@@ -80,3 +93,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
-   arms.forEach((arm,i)=>{arm.upper.rotation.set(parcel.visible?-.92:-Math.sin(phase+i*Math.PI)*.35*stride,0,(i?1:-1)*.09);arm.forearm.rotation.x=parcel.visible?-.72:-.18;});
+   rig.position.y=reduced?0:Math.abs(Math.sin(phase))*.018*stride;torso.rotation.set(reduced?0:.035*stride,0,reduced?0:Math.sin(phase)*.025*stride-turn*.035);
+   head.rotation.y=reduced?0:Math.sin(t*.65)*.045*(1-stride);head.rotation.z=reduced?0:Math.sin(t*.45)*.012;
+   const blink=reduced?1:(t%5.3>.08&&t%5.3<.20?.08:1);eyes.forEach(e=>e.scale.y=blink);
+   legs.forEach((leg,i)=>{const s=Math.sin(phase+i*Math.PI);leg.hip.rotation.x=s*.50*stride;leg.knee.rotation.x=Math.max(0,-s)*.62*stride;});
+-  arms.forEach((arm,i)=>{arm.upper.rotation.set(parcel.visible?-.92:-Math.sin(phase+i*Math.PI)*.35*stride,0,(i?1:-1)*.09);arm.forearm.rotation.x=parcel.visible?-.72:-.18;});
 -  shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
++  arms.forEach((arm,i)=>{arm.upper.rotation.set((parcel.visible||carryingProp)?-.92:-Math.sin(phase+i*Math.PI)*.35*stride,0,(i?1:-1)*.09);arm.forearm.rotation.x=(parcel.visible||carryingProp)?-.72:-.18;});
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
+  }};
+ }
 diff --git a/src/client/colony.ts b/src/client/colony.ts
 index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f1955aa0a0f2 100644
 --- a/src/client/colony.ts
@@ -1043,7 +1065,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba4313f78629 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..5bacc73ebbbcd603e9c023a7eaf567a8578247f5 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -30,6 +30,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
@@ -1054,10 +1076,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
  import { GroundPresence } from './presence.ts';
  import { PresenceVisitGate } from './presence-visit.ts';
  import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
-@@ -69,12 +70,14 @@ import { createHomeDoor, placeHomeDoor } from './home-door.ts';
+@@ -69,12 +70,15 @@ import { createHomeDoor, placeHomeDoor } from './home-door.ts';
  import { createStateLoader } from './state-loader.ts';
  import { worldVisualSignature } from './world-visual-signature.ts';
  import { PhotoMode } from './photo-mode.ts';
++import { TownPostDelivery, TownPostHeldLetter, townResidentActionHost } from './town-post-delivery.ts';
 +import { POST_COURIER, TownPostSort } from './town-post-sort.ts';
  import {TownResidents} from './town-residents.ts';
  import {residentDialogue} from '../shared/town-residents.ts';
@@ -1069,7 +1092,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
  import { HomeSetup } from './home-setup.ts';
  import { TeleportStations } from './teleport-station.ts';
  import { SaveProgress } from './save-progress.ts';
-@@ -144,6 +147,9 @@ let residentConversationKey='';
+@@ -144,6 +148,9 @@ let residentConversationKey='';
  let queue: Promise<unknown> = Promise.resolve();
  const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
@@ -1079,24 +1102,37 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
  function renderSaveProgress(){
    if(!state||physicsMismatch)return;
-@@ -186,6 +192,16 @@ function talkToResident(){
+@@ -186,6 +193,29 @@ function talkToResident(){
    clearInput();speakingResident=found;renderResidentConversation();$('conversation').dataset.resident=found.id;
    $('conversation').hidden=false;conversationUntil=Infinity;residents?.greet(found.id,elapsed);
  }
-+const postSort = new TownPostSort($('dialogue-text').parentElement!, {
-+  nearby: () => activePlanet==='hub' && !!standing?.grounded && !!residents && !!walker && online &&
++function townContactAvailable(id:string) {
++  return activePlanet==='hub' && !!standing?.grounded && !!residents && !!walker && online &&
 +    !worldPending && !sceneLoadingActive() && !flight?.active && !photoPaused && !homeTransition &&
 +    !colony?.paused && !worldGuide.talking && !document.querySelector('dialog[open]') &&
 +    !overview && !near && !nearDock && !teleportStations?.canUse &&
-+    residents.nearest(walker.up.toArray() as Vec3,standing.radius)?.id===POST_COURIER,
++    residents.nearest(walker.up.toArray() as Vec3,standing.radius)?.id===id;
++}
++const townPostDelivery = new TownPostDelivery(townResidentActionHost(), {
++  nearby: id => townContactAvailable(id)?{residentId:id,visitEpoch:state.location?.visitEpoch??0}:null,
++  flush: async () => { await savePosition(true); await queue; },
++  receive: message => {
++    setText($('dialogue-text'),message,true);
++    residents?.greet('ada-shop',elapsed);
++  },
++  report: notice,
++});
++const postSort = new TownPostSort($('dialogue-text').parentElement!, {
++  nearby: () => townContactAvailable(POST_COURIER),
 +  prepare: () => { closeResidentConversation(); clearInput(); },
 +  receive: () => residents?.receivePostLetters(elapsed),
++  starOffer: {button:townPostDelivery.offer,show:visible=>townPostDelivery.offerAfterSorting(visible)},
 +  restoreFocus: () => action.focus({preventScroll:true}),
 +});
  function notice(message: string, duration = 5000) { setText($('notice'), message); $('notice').hidden = false; noticeUntil = performance.now() + duration; }
  class ApiError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
  async function request<T = PlayerState>(path: string, body?: unknown): Promise<T> {
-@@ -268,16 +284,20 @@ function accept(next: PlayerState) {
+@@ -268,16 +298,20 @@ function accept(next: PlayerState) {
    const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
    flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
@@ -1122,7 +1158,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
  }
  function renderTask() {
-@@ -317,6 +337,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+@@ -317,6 +351,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
  setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
  worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
@@ -1130,7 +1166,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
  const practical=createWorldPracticalLights();scene.add(practical.group);
  const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
-@@ -349,11 +370,13 @@ function tutorialContext(){
+@@ -349,11 +384,13 @@ function tutorialContext(){
      paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
  }
  function frameVillageGuide(){
@@ -1148,7 +1184,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
      visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
      homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
-@@ -362,12 +385,15 @@ function frameVillageGuide(){
+@@ -362,12 +399,15 @@ function frameVillageGuide(){
    if(context&&planet&&groundWorld&&walker){
      const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
@@ -1165,7 +1201,15 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
-@@ -544,6 +570,10 @@ window.addEventListener('keydown',event=> {
+@@ -526,6 +566,7 @@ function cameraAvatarFrame(){
+   return{bounds,meshes,exactMeshes:exactGeometryReady?exactMeshes:undefined,opticalTargetPoints:bounds.flatMap(bound=>bound.corners)};
+ }
+ type CameraRenderFrame=ReturnType<TownCameraCutaway['captureFrameRenderEvidence']>['frame']&{assetsRevision:number};
++const townPostLetter = new TownPostHeldLetter(player.root);
+ const avatarOcclusion=new AvatarOcclusion(player.root);
+ const presence=new GroundPresence(scene,renderer.domElement);
+ const silhouette = new T.Mesh(new T.CapsuleGeometry(.22, .90, 4, 8), new T.MeshBasicMaterial({color:'#ffdfa0',transparent:true,opacity:.24,depthTest:false,depthWrite:false}));
+@@ -544,6 +585,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
@@ -1176,7 +1220,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
      event.preventDefault();keys.add(key);target=null;
      if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
    }
-@@ -597,7 +627,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+@@ -597,7 +642,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
  renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
  renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
@@ -1185,7 +1229,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +728,50 @@ async function interact() {
+@@ -698,7 +743,50 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1237,7 +1281,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +794,34 @@ setInterval(async()=>{
+@@ -721,17 +809,34 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1248,7 +1292,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
-
+ 
  let previous=performance.now(),elapsed=0,uiTick=0,started=false;
  function animate(now:number) {
    requestAnimationFrame(animate);
@@ -1275,7 +1319,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +869,7 @@ function animate(now:number) {
+@@ -779,7 +884,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1284,10 +1328,14 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -799,6 +889,11 @@ function animate(now:number) {
+@@ -798,7 +903,14 @@ function animate(now:number) {
+   }
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
-   player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
+-  player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
++  const holdStarLetter=activePlanet==='hub' && townPostDelivery.carrying && !player.parcel.visible && !benchRest;
++  player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true,holdStarLetter);
++  townPostLetter.frame(player.parcel,holdStarLetter);
 +  if (benchRest) {
 +    player.root.position.copy(benchRest.seat.position);
 +    player.root.quaternion.copy(benchRest.seat.rotation);
@@ -1296,7 +1344,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +966,7 @@ function animate(now:number) {
+@@ -871,7 +983,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1305,7 +1353,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +1003,14 @@ function animate(now:number) {
+@@ -908,11 +1020,14 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1320,12 +1368,15 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1062,19 @@ function animate(now:number) {
+@@ -964,7 +1079,22 @@ function animate(now:number) {
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    postSort.frame(speakingResident?.id===POST_COURIER);
++    townPostDelivery.frame(activePlanet==='hub'&&online&&state.flight.mode==='ground'&&state.location?.kind!=='interior'&&!flight?.active,
++      speakingResident?.id,!scenePaused&&!overview);
++
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
 +    const bench = benchRest ?? (!paused ? nearestOutdoorBench() : null);
 +    const interactionPaused = paused || nearDock || !!teleportStations?.canUse;
@@ -1341,7 +1392,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1086,24 @@ function animate(now:number) {
+@@ -976,6 +1106,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1366,7 +1417,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1158,17 @@ function ensureColony() {
+@@ -1030,15 +1178,17 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1386,7 +1437,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..6137fb067f52debf9b5458debb13ba43
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1189,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1209,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -2259,15 +2310,21 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a06a15475 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..87da96be516d44599a958712ee33fdd0c4f21d05 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
-@@ -3,3 +3,3 @@ import { createHash, randomBytes } from 'node:crypto';
+@@ -1,7 +1,7 @@
+ import { createServer } from 'node:http';
+ import { createHash, randomBytes } from 'node:crypto';
  import { readFile } from 'node:fs/promises';
 -import { resolve, extname } from 'node:path';
 +import { resolve, extname, sep } from 'node:path';
  import { marked } from 'marked';
-@@ -14,2 +14,8 @@ import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
+ import { BLUEPRINT_BODY_LIMIT } from '../shared/blueprints.ts';
+ import { presenceStore } from './presence.ts';
+@@ -12,6 +12,12 @@ import { workerScript } from './worker-script.ts';
+ import { createGuideHelp } from './guide-help.ts';
+ import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
  import {guideConfiguration} from './guide-config.ts';
 +import {serveResidentArt,withResidentArt} from './resident-art.ts';
 +import {readFriendsOrigins} from './friends-origins.ts';
@@ -2276,7 +2333,11 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +import {planetResidents} from './planet-residents.ts';
 +import {jsonBody,residentSettings} from './resident-http.ts';
  import { businessLog } from './business-log.ts';
-@@ -27,2 +33,8 @@ if (store.migrationBackup) console.log(`Before migration, saved a consistent bac
+ 
+ const homeSample=process.env.HOME_SAMPLE==='1';
+@@ -25,6 +31,12 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
+ const cookieName=homeSample?(samplePort===8126?'little_home_sample':`little_home_sample_p${samplePort}`):'little_post';
+ if (store.migrationBackup) console.log(`Before migration, saved a consistent backup: ${store.migrationBackup}`);
  const audit=businessLog(databasePath);
 +const residentSources=planetResidents(store.db);
 +const appResidentLinks=appResidents(store.db,residentSources);
@@ -2285,12 +2346,16 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +  homeSample ? (player,bind)=>store.createPrepared(player,Date.now(),0,bind) : undefined);
 +const residents=withResidentArt(store.db,{...residentSources,read:appResidentLinks.read});
  const guideHelp=createGuideHelp();
-@@ -55,3 +67,3 @@ const server = createServer(async (req, res) => {
+ // Default off; production requires explicit approval configuration and the transferred ledger.
+ const aiConfig=guideConfiguration(process.env);
+@@ -53,22 +65,107 @@ const server = createServer(async (req, res) => {
+   try {
+     const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
 -    if (url.pathname.startsWith('/api/')) {
 +    if (url.pathname.startsWith('/api/')||url.pathname==='/resident-settings') {
        auditRoute=url.pathname.slice(5);
-@@ -59,4 +71,85 @@ const server = createServer(async (req, res) => {
+       auditContext={planetId:url.searchParams.get('planetId')};
        const cookie = new RegExp('(?:^|;\\s*)'+cookieName+'=([a-f0-9]{64})(?:;|$)').exec(req.headers.cookie ?? '')?.[1];
 -      let id = cookie ? hash(cookie) : '';
 +      const cookieDigest=cookie ? hash(cookie) : '';
@@ -2377,13 +2442,27 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +        }
 +      }
        if (url.pathname === '/api/state' && req.method === 'GET') {
-@@ -65,4 +158,3 @@ const server = createServer(async (req, res) => {
+         if (!id || !store.has(id)) {
+           const token = randomBytes(32).toString('hex'); id = hash(token); const created = store.integratedWorld?store.createArrival(id):await store.createPrepared(id);
            auditIdentity=id;auditCreated=true;
 -          const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
 -          res.setHeader('Set-Cookie', `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000${secure}`);
 +          setSession(token,req.headers['x-forwarded-proto']==='https');
            send(200, created); return;
-@@ -97,8 +189,9 @@ const server = createServer(async (req, res) => {
+         }
+         send(200, store.state(id)); return;
+       }
++      if (url.pathname === '/api/town/post' && req.method === 'GET') {
++        if (!id || !store.has(id)) throw new RequestError(401, 'Reconnect to read your star letter.');
++        if (url.search) throw new RequestError(400, 'Only your own star letter is available.');
++        send(200,store.readTownPost(id)); return;
++      }
+       if (url.pathname === '/api/universe' && req.method === 'GET') {
+         if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
+         send(200, store.universe(id)); return;
+@@ -95,12 +192,13 @@ const server = createServer(async (req, res) => {
+       if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
+       else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
 -      const chunks: Buffer[] = []; let byteLength = 0;
 -      for await (const chunk of req) { const bytes = Buffer.from(chunk); byteLength += bytes.length; if (byteLength > bodyLimit) throw new RequestError(413, 'Request too large.'); chunks.push(bytes); }
@@ -2399,20 +2478,48 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +        throw new RequestError(400,'Choose a resident connection action.');
 +      }
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
-@@ -143,2 +236,3 @@ const server = createServer(async (req, res) => {
+       if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
+       if(url.pathname==='/api/guide/ask'){
+@@ -137,10 +235,15 @@ const server = createServer(async (req, res) => {
+       }
+       else if(url.pathname==='/api/ground/recover'){const result=store.recoverGround(id,body);presence.leave(id);send(200,result);}
+       else if (url.pathname === '/api/interact') send(200, store.interact(id, body.action));
++      else if (url.pathname === '/api/town/post') {
++        if (url.search) throw new RequestError(400, 'Only your own star letter is available.');
++        send(200,store.changeTownPost(id,body));
++      }
+       else if(url.pathname==='/api/trip/start'){const u=store.startTrip(id,body);presence.leave(id);send(200,u);}
+       else if(url.pathname==='/api/trip/change')send(200,store.changeTrip(id,body));
+       else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
        else if(url.pathname==='/api/planets/rename')send(200,store.renamePlanet(id,body));
 +      else if(url.pathname==='/api/courtyard/arrival')send(200,store.saveCourtyardArrival(id,body));
        else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
-@@ -170,3 +264,3 @@ const server = createServer(async (req, res) => {
+       else if (url.pathname === '/api/flight/checkpoint') send(200,store.flight(id,body));
+       else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
+@@ -168,7 +271,7 @@ const server = createServer(async (req, res) => {
+       type = 'text/html; charset=utf-8';
+     } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
 -      if (!path.startsWith(root + '/')) throw new RequestError(404, 'Not found.');
 +      if (!path.startsWith(root + sep)) throw new RequestError(404, 'Not found.');
        try { body = await readFile(path); } catch { throw new RequestError(404, 'Not found.'); }
+       type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
+     }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7e95afc92 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..c41be1654b9ced2341bf02a7622a4160965e3001 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -187,3 +187,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -32,6 +32,7 @@ import type { Vec3 } from '../shared/world.ts';
+ export { RequestError } from './errors.ts';
+ 
+ interface Row { character: Character; quest: Quest; position: string; deliveries: number; revision: number; moved_at: number; planet_id: string }
++import { townPostStore } from './town-post.ts';
+ export function openStore(path: string, options: { homeSample?: boolean; integratedWorld?: boolean } = {}) {
+   // Probe with SQLite's read-only flag before mkdir, WAL pragmas or any migration.
+   if(options.homeSample&&path!==':memory:'&&existsSync(path)){
+@@ -185,7 +186,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       migrateArrivalHomes(db);
+       migrateTrips(db);
        migrateAppearances(db);
 -      db.exec('PRAGMA user_version=20; COMMIT;');
 +      db.exec(`CREATE TABLE IF NOT EXISTS courtyard_arrivals (
@@ -2420,7 +2527,19 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        route TEXT NOT NULL
 +      ); PRAGMA user_version=${STORE_SCHEMA}; COMMIT;`);
      } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
-@@ -210,2 +213,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   }
+   const history = historyStore(db);
+@@ -197,6 +201,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   const planets = planetStore(db, blueprints, history, homeSample ? HOME_SAMPLE_RADIUS : undefined,integratedWorld?INTEGRATED_RADIUS:undefined);
+   const navigation=navigationStore(db,planets);
+   const trips=tripStore(db,planets,navigation);
++  const townPost=townPostStore(db);
+   const ground=groundStore(db,planets);
+   const homes=homeStore(db,planets,blueprints,history,homeEnabled);
+   const homePaths=homePathStore(db,planets,homes,homeEnabled);
+@@ -208,6 +213,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     if (!result) throw new RequestError(401, 'Your session has expired. Reload to start a new visit.');
+     return result;
    };
 +  function enrollArrival(id:string,now:number){
 +    db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
@@ -2428,21 +2547,32 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +    appearances.enroll(id);
 +  }
    const state = (id: string): PlayerState => {
-@@ -330,2 +338,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     row(id);const flight=navigation.flight(id);
+     const location=homeEnabled?homes.location(id):undefined;
+@@ -328,14 +338,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     flight(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.checkpoint(id,clean,now);return state(id);},
+     land(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.land(id,clean,now);homes.movedExterior(id);return universe(id);},
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
 +    enrollFriendsPlayer(id:string){
 +      if(!integratedWorld||!db.isTransaction)throw new RequestError(409,'Open an integrated world to link Friends.');
 +      enrollArrival(id,Date.now());
 +    },
      /** Establish identity and Hub spawn before any expensive home generation. */
-@@ -336,4 +348,4 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     createArrival(id:string,now=Date.now()){
+       if(this.has(id))return state(id);
+       if(!integratedWorld)return this.create(id,now);
+       db.exec('BEGIN IMMEDIATE');
        try{
 -        db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
 -        arrivalHomes.enroll(id,now);appearances.enroll(id);db.exec('COMMIT');
 +        enrollArrival(id,now);
 +        db.exec('COMMIT');
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
-@@ -362,4 +374,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       return state(id);
+     },
+@@ -360,8 +374,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     /** The same arrival as `create`, with the home layout and its station search run on the worker so other
+      * players are answered meanwhile. Every write still happens here, after re-checking what was read: the
       * home, its owner and the new player's place at the door in one transaction, then the station. */
 -    async createPrepared(id: string, now = Date.now(), attempt = 0): Promise<PlayerState> {
 -      const work=heavy;if(!homeEnabled||!work)return this.create(id,now);
@@ -2452,17 +2582,37 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        return this.create(id,now);
 +      }
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
-@@ -376,3 +391,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       try{
+         const inputs=homes.generationInputs(planetId,id);
+@@ -374,12 +391,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           const door=homes.door(planetId);
+           if(!door)throw new RequestError(409,'The sample home could not be prepared.');
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
 -          homes.movedExterior(id);db.exec('COMMIT');
 +          homes.movedExterior(id);bind?.();db.exec('COMMIT');
          }catch(error){
-@@ -381,3 +396,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           if(db.isTransaction)db.exec('ROLLBACK');
+           // Rare: the reserved planet was claimed meanwhile. Prepare another one, twice at most.
            if(error instanceof RequestError&&error.status===409&&!this.has(id)){
 -            if(attempt<2)return this.createPrepared(id,now,attempt+1);
 +            if(attempt<2)return this.createPrepared(id,now,attempt+1,bind);
              throw new RequestError(503,BUSY);
-@@ -449,2 +464,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           }
+           throw error;
+@@ -419,6 +436,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       if(body.planetId!==r.planet_id)throw new RequestError(409,'Your visit moved to another planet. Reconnecting…');
+       ground.recoverToPort(id,body.sequence,now);homes.movedExterior(id);return universe(id);
+     },
++    readTownPost(id:string) { row(id); return townPost.read(id); },
++    changeTownPost(id:string,body:Record<string,unknown>) {
++      return townPost.change(id,state(id),body,()=>ground.world('hub'));
++    },
+     interact(id: string, action: unknown) {
+       if (action !== 'pickup' && action !== 'deliver') throw new RequestError(400, 'Unknown delivery action.');
+       const r = row(id);
+@@ -447,6 +468,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       homes.movedExterior(id);return universe(id);
+     },
      terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
 +    saveCourtyardArrival(id:string,body:Record<string,unknown>){
 +      homes.exterior(id,body.visitEpoch);
@@ -2472,6 +2622,8 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +      return universe(id);
 +    },
      claim(id: string, planetId: unknown) { row(id); planets.claim(id, planetId); if(homeSample){homes.initialise(String(planetId));teleport.ensureHomeStation(String(planetId));} return universe(id); },
+     createObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.create(id, body); return universe(id); },
+     updateObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.update(id, body); return universe(id); },
 diff --git a/src/shared/town-resident-motion.ts b/src/shared/town-resident-motion.ts
 index 30b342267729476ac36ece59318dd512aa98f329..220d883f09acba1b6517ecd7d996b7b6399fe3c0 100644
 --- a/src/shared/town-resident-motion.ts
@@ -2744,14 +2896,17 @@ index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..faf4192aa5083eaa2d78bc191a82f0b2
 +.interaction[data-bench-rest] #interact:not([hidden]),#visitor-bench-choice{min-height:44px}
 +@media(max-width:600px){#visitor-bench-choice{margin-top:6px}}
 diff --git a/src/client/character.ts b/src/client/character.ts
-index 2397a4bbd91144e845c1c8a6d9112c5559508622..518a41790130ba41a6ad6ae44a698f27b3eb1f88 100644
+index 2397a4bbd91144e845c1c8a6d9112c5559508622..50002af99269d5f6e57e1f4320cf5e2339012a17 100644
 --- a/src/client/character.ts
 +++ b/src/client/character.ts
-@@ -15,3 +15,3 @@ export function courier(identity:Character|'mica'|'sol',initial?:Appearance){
+@@ -13,6 +13,6 @@ export function courier(identity:Character|'mica'|'sol',initial?:Appearance){
+  const publish=()=>{root.userData.characterVariant='sample';root.userData.appearance={...options};};publish();
+  return{root,get head(){return body.head;},get parcel(){return body.parcel;},
    setAppearance(next:Appearance){next={...next,model:'sample'};if(named||appearanceKey(next)===appearanceKey(options))return false;const carrying=body.parcel.visible;disposeGeometry(body.root);options={...next};body=make();body.parcel.visible=carrying;root.add(body.root);publish();return true;},
 -  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
-+  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},sit(){body.sit();},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
++  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},sit(){body.sit();},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true,carryingProp=false){body.animate(t,speed,reduced,turn,grounded,carryingProp);}
   };
+ }
 diff --git a/src/client/photo-mode.ts b/src/client/photo-mode.ts
 index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..b827ccc218a09106f5a68c9da855fa10b73cc7eb 100644
 --- a/src/client/photo-mode.ts

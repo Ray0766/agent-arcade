@@ -1,0 +1,26 @@
+#town-resident-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+#town-resident-actions > button, #pax-accept-star-letter { min-height:44px; margin-top:5px; }
+.conversation #town-resident-actions .primary {
+  position:static;
+  padding:7px 12px;
+  border:1px solid #214436;
+  background:#31594d;
+  color:#fff7e5;
+  border-radius:5px;
+  font-size:12px;
+  font-weight:600;
+}
+#town-resident-actions [role=status] { margin:6px 0 0; font-size:12px; }
+#town-star-letter {
+  position:fixed; z-index:7; left:24px; bottom:118px;
+  display:grid; grid-template-columns:32px 1fr; gap:4px 8px; align-items:center;
+  max-width:min(19rem,calc(100vw - 38px));
+  padding:9px 11px;
+  border:1px solid #a98b5d; border-radius:6px;
+  background:#f6edd7; color:#354637; box-shadow:0 3px 0 #794d3357;
+  pointer-events:none;
+}
+.town-star-seal { grid-row:span 2; display:grid; place-content:center; width:31px; height:31px; border-radius:100%; background:#944b36; color:#fff0cd; }
+#town-star-letter strong { font-size:13px; }
+#town-star-letter > span:last-child { font-size:12px; line-height:1.35; }
+@media(max-width:600px){ #town-star-letter { left:12px; bottom:205px; max-width:calc(100vw - 34px); } }
