@@ -16,6 +16,7 @@ export class ResidentBodySettings {
   private dialog=document.createElement('dialog');
   private status=document.createElement('p');
   private rows=document.createElement('div');
+  private preview=document.createElement('figure');
   private title=document.createElement('h2');
   private intro=document.createElement('p');
   private close=document.createElement('button');
@@ -30,6 +31,7 @@ export class ResidentBodySettings {
     this.dialog.id='resident-bodies';this.dialog.dataset.i18nVerbatim='';
     this.title.id='resident-bodies-title';this.dialog.setAttribute('aria-labelledby',this.title.id);
     this.status.setAttribute('role','status');
+    this.preview.className='resident-body-preview';
     this.close.className='quiet';
     this.dialog.append(this.title,this.intro,this.status,this.rows,this.close);
     this.dialog.addEventListener('close',()=>{
@@ -88,6 +90,26 @@ export class ResidentBodySettings {
     }
   }
 
+  private showPreview(form:HTMLFormElement,choice:Choice){
+    if(this.preview.parentElement===form&&this.preview.dataset.choice===choice)return;
+    this.preview.dataset.choice=choice;
+    if(choice==='auto'){
+      const note=document.createElement('p');
+      note.textContent=text('自动沿用居民的默认造型。选择固定造型可查看正面和侧面。','Automatic uses the resident’s default appearance. Select a fixed appearance to preview its front and side.');
+      this.preview.replaceChildren(note);
+    }else{
+      const image=document.createElement('img');
+      image.src='/resident-body-previews/'+choice+'.webp';image.decoding='async';
+      image.width=560;image.height=280;
+      image.alt=text(names[choice][0]+'的正面和侧面',names[choice][1]+' from the front and side');
+      const caption=document.createElement('figcaption');
+      const front=document.createElement('span'),side=document.createElement('span');
+      front.textContent=text('正面','Front');side.textContent=text('侧面','Side');
+      caption.append(front,side);this.preview.replaceChildren(image,caption);
+    }
+    form.append(this.preview);
+  }
+
   private form(name:string,resident:BodyResident,sourceId:string,request:AbortController){
     const form=document.createElement('form'),label=document.createElement('label');
     const select=document.createElement('select'),save=document.createElement('button'),status=document.createElement('span');
@@ -98,8 +120,11 @@ export class ResidentBodySettings {
     save.type='submit';save.className='primary';save.textContent=text('保存','Save');
     save.setAttribute('aria-label',text('保存 '+name+' 的造型','Save appearance for '+name));
     status.setAttribute('role','status');
-    select.onchange=()=>{status.textContent='';};
+    const preview=()=>this.showPreview(form,select.value as Choice);
+    select.onfocus=preview;
+    select.onchange=()=>{status.textContent='';preview();};
     form.append(label,select,save,status);
+    if(!this.rows.childElementCount)preview();
     form.onsubmit=async event=>{
       event.preventDefault();
       if(save.disabled||request!==this.opened)return;

@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "b82501b83487a6764ada0fefbfe40bbe7b3ae4a7",
-  "worldTree": "22a0b17c163a834f70f1a5f8e0a9531dda38a246",
-  "patchSHA256": "67a4405968550dff326d0d72385f4d586279f89c9d860fb7976a28c7f26669d8",
+  "worldRevision": "12be5fb06b52ddefe17c487896fe74726902700f",
+  "worldTree": "1730cda1ce0d1f49311fd201b4b0c5a9fedf93bf",
+  "patchSHA256": "8df28ee5f0e0c536a3bf7963e69b6554aef12716074c471998f4380a9f4a4c5b",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -57,6 +57,42 @@
       "path": "index.html",
       "blob": "49996b7bfcbe7e096e498061e8f7b2c7a760b9c3",
       "sha256": "eef2836161e6b9fdd5a7de6f9c8eb25867f77ccb7a6d5a2db7c3ce043dcab595"
+    },
+    {
+      "action": "A",
+      "path": "public/resident-body-previews/dragon.webp",
+      "blob": "2e8f28806a192c040408e9217e60418e981d1111",
+      "sha256": "879d9940990873de0a91a8cdfd11e3a1d9cfaded5c34c55a7ad4cb2fb89e77e8"
+    },
+    {
+      "action": "A",
+      "path": "public/resident-body-previews/grok.webp",
+      "blob": "5a388b938b188be9e7aac493308a62969a4ebe47",
+      "sha256": "d905bbd76a345415a2fba0cd6598540afbc3c5bc666fa85589c4485825396e63"
+    },
+    {
+      "action": "A",
+      "path": "public/resident-body-previews/lanxi.webp",
+      "blob": "93d274aec441625cd146944852157512f9ca90a6",
+      "sha256": "8c518868d85b20442cdaad8055b4d0e85bd6bdc2dfbcd3a17d3f2634629520b9"
+    },
+    {
+      "action": "A",
+      "path": "public/resident-body-previews/orange.webp",
+      "blob": "595516ac3c7e1cbf3c4ee8d4da91806c477a4b01",
+      "sha256": "5a3ec5979f2f58548db02eb8a6ce79b16c31307c359521aa201ca91a1b4f7ea7"
+    },
+    {
+      "action": "A",
+      "path": "public/resident-body-previews/rainbow.webp",
+      "blob": "08c12da0a3665610728749cc98c1729e9b57cf0e",
+      "sha256": "524f21e665764766439a6cbaf9ca00ea89c3446228fc042b1bba01e929ca6256"
+    },
+    {
+      "action": "A",
+      "path": "public/resident-body-previews/whale.webp",
+      "blob": "86137ad9d88cd4f2a059509af10c8a2f268b3aef",
+      "sha256": "ee49cc9d5209e09a98d89a0348e4eb5f699c40104c2edd1e2b579ed4eb2b1885"
     },
     {
       "action": "A",
@@ -157,8 +193,8 @@
     {
       "action": "M",
       "path": "spec/guide-interaction.test.ts",
-      "blob": "6ae7e86665a1cce7cfa13e6385d52c84f5a6dfb6",
-      "sha256": "9bf8bb4ac1e6950dd3935a7b565c3dd9d661b02dbc6bbcb5633e642eb95c97d3"
+      "blob": "0bb862231fbe008ffa4dd4c7935c3aed6be129d5",
+      "sha256": "113c7ea2a6b50c9148d525a7eb2ee21336bc2bfa3e89c6d54604a5055120e27e"
     },
     {
       "action": "M",
@@ -511,8 +547,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "19827b14e0192306231f2bd98a28e97d6931b3c1",
-      "sha256": "f9f001e323f56cb5b465f4d012dc2b8b7009da7014d80a624df4a26ef717e052"
+      "blob": "41e7d05e1c0d3c8834327866eda501fca9690970",
+      "sha256": "029c84bc5dd49b4f0bba693d0f9767d0c8be40f4a453f388b65d2f6b51ae2d05"
     },
     {
       "action": "A",
@@ -529,14 +565,14 @@
     {
       "action": "M",
       "path": "src/client/character-sample.ts",
-      "blob": "d621be9dcc697e99164dad8926c4dfa95db123c1",
-      "sha256": "17d7dcb7c152fdb1ce863b2b16540b767be6c3aa7632af2f3f57ce4826552ad1"
+      "blob": "a4676f942fa735e0b353648bded7a055afcf7da8",
+      "sha256": "e2a0dd521bcd2761287a651de54fbdfc1309c495fa0811518d8f646ca1db4397"
     },
     {
       "action": "M",
       "path": "src/client/character.ts",
-      "blob": "518a41790130ba41a6ad6ae44a698f27b3eb1f88",
-      "sha256": "d27e184368b6203473ede6504ab644e5289f87d7d84d24e23a997de8aad4663e"
+      "blob": "be1c5084e01c37b6dcae47f276b679d68fc4621a",
+      "sha256": "eee7d843dc87c55c966cdc3a42e1e69556437473c8c06a1bda02c6940a3308fc"
     },
     {
       "action": "M",
@@ -589,14 +625,14 @@
     {
       "action": "M",
       "path": "src/client/home-interior.css",
-      "blob": "7ab960bc4edf6b565d362bc2e98607c6ed148979",
-      "sha256": "e753dd6f4593c271e1bd19991e9b4af3de8104d0cef5f6cb6c2d392e27783373"
+      "blob": "456abb1a35dbd522d8e9d6753371b30123ef1390",
+      "sha256": "ae13ca1cf17ad57ea8d1647822204e1846e0fb779d2a75e15d4c3ec978529222"
     },
     {
       "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "8e164b713b68f9f65a0cb099e5918e27453f035e",
-      "sha256": "53f1a889d4f6d10afa8dd8f757965df78494db9098761b2d7cce5bf47f28f20e"
+      "blob": "21380a472a76930342bff3fae0129ec7ae92d53b",
+      "sha256": "c0311ccc557e719da34c5729bbcbc3fbf4e88dec978280766ccac02a191119e0"
     },
     {
       "action": "M",
@@ -613,8 +649,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "8dee0aa147a6e15db47c2472dd45cafb16e61cf8",
-      "sha256": "a59465b2378456dafbcccb4c031c44c9df61d36bd2c728ebf135a9175b86d831"
+      "blob": "9aa48f876bd6f5107659d8b6cc78f00af08afc25",
+      "sha256": "88193d0d994d989f749d275aaabfb91f9ad778674fce0e963c4b297f25f9b3c4"
     },
     {
       "action": "M",
@@ -673,14 +709,14 @@
     {
       "action": "A",
       "path": "src/client/resident-body-settings.css",
-      "blob": "e307596adfbe985c7c299c7495783ebb2787d055",
-      "sha256": "f2b3292cb2d3f10f93e1d85c794afad6c97a9d73ff1080ea7ab286862d88da32"
+      "blob": "1a77970c0625bc0eb375ff9f21cca4c912dc3cca",
+      "sha256": "6948635ce4d254940f4550cdf73a9a024ec0f4142b8e7555b557540144213a59"
     },
     {
       "action": "A",
       "path": "src/client/resident-body-settings.ts",
-      "blob": "15675019184928273fcf6da4cc6c027879e488bc",
-      "sha256": "653bff7ba01af0603137697125ad05905c8c5a3fa5e394a16c2a7e262fe746cd"
+      "blob": "949c07bab32e22a58a643f92410f9be6b993c119",
+      "sha256": "eaf0c7654ec3d72b1cac48255f0899d716244b003227da25f2d0416a2ce0f292"
     },
     {
       "action": "A",
@@ -757,14 +793,14 @@
     {
       "action": "M",
       "path": "src/client/world-guide.css",
-      "blob": "17521eef977a179cab5891569819ee83174bd804",
-      "sha256": "bb1aaeb3be3d5b39181cbbf8f7a333f4e19ba3b3f670e0eb6df8776a72130287"
+      "blob": "23d5274adbd1e01642809c8912a722af63f80019",
+      "sha256": "67e2f231e8333aa87c5cb22e1f1c2d8fc30f5983004fb8308dfc6e77a9c4d778"
     },
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "db0133e12698ea01a8f15861bfd5244e4e253474",
-      "sha256": "fe53871488a39048f33bff263e4c0ac6b8bdc40280f100627317615780d2bd47"
+      "blob": "3e90ac203c95e0ed6a66f77480cf6b81a3e1d9ed",
+      "sha256": "2bfa10d3ff74545097a166f30c80f92ec54cbf1c5324af977d76a04f4166a30b"
     },
     {
       "action": "A",
