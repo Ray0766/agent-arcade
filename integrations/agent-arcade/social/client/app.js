@@ -2917,7 +2917,7 @@ function showConversationSearch(){
   const input=el('input'),label=el('label','关键词');
   input.type='search';
   input.id='conversation-search-keyword';
-  input.placeholder='消息正文或文件名';
+  input.placeholder='消息正文、照片配文或文件名';
   input.required=true;
   input.maxLength=100;
   label.htmlFor=input.id;
@@ -2958,7 +2958,7 @@ function showConversationSearch(){
         const stamp=el('time',time(hit.createdAt));
         stamp.dateTime=hit.createdAt;
         detail.append(el('span',hit.sender),stamp);
-        if(hit.attachmentKind==='file')detail.prepend(el('span','文件','history-search-category'));
+        if(hit.attachmentKind==='file'||hit.attachmentKind==='photo')detail.prepend(el('span',hit.attachmentKind==='photo'?'照片':'文件','history-search-category'));
         const excerpt=el('span',null,'history-search-snippet');
         highlightHistoryHit(excerpt,hit.text,query);
         const open=button('',()=>{
