@@ -22,7 +22,46 @@ test('source pin mismatch is rejected by the unmodified production stage before 
  const f=await fixture(t),stage=new QQNodeRepairStage({packages:{verify:async()=>({component:'napcat-node',version:'4.18.42',state:'verified-staged',file:f.file,size:10,sha256:'a'.repeat(64),assetId:1}),stage:async()=>assert.fail('No retry')}});await assert.rejects(stage.prepare({operationDir:f.operationDir,manifest:f.manifest}),{code:'node_repair_source_unavailable'});await stage.close();
 });
 test('unknown initial output fstat proof never closes a reused foreign descriptor',async t=>{
- const f=await fixture(t);let held;f.io.openSync=(...a)=>{held=fs.openSync(...a);return held;};f.io.fstatSync=()=>{throw Object.assign(Error('Synthetic first fstat failure'),{code:'EIO'});};assert.throws(()=>f.stage._open(path.join(f.operationDir,'unknown'),'wx'),{code:'node_repair_cleanup_unconfirmed'});assert.equal(f.stage.handles.size,1);f.io.fstatSync=fs.fstatSync;fs.closeSync(held);const foreign=fs.openSync(path.join(f.operationDir,'foreign'),'wx');assert.equal(foreign,held,'Fixture needs actual fd reuse');assert.throws(()=>f.stage._close(held),{code:'node_repair_cleanup_unconfirmed'});fs.writeSync(foreign,Buffer.from('foreign survives'));fs.closeSync(foreign);await f.stage.close();assert.equal(fs.readFileSync(path.join(f.operationDir,'foreign'),'utf8'),'foreign survives');
+ const f=await fixture(t);
+ const unknown=path.join(f.operationDir,'unknown'),foreignFile=path.join(f.operationDir,'foreign');
+ const slot=41;
+ let backing=null,firstStat=true,closeCalls=0;
+ f.io.openSync=(...args)=>{
+   assert.equal(backing,null);
+   backing=fs.openSync(...args);
+   return slot;
+ };
+ f.io.fstatSync=(fd,options)=>{
+   assert.equal(fd,slot);
+   if(firstStat)throw Object.assign(Error('Synthetic first fstat failure'),{code:'EIO'});
+   if(backing===null)throw Object.assign(Error('Closed fixture slot'),{code:'EBADF'});
+   return fs.fstatSync(backing,options);
+ };
+ f.io.closeSync=fd=>{
+   assert.equal(fd,slot);
+   closeCalls++;
+   fs.closeSync(backing);
+   backing=null;
+ };
+ try{
+   assert.throws(()=>f.stage._open(unknown,'wx'),{code:'node_repair_cleanup_unconfirmed'});
+   assert(f.stage.handles.has(slot));
+   fs.closeSync(backing);
+   backing=null;
+   // The same stage-visible slot now designates a different, real open file.
+   backing=fs.openSync(foreignFile,'wx');
+   firstStat=false;
+   assert.throws(()=>f.stage._close(slot),{code:'node_repair_cleanup_unconfirmed'});
+   assert.equal(closeCalls,0);
+   fs.writeSync(backing,Buffer.from('foreign survives'));
+ }finally{
+   if(backing!==null)fs.closeSync(backing);
+   backing=null;
+   firstStat=false;
+ }
+ await f.stage.close();
+ assert.equal(f.stage.handles.size,0);
+ assert.equal(fs.readFileSync(foreignFile,'utf8'),'foreign survives');
 });
 test('held archive close failure retains the exact descriptor until a separate cleanup succeeds',async t=>{
  const f=await fixture(t);let failedFd;f.io.closeSync=fd=>{if(f.stage.handles.has(fd)&&f.stage.handles.get(fd).file===f.file){failedFd=fd;throw Object.assign(Error('Synthetic close failure'),{code:'EIO'});}fs.closeSync(fd);};await assert.rejects(f.stage.prepare({operationDir:f.operationDir,manifest:f.manifest}),{code:'node_repair_cleanup_unconfirmed'});assert(f.stage.handles.has(failedFd));f.io.closeSync=fs.closeSync;await f.stage.close();assert.equal(f.stage.handles.size,0);
