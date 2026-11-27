@@ -5,34 +5,36 @@ const words = {
   zh: {
     title: '一起帮伊沃', met: '见到同伴了。要一起去修码头托臂吗？',
     offered: '同伴请你一起修托臂。你来操作扳手。', waiting: '等同伴答复。',
+    sampleOffer: '同伴想用你的试件出题。你也可以接受普通样题。', sampleMissing: '同伴想用你的试件出题。可先使用普通样题。',
     walk: '沿木牌指的方向，到码头仓库左侧找伊沃。',
     ready: '到台面了。确认你的分工后等同伴就位。', readyPeer: '同伴已就位，确认你的分工即可开工。',
     readyWait: '你已就位，等同伴确认分工。',
     holder: '你负责试压、对线和稳住托臂。', wrench: '你负责扳动扳手，锁紧螺帽。',
     inspect: '试压托臂，看看螺帽松动的程度。', watchPress: '等同伴试压托臂。',
     adjust: '转动托臂，让两段刻线相接。', watchAdjust: '同伴正在对线。刻线相接、托臂稳住后，你再拧紧。',
-    aligned: '刻线已对齐', apart: '刻线还差 {count} 格', held: '托臂已稳住。由你拧紧螺帽。', watchWrench: '你已稳住托臂。等同伴拧紧螺帽。',
+    aligned: '刻线已对齐', apart: '刻线{side}偏 {count} 格', leftSide: '左', rightSide: '右', held: '托臂已稳住。由你拧紧螺帽。', watchWrench: '你已稳住托臂。等同伴拧紧螺帽。',
     tightened: '同伴拧紧了螺帽。请复压，确认托臂稳固。', youTightened: '你拧紧了螺帽。等同伴复压。',
     done: '已对线、已紧固、复压通过。伊沃：可以接下一艘船了。',
     stale: '进度已更新，请按当前提示继续。', failed: '这次操作没有确认，请稍后重试。',
-    action: { offer: '一起去帮伊沃', accept: '同意', decline: '谢绝', ready: '确认我的分工', press: '试压托臂', left: '逆时针转', right: '顺时针转', hold: '稳住托臂', tighten: '扳动扳手', retest: '复压托臂', leave: '回到街上' },
-    stroll: '先各自逛逛', cancel: '退出双人修理',
+    action: { offer: '一起去帮伊沃', offerSample: '请同伴出一件', accept: '同意', acceptSample: '用我的试件', decline: '谢绝', ready: '确认我的分工', press: '试压托臂', left: '逆时针转', right: '顺时针转', hold: '稳住托臂', tighten: '扳动扳手', retest: '复压托臂', leave: '回到街上' },
+    standard: '用普通样题', stroll: '先各自逛逛', cancel: '退出双人修理',
   },
   en: {
     title: 'Help Ivo together', met: 'You met your companion. Fix the dock support together?',
     offered: 'Your companion invited you to repair the support. You’ll work the wrench.', waiting: 'Waiting for your companion’s answer.',
+    sampleOffer: 'Your companion is asking to use your sample. You can also accept the standard setup.', sampleMissing: 'Your companion asked for a sample. You can use the standard setup for now.',
     walk: 'Follow the dock sign to Ivo on the left side of the warehouse.',
     ready: 'You’re at the workbench. Confirm your role and wait for your companion.', readyPeer: 'Your companion is ready. Confirm your role to begin.',
     readyWait: 'You’re ready. Waiting for your companion.',
     holder: 'Your job is to test, align and hold the support.', wrench: 'Your job is to work the wrench and tighten the nut.',
     inspect: 'Press the support to check how loose the nut is.', watchPress: 'Your companion will press the support first.',
     adjust: 'Turn the support until the two marks meet.', watchAdjust: 'Your companion is lining up the marks. Wait for them to hold the support steady.',
-    aligned: 'Marks aligned', apart: 'Marks {count} notches apart', held: 'The support is steady. Tighten the nut.', watchWrench: 'You’re holding the support. Your companion can tighten the nut now.',
+    aligned: 'Marks aligned', apart: 'Marks {count} to the {side}', leftSide: 'left', rightSide: 'right', held: 'The support is steady. Tighten the nut.', watchWrench: 'You’re holding the support. Your companion can tighten the nut now.',
     tightened: 'Your companion tightened the nut. Press the support to check that it holds.', youTightened: 'You tightened the nut. Your companion will test the support again.',
     done: 'Aligned, tightened and tested. Ivo: ready for the next ship.',
     stale: 'The repair has moved on. Follow the updated steps.', failed: 'That move wasn’t confirmed. Try again in a moment.',
-    action: { offer: 'Help Ivo together', accept: 'Accept', decline: 'Decline', ready: 'Confirm my role', press: 'Press the arm', left: 'Turn anticlockwise', right: 'Turn clockwise', hold: 'Hold the arm', tighten: 'Work the wrench', retest: 'Press again', leave: 'Back to the street' },
-    stroll: 'Explore separately', cancel: 'Leave the repair',
+    action: { offer: 'Help Ivo together', offerSample: 'Ask for their sample', accept: 'Accept', acceptSample: 'Use my sample', decline: 'Decline', ready: 'Confirm my role', press: 'Press the arm', left: 'Turn anticlockwise', right: 'Turn clockwise', hold: 'Hold the arm', tighten: 'Work the wrench', retest: 'Press again', leave: 'Back to the street' },
+    standard: 'Use the standard setup', stroll: 'Explore separately', cancel: 'Leave the repair',
   },
 };
 
@@ -41,7 +43,7 @@ export function atQuayWorkbench(view: PairedQuayView | undefined) {
 }
 
 type Site = { interactive: boolean; nearby: boolean };
-const moves: QuayAction[] = ['offer', 'accept', 'decline', 'ready', 'press', 'left', 'right', 'hold', 'tighten', 'retest', 'leave'];
+const moves: QuayAction[] = ['offer', 'offerSample', 'acceptSample', 'accept', 'decline', 'ready', 'press', 'left', 'right', 'hold', 'tighten', 'retest', 'leave'];
 
 export class PairedQuayRepairControls {
   private readonly panel = document.createElement('section');
@@ -122,7 +124,7 @@ export class PairedQuayRepairControls {
       return;
     }
     const c = this.copy, s = this.site;
-    const key = [c.title,v.id,v.version,v.phase,v.role,v.myReady,v.peerReady,v.atBench,s.nearby,s.interactive,this.pending,this.error].join('/');
+    const key = [c.title,v.id,v.version,v.phase,v.role,v.myReady,v.peerReady,v.atBench,v.requestedSample,v.canUseSample,s.nearby,s.interactive,this.pending,this.error].join('/');
     if (key === this.painted) return;
     this.painted = key;
     const focused = this.panel.contains(document.activeElement) ? document.activeElement as HTMLElement : null;
@@ -132,10 +134,13 @@ export class PairedQuayRepairControls {
     const allowed = new Map<QuayAction, boolean>([['leave', true]]);
     let status: string;
     switch (v.phase) {
-      case 'met': allowed.set('offer', true); status = c.met; break;
+      case 'met': allowed.set('offer', true); allowed.set('offerSample', true); status = c.met; break;
       case 'offered':
-        if (!holder) { allowed.set('accept', true); allowed.set('decline', true); allowed.delete('leave'); }
-        status = holder ? c.waiting : c.offered;
+        if (!holder) {
+          if (v.requestedSample && v.canUseSample) allowed.set('acceptSample', true);
+          allowed.set('accept', true); allowed.set('decline', true); allowed.delete('leave');
+        }
+        status = holder ? c.waiting : v.requestedSample ? (v.canUseSample ? c.sampleOffer : c.sampleMissing) : c.offered;
         break;
       case 'walking':
         if (!v.myReady && withinReach) allowed.set('ready', true);
@@ -171,7 +176,7 @@ export class PairedQuayRepairControls {
     this.role.textContent = holder ? c.holder : c.wrench;
     this.status.textContent = status;
     this.marks.hidden = v.phase !== 'adjust';
-    this.marks.textContent = v.turn === 0 ? c.aligned : c.apart.replace('{count}', String(Math.abs(v.turn)));
+    this.marks.textContent = v.turn === 0 ? c.aligned : c.apart.replace('{count}', String(Math.abs(v.turn))).replace('{side}', v.turn < 0 ? c.leftSide : c.rightSide);
     this.marks.dataset.aligned = String(v.turn === 0);
     this.feedback.hidden = !this.error;
     this.feedback.textContent = this.error ? c[this.error] : '';
@@ -180,7 +185,8 @@ export class PairedQuayRepairControls {
       button.hidden = !allowed.has(move) || !s.interactive;
       button.setAttribute('aria-disabled', String(this.pending || !allowed.get(move) || !s.interactive));
       button.classList.toggle('primary', move === (preferred ?? (v.phase === 'done' ? 'leave' : undefined)));
-      button.textContent = move === 'leave' && !working ? (v.phase === 'met' ? c.stroll : c.cancel) : c.action[move];
+      button.textContent = move === 'leave' && !working ? (v.phase === 'met' ? c.stroll : c.cancel) :
+        move === 'accept' && v.requestedSample ? c.standard : c.action[move];
     }
     if (focused?.hidden) {
       const next = this.buttons.get(preferred ?? 'leave');

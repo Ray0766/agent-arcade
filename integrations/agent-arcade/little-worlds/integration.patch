@@ -1001,19 +1001,35 @@ index 5e243b9ac17c704ab24ecf75238869f6006af5f8..353faeb78c3b1508899eece2aebc32ed
 +   addTownExterior(model.object,parts,worldMaterials());
     if(village){
 diff --git a/src/client/home-interior.ts b/src/client/home-interior.ts
-index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27453f035e 100644
+index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..12469f71b00e869861139c70dc5d0bd19eb2a90c 100644
 --- a/src/client/home-interior.ts
 +++ b/src/client/home-interior.ts
-@@ -13,3 +13,3 @@ import { emitPart } from '../shared/blueprint-parts.ts';
+@@ -1,3 +1,5 @@
++import { QuayStudyControls } from './quay-study-controls.ts';
++import { createStudyQuaySamplePreview } from './study-quay-sample-preview.ts';
+ import {appearanceOf} from '../shared/appearance.ts';
+ import type { HomeDoorPartId } from '../shared/home-door.ts';
+ import * as T from 'three';
+@@ -11,7 +13,7 @@ import { PartBuilder } from '../assets/claude-geometry/style/geometry.ts';
+ import { libraryMaterials, makeKit } from '../assets/claude-geometry/blueprint/parts/kit.ts';
+ import { emitPart } from '../shared/blueprint-parts.ts';
  import type { PartId } from '../shared/blueprint-parts.ts';
 -import { HOME_ROOM, HOME_BODY_RADIUS, homeExit, homeNearDoor, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
 +import { HOME_ROOM, HOME_BODY_RADIUS, HOME_ITEM_KINDS, homeExit, homeNearDoor, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
  import type { HomeDescriptor, HomeInterior as InteriorData, HomeItem, HomeRoom } from '../shared/home.ts';
-@@ -21,2 +21,3 @@ import { createHomeDoor } from './home-door.ts';
+ import type { PlayerState, Vec3 } from '../shared/world.ts';
+ import type { Universe } from '../shared/planets.ts';
+@@ -19,6 +21,7 @@ import type { PresenceSnapshot } from '../shared/presence.ts';
+ import { homeIndoorDoorOrigin } from '../shared/home-door.ts';
+ import { createHomeDoor } from './home-door.ts';
  import { createHomeRoomArt, applyHomeRoomTheme } from './home-room-art.ts';
 +import {loadHomeFurniture} from './home-furniture-models.ts';
  import {beginSceneLoading,yieldSceneFrame} from './loading-state.ts';
-@@ -53,2 +54,18 @@ export function homeFurnitureFits(items: readonly HomeItem[], position: Vec3, ro
+ import './home-interior.css';
+ 
+@@ -51,20 +54,39 @@ export function homeFurnitureFits(items: readonly HomeItem[], position: Vec3, ro
+     return items.slice(0, i).every(other => { const b = homeItemBounds(other); return !(a.minX < b.maxX + .04 && a.maxX > b.minX - .04 && a.minZ < b.maxZ + .04 && a.maxZ > b.minZ - .04); });
+   });
  }
 +export function firstHomeFurnitureHit(ray: T.Raycaster, roots: T.Object3D[], furniture: T.Group) {
 +  for (const hit of ray.intersectObjects(roots)) {
@@ -1032,25 +1048,45 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +}
 +
  const translation: Record<string, [string, string]> = {
-@@ -58,3 +75,3 @@ const translation: Record<string, [string, string]> = {
+   title: ['A room of your own', '我的小屋'], guest: ['Visiting this home', '正在做客'],
+   leave: ['Go outside · E', '出门 · E'], door: ['Open the door, then choose Go outside', '走到门口开门，再选择出门'],
+   openDoor: ['Open door', '开门'], closeDoor: ['Close door', '关门'], opened: ['Door open', '门已打开'], closed: ['Door closed · open it to leave', '门已关好 · 开门后可出门'],
    photo: ['Photo mode', '照片模式'],
 -  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'],
 +  arrange: ['Arrange room', '布置房间'], save: ['Save changes', '保存布置'], cancel: ['Cancel', '取消'], undo: ['Undo last change', '撤销上一步'],
    move: ['MOVE', '移动'], hint: ['WASD / arrows · open the door, then E to leave', 'WASD / 方向键移动 · 门口开门后按 E 出门'],
-@@ -64,2 +81,4 @@ const translation: Record<string, [string, string]> = {
+   phoneHint: ['Use the thumbstick · open the door to go outside', '拖动摇杆走动 · 门口开门后选择出门'],
+   saved: ['Room saved', '房间已保存'], saving: ['Saving…', '正在保存…'], entering: ['Welcome home', '欢迎回家'],
+   offline: ['Connection lost. Your saved room is safe.', '连接中断，已保存的房间仍然安全。'],
    retry: ['Reconnect', '重新连接'], pending: ['Opening the door…', '正在开门…'],
 +  replace: ['Replace with', '更换为'],
 +  replaceBlocked: ['This piece does not fit here. Move it or choose another.', '这里放不下这件家具，请先移动或换一种。'],
    material: ['Wall colour', '墙面颜色'], furniture: ['Furniture', '家具'], rotate: ['Turn', '旋转'],
-@@ -67,2 +86,3 @@ const translation: Record<string, [string, string]> = {
+   warm: ['Cream', '奶油'], sage: ['Sage', '浅绿'], blue: ['Sky', '浅蓝'],
    table: ['Low table', '矮桌'], chair: ['Stool', '木凳'], shelf: ['Shelf', '书架'], plant: ['Plant', '盆栽'],
 +  pickFurniture: ['Click or tap furniture, or choose it from the list', '点选家具，或从列表选择'],
    edited: ['Preview · save to keep your changes', '布置预览 · 保存后保留修改'],
-@@ -86,2 +106,3 @@ export class HomeInterior {
+   blocked: ['Leave the doorway and a walking route clear.', '请给门口和行走路线留出空间。'],
+   readonly: ['You can explore; the owner arranges this room.', '可以自由参观，房间由主人布置。'],
+@@ -77,6 +99,7 @@ export class HomeInterior {
+   readonly camera = new T.OrthographicCamera(-5, 5, 5, -5, .05, 100);
+   private drawing:ReturnType<typeof createVillageDrawing>;
+   private readonly ui = document.createElement('section');
++  private readonly quayStudy = new QuayStudyControls(createStudyQuaySamplePreview, () => this.clearInput());
+   private readonly library = createWorldStyleLibrary();
+   private room = new T.Group();
+   private readonly doorView = createHomeDoor();
+@@ -84,6 +107,7 @@ export class HomeInterior {
+   private readonly fill = new T.HemisphereLight();
+   private readonly sun = new T.DirectionalLight();
    private furniture = new T.Group();
 +  private furnitureModels: Awaited<ReturnType<typeof loadHomeFurniture>> = new Map();
    private avatar = courier('clay');
-@@ -102,5 +123,7 @@ export class HomeInterior {
+   private selection = new T.Mesh(new T.RingGeometry(.45, .49, 4, 1, Math.PI / 4), new T.MeshBasicMaterial({ color: '#dcad5c', transparent: true, opacity: .85, depthWrite: false, side: T.DoubleSide }));
+   private guests = new Map<string, ReturnType<typeof courier>>();
+@@ -100,9 +124,11 @@ export class HomeInterior {
+   private pendingAction = false;
+   private online = true;
    private editing = false;
 -  private dirty = false;
 +  private readonly undoHistory: InteriorData[] = [];
@@ -1059,16 +1095,26 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +  private furniturePress: { pointerId: number; x: number; y: number; group: T.Group } | null = null;
 +  private readonly furnitureRay = new T.Raycaster();
    private lastSend = 0;
-@@ -130,3 +153,3 @@ export class HomeInterior {
+   private lastViewport = '';
+   private locale = '';
+@@ -128,29 +154,65 @@ export class HomeInterior {
+     this.ui.dataset.i18nVerbatim = ''; this.ui.setAttribute('aria-label', 'Home interior');
+     this.ui.innerHTML = `<header class="home-room-header"><div><span class="home-room-eyebrow">HOME / 小屋</span><h2 data-home-text="title"></h2><p id="home-room-status" role="status" aria-live="polite"></p></div><nav class="home-door-actions"><button id="home-toggle-door"></button><button id="home-exit" data-home-text="leave"></button></nav></header>
        <div class="home-room-tools"><button id="home-photo" data-home-text="photo"></button><button id="home-arrange" data-home-text="arrange"></button><button id="home-retry" data-home-text="retry" hidden></button><p id="home-room-hint"></p></div>
 -      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
 +      <section id="home-room-editor" class="home-room-editor" hidden aria-label="Arrange room"><div class="home-material-row"><span data-home-text="material"></span><button id="home-material-warm" data-material="warm" data-home-text="warm"></button><button id="home-material-sage" data-material="sage" data-home-text="sage"></button><button id="home-material-blue" data-material="blue" data-home-text="blue"></button></div><label><span data-home-text="furniture"></span> <select id="home-item-select"></select></label><label><span data-home-text="replace"></span> <select id="home-item-replace"></select></label><div class="home-item-moves"><button id="home-item-left">←</button><button id="home-item-forward">↑</button><button id="home-item-back">↓</button><button id="home-item-right">→</button><button id="home-item-rotate" data-home-text="rotate"></button></div><div class="home-save-row"><button id="home-room-undo" data-home-text="undo"></button><button id="home-cancel" data-home-text="cancel"></button><button id="home-save" data-home-text="save"></button></div></section>
        <div id="home-joystick" class="home-joystick" role="group" aria-label="Move around the room"><span id="home-stick"></span><small data-home-text="move"></small></div>`;
-@@ -138,2 +161,3 @@ export class HomeInterior {
++    this.get('home-arrange').after(this.quayStudy.button);
+     document.body.append(this.ui);
+     const on = (id: string, fn: () => void) => this.get(id).addEventListener('click', fn, { signal: this.abort.signal });
+     on('home-exit', () => { if (this.nearExit()) void this.leave(); });
+     on('home-toggle-door', () => void this.toggleDoor());
+     on('home-photo',()=>{if(!this.pendingAction&&!this.preparing)window.dispatchEvent(new Event('open-photo-mode'));});
      on('home-arrange', () => this.beginEditing());
 +    on('home-room-undo', () => this.undoDraft());
      on('home-cancel', () => this.cancelEditing());
-@@ -142,6 +166,40 @@ export class HomeInterior {
+     on('home-save', () => void this.saveDraft());
+     on('home-retry', () => void this.recover());
      for (const material of ['warm', 'sage', 'blue'] as const) on(`home-material-${material}`, () => {
 -      if (!this.canChange() || !this.draft) return;
 -      this.draft.material = material; this.dirty = true; this.applyTheme(material); this.setStatus('edited'); this.updateControls();
@@ -1112,31 +1158,59 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +      }, pointerOptions);
 +    }
      on('home-item-left', () => this.changeItem(-.25, 0)); on('home-item-right', () => this.changeItem(.25, 0));
-@@ -152,3 +210,3 @@ export class HomeInterior {
+     on('home-item-forward', () => this.changeItem(0, -.25)); on('home-item-back', () => this.changeItem(0, .25));
+     on('home-item-rotate', () => this.changeItem(0, 0, Math.PI / 2));
+     window.addEventListener('keydown', this.keyDown, { capture: true, signal: this.abort.signal });
+     window.addEventListener('keyup', this.keyUp, { capture: true, signal: this.abort.signal });
      window.addEventListener('blur', () => this.clearInput(), { signal: this.abort.signal });
 -    window.addEventListener('beforeunload', event => { if (this.active && this.dirty) event.preventDefault(); }, { signal: this.abort.signal });
 +    window.addEventListener('beforeunload', event => { if (this.active && this.undoHistory.length) event.preventDefault(); }, { signal: this.abort.signal });
      document.addEventListener('visibilitychange', () => { if (document.hidden) { this.clearInput(); if(!this.photoMode)void this.flush(); } }, { signal: this.abort.signal });
-@@ -168,2 +226,3 @@ export class HomeInterior {
+     const joystick = this.get('home-joystick');
+     const drag = (e: PointerEvent) => { const rect = joystick.getBoundingClientRect(); this.stick.set((e.clientX - rect.left - rect.width / 2) / 34, (e.clientY - rect.top - rect.height / 2) / 34).clampLength(0, 1); this.get('home-stick').style.transform = `translate(${this.stick.x * 25}px,${this.stick.y * 25}px)`; };
+@@ -166,10 +228,11 @@ export class HomeInterior {
+     this.locale = document.documentElement.lang;
+     this.ui.querySelectorAll<HTMLElement>('[data-home-text]').forEach(el => { el.textContent = this.text(el.dataset.homeText!); });
      for (const direction of ['left', 'right', 'forward', 'back']) this.get(`home-item-${direction}`).setAttribute('aria-label', this.text(direction));
 +    this.get<HTMLSelectElement>('home-item-replace').replaceChildren(...HOME_ITEM_KINDS.map(kind => new Option(this.text(kind), kind)));
      this.populateItems(); this.setStatus(this.statusKey); this.updateControls();
-@@ -171,3 +230,3 @@ export class HomeInterior {
+   }
    private setStatus(key: string) { this.statusKey = key; this.get('home-room-status').textContent = this.text(key); }
 -  private clearInput() { this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
 +  private clearInput() { this.furniturePress = null; this.keys.clear(); this.stick.set(0, 0); this.moving = 0; this.get('home-stick').style.transform = ''; }
    private keyDown = (event: KeyboardEvent) => {
-@@ -204,3 +263,3 @@ export class HomeInterior {
+     if (!this.active || this.preparing || this.photoMode || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+     if (document.body.classList.contains('world-guide-talking') || (event.target as Element)?.closest('input,select,textarea,button,a,[contenteditable]')) return;
+@@ -197,19 +260,24 @@ export class HomeInterior {
+     if (!player.home || location?.kind !== 'interior') { if (this.active || this.preparing) this.close(); return true; }
+     const visit = `${location.interiorId}:${location.visitEpoch}`;
+     const arriving = restoring || visit !== this.currentVisit;
++    const canLoadSample = arriving || this.home?.canEdit !== player.home.canEdit;
+     this.home = player.home;
++    if (canLoadSample) {
++      if (player.home.canEdit) this.quayStudy.load();
++      else this.quayStudy.reset();
++    }
+     if (arriving) {
+       this.lastViewport = '';
+       if(document.pointerLockElement)document.exitPointerLock();
        this.currentVisit = visit; this.position = [...location.position]; this.yaw = location.yaw;
 -      this.editing = false; this.dirty = false; this.clearInput();
 +      this.editing = false; this.undoHistory.length = 0; this.clearInput();
        this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; this.selected = this.draft.items[0]?.id ?? '';
-@@ -211,3 +270,3 @@ export class HomeInterior {
+       this._active = true; this.ui.hidden = true; document.body.classList.add('home-interior-active');
+       this.avatar.setAppearance(appearanceOf(player)); this.online = true; this.setStatus(player.home.canEdit ? 'entering' : 'readonly');
+     }
+     const sourceKey = `${player.home.interiorId}:${player.home.interior.version}:${player.home.door.partId??'wall.door.open'}`;
      if (arriving || sourceKey !== this.sourceKey || this.preparation?.visit !== undefined && this.preparation.visit !== visit) {
 -      if (!this.editing || this.pendingAction) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
 +      if (!this.editing) { this.draft = copy(player.home.interior); this.draftVersion = this.draft.version; }
        if(this.preparation?.key!==sourceKey||this.preparation.visit!==visit)void this.prepareRoom(sourceKey,visit);
-@@ -252,5 +311,8 @@ export class HomeInterior {
+       if (!homePositionAllowed(this.position, player.home.interior.items, HOME_BODY_RADIUS, player.home.interior.room, player.home.interior.doorOpen, player.home.door.partId)) this.position = [...location.position];
+     }
+@@ -250,9 +318,12 @@ export class HomeInterior {
+       await next();await next();
+       preparation.task.update('Preparing the room…');
        room=this.createRoom(interior);await next();
 +      const kinds = this.home?.canEdit && interior.items.length ? HOME_ITEM_KINDS : interior.items.map(item => item.kind);
 +      const models = await loadHomeFurniture(kinds);
@@ -1146,11 +1220,19 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 -        furniture.add(this.createFurnitureItem(item));await next();
 +        furniture.add(this.createFurnitureItem(item,models));await next();
        }
-@@ -265,2 +327,3 @@ export class HomeInterior {
+       this.applyTheme(interior.material,room,furniture);
+       preparation.task.update('Finishing the view…');await next();
+@@ -263,6 +334,7 @@ export class HomeInterior {
+       try{await this.options.renderer.compileAsync(staging,this.camera);}finally{sun.shadow.dispose();}
+       await next();
        disposeGeometry(this.room);disposeGeometry(this.furniture);
 +      this.furnitureModels=models;
        this.room=room;this.furniture=furniture;room=null;furniture=null;this.scene.add(this.room,this.furniture);
-@@ -299,12 +362,21 @@ export class HomeInterior {
+       const {width,depth,height}=interior.room;configureHomeLighting(this.scene,this.fill,this.sun,width,depth,height);
+       this.doorView.root.position.fromArray(homeIndoorDoorOrigin(interior.room,this.home?.door.partId));this.lastViewport='';this.sourceKey=key;
+@@ -297,16 +369,25 @@ export class HomeInterior {
+     disposeGeometry(this.furniture); this.furniture = new T.Group(); this.scene.add(this.furniture);
+     for (const item of (this.draft ?? this.home!.interior).items)this.furniture.add(this.createFurnitureItem(item));
    }
 -  private createFurnitureItem(item:HomeItem) {
 -      const b = new PartBuilder('medium'), source = libraryMaterials(this.library), kit = makeKit(b, source);
@@ -1182,7 +1264,11 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +    source.owned().forEach(material => { material.userData.ownedResource = true; });
 +    return group;
    }
-@@ -324,4 +396,29 @@ export class HomeInterior {
+ 
+   private applyTheme(material: InteriorData['material'],room=this.room,furniture=this.furniture) {
+@@ -322,8 +403,33 @@ export class HomeInterior {
+   }
+ 
    private canChange() { return this.active && !this.preparing && this.online && this.home?.canEdit && this.editing && !this.pendingAction; }
 +  private canPickFurniture() {
 +    return this.canChange() && !this.photoMode && !document.body.classList.contains('world-guide-talking') &&
@@ -1213,7 +1299,11 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 -  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.editing = false; this.dirty = false; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.setStatus('saved'); this.updateControls(); }
 +  private cancelEditing() { if (this.preparing || this.pendingAction || !this.home) return; this.clearInput(); this.editing = false; this.undoHistory.length = 0; this.draft = copy(this.home.interior); this.buildFurniture(); this.applyTheme(this.draft.material); this.populateItems(); this.setStatus('saved'); this.updateControls(); }
    private populateItems() {
-@@ -333,8 +430,31 @@ export class HomeInterior {
+     const select = this.get<HTMLSelectElement>('home-item-select'), items = this.draft?.items ?? [];
+     const signature = items.map(i => `${i.id}:${i.kind}`).join('|') + this.locale;
+@@ -331,12 +437,35 @@ export class HomeInterior {
+     if (!items.some(i => i.id === this.selected)) this.selected = items[0]?.id ?? '';
+     select.value = this.selected;
    }
 +  private get selectedItem() { return this.draft?.items.find(item => item.id === this.selected); }
    private changeItem(x: number, z: number, yaw = 0) {
@@ -1250,7 +1340,17 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +    this.setStatus(this.undoHistory.length ? 'edited' : 'saved');
 +    this.updateControls();
    }
-@@ -355,6 +475,10 @@ export class HomeInterior {
+   private nearExit() { return this.active && !this.preparing && !!this.home && homeNearDoor(this.position, this.home.interior.room, this.home.door.partId); }
+   private updateControls() {
+@@ -349,14 +478,20 @@ export class HomeInterior {
+     doorButton.setAttribute('aria-pressed', String(this.home?.interior.doorOpen ?? false));
+     this.get('home-exit').title = this.text('door');
+     this.get('home-arrange').hidden = !this.home?.canEdit || this.editing;
++    this.quayStudy.frame(this.active && !this.preparing && this.online && !!this.home?.canEdit && !this.editing &&
++      !this.photoMode && !this.pendingAction && !document.body.classList.contains('world-guide-talking'));
+     this.get<HTMLButtonElement>('home-arrange').disabled = !enabled;
+     this.get('home-room-editor').hidden = !this.editing;
+     this.get('home-retry').hidden = this.online;
      this.get('home-joystick').hidden = this.editing;
 -    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.dirty;
 +    this.get<HTMLButtonElement>('home-save').disabled = !enabled || !this.undoHistory.length;
@@ -1264,21 +1364,35 @@ index c598904e2a1c8c2e3b4958442be2343bcfaa34f6..8e164b713b68f9f65a0cb099e5918e27
 +    replaceSelect.disabled = !this.canChange() || !selected;
 +    replaceSelect.value = selected?.kind ?? '';
      this.selection.visible = this.editing && !!selected;
-@@ -424,3 +548,3 @@ export class HomeInterior {
+     if (selected) { const box = homeItemBounds(selected); this.selection.position.set(selected.position[0], .022, selected.position[2]); this.selection.scale.set((box.maxX - box.minX + .2) * 1.5, (box.maxZ - box.minZ + .2) * 1.5, 1); }
+     for (const material of ['warm', 'sage', 'blue']) this.get(`home-material-${material}`).setAttribute('aria-pressed', String(this.draft?.material === material));
+@@ -422,12 +557,12 @@ export class HomeInterior {
+     await this.pendingMove;
+   }
    private async saveDraft() {
 -    if (!this.canChange() || !this.home || !this.draft || !this.dirty) return;
 +    if (!this.canChange() || !this.home || !this.draft || !this.undoHistory.length) return;
      this.clearInput(); this.pendingAction = true; this.updateControls(); this.setStatus('saving');
-@@ -429,3 +553,3 @@ export class HomeInterior {
+     try {
+       await this.flush(); await this.flush(); if (!this.online) return;
        const next = await this.options.save({ buildingId: this.home.buildingId, expectedVersion: this.draftVersion, material: this.draft.material, items: this.draft.items });
 -      this.editing = false; this.dirty = false; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
 +      this.editing = false; this.undoHistory.length = 0; this.receive(next.player); this.options.applyUniverse(next); this.setStatus('saved');
      } catch (error) { this.get('home-room-status').textContent = error instanceof Error ? error.message : this.text('offline'); }
-@@ -471,3 +595,3 @@ export class HomeInterior {
+     finally { this.pendingAction = false; this.updateControls(); }
+   }
+@@ -467,9 +602,10 @@ export class HomeInterior {
+     finally { this.pendingAction = false; this.updateControls(); }
+   }
+   private close() {
++    this.quayStudy.reset();
+     this.cancelPreparation();
      this.photoMode=false;
 -    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.dirty = false;
 +    this._active = false; this.ui.hidden = true; this.currentVisit = ''; this.sourceKey = ''; this.clearInput(); this.editing = false; this.undoHistory.length = 0;
      document.body.classList.remove('home-interior-active');
+     for (const guest of this.guests.values()) disposeGeometry(guest.root); this.guests.clear();
+     for (const key of ['homeInterior', 'homePosition', 'homeVersion', 'homePending', 'homeDrawCalls', 'homeDoorOpen', 'homeArea']) delete this.options.renderer.domElement.dataset[key];
 diff --git a/src/client/i18n.ts b/src/client/i18n.ts
 index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995a39b312b 100644
 --- a/src/client/i18n.ts
@@ -1300,7 +1414,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..0ed1c1a458beec2d4ab61f8cec62ccd3e95bd356 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..f0413de3e58fc31ecbd7e3c5dff75249213337bf 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -1,3 +1,7 @@
@@ -1372,7 +1486,12 @@ index 0639a7b2e636be2963ca2599618308f12632025a..0ed1c1a458beec2d4ab61f8cec62ccd3
  function notice(message: string, duration = 5000) { setText($('notice'), message); $('notice').hidden = false; noticeUntil = performance.now() + duration; }
  class ApiError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
  async function request<T = PlayerState>(path: string, body?: unknown): Promise<T> {
-@@ -268,16 +293,20 @@ function accept(next: PlayerState) {
+@@ -264,20 +289,24 @@ function accept(next: PlayerState) {
+     walker.facing.copy(walker.north);started=false;
+   }
+   if(previousPlanet!==state.planetId||previousMode!==state.flight.mode||locationChanged)presence.clear();
+-  if(state.location?.kind==='interior')document.querySelectorAll<HTMLDialogElement>('dialog[open]:not(.scene-loading-overlay):not(#welcome-panel)').forEach(dialog=>dialog.close());
++  if(state.location?.kind==='interior')document.querySelectorAll<HTMLDialogElement>('dialog[open]:not(.scene-loading-overlay):not(#welcome-panel):not(#home-quay-study)').forEach(dialog=>dialog.close());
    const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
    flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
@@ -2964,10 +3083,11 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406eab1bbc98e 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..a4f2ca1b37745ea963f49af1f53c2c04403c769a 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
-@@ -1,7 +1,8 @@
+@@ -1,7 +1,9 @@
++import { quayStudySamples } from './quay-study-sample.ts';
 +import { pairedPublicFlights } from './paired-public-flight.ts';
  import { createServer } from 'node:http';
  import { createHash, randomBytes } from 'node:crypto';
@@ -2977,7 +3097,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
  import { marked } from 'marked';
  import { BLUEPRINT_BODY_LIMIT } from '../shared/blueprints.ts';
  import { presenceStore } from './presence.ts';
-@@ -12,6 +13,12 @@ import { workerScript } from './worker-script.ts';
+@@ -12,6 +14,12 @@ import { workerScript } from './worker-script.ts';
  import { createGuideHelp } from './guide-help.ts';
  import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
  import {guideConfiguration} from './guide-config.ts';
@@ -2990,7 +3110,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
  import { businessLog } from './business-log.ts';
  
  const homeSample=process.env.HOME_SAMPLE==='1';
-@@ -25,11 +32,23 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
+@@ -25,11 +33,30 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
  const cookieName=homeSample?(samplePort===8126?'little_home_sample':`little_home_sample_p${samplePort}`):'little_post';
  if (store.migrationBackup) console.log(`Before migration, saved a consistent backup: ${store.migrationBackup}`);
  const audit=businessLog(databasePath);
@@ -3006,7 +3126,14 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
  const guideAI=aiConfig?createGuideAI({ledger:new GuideLedger(aiConfig.ledger,Date.now,aiConfig.production),key:aiConfig.key}):null;
  const presence=presenceStore(store.state);
 +const activeFriend = store.db.prepare('SELECT player FROM friends_world_sessions WHERE digest=? AND expires>?');
++function requireOwnQuayStudy(id: string) {
++  const player = store.state(id);
++  if (player.location?.kind !== 'interior' || !player.home?.canEdit || player.location.buildingId !== player.home.buildingId)
++    throw new RequestError(403, 'Open your own study.');
++}
++const quaySamples = quayStudySamples(store.db);
 +const publicFlights = pairedPublicFlights({
++  samples:quaySamples,
 +  state:store.state, session:digest=>String(activeFriend.get(digest,Date.now())?.player ?? ''),
 +  owner:residentSources.owned, visit:(player,session,planet)=>friendsWorld.visitCheck(player,session,planet)?.access,
 +  allowed:friendsAuthority.canReadVisit, hubPresence:presence.hubPublicId, atQuay:store.atIvoBench,
@@ -3014,7 +3141,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
  // New homes, station searches and other planets' ground are prepared on a worker thread, so one
  // player's arrival never holds everyone else's movement and presence. The harbour is built now,
  // before the server takes requests.
-@@ -53,18 +72,114 @@ const server = createServer(async (req, res) => {
+@@ -53,18 +80,114 @@ const server = createServer(async (req, res) => {
    try {
      const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
@@ -3133,7 +3260,20 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
            send(200, created); return;
          }
          send(200, store.state(id)); return;
-@@ -95,12 +210,13 @@ const server = createServer(async (req, res) => {
+@@ -73,6 +196,12 @@ const server = createServer(async (req, res) => {
+         if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
+         send(200, store.universe(id)); return;
+       }
++      if (req.method === 'GET' && url.pathname === '/api/home/quay-sample') {
++        if (!id || !store.has(id) || url.search) throw new RequestError(403, 'Open your own study.');
++        requireOwnQuayStudy(id);
++        res.setHeader('Cache-Control','private, no-store');
++        send(200,quaySamples.read(id)); return;
++      }
+       if (url.pathname === '/api/blueprints' && req.method === 'GET') {
+         if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
+         send(200, store.library(id)); return;
+@@ -95,12 +224,13 @@ const server = createServer(async (req, res) => {
        if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
        else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
@@ -3153,7 +3293,21 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
        if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
        if(url.pathname==='/api/guide/ask'){
-@@ -128,6 +244,11 @@ const server = createServer(async (req, res) => {
+@@ -118,6 +248,13 @@ const server = createServer(async (req, res) => {
+       else if(url.pathname==='/api/home/enter'){const result=store.enterHome(id,body);presence.leave(id);send(200,result);}
+       else if(url.pathname==='/api/home/move')send(200,store.moveHome(id,body));
+       else if(url.pathname==='/api/home/exit'){const result=store.exitHome(id,body);presence.leave(id);send(200,result);}
++      else if (url.pathname === '/api/home/quay-sample') {
++        if (url.search || !req.headers.origin || req.headers['sec-fetch-site'] === 'cross-site')
++          throw new RequestError(403, 'Open your own study.');
++        requireOwnQuayStudy(id);
++        res.setHeader('Cache-Control','private, no-store');
++        send(200,quaySamples.change(id,body));
++      }
+       else if(url.pathname==='/api/home/save')send(200,store.saveHome(id,body));
+       else if(url.pathname==='/api/home/door')send(200,store.setHomeDoor(id,body));
+       else if(url.pathname==='/api/home/paths/preview')send(200,store.previewHomePaths(id,body));
+@@ -128,6 +265,11 @@ const server = createServer(async (req, res) => {
        else if(url.pathname==='/api/objects/undo')send(200,store.undoObject(id,body));
        else if(url.pathname==='/api/terrain/apply')send(200,store.terrain(id,body));
        else if(url.pathname==='/api/ship/save')send(200,store.saveShip(id,body));
@@ -3165,7 +3319,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
        else if(url.pathname==='/api/presence')send(200,presence.heartbeat(id,body));
        else if (url.pathname === '/api/appearance') send(200,store.appearance(id,body));
        else if (url.pathname === '/api/character') send(200, store.character(id, body.character));
-@@ -137,10 +258,22 @@ const server = createServer(async (req, res) => {
+@@ -137,10 +279,22 @@ const server = createServer(async (req, res) => {
        }
        else if(url.pathname==='/api/ground/recover'){const result=store.recoverGround(id,body);presence.leave(id);send(200,result);}
        else if (url.pathname === '/api/interact') send(200, store.interact(id, body.action));
@@ -3190,7 +3344,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406ea
        else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
        else if (url.pathname === '/api/flight/checkpoint') send(200,store.flight(id,body));
        else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
-@@ -168,7 +301,7 @@ const server = createServer(async (req, res) => {
+@@ -168,7 +322,7 @@ const server = createServer(async (req, res) => {
        type = 'text/html; charset=utf-8';
      } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));

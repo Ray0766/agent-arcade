@@ -4,6 +4,8 @@ import { RESIDENT_INTERACT_DISTANCE, RESIDENT_INTERACT_HEIGHT, TOWN_RESIDENT_ANC
 import { STEP_HEIGHT, type GroundWorld } from '../shared/physics/world.ts';
 import type { PlayerState } from '../shared/world.ts';
 import type { PairedQuayCommand, PairedQuayView, QuayPhase, QuayRole } from '../shared/paired-quay-repair.ts';
+import type { QuaySampleAccess } from './quay-study-sample.ts';
+import type { QuaySampleTurn } from '../shared/quay-study-sample.ts';
 import { RequestError } from './errors.ts';
 
 export function atQuayBench(player: PlayerState, world: GroundWorld): boolean {
@@ -20,7 +22,7 @@ export function atQuayBench(player: PlayerState, world: GroundWorld): boolean {
 export function isQuayCommand(value: Record<string,unknown>): boolean {
   return value.action === 'repair' && Object.keys(value).length === 4 &&
     Number.isSafeInteger(value.version) && Number(value.version) >= 1 &&
-    typeof value.move === 'string' && ['offer','accept','decline','ready','press','left','right','hold','tighten','retest','leave'].includes(value.move);
+    typeof value.move === 'string' && ['offer','offerSample','acceptSample','accept','decline','ready','press','left','right','hold','tighten','retest','leave'].includes(value.move);
 }
 
 const changed = () => new RequestError(409,'Check the current support, your position and your role.');
@@ -31,6 +33,8 @@ export class QuayRepairRound {
   private phase: QuayPhase = 'met';
   private holder?: string;
   private turn = -2;
+  private requestedSample = false;
+  private startingTurn: QuaySampleTurn = -2;
   private ready = new Set<string>();
   private left = new Set<string>();
 
@@ -40,15 +44,17 @@ export class QuayRepairRound {
     return this.phase === 'done' || !this.ready.has(member) || near;
   }
 
-  view(member: string, other: string, near: boolean): PairedQuayView | undefined {
+  view(member: string, other: string, near: boolean, samples: QuaySampleAccess): PairedQuayView | undefined {
     if (this.left.has(member)) return;
     return { id:this.id, version:this.version, phase:this.phase, role:this.role(member),
       myReady:this.ready.has(member), peerReady:this.ready.has(other), atBench:near, turn:this.turn,
-      locked:this.phase === 'locked' || this.phase === 'done' };
+      locked:this.phase === 'locked' || this.phase === 'done',
+      ...(this.phase === 'offered' && this.requestedSample && { requestedSample: true as const,
+        ...(this.role(member) === 'wrench' && samples.savedTurn(member) !== null && { canUseSample: true as const }) }) };
   }
 
   /** Returns false when this pair should release both windows. Only the caller's side can be confirmed. */
-  apply(member: string, cmd: PairedQuayCommand, near: boolean, atSign: () => boolean): boolean {
+  apply(member: string, cmd: PairedQuayCommand, near: boolean, atSign: () => boolean, samples: QuaySampleAccess, peer: string): boolean {
     if (cmd.id !== this.id || this.left.has(member) || cmd.version !== this.version) throw changed();
     const role = this.role(member);
     switch (cmd.move) {
@@ -56,19 +62,31 @@ export class QuayRepairRound {
         if (this.phase !== 'done') return false;
         this.left.add(member);
         return this.left.size < 2;
+      case 'offerSample':
       case 'offer':
         if (this.phase !== 'met' || !atSign()) throw changed();
+        this.requestedSample = cmd.move === 'offerSample';
         this.holder = member; this.phase = 'offered'; break;
       case 'decline':
+      case 'acceptSample':
       case 'accept':
         if (this.phase !== 'offered' || role !== 'wrench') throw changed();
         if (cmd.move === 'decline') return false;
         if (!atSign()) throw changed();
+        if (cmd.move === 'acceptSample') {
+          if (!this.requestedSample) throw changed();
+          const turn = samples.savedTurn(member);
+          if (turn === null) throw changed();
+          this.startingTurn = turn;
+        }
         this.phase = 'walking'; break;
       case 'ready':
         if (this.phase !== 'walking' || this.ready.has(member) || !near) throw changed();
         this.ready.add(member);
-        if (this.ready.size === 2) this.phase = 'inspect';
+        if (this.ready.size === 2) {
+          this.turn = this.startingTurn;
+          this.phase = 'inspect';
+        }
         break;
       case 'press':
         if (role !== 'holder' || this.phase !== 'inspect') throw changed();
@@ -88,6 +106,7 @@ export class QuayRepairRound {
         this.phase = 'locked'; break;
       case 'retest':
         if (role !== 'holder' || this.phase !== 'locked') throw changed();
+        samples.award(member, peer);
         this.phase = 'done'; break;
     }
     this.version++;

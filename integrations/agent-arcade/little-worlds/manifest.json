@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "95a4cd1d22f8a31313032da482305366f284a839",
-  "worldTree": "54153a60875a14fbbf52517a86261d3de394b0de",
-  "patchSHA256": "1fbb3e641a638207efb69bd9c71131e2667f65a987e690f4bd6d8d01aaec38ae",
+  "worldRevision": "39215fe36576941688b3aa3401f80316d3d2a92d",
+  "worldTree": "224c1a5b5b7636c84c7a424c2c1657cc2467c58c",
+  "patchSHA256": "99488850fd4e00c15c05f6ef122c9912bf7106cf0f61ef73a9e0583d233bdde3",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -595,8 +595,8 @@
     {
       "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "8e164b713b68f9f65a0cb099e5918e27453f035e",
-      "sha256": "53f1a889d4f6d10afa8dd8f757965df78494db9098761b2d7cce5bf47f28f20e"
+      "blob": "12469f71b00e869861139c70dc5d0bd19eb2a90c",
+      "sha256": "0d2b1515ecec2e7f49759b1dd2e8c3843cd5fed34d7179be497706717635b362"
     },
     {
       "action": "M",
@@ -613,8 +613,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "0ed1c1a458beec2d4ab61f8cec62ccd3e95bd356",
-      "sha256": "c23cc7765e05c5c6cc48a80537a19ece235560b39f69446769436ce0ed94dbc1"
+      "blob": "f0413de3e58fc31ecbd7e3c5dff75249213337bf",
+      "sha256": "38a4c9b73edea90320a1f21aa636537a560ba01739a3c63c301de37b36766ae0"
     },
     {
       "action": "M",
@@ -667,8 +667,8 @@
     {
       "path": "src/client/paired-quay-repair-controls.ts",
       "action": "A",
-      "blob": "f1adc4a2a99d4b8c263dde358eae3d1d292cce43",
-      "sha256": "7d5528bff522a6e52568820b6d35964d68100b53a5b00b705daaf6e6e20823ec"
+      "blob": "7940cb12719d82e85c4e21b561f61a119773a615",
+      "sha256": "040c2cbc6c3bebdc6987c0e56a67951b9ab69f59e59f3108a36d4617c294a18f"
     },
     {
       "action": "M",
@@ -693,6 +693,18 @@
       "path": "src/client/public-town-art.ts",
       "blob": "2c01445b7080b652b279186f4250be714ecedaf0",
       "sha256": "e9435451f5795454f4e883d7696145a770876a91b4dab6bc3a18b5d3a2db352e"
+    },
+    {
+      "path": "src/client/quay-study-controls.css",
+      "action": "A",
+      "blob": "99fecb8cb3fe55dfd68af2e272faa4edaa61cda9",
+      "sha256": "a37b1f69875054de81ecdebcf34c1a4d53c1caa2ce3263b3fd7ade1e97a20289"
+    },
+    {
+      "path": "src/client/quay-study-controls.ts",
+      "action": "A",
+      "blob": "bebb13f9b530bfece5114aa056653b1145eeb0df",
+      "sha256": "f8998546455471af92799d30d39de7b19ef3fb4858a3367397a45cdf607ab3ae"
     },
     {
       "action": "A",
@@ -731,6 +743,18 @@
       "sha256": "37fe250628d55e63f7870ca3c75606001ab175f19b7524ed7c6f907721d2fa8b"
     },
     {
+      "path": "src/client/study-quay-sample-preview.css",
+      "action": "A",
+      "blob": "4a43c70090802a09d57f79f1b00bd94cb8abb6d5",
+      "sha256": "721dabb37d4710f4377c9da60d994b89781ad0fa799bb4f51759aa5fb292a510"
+    },
+    {
+      "path": "src/client/study-quay-sample-preview.ts",
+      "action": "A",
+      "blob": "1b479414aef53c8e8c855c5bda81ddf8a9f63879",
+      "sha256": "5ba4fb0009ff3e3ab23c5a784096aab650dcda99f7acb68f35224b5bad5bfd60"
+    },
+    {
       "action": "M",
       "path": "src/client/terrain-model.ts",
       "blob": "fb9b2ec315a9892be7b8651a0ce8905832113fac",
@@ -745,8 +769,8 @@
     {
       "path": "src/client/town-quay-repair-prop.ts",
       "action": "A",
-      "blob": "efe8af68daaa93286bcaeaa46b5aeabbf94079ed",
-      "sha256": "66fb191012d22718e267b6858c88156258ed7f9c1458c34103fbe661497c494d"
+      "blob": "b23a6c5cd8b25aa789ff3d4b9f60339b7b0b80a5",
+      "sha256": "6ae8c5ae98070380b89ca63266ee83a59eed82d0c3caf11a6787e33d9b983c5a"
     },
     {
       "path": "src/client/town-quay-repair.css",
@@ -841,20 +865,20 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "c571833323f8bf0cbf36cb2760a406eab1bbc98e",
-      "sha256": "6f1e12e7e949e7c64f69fd02022a8208100fbd2ce82fc0b873c2ea8e5414a0a5"
+      "blob": "a4f2ca1b37745ea963f49af1f53c2c04403c769a",
+      "sha256": "c02331762df45e5bd0026f8fab06f0e9655195c1d72335379090d85f4dc8b6dd"
     },
     {
       "path": "src/server/paired-public-flight.ts",
       "action": "A",
-      "blob": "6f58aa278de5790c525990f3a7994f692067b7ce",
-      "sha256": "f1eb506c457db075866e726b681c296a5fa8003546a2914f3034a28a47939e39"
+      "blob": "a77747010b8ec703f36166b2b452f8ba1550121c",
+      "sha256": "4f53a3025062fff773c3f5deda5f55e56ccfd22c7bdfdc8e3911bce67f314edd"
     },
     {
       "path": "src/server/paired-quay-repair.ts",
       "action": "A",
-      "blob": "d812ee0f2c9157bca708f6fb80ce0e5a8a6f7072",
-      "sha256": "fc7bf0cb8e803d1815db53f2c0e11ab0f8f1f86a81ffa7560aa16c37bffc566d"
+      "blob": "cb21f71b957f266192f28d260047d5fa9b7db06d",
+      "sha256": "12cecfcf89d5e4cbc95b4f2809e6304414834e97a9b39a2249e2155c66807c81"
     },
     {
       "action": "A",
@@ -873,6 +897,12 @@
       "action": "M",
       "blob": "44eac4831315af01fc982b85d1008ac7a063de85",
       "sha256": "995e012f9c6c96559fd70e278ac2cead4eea9c8ebd7dafb2f53ba34265181b42"
+    },
+    {
+      "path": "src/server/quay-study-sample.ts",
+      "action": "A",
+      "blob": "48e881c41850be0f4f1d8aa1d3b5270f1076846d",
+      "sha256": "53c16c9e7d30ac3406b30873f6644fec19a476b22b2cc9810b628dc1aa1a4b88"
     },
     {
       "action": "A",
@@ -913,8 +943,8 @@
     {
       "path": "src/shared/paired-quay-repair.ts",
       "action": "A",
-      "blob": "620ead66e99ca1610f7165a0b4c64186d05bd366",
-      "sha256": "04f5b0a8b54757279bc33ecdd3275f268ea52e1c569dc5f95fc98e250e6d2346"
+      "blob": "4a31583f92b26c965bf70e7028f70a6069451e69",
+      "sha256": "9bfb9df436ee207ae89aa3b87d7600e36d6f672ff92a5c58ef18a16c417c2e38"
     },
     {
       "action": "A",
@@ -927,6 +957,12 @@
       "path": "src/shared/planets.ts",
       "blob": "289bee97e274cd249b0d48f3fa56855ec06e8e1a",
       "sha256": "ee2337c3af7ec859ec1b66e90d9d407769484e8079b46b60c97b9282346d9af9"
+    },
+    {
+      "path": "src/shared/quay-study-sample.ts",
+      "action": "A",
+      "blob": "6792b8df1a530808538a9977b8d06d085d6e3096",
+      "sha256": "b99107e5eb0c0ca89bf1564e3249249e59fd71e8c4f872da4feeaac39b8e0f51"
     },
     {
       "action": "A",
