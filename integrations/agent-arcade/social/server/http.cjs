@@ -559,11 +559,20 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       }
       else {
         const account = current(store,req);
-        if(collection==='conversations'&&action==='group-voice'&&parts.length===4){
+        const groupPhoto=req.method==='GET'&&parts.length===5&&asset==='photo';
+        if(collection==='conversations'&&action==='group-voice'&&(parts.length===4||groupPhoto)){
           if(req.headers['x-social-account']!==account)fail(409,'call_session','账号已切换，请重新打开会话');
-          const request=req.method==='GET'?{action:'poll',revision:url.searchParams.get('revision'),
+          if(body?.action==='read-photo')fail(405,'method','请使用群照片查看入口');
+          const request=req.method==='GET'?{action:groupPhoto?'read-photo':'poll',revision:url.searchParams.get('revision'),
+            ...(groupPhoto&&{from:url.searchParams.get('from'),messageId:Number(url.searchParams.get('messageId'))}),
             roomId:url.searchParams.get('roomId'),self:url.searchParams.get('self')}:body;
           const answer=groupVoice.handle(account,sessionDigest(req),chat,message,request);
+          if(groupPhoto){
+            res.setHeader('Content-Type',answer.mime);
+            res.setHeader('Content-Length',answer.bytes.byteLength);
+            res.setHeader('Cross-Origin-Resource-Policy','same-origin');
+            return res.end(answer.bytes);
+          }
           res.setHeader('Content-Type','application/json; charset=utf-8');
           return res.end(JSON.stringify(answer));
         }
