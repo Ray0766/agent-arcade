@@ -238,11 +238,22 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
     const url=new URL(address);
     if(url.pathname!=='/'||!chatFragment.test(url.hash))return false;
     try{
-      const response=await browserSession.fetch(origin+'/api/v1/calls/'+input.device,{
-        credentials:'include',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(4000),
-        headers:{'X-Social-Account':input.account}});
-      const {call}=response.ok?await response.json():{};
-      if(!current()||!call?.accepted||call.kind!=='video'||call.id!==input.id||url.hash!=='#chat/'+call.chat)return false;
+      const options={credentials:'include',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(4000),
+        headers:{'X-Social-Account':input.account}};
+      if(input.kind==='group'){
+        if(url.search||![input.roomId,input.self].every(value=>typeof value==='string'&&chatFragment.test('#chat/'+value))||
+           typeof input.revision!=='string'||!input.revision||input.revision.length>180)return false;
+        const chat=url.hash.slice('#chat/'.length);
+        const params=new URLSearchParams({revision:input.revision,roomId:input.roomId,self:input.self});
+        const response=await browserSession.fetch(origin+'/api/v1/conversations/'+chat+'/group-voice/'+input.device+'?'+params,options);
+        const {room}=response.ok?await response.json():{};
+        if(!current()||room?.id!==input.roomId||room.chat!==chat||room.self!==input.self||
+           !room.participants?.some(p=>p.id===input.self&&p.number===input.account&&p.video===true))return false;
+      }else{
+        const response=await browserSession.fetch(origin+'/api/v1/calls/'+input.device,options);
+        const {call}=response.ok?await response.json():{};
+        if(!current()||!call?.accepted||call.kind!=='video'||call.id!==input.id||url.hash!=='#chat/'+call.chat)return false;
+      }
       cameraGrant={address,until:Date.now()+10000};
       return true;
     }catch{return false;}

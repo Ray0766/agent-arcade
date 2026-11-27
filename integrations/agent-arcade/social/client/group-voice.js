@@ -353,6 +353,12 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     s.cameraPending=true;
     notify();
     try{
+      if(globalThis.arcadeCallCamera){
+        const allowed=await globalThis.arcadeCallCamera.prepare({kind:'group',device,account:s.account,
+          roomId:s.roomId,self:s.memberId,revision:s.revision});
+        if(!isCurrent(s))return false;
+        if(!allowed)throw new DOMException('Group camera permission denied','NotAllowedError');
+      }
       const stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
       if(!isCurrent(s)){stream.getTracks().forEach(track=>track.stop());return false;}
       s.nextCamera=stream;
