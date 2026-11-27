@@ -106,3 +106,8 @@
 
 #home-stamp-book { max-width: min(620px, 90vw); max-height: 85vh; overflow: auto; }
 #home-stamp-book > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+.stamp-album-rubbings { margin-block: .7rem 1rem; }
+.stamp-album-rubbings summary { cursor: pointer; font-weight: 600; }
+.stamp-album-rubbings section { margin-block: .8rem; }
+.stamp-album-rubbing-samples { display: flex; flex-wrap: wrap; gap: .7rem; align-items: start; }

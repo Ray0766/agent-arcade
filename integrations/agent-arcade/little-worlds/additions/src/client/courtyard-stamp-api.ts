@@ -1,3 +1,4 @@
+import type { SavedDoorBadgeRubbing } from '../shared/door-badge-rubbing.ts';
 import type { CourtyardCardAction, CourtyardCardVisit, SavedCourtyardCard } from '../shared/courtyard-stamp-collection.ts';
 
 async function requestCard<T>(path: string, signal: AbortSignal, body?: unknown): Promise<T> {
@@ -20,3 +21,6 @@ export const writeVisitCard = (visit: CourtyardCardVisit, action: CourtyardCardA
 
 export const readStampAlbum = (signal: AbortSignal) =>
   requestCard<SavedCourtyardCard[]>('home/stamp-album', signal);
+
+export const readDoorBadgeRubbingAlbum = (signal: AbortSignal) =>
+  requestCard<SavedDoorBadgeRubbing[]>('home/door-badge-rubbings', signal);
