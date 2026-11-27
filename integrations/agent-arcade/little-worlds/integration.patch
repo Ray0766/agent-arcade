@@ -1043,30 +1043,46 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf000a7de7b 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..b375708c21975fedb1c339f15a0c645888520d5f 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
+@@ -30,6 +30,8 @@ import { createTutorialRoute } from './tutorial-route.ts';
+ import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
+ import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
 +import { BothouseResidents } from './bothouse-residents.ts';
++import { VisitorWatering } from './visitor-watering.ts';
  import { GroundPresence } from './presence.ts';
-@@ -77,2 +78,3 @@ import {buildCameraFrame} from './build-camera.ts';
+ import { PresenceVisitGate } from './presence-visit.ts';
+ import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
+@@ -75,6 +77,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
+ import {createVillageDrawing} from './village-drawing.ts';
+ import {buildCameraFrame} from './build-camera.ts';
  import {arrivalViewScore} from './arrival-camera.ts';
 +import { benchSeat, type BenchSeat } from './bench-rest.ts';
  import { HomeSetup } from './home-setup.ts';
-@@ -146,2 +148,5 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
+ import { TeleportStations } from './teleport-station.ts';
+ import { SaveProgress } from './save-progress.ts';
+@@ -144,6 +147,9 @@ let residentConversationKey='';
+ let queue: Promise<unknown> = Promise.resolve();
+ const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
 +const interaction = action.parentElement!;
 +const benchChoice = $<HTMLButtonElement>('visitor-bench-choice');
 +let benchRest: { id: string; model: T.Object3D; seat: BenchSeat; footing: T.Vector3 } | null = null;
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
-@@ -270,3 +275,4 @@ function accept(next: PlayerState) {
+ function renderSaveProgress(){
+   if(!state||physicsMismatch)return;
+@@ -268,16 +274,20 @@ function accept(next: PlayerState) {
+   const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
+   flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
 -  physicsMismatch=false;online = navigator.onLine; renderSaveProgress(); renderTask();
 +  // An accepted world response proves this server is reachable, even on a local-only network.
 +  physicsMismatch=false;online=true;renderSaveProgress();renderTask();
    homeInterior?.receive(state);homeInterior?.setOnline(online);homeControls?.receivePlayer(state);
-@@ -275,7 +281,10 @@ function accept(next: PlayerState) {
+   placeHomeDoor(exteriorHomeDoor,state.flight.mode==='ground'?state.home:null);
+   return true;
  }
 -function failed(error: unknown) {
 -  clearGroundMotion();
@@ -1081,11 +1097,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +function failed(error: unknown) {
 +  worldUnavailable();
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
-@@ -319,2 +328,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
+ }
+ function renderTask() {
+@@ -317,6 +327,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+ setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
+ worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
 +const bothouseResidents=new BothouseResidents(scene,reduced);
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
-@@ -351,7 +361,9 @@ function tutorialContext(){
+ const practical=createWorldPracticalLights();scene.add(practical.group);
+ const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
+@@ -349,11 +360,13 @@ function tutorialContext(){
+     paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
+ }
  function frameVillageGuide(){
 -  tutorial?.frame(tutorialContext());
 +  const context=tutorialContext(),planet=colony?.universe?.currentPlanet;
@@ -1099,30 +1123,70 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    ? {planet,world:groundWorld} : undefined;
 +  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
-@@ -364,2 +376,5 @@ function frameVillageGuide(){
+     visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
+     homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
+@@ -362,12 +375,15 @@ function frameVillageGuide(){
+   if(context&&planet&&groundWorld&&walker){
+     const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
 +      approvedCourtyard:!!courtyard,
 +      residentRoster:context.online&&context.ready&&!indoor&&state?.flight.mode==='ground'
 +        ? bothouseResidents.guideRoster(groundWorld,state.location?.visitEpoch??0) : [],
        visible:context.ready&&!photoPaused&&!colony?.paused&&!flight?.active&&!departure&&(!homeInterior?.active||!!room),enabled:context.ready&&online&&!photoPaused&&!colony?.paused&&!document.querySelector('dialog[open]'),
-@@ -369,3 +384,3 @@ function frameVillageGuide(){
+       scene:room?.scene??scene,camera:room?.camera??renderCamera(),feet,up:room?new T.Vector3(0,1,0):walker.up.clone(),forward:room?.forward??walker.north.clone(),
+       roomKey:room?.key??indoorRoomView.room?.id??activePlanet,indoor,online,time:elapsed,reducedMotion:reduced,
+       stand:room?.stand??(point=>{const normal=point.clone().normalize().toArray() as Vec3,support=groundWorld!.support(normal,feet.length()+.2),pose={position:normal,radius:support.radius,verticalSpeed:0,grounded:true};return Math.abs(support.radius-feet.length())<.28&&!groundWorld!.blocked(pose)?new T.Vector3(...normal).multiplyScalar(support.radius):null;})});
      renderer.domElement.dataset.worldGuide=JSON.stringify(guideState);
 -  }
 +  } else worldGuide.clearResidentVisit();
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
-@@ -546,2 +561,6 @@ window.addEventListener('keydown',event=> {
+   renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
+   renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
+@@ -470,6 +486,7 @@ function prepareSurface(planet:PlanetView){
+ }
+ configureGround();
+ const player = courier('clay');scene.add(player.root);
++const watering = new VisitorWatering(scene, interaction, () => { mouseLook?.release(); clearInput(); });
+ // The same head/coat/shoulder/satchel/parcel set as the independent upper-body
+ // framing contract. Bounds follow the actual current animation, including yaw.
+ const cameraUpperMeshes:T.Mesh[]=[];
+@@ -544,6 +561,10 @@ window.addEventListener('keydown',event=> {
+   if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
+   const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
 +    if (benchRest && key !== 'shift') {
 +      benchRest = null;
 +      if (key === 'e') { event.preventDefault(); return; }
 +    }
      event.preventDefault();keys.add(key);target=null;
-@@ -599,3 +618,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
+     if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
+   }
+@@ -584,7 +605,7 @@ lookButton.onclick=()=>{clearInput();mouseLook?.request();lookButton.blur();};
+ renderer.domElement.addEventListener('pointerdown',e=> {
+   if(!canSceneInput()||e.button!==0)return;
+   if(mouseLook.locked())return;
+-  if(!indoorRoomView.room&&e.pointerType==='mouse'&&!overview&&mouseLook?.canCapture()){clearInput();mouseLook.request();e.preventDefault();return;}
++  if(!watering.picking&&!indoorRoomView.room&&e.pointerType==='mouse'&&!overview&&mouseLook?.canCapture()){clearInput();mouseLook.request();e.preventDefault();return;}
+   pointerStart={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,dragged:false};renderer.domElement.setPointerCapture(e.pointerId);
+ });
+ renderer.domElement.addEventListener('pointermove',e=>{
+@@ -597,7 +618,12 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+ renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
+ renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
 -  if(flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
 +  if(benchRest || flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
++  if (watering.picking && groundWorld) {
++    watering.pick(e.clientX, e.clientY, renderCamera(), renderer.domElement, groundWorld, world.globe,
++      colony?.universe?.currentPlanet.objects ?? [], id => colony?.savedObjectModel(id));
++    return;
++  }
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
-@@ -700,3 +719,46 @@ async function interact() {
+   const hit=raycaster.intersectObject(world.globe)[0];
+   if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
+@@ -698,7 +724,50 @@ async function interact() {
+     player.greet(elapsed);
+   }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
 -action.onclick=()=>void interact();
 +function canGreetVisitor() {
@@ -1170,23 +1234,35 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +  if (canGreetVisitor()) bothouseResidents.greetVisitor(id,walker.up,renderCamera());
 +};
  setInterval(()=>void savePosition(),350);
-@@ -723,3 +785,3 @@ setInterval(async()=>{
+ setInterval(async()=>{
+   if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
+@@ -721,17 +790,40 @@ setInterval(async()=>{
+   if(online || busy || physicsMismatch || stateLoader.pending) return;
+   if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
 -    const next=await serial(()=>stateLoader.read());if(!accept(next))return;
 +    const next=await serial(()=>stateLoader.read());if(online||!accept(next))return;
      walker=new SurfaceWalker(next.position);lastSaved.copy(walker.up);clearInput();rebaseGroundCamera();ensureColony();notice('Back at your last saved spot. Welcome home.');
-@@ -727,4 +789,2 @@ setInterval(async()=>{
+   }catch(error){if(!arrivalRefused(error))status('Offline · retrying',true);else if(!arrival.stopped)notice(error instanceof Error?error.message:'Please try again.');}
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
-
-@@ -734,2 +794,21 @@ function animate(now:number) {
+ 
+ let previous=performance.now(),elapsed=0,uiTick=0,started=false;
+ function animate(now:number) {
+   requestAnimationFrame(animate);
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
 +  const landedGarden=online&&colony?.syncing&&state?.flight.mode==='ground'&&garden?.kind==='garden'&&garden.claimed?garden.id:null;
 +  if (!visitVisible || photoPaused) interaction.removeAttribute('data-visitor-greeting');
 +  bothouseResidents.frame(visitVisible?groundWorld:null,landedGarden,state?.location?.visitEpoch??0,now,!!garden?.mine&&garden.id===activePlanet&&online,garden?.objects);
++  const visitEpoch = state?.location?.visitEpoch ?? 0;
++  const wateringScope = visitVisible && !garden.mine && groundWorld && bothouseResidents.hasCurrentFriendVisit(groundWorld, visitEpoch)
++    ? groundWorld.planetId+'/'+visitEpoch+'/'+groundWorld.revision : null;
++  const wateringReady = !!wateringScope && !benchRest && !photoPaused && canGreetVisitor();
++  watering.setScope(wateringScope, wateringReady);
++  if (measureCamera) renderer.domElement.dataset.visitorWatering = JSON.stringify(watering.snapshot());
 +  visitPhotoButton.hidden=!canTakeVisitPhoto();
 +  if (benchRest && (!visitVisible || !groundWorld || !standing?.grounded ||
 +    !canUseOutdoorBench(groundWorld) || bothouseResidents.occupiesBench(benchRest.id) || !canSceneInput() || overview || indoorRoomView.room ||
@@ -1202,34 +1278,61 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    benchChoice.hidden=true;
 +  }
    if(graphicsLost)return;
-@@ -781,3 +860,3 @@ function animate(now:number) {
+   if(qualityApplyPending&&!photoMode?.capturing)resize();
+   observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
+@@ -779,7 +871,7 @@ function animate(now:number) {
+   // A rejected isolated pose must not let unrendered motion reach the save
+   // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
 -    if(paused){clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
 +    if(paused||benchRest){if(paused)clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
        physicsClock=Math.min(.05,physicsClock+dt);
-@@ -801,2 +880,7 @@ function animate(now:number) {
+       while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
+         physicsClock-=FIXED_STEP;const before=standing;
+@@ -799,6 +891,16 @@ function animate(now:number) {
+   destinationRing.visible=!!target;
+   const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
++  if (wateringReady && garden && groundWorld && standing) {
++    watering.frame({ world: groundWorld, pose: standing, objects: garden.objects,
++      getModel: id => colony?.savedObjectModel(id) }, player, now, !!(x || y || target) || walker.velocity.lengthSq() > .0001, reduced);
++    if (measureCamera) renderer.domElement.dataset.visitorWatering = JSON.stringify(watering.snapshot());
++  }
 +  if (benchRest) {
 +    player.root.position.copy(benchRest.seat.position);
 +    player.root.quaternion.copy(benchRest.seat.rotation);
 +    player.sit();
 +  }
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-@@ -873,3 +957,3 @@ function animate(now:number) {
+   const renderUp=surfaceNormal(walker.up);
+   const hub=activePlanet==='hub',phone=innerWidth<600;
+@@ -871,7 +973,7 @@ function animate(now:number) {
+     }else{
+       const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
 -      player.root.visible=pose.playerVisible;
 +      player.root.visible=pose.playerVisible||!!benchRest;
        // Retain the baseline hub/craft geometry checks alongside static proxies.
-@@ -910,2 +994,4 @@ function animate(now:number) {
+       const shortenAgainst=(root:T.Object3D)=>{
+         const offset=pose.position.clone().sub(headPoint),length=offset.length();
+@@ -908,11 +1010,14 @@ function animate(now:number) {
+   fitGroundSunShadowDepth(sun);
+   if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
 +  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused,'exploration',
 +    {usedByPlayer:benchRest?.id,getModel:id=>colony?.savedObjectModel(id)});
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +1001,3 @@ function animate(now:number) {
+   world.npcs.forEach(n=>{n.avatar.animate(elapsed,0,reduced);if(near===n.id){const local=n.anchor.worldToLocal(player.root.position.clone());const yaw=Math.atan2(local.x,local.z);const diff=Math.atan2(Math.sin(yaw-n.avatar.root.rotation.y),Math.cos(yaw-n.avatar.root.rotation.y));n.avatar.root.rotation.y+=diff*(1-Math.exp(-4*dt));}n.beacon.position.y=2.0+(reduced?0:Math.sin(elapsed*2)*.06);n.beacon.visible=state.quest!=='delivered'&&n.id===(state.quest==='available'?'mica':'sol');});
+   presence.frame(now,dt,walker.up,reduced);
+   colony?.updateShadows(feet);
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -966,3 +1053,14 @@ function animate(now:number) {
+   // never move the player, steer the camera, or write a saved position.
+   if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
+@@ -964,7 +1069,18 @@ function animate(now:number) {
+     nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
+     renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
@@ -1245,7 +1348,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    delete action.dataset.benchRest;
 +    action.hidden=interactionPaused||(!near&&!nearResident&&(!greeting||greeting.greeted)&&(!bench||offerBenchChoice));
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
-@@ -978,2 +1076,20 @@ function animate(now:number) {
+     else if(nearResident){
+       const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
+@@ -976,6 +1092,24 @@ function animate(now:number) {
+         setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
+       }
      }
 +    else if(greeting){
 +      delete action.dataset.residentPrompt;
@@ -1266,7 +1373,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      setText($('nearby'),'');
 +    }
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
-@@ -1032,5 +1148,6 @@ function ensureColony() {
+     if(state.quest!=='delivered') {
+       const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
+@@ -1030,15 +1164,17 @@ function ensureColony() {
+     confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
+     ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
 +  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
@@ -1274,13 +1385,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
      applyPlayer:accept,
-@@ -1040,3 +1157,4 @@ function ensureColony() {
+     universe:u=>{guideStationApproaches=tutorialStationApproaches(u.currentPlanet);homeSetup?.receive(u);teleportStations?.receive(u);homeControls?.receive(u);flight?.universe(u);tutorial?.receive(u);prepareSurface(u.currentPlanet);},bearing:id=>flight?.mark(id),
+     obstacles:blocks=>{placedObstacles=blocks;if(activePlanet!=='hub')world.blocks.splice(0,world.blocks.length,...blocks);},
+     pause:building=>{clearInput();overview=building;setAttribute($('view-mode'), 'aria-label', overview?'Walking view':'View planet');setHTML($('view-mode'), overview?'↗ <span>Walking view</span>':'◉ <span>Planet view</span>');},
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1179,8 @@ photoMode=new PhotoMode({renderer,
+   mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
+   tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
+@@ -1059,12 +1195,36 @@ photoMode=new PhotoMode({renderer,
+       const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
+     }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
@@ -1290,7 +1407,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1065,4 +1188,23 @@ photoMode=new PhotoMode({renderer,
+ });
  const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
 -$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 -window.addEventListener('open-photo-mode',()=>void photoMode?.open());
@@ -1316,6 +1433,8 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +visitPhotoButton.onclick=()=>openWorldPhoto('follow');
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
+ async function startInitialVisit(){
+   initialStateReady=false;welcomeCommitted=false;welcome.stage('connecting');
 diff --git a/src/client/messages.ts b/src/client/messages.ts
 index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db99b6f449 100644
 --- a/src/client/messages.ts
@@ -1456,29 +1575,43 @@ index af46a0e52754af0f16119b6056df5c529454dee6..fb9b2ec315a9892be7b8651a0ce89058
 + }
   model.stats.generationMs+=performance.now()-adaptedAt;
 diff --git a/src/client/town-residents.ts b/src/client/town-residents.ts
-index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106ab63f9909 100644
+index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..77cecadbd44e92a39d20e86e9e33fd3fe12d5e3f 100644
 --- a/src/client/town-residents.ts
 +++ b/src/client/town-residents.ts
-@@ -2,2 +2,5 @@ import * as T from 'three';
+@@ -1,5 +1,9 @@
+ import * as T from 'three';
  import { applyArtMaterial, ART_PALETTE } from './art-profile.ts';
 +import { sampleCourier } from './character-sample.ts';
 +import { townResidentLedger } from './town-resident-ledger.ts';
++import { aimWaterStream, buildWateringCan, WATER_COLOR, WATER_WIDTH, wateringCanMouth } from './watering-tool.ts';
 +import { defaultAppearance, type Appearance } from '../shared/appearance.ts';
  import { GroundWorld } from '../shared/physics/world.ts';
-@@ -9,3 +12,4 @@ import type { Vec3 } from '../shared/world.ts';
+ import { TownResidentMotion } from '../shared/town-resident-motion.ts';
+ import { townResidents, RESIDENT_INTERACT_DISTANCE, RESIDENT_INTERACT_HEIGHT } from '../shared/town-residents.ts';
+@@ -7,7 +11,8 @@ import type { TownResidentDefinition } from '../shared/town-residents.ts';
+ import type { Vec3 } from '../shared/world.ts';
+ 
  type Shape = 'box' | 'sphere' | 'cylinder' | 'cone';
 -interface Piece { node: T.Object3D; shape: Shape; color: T.Color; detail: boolean; slot: number }
 +type BatchKey = Shape | T.BufferGeometry;
 +interface Piece { node: T.Object3D; shape: BatchKey; color: T.Color; detail: boolean; slot: number }
  interface Rig {
-@@ -24,4 +28,4 @@ export interface TownResidentFrame {
+   anchor: T.Group; body: T.Group; head: T.Group; leftArm: T.Group; rightArm: T.Group;
+   leftForearm: T.Group; rightForearm: T.Group; leftLeg: T.Group; rightLeg: T.Group;
+@@ -22,8 +27,8 @@ export interface TownResidentFrame {
+   dt: number; time: number; viewer: Vec3; camera: T.Camera; reducedMotion?: boolean; enabled?: boolean;
+ }
  const palette = { clay: ART_PALETTE.clay, sage: ART_PALETTE.sage, cream: ART_PALETTE.cream, blue: '#6b8796', ochre: '#bb914f' };
 -const skin = ['#d9b78c', '#b98765', '#805b46', '#e0bf9e'];
 -const ink = ART_PALETTE.ink, timber = ART_PALETTE.wood, cream = ART_PALETTE.cream;
 +const skins: Appearance['skin'][] = ['sand', 'bronze', 'deep', 'porcelain', 'warm'];
 +const timber = ART_PALETTE.wood, cream = ART_PALETTE.cream;
  const zero = new T.Matrix4().makeScale(0, 0, 0);
-@@ -44,5 +48,4 @@ function workReach(rig: Rig, side: 'left' | 'right', height: number, forward: nu
+ 
+ /** A two-segment reach in the shoulder's forward plane. The original .25 m
+@@ -42,15 +47,14 @@ function workReach(rig: Rig, side: 'left' | 'right', height: number, forward: nu
+   forearm.rotation.set(-bend + Math.atan2(.014, .255), 0, 0);
+ }
  
 -/** Original host-owned residents, using the same village material adapter and
 - * metre scale as the courier. Four instanced primitive batches share all models;
@@ -1486,12 +1619,18 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 +/** The courier supplies the meshes at the town's existing animated joints.
 + * Resident bodies and props are drawn in shared geometry batches. */
  function residentRig(definition: TownResidentDefinition, index: number): Rig {
-@@ -52,3 +55,3 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+   const anchor = new T.Group(), body = new T.Group(), head = new T.Group();
+   const leftArm = new T.Group(), rightArm = new T.Group(), leftLeg = new T.Group(), rightLeg = new T.Group();
+   const leftForearm = new T.Group(), rightForearm = new T.Group(), leftKnee = new T.Group(), rightKnee = new T.Group();
    anchor.add(body, leftLeg, rightLeg); body.position.y = .89;
 -  body.add(head, leftArm, rightArm); head.position.y = .36;
 +  body.add(head, leftArm, rightArm); head.position.y = .43;
    leftArm.position.set(-.25, .22, 0); rightArm.position.set(.25, .22, 0);
-@@ -61,28 +64,34 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+   leftLeg.position.set(-.105, .63, 0); rightLeg.position.set(.105, .63, 0);
+   const pieces: Piece[] = [];
+@@ -59,32 +63,38 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+     const node = new T.Object3D(); node.position.fromArray(position); node.scale.fromArray(size); parent.add(node);
+     pieces.push({ node, shape, color: new T.Color(color), detail, slot: -1 }); return node;
    };
 -  const coat = palette[definition.coat], face = skin[index % skin.length];
 -  const broad = definition.occupation === 'repairer' || definition.occupation === 'porter';
@@ -1552,28 +1691,35 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 +  useJoint(model.legs[0].knee, leftKnee);
 +  useJoint(model.legs[1].knee, rightKnee);
    const apron = () => {
-@@ -98,4 +107,4 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+     piece(body, 'box', cream, [0, -.065, .169], [.27, .38, .027]);
+     piece(body, 'box', timber, [0, -.06, .19], [.2, .1, .022], true);
+@@ -96,27 +106,26 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+       piece(body, 'box', timber, [0, -.19, 0], [.43, .09, .34]);
+       const hammer = piece(body, 'box', timber, [-.23, -.26, .04], [.033, .25, .032], true); hammer.rotation.z = -.15;
        piece(hammer, 'box', ART_PALETTE.iron, [0, .5, 0], [3.5, .25, 1.8], true);
 -      piece(head, 'cylinder', coat, [0, .21, 0], [.35, .12, .35]);
 -      piece(head, 'box', coat, [0, .17, .11], [.34, .035, .28]);
 +      piece(head, 'cylinder', coat, [0, .242, 0], [.47, .10, .46]);
 +      piece(head, 'box', coat, [0, .198, .13], [.44, .035, .36]);
        break;
-@@ -103,4 +112,4 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+     }
      case 'sunhat':
 -      piece(head, 'cylinder', '#c9af72', [0, .185, 0], [.58, .04, .55]);
 -      piece(head, 'cone', '#c9af72', [0, .265, 0], [.35, .16, .33]);
 +      piece(head, 'cylinder', '#c9af72', [0, .245, 0], [.62, .04, .58]);
 +      piece(head, 'cone', '#c9af72', [0, .325, 0], [.39, .16, .37]);
        apron();
-@@ -111,4 +120,4 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+       break;
+     case 'mailbag': {
+       const strap = piece(body, 'box', timber, [0, .05, .173], [.037, .58, .026]); strap.rotation.z = -.53;
+       piece(body, 'box', '#bc965f', [.235, -.23, .025], [.23, .27, .18]);
        piece(body, 'box', cream, [.24, -.2, .124], [.16, .07, .018], true);
 -      piece(head, 'cylinder', coat, [0, .22, 0], [.33, .08, .32]);
 -      piece(head, 'box', coat, [0, .185, .13], [.28, .025, .25]);
 +      piece(head, 'cylinder', coat, [0, .249, 0], [.45, .07, .43]);
 +      piece(head, 'box', coat, [0, .217, .16], [.38, .025, .28]);
        break;
-@@ -116,5 +125,4 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+     }
      case 'book':
 -      piece(body, 'box', ART_PALETTE.clay, [0, -.01, .33], [.39, .065, .27]);
 -      piece(body, 'box', cream, [0, .03, .33], [.35, .025, .23]);
@@ -1581,14 +1727,41 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 +      for (const {color, offset:[x,y,z], size, detail} of townResidentLedger)
 +        piece(body, 'box', color, [x,y-.01,z+.33], size, detail);
        break;
-@@ -131,4 +139,4 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+     case 'basket':
+       piece(leftArm, 'cylinder', '#bc965f', [0, -.65, .04], [.34, .25, .29]);
+@@ -129,8 +138,8 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+       piece(head, 'sphere', timber, [0, .08, -.18], [.19, .2, .16]);
+       break;
      case 'cap':
 -      piece(head, 'sphere', coat, [0, .185, -.025], [.36, .15, .32]);
 -      piece(head, 'box', coat, [0, .16, .115], [.28, .026, .21]);
 +      piece(head, 'sphere', coat, [0, .222, -.025], [.47, .15, .43]);
 +      piece(head, 'box', coat, [0, .195, .14], [.37, .026, .27]);
        break;
-@@ -168,5 +176,5 @@ export class TownResidents {
+   }
+   if (definition.activity === 'repair') {
+@@ -141,14 +150,10 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+     piece(workTool, 'box', ART_PALETTE.iron, [0, 0, .23], [.095, .04, .07]);
+   }
+   if (definition.activity === 'tend') {
+-    wateringCan = new T.Group(); wateringCan.position.set(0, -.255, .014); leftForearm.add(wateringCan);
+-    piece(wateringCan, 'cylinder', ART_PALETTE.iron, [0, -.16, .035], [.17, .2, .17]);
+-    for (const x of [-.065, .065]) piece(wateringCan, 'box', ART_PALETTE.iron, [x, -.025, .035], [.023, .09, .027]);
+-    piece(wateringCan, 'box', ART_PALETTE.iron, [0, .02, .035], [.15, .025, .027]);
+-    const spout = piece(wateringCan, 'cylinder', ART_PALETTE.iron, [.05, -.085, .205], [.035, .25, .035]);
+-    spout.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(.10, .09, .23).normalize());
+-    piece(wateringCan, 'sphere', ART_PALETTE.iron, [.10, -.04, .33], [.055, .045, .05]);
+-    water = piece(anchor, 'cylinder', '#79aaa4', [0, 0, 0], [.012, 1, .012]);
++    wateringCan = buildWateringCan(piece);
++    wateringCan.position.set(0, -.255, .014);
++    leftForearm.add(wateringCan);
++    water = piece(anchor, 'cylinder', WATER_COLOR, [0, 0, 0], [WATER_WIDTH, 1, WATER_WIDTH]);
+   }
+   if (definition.activity === 'sort') {
+     sortingPaper = new T.Group(); sortingPaper.position.set(0, -.255, .014); leftForearm.add(sortingPaper);
+@@ -166,9 +171,9 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+ export class TownResidents {
+   readonly root = new T.Group();
    readonly definitions: readonly TownResidentDefinition[];
 -  readonly diagnostics = { residents: 0, conversational: 0, invalidAnchors: [] as string[], visible: 0, animated: 0, moving: 0, batches: 4, instances: 0, triangles: 0, visibleInstances: 0, visibleTriangles: 0, movementReversals: 0 };
 +  readonly diagnostics = { residents: 0, conversational: 0, invalidAnchors: [] as string[], visible: 0, animated: 0, moving: 0, batches: 0, instances: 0, triangles: 0, visibleInstances: 0, visibleTriangles: 0, movementReversals: 0 };
@@ -1596,7 +1769,11 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 -  private batches: Record<Shape, T.InstancedMesh>;
 +  private batches = new Map<BatchKey, T.InstancedMesh>();
    private world: GroundWorld;
-@@ -194,12 +202,19 @@ export class TownResidents {
+   private disposed = false;
+   private enabled = true;
+@@ -192,30 +197,40 @@ export class TownResidents {
+     };
+     const material = applyArtMaterial(new T.MeshStandardMaterial({ color: '#ffffff', roughness: .9, metalness: 0 }));
      material.userData.ownedResource = true;
 -    this.batches = {} as Record<Shape, T.InstancedMesh>;
 -    for (const shape of Object.keys(shapes) as Shape[]) {
@@ -1624,7 +1801,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 +    this.diagnostics.batches = this.batches.size;
 +    const slots = new Map<BatchKey, number>();
      for (const resident of this.residents) {
-@@ -207,7 +222,10 @@ export class TownResidents {
+       if (!resident.motion.valid) this.diagnostics.invalidAnchors.push(resident.definition.id);
        for (const piece of resident.rig.pieces) {
 -        piece.slot = slots[piece.shape]++; this.batches[piece.shape].setColorAt(piece.slot, piece.color);
 -        this.batches[piece.shape].setMatrixAt(piece.slot, zero);
@@ -1638,7 +1815,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 -    this.diagnostics.instances = Object.values(slots).reduce((a, b) => a + b, 0);
 +    this.diagnostics.instances = [...slots.values()].reduce((a, b) => a + b, 0);
      this.diagnostics.residents = definitions.length; this.diagnostics.conversational = definitions.filter(d => d.conversational).length;
-@@ -215,5 +233,5 @@ export class TownResidents {
+     for (const resident of this.residents) if (resident.motion.valid) {
        this.pose(resident, 0, true); resident.rig.anchor.updateMatrixWorld(true);
 -      for (const piece of resident.rig.pieces) this.batches[piece.shape].setMatrixAt(piece.slot, piece.node.matrixWorld);
 +      for (const piece of resident.rig.pieces) this.batches.get(piece.shape)!.setMatrixAt(piece.slot, piece.node.matrixWorld);
@@ -1646,7 +1823,11 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 -    for (const batch of Object.values(this.batches)) batch.instanceMatrix.needsUpdate = true;
 +    for (const batch of this.batches.values()) batch.instanceMatrix.needsUpdate = true;
      parent.add(this.root);
-@@ -259,6 +277,7 @@ export class TownResidents {
+   }
+ 
+@@ -257,15 +272,16 @@ export class TownResidents {
+     // Pack only visible pieces, so horizon/frustum and detail LOD also reduce
+     // submitted vertices instead of leaving zero-scaled hidden GPU instances.
      if (dirty) {
 -      const slots: Record<Shape, number> = { box: 0, sphere: 0, cylinder: 0, cone: 0 };
 +      const slots = new Map<BatchKey, number>();
@@ -1656,14 +1837,33 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 +        const batch = this.batches.get(piece.shape)!, slot = slots.get(piece.shape) ?? 0;
 +        slots.set(piece.shape, slot + 1);
          batch.setMatrixAt(slot, piece.node.matrixWorld); batch.setColorAt(slot, piece.color);
-@@ -266,4 +285,4 @@ export class TownResidents {
+       }
        this.diagnostics.visibleInstances = 0; this.diagnostics.visibleTriangles = 0;
 -      for (const shape of Object.keys(this.batches) as Shape[]) {
 -        const batch = this.batches[shape]; batch.count = slots[shape]; batch.instanceMatrix.needsUpdate = true;
 +      for (const [shape, batch] of this.batches) {
 +        batch.count = slots.get(shape) ?? 0; batch.instanceMatrix.needsUpdate = true;
          if (batch.instanceColor) batch.instanceColor.needsUpdate = true;
-@@ -363,3 +382,7 @@ export class TownResidents {
+         this.diagnostics.visibleInstances += batch.count;
+         this.diagnostics.visibleTriangles += (batch.geometry.index?.count ?? batch.geometry.attributes.position.count) / 3 * batch.count;
+@@ -305,12 +321,8 @@ export class TownResidents {
+         // Compute the water from the actual can mouth in the anchor's frame.
+         // A short stream ends at bed height; it never changes body dimensions.
+         rig.body.updateMatrixWorld(true);
+-        const mouth = rig.wateringCan.localToWorld(new T.Vector3(.10, -.04, .33));
+-        rig.anchor.worldToLocal(mouth);
+-        const end = new T.Vector3(mouth.x, .225, mouth.z + .025), delta = end.clone().sub(mouth);
+-        rig.water.position.copy(mouth).add(end).multiplyScalar(.5);
+-        rig.water.scale.set(.012, delta.length(), .012);
+-        rig.water.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), delta.normalize());
++        const mouth = rig.anchor.worldToLocal(wateringCanMouth(rig.wateringCan));
++        aimWaterStream(rig.water, mouth, new T.Vector3(mouth.x, .225, mouth.z + .025));
+       }
+     } else if (definition.activity === 'sort') {
+       rig.body.rotation.x = .10; rig.head.rotation.x = .12;
+@@ -361,7 +373,11 @@ export class TownResidents {
+   dispose() {
+     if (this.disposed) return; this.disposed = true; this.root.removeFromParent();
      const materials = new Set<T.Material>();
 -    for (const batch of Object.values(this.batches)) { batch.geometry.dispose(); (Array.isArray(batch.material) ? batch.material : [batch.material]).forEach(m => materials.add(m)); batch.dispose(); }
 +    for (const [shape, batch] of this.batches) {
@@ -1672,6 +1872,8 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..f17cf1cb912de18b4cd0c64f9a54106a
 +      batch.dispose();
 +    }
      materials.forEach(material => material.dispose()); this.root.clear();
+   }
+ }
 diff --git a/src/client/tutorial.css b/src/client/tutorial.css
 index 5a6310c1d13acbc0cb7847f723b4b8d424f46d84..8f7601a799ef54756ad05764e0317eb5d87f58a8 100644
 --- a/src/client/tutorial.css
@@ -2539,10 +2741,12 @@ index 1a570ac8d81c2294e8da58e4818effaead2d1f9f..dab56cab32b15b863b5616bb68856f0f
 +    expect(saved.home!.interior.material).toBe(home.interior.material);
      await click('#home-toggle-door');await expect(page.locator('#home-exit')).toBeEnabled();
 diff --git a/src/client/immersive.css b/src/client/immersive.css
-index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..faf4192aa5083eaa2d78bc191a82f0b26ff815d3 100644
+index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..38d6fdeb933b82976b7923270ce7fe3f87d369a2 100644
 --- a/src/client/immersive.css
 +++ b/src/client/immersive.css
-@@ -119 +119,9 @@ body.indoor-room-active #mouse-look,body.indoor-room-active #view-mode{display:n
+@@ -117,3 +117,13 @@ body.indoor-room-active #mouse-look,body.indoor-room-active #view-mode{display:n
+ .minimal-bar #open-menu{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;white-space:nowrap}
+ .minimal-bar #open-menu .menu-label{display:inline;margin:0;font:600 12px system-ui}
  .minimal-bar #open-menu kbd{display:inline-block;margin:0;padding:2px 5px;font:10px system-ui;color:inherit;background:var(--ui-choice);border:1px solid var(--ui-dialog-border);border-radius:4px}
 +
 +/* The visitor prompt shares the ordinary nearby-action slot on garden worlds. */
@@ -2552,6 +2756,8 @@ index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..faf4192aa5083eaa2d78bc191a82f0b2
 +body:not(.in-space,.building,.home-interior-active) .interaction[data-bench-rest]{display:block!important}
 +.interaction[data-bench-rest] #interact:not([hidden]),#visitor-bench-choice{min-height:44px}
 +@media(max-width:600px){#visitor-bench-choice{margin-top:6px}}
++body:not(.in-space,.building,.home-interior-active) .interaction[data-visitor-watering]{display:block!important}
++#visitor-watering{min-height:44px;margin-inline-start:6px}
 diff --git a/src/client/character.ts b/src/client/character.ts
 index 2397a4bbd91144e845c1c8a6d9112c5559508622..518a41790130ba41a6ad6ae44a698f27b3eb1f88 100644
 --- a/src/client/character.ts
