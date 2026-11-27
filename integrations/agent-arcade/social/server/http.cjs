@@ -223,6 +223,7 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
         if(!bothouse&&!claudeUi)guard(store.directAiConsent(a,id)?.ai);
         let directTurn=false,groupTurn,personalTurn,abortProactive,bothouseTurn;
         const message=store.send(a,id,body,row=>{
+          if(body.taskHandback!==undefined)return;
           if(workOrders.stage(a,row,body,route.preparedTask)){
             guard(row.mention?.number);
             return;
@@ -587,6 +588,16 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
           res.setHeader('Content-Type','application/json; charset=utf-8');
           return res.end(JSON.stringify({portrait:portrait??null}));
         }
+        if(req.method==='GET'&&collection==='conversations'&&action==='messages'&&parts.length===5&&asset==='task-group-source'){
+          if(url.searchParams.get('account')!==account||req.headers['x-social-account']!==account)
+            fail(409,'message_session','账号已切换，请重新打开会话');
+          if(!/^[1-9]\d*$/u.test(message))fail(404,'group_task_source','这条回件没有可用的原群消息');
+          const answer=await workOrders.authorizeGroupSource(account,chat,Number(message));
+          if(current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          res.setHeader('Content-Type','application/json; charset=utf-8');
+          res.setHeader('Cache-Control','no-store');
+          return res.end(JSON.stringify(answer));
+        }
         if(req.method==='GET'&&key==='ai-contacts/task-targets'){
           if(req.headers['x-social-account']!==account)fail(409,'account_changed','请回到当前账号');
           const source={chatId:url.searchParams.get('chatId'),messageId:Number(url.searchParams.get('messageId')),
@@ -719,6 +730,16 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         }
         const sendingMessage=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3;
         const fromGroup=sendingMessage&&body.taskSource!==undefined;
+        const handback=sendingMessage&&body.taskHandback!==undefined;
+        if(handback){
+          if(req.headers['x-social-account']!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          if(fromGroup||body.mentionAccount!==undefined)fail(400,'group_task_reply','请选择要引用的原群消息');
+          const review=await workOrders.authorizeGroupSource(account,body.taskHandback?.chatId,body.taskHandback?.resultId);
+          if(current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          if(review.group.id!==chat||review.group.membershipRevision!==body.membershipRevision||
+            !Number.isSafeInteger(body.replyTo)||(body.replyTo!==review.source.id&&body.replyTo!==review.question?.id))
+            fail(409,'group_task_reply','原群或引用已变更，请重新核对');
+        }
         let selectedRole;
         if(fromGroup){
           if(req.headers['x-social-account']!==account)fail(409,'message_session','账号已切换，请重新打开会话');
@@ -737,7 +758,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
             fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
           selectedRole=role;
         }
-        const preparedTask=sendingMessage?await workOrders.prepare(account,chat,body):undefined;
+        const preparedTask=sendingMessage&&!handback?await workOrders.prepare(account,chat,body):undefined;
         if(fromGroup){
           if(current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
           store.checkGroupTaskSource(account,body.taskSource);

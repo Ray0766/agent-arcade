@@ -97,7 +97,23 @@ function createWorkOrders(store,receiver){
       fail(429,'task_busy','已有多条任务在处理，请稍后再派');
     store.run('INSERT INTO bothouse_work_orders(prompt,request,chat,human,ai,scope,identity) VALUES(?,?,?,?,?,?,?)',
       m.id,randomUUID(),chat,account,ai,scope,identity);
+    if(body.taskSource){
+      const source=store.checkGroupTaskSource(account,body.taskSource);
+      store.run('INSERT INTO bothouse_work_order_group_sources(prompt,source_chat,source_message) VALUES(?,?,?)',
+        m.id,source.conversationId,source.id);
+    }
     return true;
+  }
+  async function authorizeGroupSource(account,chat,result){
+    const unavailable=()=>fail(404,'group_task_source','这条回件没有可用的原群消息');
+    if(typeof chat!=='string'||!Number.isSafeInteger(result)||result<1)unavailable();
+    const job=store.groupTaskResult(account,chat,result);
+    if(!job||!current(job))unavailable();
+    let identity;
+    try{identity=await receiver?.identity(account,job.ai);}
+    catch{fail(503,'task_unavailable','Bothouse 任务接收端暂时离线');}
+    if(identity!==job.identity||!current(job)||store.groupTaskResult(account,chat,result)?.prompt!==job.prompt)unavailable();
+    return store.reviewGroupTaskSource(account,job.prompt);
   }
   function current(job){
     if(closed||store.one('SELECT removed FROM messages WHERE id=?',job.prompt)?.removed!==0)return false;
@@ -175,7 +191,7 @@ function createWorkOrders(store,receiver){
   function view(id){
     return store.one('SELECT prompt AS messageId,ai AS target,state,attempt,board_id AS boardId FROM bothouse_work_orders WHERE prompt=?',id);
   }
-  return {prepare,sharedDirectAvailable,directoryRoleAvailable,stage,retry,view,start(){if(receiver)timer=setInterval(poll,500).unref();},
+  return {prepare,sharedDirectAvailable,directoryRoleAvailable,authorizeGroupSource,stage,retry,view,start(){if(receiver)timer=setInterval(poll,500).unref();},
     stop(){closed=true;clearInterval(timer);receiver?.stop?.();},wake(){setImmediate(poll);}};
 }
 module.exports={createWorkOrders,isAssignment};

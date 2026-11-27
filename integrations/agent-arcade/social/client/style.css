@@ -466,3 +466,14 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .group-message-task-form label{display:grid;gap:.3rem}
 .group-message-task-form textarea{width:100%;box-sizing:border-box;resize:vertical}
 .group-message-task-actions{display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap}
+
+.task-group-reply-question,.task-group-reply-excerpt[open]{display:grid;gap:.35rem}
+.task-group-reply-excerpt summary{cursor:pointer;font-weight:600}
+.task-group-reply-excerpt p:empty{display:none}
+.task-group-reply-excerpt textarea{margin-block-start:.1rem}
+.task-group-reply textarea{font-weight:400}
+.task-group-reply-question{border:0;margin:0;padding:0;min-inline-size:0}
+.task-group-reply-question legend{font-weight:600;margin-block-end:.35rem}
+.task-group-reply-question .task-group-reply-quote{grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:.15rem .45rem;padding:.25rem 0}
+.task-group-reply-quote input{margin:0}
+.task-group-reply-quote blockquote{grid-column:2;font-weight:400;max-block-size:14vh}
