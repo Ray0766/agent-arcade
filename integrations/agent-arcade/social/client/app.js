@@ -2064,6 +2064,7 @@ function showMessageActions(id,control){
   messageAction={id,chat};
   const row=resolveMessageAction();
   if(!row)return;
+  $('#task-from-group-message').hidden=!canDraftGroupMessageTask(row);
   historyView.querySelector('[aria-expanded="true"][data-message-action]')?.setAttribute('aria-expanded','false');
   control.setAttribute('aria-expanded','true');
   paintReactionChoices(row);
@@ -2133,6 +2134,100 @@ $('#save-message-sticker').addEventListener('click',async event=>{
     }
   }
 });
+function canDraftGroupMessageTask(row){
+  return socialVisible&&routeId()===chat&&user?.kind==='human'&&conversation?.type==='group'&&
+    Boolean(membershipRevision)&&row?.conversationId===chat&&!row.removed&&
+    row.sender.number===user.number&&row.sender.kind==='human'&&
+    !row.attachment&&!row.task&&!row.imageQuestion&&Boolean(row.text.trim());
+}
+$('#task-from-group-message').addEventListener('click',()=>{
+  const row=resolveMessageAction();
+  if(!canDraftGroupMessageTask(row))return;
+  const account=user.number,epoch=generation,text=row.text;
+  const source={chatId:chat,messageId:row.id,membershipRevision};
+  messageActions.hidePopover();
+  showGroupTaskRolePicker(source,ready=>{
+    if(generation!==epoch||user?.number!==account||ready.account!==account||
+      ready.source.chatId!==source.chatId||ready.source.messageId!==source.messageId||
+      ready.source.membershipRevision!==source.membershipRevision)return;
+    showGroupMessageTaskDraft(ready,text);
+  });
+});
+function showGroupMessageTaskDraft({account,conversation:target,number,source},original){
+  const id=target.id;
+  const epoch=generation,visit=chatVisit;
+  const recipient=()=> {
+    const peer=groupTaskPeer(conversation,account);
+    return peer?.number===groupTaskPeer(target,account)?.number?peer:null;
+  };
+  const inTarget=()=>socialVisible&&generation===epoch&&user?.number===account&&chatVisit===visit&&
+    chat===id&&routeId()===id&&conversation?.type==='direct';
+  const peer=recipient();
+  if(!inTarget()||messageBox.readOnly||!peer)return;
+
+  const form=el('form',null,'group-message-task-form');
+  const who=el('p',null,'group-message-task-recipient');
+  who.append(el('strong',peer.remark||peer.displayName),el('span',number,'minor'));
+  const excerpt=el('blockquote',original);
+  const label=el('label','补充要求（可选）');
+  const supplement=el('textarea');
+  supplement.rows=3;
+  supplement.placeholder='你希望角色做什么？';
+  const prefix=taskPrefix+'\n'+original;
+  const suffix='\n\n补充要求：\n';
+  const remaining=messageBox.maxLength-prefix.length;
+  supplement.maxLength=Math.max(0,remaining-suffix.length);
+  label.append(supplement);
+  const actions=el('div',null,'group-message-task-actions');
+  const cancel=button('取消',closeDialog);
+  const submit=el('button','确认交办','primary');
+  submit.type='submit';
+  actions.append(cancel,submit);
+  form.append(who,el('strong','所选群消息'),excerpt);
+  if(supplement.maxLength>0)form.append(label);
+  else form.append(el('p','原文已接近单条消息长度上限。','minor'));
+  if(remaining<0)submit.disabled=true;
+  form.append(actions);
+  const scope=openDialog('交办草稿',[form]);
+  const showing=()=>scope===dialogGeneration&&dialog.open;
+  const error=$('#dialog-error');
+  if(remaining<0)error.textContent='原文超过交办长度上限，请从原会话选择较短的消息。';
+  let attempt;
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    if(submit.disabled||!showing())return;
+    if(!inTarget()||messageBox.readOnly||!recipient()){
+      error.textContent='当前角色或会话已变更，请回到原群重新核对。';
+      return;
+    }
+    const extra=supplement.value.trim();
+    const text=prefix+(extra?suffix+extra:'');
+    if(text.length>messageBox.maxLength){
+      error.textContent='交办内容太长，请缩短补充要求。';
+      return;
+    }
+    if(attempt?.text!==text)attempt={clientId:clientNonce(),text,taskSource:source,taskRole:number,
+      aiConsentRevision:target.cloudChat?.revision};
+    submit.disabled=true;
+    supplement.readOnly=true;
+    error.textContent='';
+    try{
+      const response=await api(thread(id)+'/messages',attempt,{expectedAccount:account,timeoutMs:30000});
+      if(!inTarget())return;
+      if(showing())closeDialog();
+      merge([response.message,...(response.reply?[response.reply]:[])],'end');
+      void sync();
+    }catch(failure){
+      if(showing()&&user?.number===account)error.textContent=textError(failure)+' 交办草稿仍保留。';
+    }finally{
+      if(showing()){
+        submit.disabled=false;
+        supplement.readOnly=false;
+      }
+    }
+  });
+  (supplement.isConnected?supplement:cancel).focus();
+}
 $('#report-message').addEventListener('click',()=>{
   const row=resolveMessageAction();
   messageActions.hidePopover();
@@ -3911,6 +4006,62 @@ async function openWorldAiChat(account) {
     if(!current()||error.status===409)return;
   }
   if(current())showAiContacts();
+}
+function groupTaskPeer(target,account){
+  if(target?.type!=='direct'||target.friendRemoved)return null;
+  return target.members.find(member=>member.number!==account&&member.kind==='ai')??null;
+}
+function showGroupTaskRolePicker(source,onReady) {
+  const account=user?.number,epoch=generation,visit=chatVisit;
+  if(!account||chat!==source.chatId||conversation?.type!=='group'||membershipRevision!==source.membershipRevision)return;
+  const status=el('p','正在核对当前账号可交办的角色…','minor');
+  status.setAttribute('role','status');
+  const roles=el('ul',null,'ai-role-list');
+  const scope=openDialog('选择交办角色',[status,roles]);
+  const current=()=>user?.number===account&&generation===epoch&&chatVisit===visit&&chat===source.chatId&&routeId()===source.chatId&&
+    membershipRevision===source.membershipRevision&&dialogGeneration===scope&&dialog.open;
+  const options={expectedAccount:account,timeoutMs:45000};
+  let opening=false;
+  async function choose(contact,button){
+    if(!current()||opening)return;
+    opening=true;
+    button.disabled=true;
+    status.textContent='正在复核这位角色的授权…';
+    try{
+      const {conversation:target,taskRole}=await api('/ai-contacts/start',
+        {number:contact.number,expectedAccount:account,taskSource:source},options);
+      if(!current())return;
+      const peer=groupTaskPeer(target,account);
+      if(!peer||taskRole!==contact.number){
+        status.textContent='无法核对这位角色的私聊，请重新选择。';
+        return;
+      }
+      closeDialog();
+      await goChat(target.id,false,account);
+      if(user?.number===account&&generation===epoch&&chat===target.id&&routeId()===target.id&&
+         groupTaskPeer(conversation,account)?.number===peer.number&&!dialog.open)
+        onReady({account,conversation,number:contact.number,source});
+    }catch(error){
+      if(current())status.textContent=textError(error);
+    }finally{
+      opening=false;
+      if(current())button.disabled=false;
+    }
+  }
+  void perform(async()=>{
+    const {contacts,directoryStatus}=await api('/ai-contacts/task-targets?'+new URLSearchParams(source),undefined,options);
+    if(!current())return;
+    status.textContent=directoryStatus==='offline'?'暂时无法读取角色目录，请稍后再试。':
+      contacts.length?'请选择要接收本次交办的角色。':'当前账号没有可交办的角色。';
+    for(const contact of contacts){
+      const item=el('li',null,'contact-group-row');
+      const pick=row(contact.displayName,contact.number,contact.number,()=>void choose(contact,pick));
+      pick.dataset.taskRole=contact.number;
+      pick.setAttribute('aria-label',(contact.displayName)+'（'+contact.number+'）');
+      item.append(pick);
+      roles.append(item);
+    }
+  },null,scope);
 }
 function showAiContacts() {
   const account=user.number, epoch=generation;

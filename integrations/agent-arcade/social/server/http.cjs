@@ -1,6 +1,6 @@
 'use strict';
 const {stockTaskReceiver}=require('./bothouse/stock-tasks.cjs');
-const {createWorkOrders}=require('./bothouse/work-orders.cjs');
+const {createWorkOrders,isAssignment}=require('./bothouse/work-orders.cjs');
 const {commentPage,commentsRoute}=require('./feed-comments.cjs');
 const {chatFeedbackReview} = require('./chat-feedback-review.cjs');
 
@@ -587,6 +587,38 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
           res.setHeader('Content-Type','application/json; charset=utf-8');
           return res.end(JSON.stringify({portrait:portrait??null}));
         }
+        if(req.method==='GET'&&key==='ai-contacts/task-targets'){
+          if(req.headers['x-social-account']!==account)fail(409,'account_changed','请回到当前账号');
+          const source={chatId:url.searchParams.get('chatId'),messageId:Number(url.searchParams.get('messageId')),
+            membershipRevision:url.searchParams.get('membershipRevision')};
+          store.checkGroupTaskSource(account,source);
+          const revision=bothousePairing.active(store,account)?.revision;
+          const directory=await bothouse?.list(account)??{contacts:[],directoryStatus:'offline'};
+          const contacts=[];
+          const candidates=directory.contacts.filter(role=>role.kind==='ai'&&role.source==='bothouse'&&role.configured);
+          for(let offset=0;offset<candidates.length;offset+=8){
+            const batch=await Promise.all(candidates.slice(offset,offset+8).map(async role=>{
+              const legacy=role.legacyNumber&&store.direct(account,role.legacyNumber);
+              const number=legacy?role.legacyNumber:role.number;
+              const target=legacy||store.direct(account,number);
+              if(!await workOrders.directoryRoleAvailable(account,{...role,number},target?.id))return;
+              return {number:role.number,displayName:role.displayName};
+            }));
+            contacts.push(...batch.filter(Boolean));
+            if(current(store,req)!==account||revision!==bothousePairing.active(store,account)?.revision)
+              fail(409,'account_changed','请重新打开当前账号的角色目录');
+          }
+          if(current(store,req)!==account||revision!==bothousePairing.active(store,account)?.revision)
+            fail(409,'account_changed','请重新打开当前账号的角色目录');
+          store.checkGroupTaskSource(account,source);
+          res.setHeader('Content-Type','application/json; charset=utf-8');
+          res.setHeader('Cache-Control','no-store');
+          return res.end(JSON.stringify({directoryStatus:directory.directoryStatus,contacts}));
+        }
+        if(req.method==='POST'&&key==='ai-contacts/start'&&body.taskSource!==undefined){
+          if(req.headers['x-social-account']!==account)fail(409,'account_changed','请回到当前账号');
+          if(!bothouse)fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
+        }
         if(bothouse){
           let answer;
           if(key==='ai-contacts/pair'){
@@ -599,7 +631,8 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
             residents.unpair(account);
           }
           if(req.method==='GET'&&key==='ai-contacts')answer=await bothouse.list(account);
-          if(req.method==='POST'&&key==='ai-contacts/start')answer=await bothouse.start(account,body);
+          if(req.method==='POST'&&key==='ai-contacts/start')answer=await bothouse.start(account,body,()=>current(store,req)===account,
+              (role,target)=>workOrders.directoryRoleAvailable(account,role,target));
           if(req.method==='POST'&&key==='personal-ai'&&body.action!=='withdraw')
             fail(409,'bothouse_managed','请在 Bothouse 管理角色及模型');
           if(collection==='groups'&&action==='ai'&&parts.length===3){
@@ -684,8 +717,35 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
           res.setHeader('Cache-Control','no-store');
           return res.end(JSON.stringify(capability));
         }
-        const preparedTask=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3
-          ? await workOrders.prepare(account,chat,body):undefined;
+        const sendingMessage=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3;
+        const fromGroup=sendingMessage&&body.taskSource!==undefined;
+        let selectedRole;
+        if(fromGroup){
+          if(req.headers['x-social-account']!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          const source=store.checkGroupTaskSource(account,body.taskSource);
+          if(typeof body.text!=='string'||!isAssignment(body.text))fail(400,'group_task_text','请填写交办内容');
+          const original='给你一个任务：\n'+source.text;
+          if(body.text!==original&&!body.text.startsWith(original+'\n\n补充要求：\n'))
+            fail(400,'group_task_text','交办内容与所选群消息不一致，请重新打开草稿');
+          const target=store.access(account,chat);
+          const peer=target.first_user===account?target.second_user:target.first_user;
+          const role=target.type==='direct'&&!target.friendRemoved&&await bothouse?.resolveMember(account,peer);
+          const stable=role&&(role.legacyNumber===role.number?
+            store.one('SELECT native FROM bothouse_native_numbers WHERE legacy=?',role.number)?.native:role.number);
+          if(typeof body.taskRole!=='string'||!role||stable!==body.taskRole||
+             !await workOrders.directoryRoleAvailable(account,role,chat))
+            fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
+          selectedRole=role;
+        }
+        const preparedTask=sendingMessage?await workOrders.prepare(account,chat,body):undefined;
+        if(fromGroup){
+          if(current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
+          store.checkGroupTaskSource(account,body.taskSource);
+          const prior=store.one('SELECT id FROM messages WHERE chat=? AND sender=? AND nonce=?',chat,account,body.clientId??null);
+          if((preparedTask?.ai!==selectedRole.number||preparedTask.identity!==selectedRole.id)&&
+             !(prior&&workOrders.view(prior.id)?.target===selectedRole.number))
+            fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
+        }
         if(preparedTask&&current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
         const handle = () => dispatch(store,account,{method:req.method,parts,claudeUi,preparedTask,friendRolesUi:req.headers['x-social-ai-friend-roles']==='1'},body,url.searchParams,build,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders);
         result = req.method === 'POST' ? store.transaction(handle) : handle();

@@ -77,16 +77,32 @@ function bothouseDirectory(store, request) {
     else if (old.kind !== 'ai') fail(409,'role_conflict','这个角色的社交号已被占用');
     else store.run('UPDATE users SET name=? WHERE number=? AND name<>?',role.displayName,role.number,role.displayName);
   }
-  async function start(account,body) {
-    if (body.expectedAccount !== account) fail(409,'account_changed','请回到当前账号');
-    const requested=typeof body.number==='string' && body.number.toLowerCase();
-    if (!targetNumber.test(requested)) fail(409,'bothouse_unavailable','此账号暂时无法联系这位 Bothouse 角色');
-    const role = byNumber((await list(account,requested)).contacts,requested);
-    if (!role?.configured) fail(409,'bothouse_unavailable','此账号暂时无法联系这位 Bothouse 角色');
+  async function start(account,body,stillCurrent=()=>true,canReceiveTask) {
+    if(body.expectedAccount!==account)fail(409,'account_changed','请回到当前账号');
+    const requested=typeof body.number==='string'&&body.number.toLowerCase();
+    if(!targetNumber.test(requested))fail(409,'bothouse_unavailable','此账号暂时无法联系这位 Bothouse 角色');
+    const revision=pairing.active(store,account)?.revision;
+    const source=body.taskSource;
+    if(source!==undefined)store.checkGroupTaskSource(account,source);
+    const role=byNumber((await list(account,requested)).contacts,requested);
+    if(source!==undefined&&!role?.configured)fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
+    if(!role?.configured)fail(409,'bothouse_unavailable','此账号暂时无法联系这位 Bothouse 角色');
+    const targetNumberFor=()=>role.legacyNumber&&store.direct(account,role.legacyNumber)?role.legacyNumber:role.number;
+    const number=targetNumberFor();
+    const direct=store.direct(account,number);
+    if(source!==undefined&&(requested!==role.number||!await canReceiveTask?.({...role,number},direct?.id)))
+      fail(403,'group_task_role','这位角色当前不能接收交办，请重新选择');
     return store.transaction(()=>{
-      const number=role.legacyNumber && store.direct(account,role.legacyNumber) ? role.legacyNumber : role.number;
-      install({...role,number});
-      return {conversation:store.openDirect(account,number)};
+      if(!stillCurrent()||pairing.active(store,account)?.revision!==revision)
+        fail(409,'account_changed','请回到当前账号');
+      const target=targetNumberFor();
+      if(source!==undefined){
+        store.checkGroupTaskSource(account,source);
+        if(target!==number||store.direct(account,target)?.id!==direct?.id)
+          fail(409,'group_task_role','角色私聊已变更，请重新选择');
+      }
+      install({...role,number:target});
+      return {conversation:store.openDirect(account,target),...(source!==undefined&&{taskRole:requested})};
     });
   }
   async function group(account,chat,body) {
