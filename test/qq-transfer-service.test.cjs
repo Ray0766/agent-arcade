@@ -35,10 +35,47 @@ test('actual desktop child exit after durable PATCH resumes only after explicit 
  const done=await f.session.resume({...f.base,viewId:f.viewId,jobId:retained[0].jobId,operationId:randomUUID()});assert.equal(done.job.published,true);assert.deepEqual(fs.readFileSync(path.join(f.dirs.files,'source.bin')),bytes);assert.equal(done.job.sha256,P.sha(bytes));
 });
 
+async function runDownloadCrashChild(config){
+ const {spawn}=require('node:child_process');
+ const {createInterface}=require('node:readline');
+ const child=spawn(process.execPath,[path.join(__dirname,'helpers/qq-transfer-crash-child.cjs'),config],{windowsHide:true,stdio:['ignore','pipe','ignore']});
+ const phases=['session-open','preview-ready','first-range-read'];
+ let reached=0,timer,failure;
+ const watch=()=>{
+   clearTimeout(timer);
+   timer=setTimeout(()=>{
+     failure=Error('Owned download child stalled after '+(phases[reached-1]||'spawn'));
+     child.kill();
+   },15000);
+ };
+ const lines=createInterface({input:child.stdout});
+ lines.on('line',line=>{
+   if(failure)return;
+   if(line!==phases[reached]||reached>=phases.length){
+     failure=Error('Unexpected download crash fixture phase');
+     child.kill();
+     return;
+   }
+   reached++;
+   watch();
+ });
+ try{
+   watch();
+   const [code,signal]=await require('node:events').once(child,'close');
+   if(failure)throw failure;
+   assert.equal(reached,phases.length,'last phase: '+(phases[reached-1]||'spawn'));
+   assert.deepEqual({code,signal},{code:86,signal:null});
+   assert.throws(()=>process.kill(child.pid,0),{code:'ESRCH'});
+ }finally{
+   clearTimeout(timer);
+   lines.close();
+ }
+}
+
 test('actual desktop exit during second Range retains first durable local prefix, then explicit recovery verifies final hash',async t=>{
- const {spawn}=require('node:child_process');const f=await fixture(t),bytes=Buffer.alloc(P.LIMITS.chunk+193,0x82);fs.writeFileSync(path.join(f.dirs.files,'download-source.bin'),bytes);
+ const f=await fixture(t),bytes=Buffer.alloc(P.LIMITS.chunk+193,0x82);fs.writeFileSync(path.join(f.dirs.files,'download-source.bin'),bytes);
  const config=path.join(f.local,'synthetic-child.json');fs.writeFileSync(config,JSON.stringify({kind:'download',local:f.local,syntheticVaultKey:f.vaultKey.toString('hex'),base:f.base,revision:f.link.revision,target:f.state.downloadPath}),{mode:0o600});
- const child=spawn(process.execPath,[path.join(__dirname,'helpers/qq-transfer-crash-child.cjs'),config],{windowsHide:true,stdio:'ignore'});const exit=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(Error('Owned child timeout'));},15000);child.once('error',reject);child.once('exit',code=>{clearTimeout(timer);resolve(code);});});assert.equal(exit,86);assert.throws(()=>process.kill(child.pid,0),{code:'ESRCH'});
+ await runDownloadCrashChild(config);
  const retained=f.jobs.list()[0];assert.equal(retained.state,'reconcile_required');assert.equal(retained.completedBytes,P.LIMITS.chunk);assert.equal(fs.existsSync(f.state.downloadPath),false);
  await f.reopen();const checked=await f.session.reconcile({...f.base,viewId:f.viewId,jobId:retained.jobId,operationId:randomUUID()});assert.equal(checked.job.canResume,true);
  const done=await f.session.resume({...f.base,viewId:f.viewId,jobId:retained.jobId,operationId:randomUUID()});assert.equal(done.job.saved,true);assert.equal(done.job.sha256,P.sha(bytes));assert.deepEqual(fs.readFileSync(f.state.downloadPath),bytes);
