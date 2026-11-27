@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "37e90a72a71fea23588842d0417ef8bcca458733",
-  "worldTree": "dce2477ad37ae23f146b0cc5e436c247e7ec91fe",
-  "patchSHA256": "94402fb6e6f71bba56e9cf491b35babdbdd96d106aa2c96dbe182ad01980246e",
+  "worldRevision": "b82501b83487a6764ada0fefbfe40bbe7b3ae4a7",
+  "worldTree": "22a0b17c163a834f70f1a5f8e0a9531dda38a246",
+  "patchSHA256": "67a4405968550dff326d0d72385f4d586279f89c9d860fb7976a28c7f26669d8",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -613,14 +613,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "6cb75513bb4a75f5c2e8ff5897ebe2d52e0d45dd",
-      "sha256": "0088adc62e0a06df7895268425103fff033b5a156eabd12a9cb33cd6794ac27b"
+      "blob": "8dee0aa147a6e15db47c2472dd45cafb16e61cf8",
+      "sha256": "a59465b2378456dafbcccb4c031c44c9df61d36bd2c728ebf135a9175b86d831"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920",
-      "sha256": "02ded8106e7ee55083be9ab8b2a508585ee17b0a89d83ec17d31a2761e882c60"
+      "blob": "0df3e5a1df19a0a7c6d045aabc4974cfb5e47154",
+      "sha256": "eff30d265a78b6b97746ce4e6640f4508657191563493018efabef3625842e1f"
     },
     {
       "action": "A",
@@ -639,6 +639,24 @@
       "path": "src/client/photo-mode.ts",
       "blob": "b827ccc218a09106f5a68c9da855fa10b73cc7eb",
       "sha256": "c1ede7c5fe6c639d06bd755e1a042187d68a7e0ddd4fdd0717b3ffba99ebe63c"
+    },
+    {
+      "action": "A",
+      "path": "src/client/planet-minimap-contract.ts",
+      "blob": "11e521e69e037babfc0445661e03d9600b86dfe0",
+      "sha256": "4cf7c0bb1abbae67cdfb29f21aa8af4162e6e6692636e650b84f9de783b039c2"
+    },
+    {
+      "action": "A",
+      "path": "src/client/planet-minimap.css",
+      "blob": "da13178c1fbcdd4033cf85372b6dbc5fd31dd636",
+      "sha256": "af3b6d78f0eac54c8a84e70ff0cd4915bff5d371e6e14de7fc3bda2715273337"
+    },
+    {
+      "action": "A",
+      "path": "src/client/planet-minimap.ts",
+      "blob": "6ec9799e6efb76ce047d1a75116d07b28dd30b7b",
+      "sha256": "9264538e4b7674e92aac56cac9725263e10b1b123a08b64d26171621d404da3c"
     },
     {
       "action": "M",
@@ -714,6 +732,12 @@
     },
     {
       "action": "M",
+      "path": "src/client/tutorial-route.ts",
+      "blob": "2d0aecd7951869111f8621f74185d2a08a08bf98",
+      "sha256": "86814d2d5972dcd3e8556676f0138c3d0585359fa182b625223a71ea6dc2d693"
+    },
+    {
+      "action": "M",
       "path": "src/client/tutorial.css",
       "blob": "8f7601a799ef54756ad05764e0317eb5d87f58a8",
       "sha256": "e0c1059d96beeacdb8a4b9722ea5d9778214e2c075cb4ab9e47fb21e76a26943"
@@ -739,8 +763,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "479e67a0d45fd7307d2ef6675d52340e6200c0c2",
-      "sha256": "3b48c1b5a98a08e2f1f2735221d4dd4ad31d4182c6a0047a2dfc57bf8a353e91"
+      "blob": "db0133e12698ea01a8f15861bfd5244e4e253474",
+      "sha256": "fe53871488a39048f33bff263e4c0ac6b8bdc40280f100627317615780d2bd47"
     },
     {
       "action": "A",
@@ -841,8 +865,8 @@
     {
       "action": "M",
       "path": "src/shared/tutorial-navigation.ts",
-      "blob": "757834452abb873cef60a7c8a3a2b674b21765cf",
-      "sha256": "d14034e2420a540e3cffe7f95e5045d93e6ad6ad4052bb5a2654b9228836eb64"
+      "blob": "b241e98df0efd23b0396177d2f7f44a0f630356e",
+      "sha256": "0000672b9735dc798f11c4fa3b8fc293186248005b04cb0dca78bb7bae0c924f"
     },
     {
       "action": "M",
