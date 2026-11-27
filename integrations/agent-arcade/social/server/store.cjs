@@ -566,6 +566,35 @@ class SocialStore {
   removeSavedSticker(a,id) {
     this.run('DELETE FROM saved_stickers WHERE account=? AND id=?',a,id);
   }
+  saveMessageBookmark(a,chat,message) {
+    if(this.user(a).kind!=='human')fail(403,'bookmark_human_only','收藏夹仅供真人账号使用');
+    const {since}=this.access(a,chat);
+    const source=this.one('SELECT * FROM messages WHERE chat=? AND id=? AND id>? AND removed=0',chat,message,since);
+    if(!source)fail(404,'bookmark_source','这条消息已不可查看');
+    const row=this.message(source);
+    if(row.attachment?row.attachment.type!=='image':!row.text.trim()&&!row.webResults?.length)
+      fail(400,'bookmark_type','请选择文字、链接或图片消息');
+    this.run('INSERT INTO message_bookmarks(account,message) VALUES(?,?) ON CONFLICT(account,message) DO NOTHING',a,message);
+    return {ok:true};
+  }
+  messageBookmarkPage(a,before) {
+    if(before!==null&&!isPostId(before))fail(400,'bookmark_cursor','收藏分页参数无效');
+    const limit=20;
+    const rows=this.all(`SELECT b.id AS bookmarkId,m.* FROM message_bookmarks b
+      JOIN messages m ON m.id=b.message
+      JOIN members viewer ON viewer.chat=m.chat AND viewer.account=b.account
+      WHERE b.account=? AND m.id>viewer.since AND m.removed=0 AND b.id<coalesce(?,9223372036854775807)
+      ORDER BY b.id DESC LIMIT ?`,a,before===null?null:Number(before),limit+1);
+    const bookmarks=rows.slice(0,limit).map(source=>{
+      const {id,conversationId,sender,text,createdAt,attachment,webResults}=this.message(source);
+      return {bookmarkId:source.bookmarkId,id,conversationId,sender:sender.displayName,text,createdAt,attachment,webResults};
+    });
+    return {bookmarks,nextBefore:rows.length>limit?String(bookmarks.at(-1).bookmarkId):null};
+  }
+  removeMessageBookmark(a,id) {
+    this.run('DELETE FROM message_bookmarks WHERE account=? AND id=?',a,id);
+    return {ok:true};
+  }
   sendAiSticker(a,id,clientId,image) {
     const chat=this.access(a,id);
     if(this.user(a).kind!=='ai')fail(403,'ai_required','表情图必须由当前 AI 角色发送');

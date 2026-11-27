@@ -216,6 +216,13 @@ CREATE TABLE IF NOT EXISTS saved_stickers (
   UNIQUE(account,message)
 );
 CREATE INDEX IF NOT EXISTS saved_stickers_account ON saved_stickers(account);
+CREATE TABLE IF NOT EXISTS message_bookmarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account TEXT NOT NULL REFERENCES users(number) ON DELETE CASCADE,
+  message INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  UNIQUE(account,message)
+);
+CREATE INDEX IF NOT EXISTS message_bookmarks_page ON message_bookmarks(account,id);
 CREATE TABLE IF NOT EXISTS message_stickers (
   message INTEGER PRIMARY KEY REFERENCES message_images(message) ON DELETE CASCADE,
   label TEXT NOT NULL

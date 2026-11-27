@@ -459,3 +459,28 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .message-quote strong { display:block; font-size:.85em; }
 .reply-target:not([hidden]) { display:flex; align-items:center; gap:.5rem; grid-column:1/-1; }
 .reply-target span { flex:1; }
+
+.message-bookmarks {
+  display: grid;
+  gap: .75rem;
+  padding: 0;
+  list-style: none;
+}
+.message-bookmarks li {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  gap: .375rem;
+}
+.message-bookmarks p { margin: 0; }
+.bookmark-image {
+  display: block;
+  max-width: 100%;
+  max-height: 48dvh;
+  object-fit: contain;
+}
+.bookmark-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}

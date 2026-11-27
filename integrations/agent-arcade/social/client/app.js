@@ -285,6 +285,8 @@ function textError(error) {
   if (error.message === 'reaction_session') return '会话权限已变化，请重新打开后回应。';
   if (error.message === 'report_session') return '账号已切换，请重新打开会话再举报。';
   if (error.message === 'image_session') return '账号已切换，请重新打开会话。';
+  if (error.message === 'bookmark_session') return '账号已切换，请重新打开收藏夹。';
+  if (error.message === 'bookmark_source') return '这条消息已不可查看。';
   if (error.message === 'sticker_session') return '会话权限已变更，请重新打开表情包。';
   if (error.status === 413) return '图片超过大小或尺寸限制，请换一张。';
   if (error.status === 415 || error.status === 422) return '请选择可打开的静态 PNG 或 JPEG。';
@@ -651,7 +653,7 @@ function renderDirectory() {
   if(tab==='profile') {
     const profile=el('div',null,'profile');
     profile.append(personAvatar(user),el('h2',user.displayName),button('更换头像',()=>showAvatarEditor(profile)),
-      ...ownNumberControls(),button('意见反馈',showFeedback),button('我的举报',showMyReports),
+      ...ownNumberControls(),button('收藏夹',showMessageBookmarks),button('意见反馈',showFeedback),button('我的举报',showMyReports),
       policyLink('内容准则','./conduct.html'),policyLink('隐私说明','./privacy.html'),
       policyLink('开源与版本','./source.html'),
       button('退出登录',()=>perform(async()=>{await api('/logout',{});leaveSession({discardFeedback:true});})));
@@ -2070,6 +2072,12 @@ function showMessageActions(id,control){
   const reply=$('#reply-message');
   if(reply)reply.hidden=messageBox.readOnly||sending.has(chat)||!$('#reply-target');
   $('#copy-message').hidden=!!row.attachment;
+  const bookmark=$('#save-message-bookmark');
+  if(bookmark){
+    bookmark.hidden=!canBookmarkMessage(row);
+    bookmark.disabled=false;
+    bookmark.textContent='加入收藏';
+  }
   const favorite=$('#save-message-sticker');
   favorite.hidden=row.attachment?.type!=='image';
   favorite.disabled=false;favorite.textContent='收藏为表情';
@@ -2111,6 +2119,30 @@ $('#copy-message').addEventListener('click',async()=>{
   if(!row||row.attachment)return;
   try{await navigator.clipboard.writeText(row.text);messageActions.hidePopover();}
   catch{$('#message-action-status').textContent='可选中消息文字手动复制。';}
+});
+function canBookmarkMessage(row){
+  return row&&!row.removed&&(row.attachment?row.attachment.type==='image':Boolean(row.text.trim()||row.webResults?.length));
+}
+$('#save-message-bookmark')?.addEventListener('click',async event=>{
+  const row=resolveMessageAction(),control=event.currentTarget;
+  if(!canBookmarkMessage(row)||control.disabled)return;
+  const account=user.number,epoch=generation,visit=chatVisit,action=messageAction;
+  const current=()=>generation===epoch&&chatVisit===visit&&messageAction===action&&user?.number===account;
+  control.disabled=true;
+  try{
+    await api('/message-bookmarks/save',{expectedAccount:account,chat:row.conversationId,message:row.id});
+    if(current()){
+      control.textContent='已加入收藏';
+      $('#message-action-status').textContent='可在「我 → 收藏夹」查看。';
+    }
+  }catch(error){
+    if(current()){
+      control.disabled=false;
+      $('#message-action-status').textContent=textError(error);
+    }
+  }finally{
+    if(current())positionMessageActions();
+  }
 });
 $('#save-message-sticker').addEventListener('click',async event=>{
   const row=resolveMessageAction(),control=event.currentTarget;
@@ -2462,6 +2494,94 @@ function openDialog(title, nodes, groupId, memberPanel=false) {
   $('#dialog-body').replaceChildren(...nodes);
   if(!dialog.open){if(dock)dialog.show();else dialog.showModal();}
   return dialogGeneration;
+}
+function bookmarkLink(label,url) {
+  if(!/^https?:\/\//i.test(url))return el('span',label);
+  const link=el('a',label);
+  link.href=url;
+  link.target='_blank';
+  link.rel='noopener noreferrer';
+  return link;
+}
+function bookmarkText(text) {
+  const body=el('p',null,'body bookmark-text');
+  let offset=0;
+  for(const match of text.matchAll(/https?:\/\/[^\s<>"，。；！？、]+/gi)){
+    const url=match[0].replace(/[.,!?;)\]]+$/,'');
+    body.append(text.slice(offset,match.index),bookmarkLink(url,url));
+    offset=match.index+url.length;
+  }
+  body.append(text.slice(offset));
+  return body;
+}
+function showMessageBookmarks() {
+  if(user?.kind!=='human')return;
+  const account=user.number,epoch=generation;
+  const list=el('ul',null,'message-bookmarks');
+  const status=el('p','正在加载收藏…','minor');
+  status.setAttribute('role','status');
+  const more=button('加载更多',()=>void load(),'outline');
+  more.hidden=true;
+  const scope=openDialog('收藏夹',[list,status,more]);
+  const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&user?.number===account;
+  let next=null;
+  function paintStatus(){
+    more.hidden=!next;
+    status.textContent=list.childElementCount||next?'':'暂无可查看的收藏。';
+  }
+  function entry(row){
+    const item=el('li');
+    item.append(el('p',[row.sender,time(row.createdAt,reportDate)].join(' · '),'minor'));
+    if(row.attachment?.type==='image'){
+      const image=el('img',null,'bookmark-image');
+      image.alt=row.attachment.sticker?.label||'聊天图片';
+      image.loading='lazy';
+      image.addEventListener('error',()=>image.replaceWith(el('p','原图目前不可查看。','minor')),{once:true});
+      image.src=imageUrl(row)+'?'+new URLSearchParams({account});
+      item.append(image);
+    }else{
+      if(row.text)item.append(bookmarkText(row.text));
+      for(const source of row.webResults??[]){
+        const line=el('p',null,'bookmark-text');
+        line.append(bookmarkLink(source.title,source.url));
+        item.append(line);
+      }
+    }
+    const remove=button('取消收藏',()=>void perform(async()=>{
+      await api('/message-bookmarks/remove',{expectedAccount:account,id:row.bookmarkId});
+      if(!current())return;
+      const focus=item.nextElementSibling?.querySelector('button')??
+        item.previousElementSibling?.querySelector('button')??(next?more:$('#dialog-close'));
+      item.remove();
+      paintStatus();
+      focus.focus();
+      status.textContent=list.childElementCount||next?'已取消收藏。':'已取消收藏。暂无可查看的收藏。';
+    },remove,scope),'outline');
+    item.append(remove);
+    return item;
+  }
+  async function load(){
+    if(more.disabled)return;
+    more.disabled=true;
+    const params=new URLSearchParams({account});
+    if(next)params.set('before',next);
+    try{
+      const page=await api('/message-bookmarks?'+params);
+      if(!current())return;
+      list.append(...page.bookmarks.map(entry));
+      next=page.nextBefore;
+      more.textContent='加载更多';
+      paintStatus();
+    }catch(error){
+      if(!current())return;
+      status.textContent=textError(error);
+      more.textContent='重试';
+      more.hidden=false;
+    }finally{
+      more.disabled=false;
+    }
+  }
+  void load();
 }
 function showAvatarEditor(profile) {
   const account=user.number,epoch=generation;
