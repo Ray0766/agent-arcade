@@ -63,13 +63,43 @@ test('forget rejects stale revision and cannot consume a later acknowledged rece
  const f=setup(t),j=f.open(),s=scope(),v=attempted(j,s),ack=j.change(s,v.operationId,v.revision,'acknowledged','export_1700000000000_a','test.json');
  assert.throws(()=>j.forget(s,v.operationId,v.revision),{code:'qce_jobs_changed'});assert.equal(j.get(s,v.operationId).revision,ack.revision);
 });
-test('owned child exit after durable attempt reopens as an uncertain unclaimed job',t=>{
- const {spawnSync}=require('node:child_process'),base=fs.realpathSync(os.tmpdir()),root=fs.mkdtempSync(path.join(base,'arcade-qce-jobs-exit-')),s=scope(),v=input(),key=Buffer.alloc(32,19);
+test('owned child exit after durable attempt reopens as an uncertain unclaimed job',async t=>{
+ const {fork}=require('node:child_process'),base=fs.realpathSync(os.tmpdir()),root=fs.mkdtempSync(path.join(base,'arcade-qce-jobs-exit-')),s=scope(),v=input(),key=Buffer.alloc(32,19);
  let reopened;
  t.after(()=>{reopened?.close();assert(root.startsWith(base+path.sep+'arcade-qce-jobs-exit-'));fs.rmSync(root,{recursive:true,force:true});});
- const program=`const {QCEExportJobs}=require('./src/bot/qq-qce-export-jobs.cjs');const {vault}=require('./test/helpers/qq-transfer-fixture.cjs');const x=JSON.parse(process.env.QCE_SYNTHETIC_CHILD);const j=new QCEExportJobs({root:x.root,vault:vault(Buffer.alloc(32,19))});const r=j.begin(x.scope,x.input);j.change(x.scope,r.operationId,r.revision,'attempted');process.exit(86);`;
- const child=spawnSync(process.execPath,['-e',program],{cwd:path.resolve(__dirname,'..'),env:{...process.env,QCE_SYNTHETIC_CHILD:JSON.stringify({root,scope:s,input:v})},encoding:'utf8',timeout:10000,windowsHide:true});
- assert.equal(child.status,86,child.stderr);assert.equal(child.signal,null);assert.throws(()=>process.kill(child.pid,0));
+ const child=fork(path.join(__dirname,'helpers/qq-qce-journal-crash.cjs'),[],{
+   windowsHide:true,stdio:['ignore','ignore','pipe','ipc'],execArgv:[],
+   env:{...process.env,QCE_SYNTHETIC_CHILD:JSON.stringify({root,scope:s,input:v})}
+ });
+ const phases=['ready','prepared','attempted'];
+ let reached=0, timer, failure, stderr='';
+ child.stderr.setEncoding('utf8').on('data',chunk=>{stderr=(stderr+chunk).slice(-4096);});
+ function armDeadline(){
+   clearTimeout(timer);
+   timer=setTimeout(()=>{
+     failure=new Error('Journal fixture stalled waiting for '+(phases[reached]||'exit'));
+     child.kill();
+   },10000);
+ }
+ const outcome=await new Promise(resolve=>{
+   child.on('message',phase=>{
+     if(failure)return;
+     if(reached>=phases.length||phase!==phases[reached]){
+       failure=new Error('Unexpected journal fixture phase '+phase);
+       child.kill();
+       return;
+     }
+     reached++;
+     armDeadline();
+   });
+   child.once('error',error=>{failure??=error;});
+   child.once('close',(code,signal)=>{clearTimeout(timer);resolve({code,signal});});
+   armDeadline();
+ });
+ assert.ifError(failure);
+ assert.deepEqual(outcome,{code:86,signal:null},stderr);
+ assert.equal(reached,phases.length);
+ assert.throws(()=>process.kill(child.pid,0),{code:'ESRCH'});
  reopened=new QCEExportJobs({root,vault:vault(key)});const row=reopened.get(s,v.operationId);assert.equal(row.submission,'attempted');assert.equal(row.taskId,null);assert.equal(reopened.list(s).length,1);
 });
 module.exports={input,scope};

@@ -2,6 +2,9 @@
 const POLL_MS=900;
 const ICE_TIMEOUT=8000;
 const SIGNAL_TIMEOUT=20000;
+const SPEAKING_SAMPLE_MS=100;
+const SPEAKING_HOLD_MS=400;
+const SPEAKING_RMS=0.018;
 
 export function mountGroupVoice({api,account,onChange=()=>{}}){
   const device=globalThis.crypto?.randomUUID?.();
@@ -12,7 +15,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       phase:s?(s.stream?'active':'joining'):'idle',
       notice,chatId:s?.chatId,roomId:s?.roomId,memberId:s?.memberId,muted:!!s?.muted,
       audioBlocked:!!s&&[...s.peers.values()].some(peer=>peer.audioBlocked),
-      members:s?.members.map(({id,number})=>({id,number,connection:id===s.memberId?'local':
+      members:s?.members.map(({id,number})=>({id,number,speaking:s.speaking.has(id),connection:id===s.memberId?'local':
         s.peers.get(id)?.pc.connectionState??'new'}))??[],
     };
   }
@@ -33,7 +36,56 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
   const isCurrent=s=>session===s&&account()===s.account;
   const isPeer=(s,peer)=>isCurrent(s)&&!peer.closed&&s.peers.get(peer.id)===peer;
 
-  function closePeer(peer){
+  function sampleSpeakers(s){
+    if(!isCurrent(s))return;
+    const now=performance.now();
+    let changed=false;
+    for(const [id,meter] of s.speakerMeters){
+      const available=s.speakerContext.state==='running'&&meter.track.readyState==='live'&&
+        meter.track.enabled&&!meter.track.muted&&(id===s.memberId?!s.muted:s.peers.get(id)?.pc.connectionState==='connected');
+      if(!available)meter.lastHeard=-Infinity;
+      else{
+        meter.analyser.getFloatTimeDomainData(meter.samples);
+        let energy=0;
+        for(const value of meter.samples)energy+=value*value;
+        if(energy>meter.samples.length*SPEAKING_RMS**2)meter.lastHeard=now;
+      }
+      const speaking=now-meter.lastHeard<SPEAKING_HOLD_MS;
+      if(speaking===s.speaking.has(id))continue;
+      if(speaking)s.speaking.add(id);
+      else s.speaking.delete(id);
+      changed=true;
+    }
+    if(changed)notify();
+  }
+  function removeSpeaker(s,id){
+    const meter=s.speakerMeters.get(id);
+    if(meter){
+      meter.source.disconnect();
+      meter.analyser.disconnect();
+      s.speakerMeters.delete(id);
+    }
+    s.speaking.delete(id);
+  }
+  function watchSpeaker(s,id,track){
+    if(!globalThis.AudioContext)return;
+    removeSpeaker(s,id);
+    try{
+      const context=s.speakerContext??=new AudioContext();
+      const source=context.createMediaStreamSource(new MediaStream([track]));
+      const analyser=context.createAnalyser();
+      analyser.fftSize=1024;
+      source.connect(analyser);
+      s.speakerMeters.set(id,{track,source,analyser,samples:new Float32Array(analyser.fftSize),lastHeard:-Infinity});
+      s.speakerTimer??=setInterval(()=>sampleSpeakers(s),SPEAKING_SAMPLE_MS);
+      void context.resume().catch(()=>{});
+    }catch{
+      // A meter can be unavailable without affecting media playback.
+    }
+  }
+
+  function closePeer(s,peer){
+    removeSpeaker(s,peer.id);
     peer.closed=true;
     peer.audioBlocked=false;
     peer.finishIce?.();
@@ -48,7 +100,10 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     session=undefined;
     notice=message;
     clearTimeout(s.timer);
-    for(const peer of s.peers.values())closePeer(peer);
+    clearInterval(s.speakerTimer);
+    for(const peer of s.peers.values())closePeer(s,peer);
+    removeSpeaker(s,s.memberId);
+    if(s.speakerContext)void s.speakerContext.close().catch(()=>{});
     s.peers.clear();
     s.stream?.getTracks().forEach(track=>track.stop());
     const departed=sendLeave&&s.roomId?request(s,'leave').catch(()=>{}):undefined;
@@ -57,7 +112,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
   }
   function finishPeer(s,peer){
     if(!isPeer(s,peer))return;
-    closePeer(peer);
+    closePeer(s,peer);
     notify();
   }
   function play(s,peer){
@@ -126,6 +181,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
         document.body.append(peer.audio);
       }
       peer.audio.srcObject=new MediaStream([event.track]);
+      watchSpeaker(s,peer.id,event.track);
       play(s,peer);
     };
     pc.onconnectionstatechange=()=>{if(isPeer(s,peer))notify();};
@@ -155,7 +211,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     for(const [id,peer] of s.peers){
       if(peerIds.has(id))continue;
       s.peers.delete(id);
-      closePeer(peer);
+      closePeer(s,peer);
     }
     if(s.stream){
       for(const member of s.members){
@@ -196,7 +252,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       notify();
       return false;
     }
-    const s={account:who,chatId,revision,peers:new Map(),members:[],muted:false};
+    const s={account:who,chatId,revision,peers:new Map(),members:[],muted:false,speakerMeters:new Map(),speaking:new Set()};
     session=s;
     notice='';
     notify();
@@ -238,6 +294,7 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
       const track=stream.getAudioTracks()[0];
       if(!track||track.readyState!=='live')throw Error('unavailable_microphone');
       track.enabled=!s.muted;
+      watchSpeaker(s,s.memberId,track);
       track.addEventListener('ended',()=>{
         if(isCurrent(s))dispose(s,'麦克风已断开，请重新加入群语音。',true);
       },{once:true});
@@ -263,11 +320,19 @@ export function mountGroupVoice({api,account,onChange=()=>{}}){
     if(!s?.stream||!isCurrent(s)||typeof muted!=='boolean'||s.muted===muted)return false;
     s.muted=muted;
     for(const track of s.stream.getAudioTracks())track.enabled=!muted;
+    if(muted){
+      const meter=s.speakerMeters.get(s.memberId);
+      if(meter)meter.lastHeard=-Infinity;
+      s.speaking.delete(s.memberId);
+    }
     notify();
     return true;
   }
   function resumeAudio(){
-    if(session)for(const peer of session.peers.values())play(session,peer);
+    const s=session;
+    if(!s||!isCurrent(s))return;
+    if(s.speakerContext)void s.speakerContext.resume().catch(()=>{});
+    for(const peer of s.peers.values())play(s,peer);
   }
   window.addEventListener('pagehide',reset);
   return {discover,join,leave,setMuted,getState,resumeAudio,reset};
