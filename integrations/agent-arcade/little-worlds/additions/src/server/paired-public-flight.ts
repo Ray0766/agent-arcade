@@ -76,7 +76,7 @@ export function pairedPublicFlights(access: Access, now = Date.now) {
   }
   const valid = (r: Round) => r.from.round === r && r.to.round === r && r.until > now() && !!stage(r.from,r) && !!stage(r.to,r);
   async function authorized(m: WindowMember) {
-    return identity(m) && (m.peer.role === 'owner' || await access.allowed(m.access,m.origin).catch(() => false)) && identity(m);
+    return identity(m) && (m.peer.role === 'owner' || await access.allowed(m.access,m.origin)) && identity(m);
   }
   const exclusive = (m: WindowMember) => ![...members.values()].some(other => other.player === m.player && other !== m && other.round);
   function available(a: WindowMember, b: WindowMember) {
@@ -111,12 +111,19 @@ export function pairedPublicFlights(access: Access, now = Date.now) {
       sweep();
       const m = locate(player,session,body.client);
       if (!m) { if (command) throw changed(); return empty(); }
-      m.pulse = now();
       if (command?.action === 'cancel' || command?.action === 'decline') {
         if (m.round?.id === command.id && (command.action === 'cancel' || (!m.round.agreed && m.round.to === m))) end(m.round);
         return empty();
       }
-      if (!await authorized(m)) { end(m.round); members.delete(session+'/'+m.client); return empty(); }
+      // An unknown Friends decision must not close a live round or renew its lease.
+      if (!m.round) {
+        if (!await authorized(m) || !stage(m,m.round)) {
+          end(m.round);
+          if (members.get(session+'/'+m.client) === m) members.delete(session+'/'+m.client);
+          return empty();
+        }
+        m.pulse = now();
+      }
       if (command?.action === 'invite' && !m.invitations.has(command.requestId)) {
         const other = [...members.values()].find(b => b.peer.id === command.peerId);
         if (!other || !available(m,other) || !await authorized(other) || !available(m,other)) throw changed();
@@ -128,6 +135,7 @@ export function pairedPublicFlights(access: Access, now = Date.now) {
       const r = m.round;
       if (r) {
         if (!await check(r)) return empty();
+        m.pulse = now();
         if (command?.action === 'accept') {
           if (command.id !== r.id || r.to !== m) throw changed();
           if (!r.agreed) { r.agreed = true; r.until = now()+10*60000; }

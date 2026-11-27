@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "44f59eec6d0a71d55c10258fe414fd4edd4797f7",
-  "worldTree": "4d9337b477432bb7fedcd6f1364798efa1524030",
-  "patchSHA256": "6801fe278debafdc70002d630ed426773bfa99946093b82c4bf437a5d752787a",
+  "worldRevision": "200547e8d9fe8f004b5f3512f0b03517c97d862d",
+  "worldTree": "70cfa55b94fb39db0b8bbf5e05c8f5d4197170d4",
+  "patchSHA256": "3dd7524f70ecaf9bdadd59e35a32112548f6ea800d402b673cf73eba243bb64e",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -613,8 +613,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "a08f0d9f7ce60a33774662ebe88594eca2653323",
-      "sha256": "3a1871e80d7589c9d93d25233b1217de6f6abbb930f2e037af054389edf5cbe8"
+      "blob": "d615f835ae481a5d858d34a975c5d5f6c9618d35",
+      "sha256": "e0050bc2b4f3d9bf615061fd61507650093c228b4407f0d252aadb0591d20f1e"
     },
     {
       "action": "M",
@@ -643,20 +643,20 @@
     {
       "path": "src/client/paired-public-flight-session.ts",
       "action": "A",
-      "blob": "a729fd49d31cba8d6b01e79cef7e37b7dffb007f",
-      "sha256": "aeea874b671f317230221ad06e92103e2a561580d40aabe697a42d4f77413a48"
+      "blob": "eb2af4a5ccef9249ba746a9c6a178f4f03e8e660",
+      "sha256": "9a7a34ab4f88f7c2c56e9bece965657652d3b7d28c74aa39c41dd0ef961d376e"
     },
     {
       "path": "src/client/paired-public-flight.css",
       "action": "A",
-      "blob": "6e966eb01312ac6169651463e100f3c0117c000a",
-      "sha256": "f005d7fc0c6c6833a66dd98f5189f5d1a68ebc05c0cfed564c0790e036f86364"
+      "blob": "fdc5b7c7c039baa57a2933c2e4eaf32d77b9b815",
+      "sha256": "a26e2f667ae33a996ab214686c84d169cf5f2ff3daa1bb3e613f248d714680ad"
     },
     {
       "path": "src/client/paired-public-flight.ts",
       "action": "A",
-      "blob": "7f1dc71c92d0b13d378cdba7f372e36d20bfc315",
-      "sha256": "3fdb55fcedf7e1c09608443a11ea67ed0a17e11b10ac77fedf4afbb41ebde679"
+      "blob": "b40e10b02fe269eb5ca7175682112fbf6603381b",
+      "sha256": "b4c1563c36bf45d89e080c2f7a14caa5c027abd2dcbb8380a2a3e80a2ab25867"
     },
     {
       "action": "M",
@@ -817,8 +817,8 @@
     {
       "path": "src/server/paired-public-flight.ts",
       "action": "A",
-      "blob": "69f90023cc4d600d62812cc60aeef0603f0641b5",
-      "sha256": "6c6172d7bc0052a984d3a5cca4f4b0b207d16de7db6022fcdea3333140a66858"
+      "blob": "454aee642ab3cd5fa2e32d30d3705181de70d6b7",
+      "sha256": "4e1163a98cb5f2422c637ee61b98fdf14adcef181a3b9c6cbcf43b84bb8a1fca"
     },
     {
       "action": "A",

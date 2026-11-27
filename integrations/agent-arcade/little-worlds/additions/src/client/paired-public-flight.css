@@ -72,3 +72,13 @@
     bottom: 176px;
   }
 }
+
+/* On a narrow outdoor dock, keep the card and flight actions in the same stack. */
+#travel-guidance > #courtyard-stamps { pointer-events: auto; }
+@media (max-width: 700px) {
+  body:not(.in-space) #travel-guidance:has(> #paired-public-flight:not([hidden])) > #courtyard-stamps:not([hidden]) {
+    position: static;
+    order: 1;
+    max-width: calc(100vw - 24px);
+  }
+}
