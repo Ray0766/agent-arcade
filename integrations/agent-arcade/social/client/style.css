@@ -483,6 +483,7 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .group-voice-summary ul {display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;list-style:none;margin:0;padding:0}
 .group-voice-summary ul[hidden] {display:none}
 .group-voice-summary li {display:flex;align-items:center;gap:4px;font-size:.82rem;overflow-wrap:anywhere}
+.group-voice-summary .group-voice-speaking {white-space:nowrap;font-size:.76rem;font-weight:650;color:var(--ink);background:var(--select);border-radius:4px;padding:1px 4px}
 .group-voice-summary li .avatar {width:22px;height:22px;flex:0 0 22px;font-size:.68rem}
 .group-voice-actions {display:flex;gap:6px;flex-wrap:wrap}
 .group-voice-actions button {min-block-size:44px;padding:4px 10px}

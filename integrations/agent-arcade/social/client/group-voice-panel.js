@@ -44,10 +44,16 @@ export function mountGroupVoicePanel({api,account,scope,openChat,personAvatar,pr
         item.dataset.groupVoiceEntry=person.entryId;
         const name=document.createElement('span');
         name.textContent=person.displayName+(person.number===account()?'（我）':'');
-        item.append(personAvatar(person),name);
+        const speaking=document.createElement('span');
+        speaking.className='group-voice-speaking';
+        speaking.textContent='正在讲话';
+        speaking.hidden=true;
+        item.append(personAvatar(person),name,speaking);
         return item;
       }));
     }
+    const speaking=new Set(confirmed?state.members.filter(member=>member.speaking).map(member=>member.id):[]);
+    for(const row of roster.children)row.lastElementChild.hidden=!speaking.has(row.dataset.groupVoiceEntry);
     join.hidden=Boolean(call);
     join.disabled=joining||key(current)!==discoveredFor;
     join.textContent=people.length?'加入语音':'发起语音';
