@@ -114,8 +114,9 @@ export function withResidentArt(db:DatabaseSync, base:ReturnType<typeof planetRe
         if(!a)return r;
         // A custom pack slug identifies its portrait without naming a common 3D body.
         const portrait=a.ready?{...JSON.parse(String(a.descriptor)) as ResidentPortrait,slug:r.appearanceKey}:null;
-        const knownBody=residentBodyLooks.some(key=>key===r.appearanceKey);
-        return {...r,appearanceKey:knownBody?r.appearanceKey:'default',portrait};
+        // Keep the explicit stock body distinct from an unsupported portrait slug.
+        const knownBody=r.appearanceKey==='default'||residentBodyLooks.some(key=>key===r.appearanceKey);
+        return {...r,appearanceKey:knownBody?r.appearanceKey:'unmapped',portrait};
       })};
     },
     checkUpload(token:string,id:string,digest:string){

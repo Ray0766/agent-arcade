@@ -337,7 +337,7 @@ export class BothouseResidents {
     return this.publicRoster.map(({ id, displayName, activity }) => {
       const motion = this.figures.get(id)?.motion;
       const activityLabel = activity === 'working' || activity === 'idle' ? actions[activity][language] : undefined;
-      return { id, name: displayName, pose: motion?.valid ? motion.pose : null, activityLabel };
+      return { id, name: displayName, pose: motion?.valid ? motion.pose : null, activityLabel, appearanceKey:this.figures.get(id)?.key };
     });
   }
   private greetingDistance(figure: ResidentFigure, viewer: T.Vector3, camera: T.Camera) {

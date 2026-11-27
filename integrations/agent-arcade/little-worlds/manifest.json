@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "8e0d661aeb38ceb7e8675a5c56d67a500e846215",
-  "worldTree": "6596215c66f2c2b6a99a176161d1abc06d66d9d7",
-  "patchSHA256": "0f80f8e6ea9d5e98b23e3b82451e0334e6d0f6a6ca65661032fa01f6c2006e95",
+  "worldRevision": "1a765e4e3706989664d9b424157ed133275609a5",
+  "worldTree": "103640b42b7632c219086faa15926ce62e9b8c0c",
+  "patchSHA256": "7094a27c2920c65daa822fa481bc8c14fc01d67011dc22ab2d06416760c5bf73",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -57,6 +57,12 @@
       "path": "index.html",
       "blob": "49996b7bfcbe7e096e498061e8f7b2c7a760b9c3",
       "sha256": "eef2836161e6b9fdd5a7de6f9c8eb25867f77ccb7a6d5a2db7c3ce043dcab595"
+    },
+    {
+      "action": "A",
+      "path": "public/resident-body-previews/default.webp",
+      "blob": "009adf81f72f7168cc1750960118be2ea3919d2c",
+      "sha256": "c3d28dba61c0902b9f56b4ddc88e0aceafb08e590660a70f4f5d99b13f049c98"
     },
     {
       "action": "A",
@@ -547,8 +553,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "d6adcd895cc9da54a7287ab44e03bcb0fb397998",
-      "sha256": "7daa12b4896a7d7265d3057a886ac04a5435382a23cace0872f01f793ed69484"
+      "blob": "8c53ebf9a4ece36ff85b017a98510fbe90fad94c",
+      "sha256": "96adafa1f1fb72e8e05b9964c16b0cdeb1b8ffa28b035aa28d1b65bbe1e33f7b"
     },
     {
       "action": "A",
@@ -769,14 +775,14 @@
     {
       "action": "M",
       "path": "src/client/world-guide.css",
-      "blob": "23d5274adbd1e01642809c8912a722af63f80019",
-      "sha256": "67e2f231e8333aa87c5cb22e1f1c2d8fc30f5983004fb8308dfc6e77a9c4d778"
+      "blob": "fc476eb63607ca3944a05e5a164173e6342c2351",
+      "sha256": "2d62b6059c9517e79a4a3f430615b15798b989246eba7a99178ff0260339a9d9"
     },
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "f3782ed473efa789704b2e9f255dee9288f539b7",
-      "sha256": "d164d4c039040e0fe6b917ba89c0094edeaa9ea85d5bf21dd0a66fb8f6c20421"
+      "blob": "8f2ff032f0618459fd48c25e60e92ae0b469eb74",
+      "sha256": "39ac3f6df7f873c0b2ca7443a377852fcb15dc220d8928eb878c044467145f10"
     },
     {
       "action": "A",
@@ -829,8 +835,8 @@
     {
       "action": "A",
       "path": "src/server/resident-art.ts",
-      "blob": "1dbc937ee23c9ae2703a5611d81c9d4ac7b680d5",
-      "sha256": "a64576996e9bcce23ccdab450a1fae66a89c25040f9aaffd619f73c4eb471ba1"
+      "blob": "ac254036edaa5630bbaa04f16dcec64d00276e05",
+      "sha256": "9ecb0efbc543c07c930fbcfa3b4242cac85c50b508e592d90ae725dec72bafdd"
     },
     {
       "action": "A",
