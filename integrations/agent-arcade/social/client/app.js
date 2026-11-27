@@ -3120,6 +3120,16 @@ function showDirectPhotoAlbum(){
   if(!user||!chat||conversation?.type!=='direct'||conversation.friendRemoved||
     conversation.members.some(member=>member.kind!=='human')||!membershipRevision)return;
   const id=chat,account=user.number,epoch=generation,visit=chatVisit,revision=membershipRevision;
+  const timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+  const monthLabel=el('label','照片月份','direct-photo-month');
+  const monthPicker=el('select');
+  const all=el('option','全部月份');
+  all.value='';
+  monthPicker.append(all);
+  monthLabel.append(monthPicker);
+  monthLabel.hidden=true;
+  let month='',listRevision=0;
+  const route=thread(id)+'/shared-media/direct-photos?';
   const list=el('div',null,'direct-photo-album');
   const status=el('p',null,'minor');
   status.setAttribute('role','status');
@@ -3131,7 +3141,7 @@ function showDirectPhotoAlbum(){
     membershipRevision===revision&&!conversation?.friendRemoved;
   const current=()=>scope===dialogGeneration&&sameConversation();
   function openAlbum(){
-    scope=directPhotoAlbumScope=openDialog('共享照片',[list,status,more],id);
+    scope=directPhotoAlbumScope=openDialog('共享照片',[monthLabel,list,status,more],id);
   }
   async function verifyAccess(active){
     try{
@@ -3189,36 +3199,67 @@ function showDirectPhotoAlbum(){
   async function load(){
     if(!current()||loading)return;
     loading=true;
+    const loadRevision=listRevision;
+    const applicable=()=>current()&&loadRevision===listRevision;
     more.disabled=true;
     status.textContent='正在读取照片…';
     try{
       const params=new URLSearchParams({expectedAccount:account});
       if(before!==null)params.set('before',before);
-      const page=await api(thread(id)+'/shared-media/direct-photos?'+params,undefined,{expectedAccount:account});
-      if(!current())return;
+      if(month){params.set('month',month);params.set('timeZone',timeZone);}
+      const page=await api(route+params,undefined,{expectedAccount:account});
+      if(!applicable())return;
       if(page.membershipRevision!==revision)throw Error('membership_changed');
       for(const message of page.items)appendPhoto(message);
       before=page.nextBefore;
       more.hidden=before===null;
-      status.textContent=list.childElementCount?'':'暂无双方共享的照片。';
+      status.textContent=list.childElementCount?'':month?'本月暂无双方共享的照片。':'暂无双方共享的照片。';
     }catch(error){
-      if(!current())return;
+      if(!applicable())return;
       if([403,404,409].includes(error.status)||error.message==='membership_changed'){
         list.replaceChildren();
         sections.clear();
-        more.hidden=true;
+        more.hidden=monthLabel.hidden=true;
         status.textContent='这段私聊的共享照片已不可查看。';
       }else{
         status.textContent=textError(error);
         more.hidden=false;
       }
     }finally{
-      loading=false;
-      more.disabled=false;
+      if(loadRevision===listRevision){loading=false;more.disabled=false;}
     }
   }
+  async function loadMonths(){
+    try{
+      const params=new URLSearchParams({expectedAccount:account,months:'1',timeZone});
+      const page=await api(route+params,undefined,{expectedAccount:account});
+      if(!sameConversation()||page.membershipRevision!==revision)return;
+      for(const value of page.months){
+        const [year,index]=value.split('-');
+        const option=el('option',year+'年'+Number(index)+'月');
+        option.value=value;
+        monthPicker.append(option);
+      }
+      monthLabel.hidden=!page.months.length;
+    }catch(error){
+      if(current()&&![403,404,409].includes(error.status))
+        status.textContent='暂时无法读取照片月份，仍可查看全部月份。';
+    }
+  }
+  monthPicker.addEventListener('change',()=>{
+    if(!current())return;
+    month=monthPicker.value;
+    ++listRevision;
+    loading=false;
+    before=null;
+    more.hidden=true;
+    sections.clear();
+    list.replaceChildren();
+    void load();
+  });
   openAlbum();
   void load();
+  void loadMonths();
 }
 
 
