@@ -24,11 +24,12 @@ class ArcadeInert {
  [System.Runtime.InteropServices.DllImport("kernel32.dll",SetLastError=true)]
  static extern Microsoft.Win32.SafeHandles.SafeWaitHandle OpenProcess(uint access,bool inherit,int pid);
  static int Main(string[] args) {
-  if(args.Length==3 && args[0]=="--reserve-test-pids"){
+  if(args.Length==4 && args[0]=="--reserve-test-pids"){
    // SYNCHRONIZE can wait for exit; it grants no right to stop a process.
    using(var manager=OpenProcess(0x100000,false,int.Parse(args[1])))
-   using(var launcher=OpenProcess(0x100000,false,int.Parse(args[2]))){
-    if(manager.IsInvalid || launcher.IsInvalid)return 4;
+   using(var launcher=OpenProcess(0x100000,false,int.Parse(args[2])))
+   using(var ownedChild=OpenProcess(0x100000,false,int.Parse(args[3]))){
+    if(manager.IsInvalid || launcher.IsInvalid || ownedChild.IsInvalid)return 4;
     Console.OpenStandardOutput().WriteByte(1);
     Thread.Sleep(Timeout.Infinite);
    }
@@ -99,7 +100,9 @@ async function privateControl(f,{samePath=false,worker}={}){
  if(worker){
   const launcher=worker.ready.rows.find(row=>row.parentPid===worker.proof.pid);
   assert(launcher,'expected a recorded launcher owned by the live worker');
-  reserve.push(worker.proof,launcher);
+  const child=worker.ready.rows.find(row=>row.parentPid===launcher.pid);
+  assert(child,'expected a recorded child of the live launcher');
+  reserve.push(worker.proof,launcher,child);
  }
  const file=samePath?f.descriptor.qq.file:path.join(f.dir,'unrelated-private','QQ.exe');
  if(!samePath){
@@ -112,9 +115,9 @@ async function privateControl(f,{samePath=false,worker}={}){
  try{
   if(reserve.length){
    const [ready]=await require('node:events').once(child.stdout,'data',{signal:AbortSignal.timeout(10000)});
-   assert.deepEqual(ready,Buffer.from([1]),'test control must hold both identities before the crash');
+   assert.deepEqual(ready,Buffer.from([1]),'test control must hold the recorded identities before the crash');
    const observed=await f.observer.inspect(reserve.map(p=>p.pid));
-   assert(reserve.every(p=>observed.some(row=>same(row,p))),'reserved identities must still be our live manager and launcher');
+   assert(reserve.every(p=>observed.some(row=>same(row,p))),'reserved identities must still match the live fixture tree');
   }
   const proof=(await f.observer.inspect([child.pid]))[0];assert(proof);assert.equal(proof.executable.toLowerCase(),file.toLowerCase());assert.equal(proof.parentPid,process.pid);f.remember([proof]);return proof;}catch(error){
   // Only this just-created ChildProcess is involved if initial metadata fails;
