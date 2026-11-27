@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {once}=require('node:events');
 const {execFileSync}=require('node:child_process');
-const {createHash}=require('node:crypto');
+const {createHash,randomUUID}=require('node:crypto');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
 const {SocialStore}=require('./store.cjs');
 const {createServer}=require('./http.cjs');
@@ -260,4 +260,31 @@ test('native text edits can use ordinary English verbs while an external operati
   assert.equal(requiresExternalWorker('Execute the script on disk'),true);
   assert.equal(legacyBoardTask('给你一个任务：按拼音给梨和苹果排序'),true);
   assert.equal(legacyBoardTask('给你一个任务：给海边读书会想两个名字'),false);
+});
+
+test('legacy board recovery reuses the scoped row and refuses an ambiguous new submission', {
+  skip:!process.env.BOTHOUSE_TEST_GATE&&'set BOTHOUSE_TEST_GATE to the upstream bridge/contrib/gate directory'
+},async t=>{
+  const gate=path.resolve(process.env.BOTHOUSE_TEST_GATE);
+  const scope=await fs.mkdtemp(path.join(os.tmpdir(),'arcade-work-recover-'));
+  t.after(()=>fs.rm(scope,{recursive:true,force:true,maxRetries:4}));
+  const board={python:process.platform==='win32'?'python':'python3',gate,scope,
+    role:'fixture-whale',key:randomUUID(),sender:'task_alpha',location:'arcade:fixture'};
+  const {callBoard}=require('./bothouse/task-executor.cjs');
+  const first=await callBoard(board,'submit','Synthetic first assignment');
+  const artifacts=path.join(scope,'social-results');
+  const pointer=path.join(artifacts,board.key+'.id');
+  assert.equal(await fs.readFile(pointer,'ascii'),String(first.boardId));
+
+  // Simulate the original process dying after board.add committed but before writing the numeric pointer.
+  await fs.writeFile(pointer,'pending','ascii');
+  assert.deepEqual(await callBoard(board,'recover-submit','Synthetic first assignment'),first);
+  assert.equal(await fs.readFile(pointer,'ascii'),String(first.boardId));
+
+  const unknown={...board,key:randomUUID()};
+  await fs.writeFile(path.join(artifacts,unknown.key+'.id'),'pending','ascii');
+  await assert.rejects(callBoard(unknown,'recover-submit','Potential duplicate'),/Bothouse work board unavailable/);
+  const rows=(await fs.readFile(path.join(scope,'board.jsonl'),'utf8')).trim().split(/\r?\n/).map(JSON.parse);
+  assert.equal(rows.length,1);
+  assert.equal(rows[0].sk,'arcade:'+board.key);
 });

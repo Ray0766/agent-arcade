@@ -1,0 +1,10 @@
+#courtyard-stamps { position: fixed; z-index: 16; left: 24px; bottom: 100px; max-width: calc(100% - 48px); color: var(--ink); }
+#courtyard-stamps button { border: 1px solid var(--ui-dialog-border); border-radius: 7px; background: var(--ui-chip); color: var(--ink); padding: 8px 12px; min-height: 40px; font: inherit; font-size: 13px; cursor: pointer; }
+#courtyard-stamps-panel { width: min(248px, 100%); box-sizing: border-box; padding: 13px; border: 1px solid var(--ui-dialog-border); border-radius: 10px; background: var(--ui-panel); box-shadow: 0 4px 20px #20362b25; }
+#courtyard-stamps-panel header { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-bottom: 8px; }
+#courtyard-stamps-panel h2 { font-size: 16px; margin: 0; }
+#courtyard-stamps-panel strong { display: block; margin-top: 7px; font-size: 13px; }
+#courtyard-stamps-panel strong[data-stamped="true"] { color: #2c694d; }
+#courtyard-stamps-panel small { display: block; color: var(--ui-muted); margin: 4px 0; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+#courtyard-stamps-panel output { display: block; border-top: 1px solid var(--ui-dialog-border); margin-top: 8px; padding-top: 6px; font-size: 12px; text-align: right; }
+@media (max-width: 700px) { #courtyard-stamps { left: 12px; bottom: 193px; max-width: calc(100% - 24px); } }

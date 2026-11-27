@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "5f6f6288b6dad9d7acfa29d599e045ef6e30589f",
-  "worldTree": "2653d391715f18047b13fbbbea094a510d83a731",
-  "patchSHA256": "0866918eee3ee1197fd94d9c577c64139c5be807772f96484218d66a620b6745",
+  "worldRevision": "b4e7a2d811b4469edb5da3dd8b03409289b71073",
+  "worldTree": "ffeec7261ab4bd0c397b173e589a7f7e30abb26d",
+  "patchSHA256": "eeead81e320ad8b28290d2b993c8c0f056629f9ffcd76d39cd7c3e70f71025cd",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -563,6 +563,18 @@
       "sha256": "a587ddc259cd49281713374b49fc7c2048a22ee09d533c016c8d7ae05204f190"
     },
     {
+      "path": "src/client/courtyard-stamp-card.css",
+      "action": "A",
+      "blob": "3ec20cb042fca76b6ab243977535cf38a4bf18c2",
+      "sha256": "10bca9d73754e32d171e024d9fa58388f12365b1fa3ff6e30b29b08e295bb299"
+    },
+    {
+      "path": "src/client/courtyard-stamp-card.ts",
+      "action": "A",
+      "blob": "c694fe36af53bbbf717f63614355c1415e197674",
+      "sha256": "4c0c1183b256d4549e624fdbb4f43153decbcde3599a6d2af431213d48d480be"
+    },
+    {
       "action": "M",
       "path": "src/client/flight.css",
       "blob": "044eb69124dbd394fcdf96bfbdd5145f969e5101",
@@ -613,8 +625,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "a51211aba423fc14d183e069bec46b15e338587c",
-      "sha256": "8115865c39e545687a0ca15762f91c17bef9134c3c8c36c94b80b3169b460bfa"
+      "blob": "b1b78bf93bede8bdb78fc6d6dade3056733fc24d",
+      "sha256": "b4342f05e2d23c295183db5dcf5b5fe65a9975541610b29ea15bf5068b2efd35"
     },
     {
       "action": "M",
@@ -733,8 +745,8 @@
     {
       "path": "src/client/visitor-watering.ts",
       "action": "A",
-      "blob": "96901f699a1cb8d159f062333358a1eedbf37310",
-      "sha256": "01253efda59f570357d2dbe729c0c3d26ea969f9a0688070c366633433b994dc"
+      "blob": "3c1b606eeb53158eda88d9ac41fc27f97ba14f4f",
+      "sha256": "bed1a5dc94d790f6533bf0dfec2209ea48cf067feffcb10d408ba44562a5ee25"
     },
     {
       "path": "src/client/watering-tool.ts",
