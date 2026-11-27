@@ -4,6 +4,7 @@ import type { GroundWorld, GroundPose } from '../shared/physics/world.ts';
 import type { TutorialTarget } from '../shared/tutorial-navigation.ts';
 import type { Vec3 } from '../shared/world.ts';
 import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
+import { scoreResidentArrival, type ResidentArrivalView } from './resident-arrival-view.ts';
 
 export interface ResidentGuideEntry {
   id: string;
@@ -15,13 +16,13 @@ export const RESIDENT_GUIDE_REPLAN_METRES = .65;
 
 /** Stand beside the resident where they can be seen. The route planner still
  * has to prove that the visitor can walk to the chosen point. */
-export function residentGuideTargets(world: GroundWorld, viewer: Vec3, resident: ResidentGuideEntry, roster: readonly ResidentGuideEntry[]): TutorialTarget[] {
+export function residentGuideTargets(world: GroundWorld, viewer: Vec3, resident: ResidentGuideEntry, roster: readonly ResidentGuideEntry[], view?: ResidentArrivalView): TutorialTarget[] {
   if (!resident.pose) return [];
   const origin = resident.pose.position, radius = world.baseRadius, dock = portPoint(world.planetId);
   const [east, north] = toLocal(origin, viewer, radius);
   const bearing = Math.atan2(north, east);
   const figure = new T.Vector3(...origin).multiplyScalar(resident.pose.radius + 1.05);
-  const candidates: TutorialTarget[] = [];
+  const candidates: { target:TutorialTarget; score:number }[] = [];
   for (const offset of [0, 1, -1, 2, -2, 3, -3, 4]) {
     const angle = bearing + offset * Math.PI / 4;
     const point = fromLocal(origin, [1.5 * Math.cos(angle), 1.5 * Math.sin(angle)], radius);
@@ -34,8 +35,14 @@ export function residentGuideTargets(world: GroundWorld, viewer: Vec3, resident:
     if (world.blocked(pose)) continue;
     const eye = new T.Vector3(...point).multiplyScalar(pose.radius + 1.1);
     if (world.cameraDistance(eye, figure, .06) + .05 < eye.distanceTo(figure)) continue;
-    candidates.push({ kind: 'resident', planetId: world.planetId, position: point });
-    if (candidates.length >= 4) break;
+    candidates.push({
+      target: { kind: 'resident', planetId: world.planetId, position: point },
+      score: view ? scoreResidentArrival(world, viewer, pose, view) : 0,
+    });
+    if (!view && candidates.length >= 4) break;
   }
-  return candidates;
+  // Keep the original choices as fallbacks. Visibility cannot certify reachability,
+  // and the budgeted route planner still proves each offered destination.
+  if (view) candidates.sort((a, b) => b.score - a.score);
+  return candidates.map(candidate => candidate.target);
 }
