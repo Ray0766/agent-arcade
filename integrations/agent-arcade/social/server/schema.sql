@@ -160,6 +160,16 @@ CREATE TABLE IF NOT EXISTS messages (
   created TEXT NOT NULL, removed INTEGER NOT NULL DEFAULT 0, UNIQUE(chat,sender,nonce)
 );
 CREATE INDEX IF NOT EXISTS chat_history ON messages(chat,id);
+CREATE TABLE IF NOT EXISTS group_member_nicknames (
+  chat TEXT NOT NULL, account TEXT NOT NULL, nickname TEXT NOT NULL,
+  PRIMARY KEY(chat,account),
+  FOREIGN KEY(chat,account) REFERENCES members(chat,account) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS message_forward_records (
+  message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+  entry_count INTEGER NOT NULL CHECK(entry_count BETWEEN 1 AND 20),
+  entries TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS message_forward_batches (
   account TEXT NOT NULL REFERENCES users(number),
   nonce TEXT NOT NULL,
