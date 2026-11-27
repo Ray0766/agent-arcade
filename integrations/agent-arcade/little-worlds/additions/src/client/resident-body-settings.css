@@ -25,3 +25,25 @@
 }
 #resident-bodies > button { font-size: 13px; }
 #resident-bodies form [role="status"]:empty { display: none; }
+
+#resident-bodies .resident-body-preview {
+  grid-column: 1 / -1;
+  margin: 2px 0 4px;
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.resident-body-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #e9e5da;
+}
+.resident-body-preview figcaption {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  text-align: center;
+  padding: 5px;
+  font-size: 12px;
+}
+#resident-bodies .resident-body-preview p { margin: 0; padding: 8px 10px; font-size: 12px; }
