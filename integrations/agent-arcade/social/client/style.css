@@ -521,3 +521,6 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .forward-record-entries li + li { border-top: 1px solid var(--line); }
 .forward-record-entries p { margin: .25rem 0 0; white-space: pre-wrap; }
 .forward-panel > .forward-record-entries { max-height: 42vh; overflow: auto; }
+
+.forward-record-note { margin: 0 0 .75rem; padding: .65rem .85rem; border-inline-start: 3px solid var(--accent); background: var(--wash); overflow-wrap: anywhere; }
+.forward-record-note p { margin: .25rem 0 0; white-space: pre-wrap; }
