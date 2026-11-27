@@ -608,6 +608,9 @@ function renderDirectory() {
   actions.replaceChildren();
   if(tab==='messages') {
     if(!startMenu)actions.append(button('发起群聊',()=>showMemberPicker()),button('添加朋友',showSearch));
+    const search=button('搜索消息',showConversationSearch,'');
+    search.setAttribute('aria-haspopup','dialog');
+    actions.append(search);
     const directNames=new Map();
     for(const item of conversations) {
       if(item.type!=='direct')continue;
@@ -2631,6 +2634,86 @@ async function locateQuotedMessage(messageId){
     if(current())$('#send-error').textContent=error.status===404||error.message==='unknown_message'?
       '原消息已移除或不可查看。':textError(error);
   }
+}
+async function jumpToConversationMessage(hit,account,epoch){
+  closeDialog();
+  const opening=goChat(hit.chatId,false,account);
+  const visit=chatVisit;
+  await opening;
+  if(generation===epoch&&chatVisit===visit&&chat===hit.chatId&&conversation)
+    await locateQuotedMessage(hit.id);
+}
+function showConversationSearch(){
+  if(!socialVisible||!user||tab!=='messages')return;
+  const account=user.number,epoch=generation,visit=chatVisit;
+  const form=el('form',null,'history-search-form conversation-search-form');
+  const input=el('input'),label=el('label','关键词');
+  input.type='search';
+  input.id='conversation-search-keyword';
+  input.required=true;
+  input.maxLength=100;
+  label.htmlFor=input.id;
+  const submit=el('button','搜索','primary');
+  submit.type='submit';
+  form.append(label,input,submit);
+  const status=el('p',null,'history-search-status');
+  status.setAttribute('role','status');
+  const results=el('ul',null,'history-search-results');
+  const more=button('更多结果',()=>void search(true),'outline');
+  more.hidden=true;
+  const scope=openDialog('搜索全部会话',[form,status,results,more]);
+  const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&
+    socialVisible&&user?.number===account&&chatVisit===visit&&tab==='messages';
+  let seq=0,next=null;
+  input.focus();
+  async function search(append){
+    if(!current()||append&&!next)return;
+    const query=input.value.trim();
+    if(!query){status.textContent='请输入搜索关键词。';return;}
+    const serial=++seq;
+    if(!append){results.replaceChildren();next=null;}
+    const before=next;
+    more.hidden=true;
+    status.textContent='正在搜索…';
+    try{
+      const params=new URLSearchParams({account,q:query,...(before&&{before})});
+      const page=await api('/conversation-search?'+params,undefined,{expectedAccount:account});
+      if(!current()||seq!==serial)return;
+      let firstAdded;
+      for(const hit of page.results){
+        if(hit.chatId===chat&&removedMessages.has(hit.id))continue;
+        const entry=el('li'),source=el('span',null,'history-search-author');
+        const kind=hit.chatType==='group'?'群聊':'私聊';
+        source.append(el('span',kind,'history-search-category'),el('strong',hit.chatTitle||kind));
+        if(hit.peerNumber)source.append(el('span',hit.peerNumber,'history-search-account'));
+        const detail=el('span',null,'history-search-meta history-search-account');
+        const stamp=el('time',time(hit.createdAt));
+        stamp.dateTime=hit.createdAt;
+        detail.append(el('span',hit.sender),stamp);
+        const excerpt=el('span',null,'history-search-snippet');
+        highlightHistoryHit(excerpt,hit.text,query);
+        const open=button('',()=>{
+          if(current())void jumpToConversationMessage(hit,account,epoch);
+        },'history-search-hit');
+        open.append(source,excerpt,detail);
+        entry.append(open);
+        results.append(entry);
+        firstAdded??=open;
+      }
+      next=page.next;
+      more.hidden=!next;
+      status.textContent=results.childElementCount?'已显示 '+results.childElementCount+' 条结果。':'没找到相关消息。';
+      if(append)firstAdded?.focus();
+    }catch(error){
+      if(!current()||seq!==serial)return;
+      status.textContent=textError(error);
+      more.hidden=!before;
+    }
+  }
+  form.addEventListener('submit',event=>{event.preventDefault();void search(false);});
+  form.addEventListener('input',()=>{
+    ++seq;next=null;results.replaceChildren();more.hidden=true;status.textContent='';
+  });
 }
 const historySearchButton=$('#history-search');
 // A cached page can load this script before it has the search control.

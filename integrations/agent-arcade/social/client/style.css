@@ -459,3 +459,14 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .message-quote strong { display:block; font-size:.85em; }
 .reply-target:not([hidden]) { display:flex; align-items:center; gap:.5rem; grid-column:1/-1; }
 .reply-target span { flex:1; }
+
+.history-search-form.conversation-search-form{grid-template-columns:minmax(0,1fr) auto}
+.conversation-search-form>input{grid-column:1}
+.history-search-status{margin:0;font-size:.84rem;color:var(--muted)}
+.history-search-status:empty,.history-search-results:empty{display:none}
+.history-search-meta{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:baseline;gap:2px 16px;min-width:0}
+.history-search-author{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 8px;min-width:0;overflow-wrap:anywhere}
+.history-search-author strong{font-size:.95rem}
+.history-search-category{font-size:.75rem;color:var(--ink);background:var(--tint);border-radius:5px;padding:1px 5px}
+.history-search-account,.history-search-meta time{font-size:.79rem;color:var(--muted)}
+.history-search-meta time{white-space:nowrap;font-variant-numeric:tabular-nums}

@@ -1,5 +1,5 @@
 'use strict';
-const {callBoard,executeClaim}=require('./task-executor.cjs');
+const {callBoard,BoardProcessDeadline,executeClaim}=require('./task-executor.cjs');
 const {requiresExternalWorker,legacyBoardTask}=require('./text-delivery.cjs');
 const path=require('node:path');
 const {createHash}=require('node:crypto');
@@ -26,7 +26,13 @@ function boardReceiver({resolveMember,runTextTask,startBoardTask,textTaskCapabil
     const member=await identity(job.human,job.ai);
     if(!member||member!==job.identity||!permitted())throw Error('Bothouse role binding changed');
     const board=boardFor(job);
-    const receipt=await callBoard(board,action,text);
+    let receipt;
+    try{receipt=await callBoard(board,action,text);}
+    catch(error){
+      if(action!=='submit'||!(error instanceof BoardProcessDeadline))throw error;
+      if(await identity(job.human,job.ai)!==job.identity||!permitted())throw Error('Bothouse role binding changed');
+      receipt=await callBoard(board,'recover-submit',text);
+    }
     if(receipt.state!=='accepted')return receipt;
     if(action!=='status'||workers.size>=4||workers.has(job.request)||!permitted())return receipt;
     const turn={account:job.human,number:job.ai,project:job.identity,chat:job.chat,direct:job.direct,
