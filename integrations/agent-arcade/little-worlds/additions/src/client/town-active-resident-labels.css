@@ -1,0 +1,74 @@
+#npc-mica[data-town-label-replaced],
+#npc-sol[data-town-label-replaced] {
+  display: none !important;
+}
+
+.town-resident-labels {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.town-resident-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(176px, 44vw);
+  padding: 4px 9px;
+  border: 1px solid #aab5a1;
+  border-radius: 5px;
+  background: #f3efe1;
+  color: #24483d;
+  font: 12px/1.25 system-ui, sans-serif;
+  overflow-wrap: anywhere;
+  --town-label-leader: #446558;
+}
+
+.town-resident-label[data-active="true"] {
+  z-index: 1;
+  padding: 5px 10px;
+  border-color: #debf83;
+  border-left-width: 4px;
+  background: #24483d;
+  color: #fff7df;
+  box-shadow: 0 2px 8px #192d2944;
+  font-size: 14px;
+  --town-label-leader: #e7d096;
+}
+
+.town-resident-label strong,
+.town-resident-label small {
+  display: block;
+}
+
+.town-resident-label small {
+  margin-top: 2px;
+  color: #476157;
+  font-size: 11px;
+}
+
+.town-resident-label[data-active="true"] small {
+  color: #f2e1ad;
+}
+
+.town-resident-label-leader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1px;
+  background: var(--town-label-leader);
+  transform-origin: left center;
+}
+
+.town-resident-label-leader::after {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: inherit;
+  content: '';
+}

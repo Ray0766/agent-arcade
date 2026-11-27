@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "4f62fdc9b3d2ffac9e77a660288fb72f6d9643a1",
-  "worldTree": "aa17d5242ee25daad329d0489525d657edcdb9a3",
-  "patchSHA256": "c4ed33c10d19e72a491b6b5313bafcf6734ab357a92a6ecddfe0ff7ef714333a",
+  "worldRevision": "98056643e5c5a2ab9f5312031a9e1158d411afed",
+  "worldTree": "60f5ef9d283f9e5ca04b485d9911cad348f53561",
+  "patchSHA256": "4a7ed463e1250b5906f95e8ffb56a788acb7560663f7accd875f304629caf04c",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -205,8 +205,8 @@
     {
       "action": "M",
       "path": "spec/town-residents.test.ts",
-      "blob": "3c232d4e5a7bcc79aa6e56450e9f0d195ddf10ed",
-      "sha256": "3dc3d8d96daf6f2e946c17a5d1bf8f5d876a1cbddb81dda1beec4f1ee1f156cb"
+      "blob": "feda988106cc77bfc8bee87fbd03f5d73a942ef4",
+      "sha256": "2d933e1ef0c84bf31e8fe35fb4148864788904dc8f65ca512d9adcc9bbe547b2"
     },
     {
       "action": "M",
@@ -643,8 +643,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "3f53cd9cc9e4568a665304c614f9ce10c912fdae",
-      "sha256": "7677ae9404f9be34306fc313b088df55a1c7cc6e4c8cf6e3a9d5c94d5d0225b0"
+      "blob": "ace369b3abc56d997e0c971bdf8bef5319d0449f",
+      "sha256": "ec93912b4f47672a4ae73f049ee540008c0d504870270f3224b89e57c59331a7"
     },
     {
       "action": "M",
@@ -723,6 +723,18 @@
       "path": "src/client/terrain-model.ts",
       "blob": "fb9b2ec315a9892be7b8651a0ce8905832113fac",
       "sha256": "53eabf39c14e67427a644161a72b31769f6de09a4406bec0d1b782cdd9496d26"
+    },
+    {
+      "action": "A",
+      "path": "src/client/town-active-resident-labels.css",
+      "blob": "99828cc6f22500febe215cd7d23816d73639f2f7",
+      "sha256": "ed7b9bb8d7ca0a70af38ede4e51fdc4fd3fdc11f25997776128e2a174ae0c6ca"
+    },
+    {
+      "action": "A",
+      "path": "src/client/town-active-resident-labels.ts",
+      "blob": "3ca550019851ac2a2ed9590e5dfbb939785e3f23",
+      "sha256": "662cb62a797043fe71f372f49ac0e6d35a07ded65567b5ac86eba49020b570e4"
     },
     {
       "action": "A",
@@ -823,8 +835,8 @@
     {
       "action": "M",
       "path": "src/client/town-residents.ts",
-      "blob": "b1805bc7719ccb33a3c4e2dd8a9282ba6d902165",
-      "sha256": "61653853211f972cb1563ff10c1ccd33482fb34f443da64a5eacc0a37112cf23"
+      "blob": "216d74903f1c97832f34e1e70d8ded5a8042657e",
+      "sha256": "a4147576eac39a6079d1f24a73e31ce4fe110cbd403f2edfece05214a76ac5f7"
     },
     {
       "action": "A",
