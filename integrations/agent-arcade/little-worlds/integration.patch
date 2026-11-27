@@ -424,30 +424,60 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f1955aa0a0f2 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c63ae9a336 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
-@@ -1,3 +1,5 @@
+@@ -1,15 +1,24 @@
 +import {addTownExterior} from './town-exterior.ts';
  import { localizedOption, setAttribute, setText, translate } from './i18n.ts';
  import { makePlacementPreview } from './placement-preview.ts';
 +import { createCourtyardInspiration } from './courtyard-inspiration.ts';
++import type { CourtyardChoice } from './courtyard-inspiration.ts';
++import { COURTYARD_PLANTINGS, courtyardPlanting } from '../shared/courtyard-plantings.ts';
++import { addCourtyardPlantingArt } from './courtyard-planting-art.ts';
  import { PlacedObjectShadows } from './placed-shadows.ts';
-@@ -12,2 +14,6 @@ import {RADIUS} from '../shared/world.ts';
+ import * as T from 'three';
+ import {fieldOf,objectSeat} from '../shared/terrain.ts';
+ import { REGIONS,regionFor } from '../shared/regions.ts';
+ import { spaceDistance } from '../shared/flight.ts';
+-import { CATALOGUE, MAX_OBJECTS, objectName, objectRadius, objectHeight, placementProblem } from '../shared/planets.ts';
++import { CATALOGUE, MAX_OBJECTS, isBuildKind, objectName, objectRadius, objectHeight, placementProblem } from '../shared/planets.ts';
+ import type { BuildKind, PlacedObject, PlanetView, Universe } from '../shared/planets.ts';
+ import type { PlayerState, Vec3 } from '../shared/world.ts';
+ import {RADIUS} from '../shared/world.ts';
  import { builtObject, disposeGeometry } from './build-art.ts';
 +import { flowerPlacementHint } from './bothouse-resident-sites.ts';
 +import { courtyardPlacementImpact } from './courtyard-placement-impact.ts';
 +import {planCourtyardArrival} from '../shared/courtyard-arrival.ts';
 +import {GroundWorld} from '../shared/physics/world.ts';
  import type { Workshop } from './workshop.ts';
-@@ -34,4 +40,5 @@ export interface ColonyBridge {
+ import { canAcceptUniverse } from './sync.ts';
+ import {lazyPanel,openPanel} from './lazy-panel.ts';
+@@ -32,8 +41,9 @@ const el = <E extends HTMLElement = HTMLElement>(id:string) => document.getEleme
+ export interface ColonyBridge {
+   canvas: HTMLCanvasElement; camera: T.Camera; scene: T.Scene;
    ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
 +  ownerRosterSize?: (planet:PlanetView, epoch:number) => number|null;
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-@@ -55,2 +62,9 @@ export class Colony {
+   universe:(u:Universe)=>void; bearing:(id:string)=>void;
+   flush: () => Promise<void>; notice: (text:string) => void;
+@@ -42,6 +52,10 @@ export interface ColonyBridge {
+   cameraCutaway?:boolean;
+ }
+ type Draft = Omit<PlacedObject,'position'|'version'> & {position:Vec3|null;version?:number};
++function builtName(object:Pick<PlacedObject,'kind'|'blueprintHash'>){
++  const preset=courtyardPlanting(object.blueprintHash);
++  return preset?COURTYARD_PLANTINGS[preset].name:objectName(object);
++}
+ export class Colony {
+   universe: Universe | null = null;
+   building = false; syncing = true; busy = false;
+@@ -53,19 +67,42 @@ export class Colony {
+   private objects = new Map<string,T.Group>(); private draft: Draft | null = null;
+   private shadows = new PlacedObjectShadows(PRESENTATION.ground.garden.shadowExtent * .75);
    private placing = false; private selected: string | null = null;
 +  private flowerHint: {key:string; text:string}|null=null;
 +  private courtyardImpact: {key:string; text:string|null}|null=null;
@@ -457,17 +487,20 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    color:0xf3d180,side:T.DoubleSide,depthTest:false,depthWrite:false,
 +  }));
    private painted = ''; private cards = ''; private pointer: {id:number;x:number;y:number} | null = null;
-@@ -59,2 +73,3 @@ export class Colony {
+   private workshop: Workshop|null=null;
+   private structureWorkshopOpening:symbol|null=null;
    private loadWorkshop: () => Promise<Workshop>;
 +  private readonly courtyardInspiration: ReturnType<typeof createCourtyardInspiration>;
    private localParts: Record<string,PartPlacement[]> = {};
-@@ -64,2 +79,5 @@ export class Colony {
+   private ray = new T.Raycaster(); private pollBusy = false;
+   constructor(private bridge: ColonyBridge) {
+     bridge.scene.add(this.layer);
      bridge.scene.add(this.pathPreview);
 +    this.arrivalMarker.visible=false;
 +    this.arrivalMarker.renderOrder=10;
 +    bridge.scene.add(this.arrivalMarker);
      const loadWorkshop=this.loadWorkshop=lazyPanel(async()=>{const {Workshop}=await import('./workshop.ts');return this.workshop = new Workshop({read:bridge.libraryRead,save:bridge.librarySave,allowed:()=>!!this.universe?.currentPlanet.mine&&this.universe.player.flight.mode==='ground'&&this.universe.player.location?.kind!=='interior'&&this.syncing,
-@@ -67,3 +85,15 @@ export class Colony {
+       place:entry=>{this.localParts[entry.hash]=entry.blueprint.parts;this.setBuilding(true);this.draft={id:crypto.randomUUID(),kind:'structure',blueprintHash:entry.hash,...structureSize(entry.blueprint.parts),position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);bridge.notice('Tap an open spot, turn the structure, then Place object.');}});});
      const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
 -    el('build-mode').after(workshopButton);
 +    const addCourtyardFlower=document.createElement('button');
@@ -484,7 +517,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      this.startCourtyardPlacement('flowers');
 +    };
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
-@@ -84,2 +114,20 @@ export class Colony {
+     el<HTMLSelectElement>('region-select').onchange=()=>{this.cards='';this.starMap();};
+     el('open-map').onclick=()=>{el<HTMLDialogElement>('menu-dialog').close();bridge.pause(this.building);this.cards='';if(this.universe)this.starMap();this.map.showModal();void this.poll();};
+@@ -82,12 +119,30 @@ export class Colony {
+     el('move-object').after(editStructure);editStructure.onclick=()=>{if(this.selected)void this.openStructureWorkshop(this.selected);};
+     el('cancel-object').onclick=()=>{if(!this.discardPlacement())return;this.clearDraft();this.editor();};
      el('save-object').onclick=()=>void this.save();
 +    const chooseArrival=document.createElement('button');
 +    chooseArrival.id='choose-courtyard-arrival';chooseArrival.className='quiet';
@@ -505,16 +542,26 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    cancelArrival.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.editor();};
 +    arrivalActions.append(saveArrival,cancelArrival);arrivalTools.append(arrivalStatus,arrivalActions);chooseArrival.after(arrivalTools);
      el('remove-object').onclick=()=>void this.remove();
-@@ -89,3 +137,3 @@ export class Colony {
+     el<HTMLSelectElement>('built-list').onchange=()=>this.select(el<HTMLSelectElement>('built-list').value);
+     for(const kind of Object.keys(CATALOGUE) as BuildKind[]) {
+       const button=document.createElement('button');button.className='catalogue-item';button.dataset.kind=kind;setAttribute(button, 'aria-label', `Add ${CATALOGUE[kind].name.toLowerCase()}`);
        const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
 -      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
 +      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
      }
-@@ -111,2 +159,3 @@ export class Colony {
+     bridge.canvas.addEventListener('pointerdown',e=>{
+       this.pointer=this.building&&!this.busy&&!document.querySelector('dialog[open]')&&e.button===0&&e.isPrimary!==false?{id:e.pointerId,x:e.clientX,y:e.clientY}:null;
+@@ -109,6 +164,7 @@ export class Colony {
+     void this.poll();
+   }
    get paused() { return this.building || this.map.open || this.busy || this.workshop?.opened; }
 +  savedObjectModel(id: string) { return this.objects.get(id); }
    private setKitCollapsed(collapsed:boolean){
-@@ -118,4 +167,21 @@ export class Colony {
+     const panel=el('builder'),choices=el('building-kit-choices'),toggle=el('toggle-building-kit');
+     panel.classList.toggle('kit-collapsed',collapsed);toggle.setAttribute('aria-expanded',String(!collapsed));
+@@ -116,8 +172,30 @@ export class Colony {
+     // Move keyboard focus before its selected catalogue control is visually hidden.
+     if(collapsed&&choices.contains(document.activeElement))toggle.focus();
    }
 -  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
 -  private hasDraft(){const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
@@ -522,10 +569,15 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    const world=this.universe;
 +    return !!world?.currentPlanet.mine&&world.player.flight.mode==='ground'&&world.player.location?.kind!=='interior';
 +  }
-+  private startCourtyardPlacement(kind: BuildKind) {
++  private startCourtyardPlacement(kind: CourtyardChoice) {
 +    if (!this.canArrangeCourtyard() || !this.syncing || this.busy || !this.discardPlacement()) return false;
 +    this.setBuilding(true);
-+    this.startPlacement(kind);
++    if(isBuildKind(kind))this.startPlacement(kind);
++    else{
++      const {hash,parts}=COURTYARD_PLANTINGS[kind];
++      this.draft={id:crypto.randomUUID(),kind:'structure',blueprintHash:hash,...structureSize(parts),position:null,rotation:0};
++      this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);
++    }
 +    return true;
 +  }
 +  private startPlacement(kind:BuildKind){
@@ -538,7 +590,20 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;this.pickingArrival=false;this.arrivalDraft=null;this.arrivalMarker.visible=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
 +  private hasDraft(){if(this.arrivalDraft&&!this.arrivalDraft.problem)return true;const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
    private discardPlacement(){return !this.hasDraft()||window.confirm(translate('Discard the unsaved building placement or changes?'));}
-@@ -226,3 +292,13 @@ export class Colony {
+   private setBuilding(value:boolean,force=false){
+     if(!value&&!force&&!this.discardPlacement())return false;
+@@ -188,7 +266,7 @@ export class Colony {
+     this.shadows.clear();for(const child of [...this.layer.children])disposeGeometry(child);this.layer.clear();this.objects=objects;
+     for(const group of objects.values())this.layer.add(group);this.shadows.replace(objects);
+     const list=el<HTMLSelectElement>('built-list');list.replaceChildren(localizedOption('Select a saved object…', ''));
+-    planet.objects.forEach((o,i)=>list.add(localizedOption(`${objectName(o)} ${i+1}`,o.id)));list.value=this.selected??'';
++    planet.objects.forEach((o,i)=>list.add(localizedOption(`${builtName(o)} ${i+1}`,o.id)));list.value=this.selected??'';
+     this.bridge.obstacles(planet.objects.filter(o=>o.kind!=='structure'&&objectHeight(o)>.6).map(o=>({point:new T.Vector3(...o.position),radius:objectRadius(o),height:objectHeight(o)})));
+     if(this.selected&&!planet.objects.some(o=>o.id===this.selected))this.clearDraft();
+     this.cutawayController=cutaway;
+@@ -224,7 +302,17 @@ export class Colony {
+   private async poll(){
+     if(this.pollBusy||this.busy||this.workshop?.opened)return;this.pollBusy=true;
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -553,15 +618,47 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      }
 +    }finally{this.pollBusy=false;}
    }
-@@ -277,3 +353,6 @@ export class Colony {
+   private async command(route:string,body:unknown){
+     if(this.busy||!this.syncing)return false;this.busy=true;this.editor();this.hud();
+@@ -237,7 +325,10 @@ export class Colony {
+     if(!this.universe)return;
+     if(await this.command('planets/claim',{planetId:this.universe.currentPlanet.id})){this.bridge.notice('This world is yours. Enter Build mode when you are ready.');}
+   }
+-  private parts(hash:string){return this.universe?.currentPlanet.blueprints?.[hash]??this.localParts[hash]??[];}
++  private parts(hash:string){
++    const preset=courtyardPlanting(hash);
++    return this.universe?.currentPlanet.blueprints?.[hash]??(preset?COURTYARD_PLANTINGS[preset].parts:this.localParts[hash])??[];
++  }
+   private problem(d:Draft){
+     const planet=this.universe?.currentPlanet,field=fieldOf(planet?.environment,planet?.radius),blueprints={...planet?.blueprints,...(d.blueprintHash?{[d.blueprintHash]:this.parts(d.blueprintHash)}:{})};
+     const spacing=placementProblem(d.kind,d.position,planet?.objects??[],d.id,d.radius,planet?.radius,d.assetVersion??1,{rotation:d.rotation,blueprintHash:d.blueprintHash,blueprints,field,terrainSeating:!!planet?.environment});
+@@ -269,13 +360,20 @@ export class Colony {
+   }
+   private renderObject(obj:PlacedObject,planet=this.universe!.currentPlanet,cameraCutaway=false){
+     if(obj.kind!=='structure'){const group=builtObject(obj.kind,obj.assetVersion??1);this.locate(group,obj.position,obj.rotation,planet);if(planet.environment)group.position.set(...obj.position).multiplyScalar(objectSeat(fieldOf(planet.environment,planet.radius),obj,planet.blueprints).baseRadius+.015);return group;}
+-    const parts=planet.blueprints?.[obj.blueprintHash!]??this.localParts[obj.blueprintHash!]??[],fit=structureFit(parts,obj.position,obj.rotation,fieldOf(planet.environment,planet.radius));
++    const preset=courtyardPlanting(obj.blueprintHash);
++    const parts=planet.blueprints?.[obj.blueprintHash!]??(preset?COURTYARD_PLANTINGS[preset].parts:this.localParts[obj.blueprintHash!])??[];
++    const fit=structureFit(parts,obj.position,obj.rotation,fieldOf(planet.environment,planet.radius));
+     const door=planet.homeDoor;
+-    const visibleParts=door?.buildingId===obj.id?parts.filter(part=>part.n!==door.partNumber):parts;
++    const visibleParts=preset==='golden-tree'?parts.filter(part=>part.part!=='garden.tree'):
++      door?.buildingId===obj.id?parts.filter(part=>part.n!==door.partNumber):parts;
+     const options={foundationDepth:fit.foundationDepth,pivot:pivotOf(parts)};
+     const model=cameraCutaway?buildCameraBlueprintModel(visibleParts,worldMaterials(),'medium',{...options,identityParts:parts})
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
 +    const finish=buildStructureFinish(parts,worldMaterials(),{cameraPartSlots:slots});model.object.add(finish.object);
 +    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
 +    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
++    if(preset)addCourtyardPlantingArt(model.object,preset,parts);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
-@@ -293,2 +372,7 @@ export class Colony {
+     model.object.position.fromArray(transform.position);model.object.quaternion.fromArray(transform.quaternion);
+     model.object.userData.disposeOwned=()=>{finish.dispose();model.dispose();};
+@@ -291,6 +389,11 @@ export class Colony {
+   }
+   private point(x:number,y:number){
      this.ray.setFromCamera(new T.Vector2(x/innerWidth*2-1,-y/innerHeight*2+1),this.bridge.camera);
 +    if(this.pickingArrival){
 +      const hit=this.ray.intersectObject(this.bridge.ground())[0];
@@ -569,7 +666,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      return;
 +    }
      if(this.placing&&this.draft){const hit=this.ray.intersectObject(this.bridge.ground())[0];if(hit){this.draft.position=hit.point.normalize().toArray() as Vec3;this.preview();this.editor();}return;}
-@@ -314,2 +398,24 @@ export class Colony {
+     const hit=this.ray.intersectObjects([...this.objects.values()],true)[0];
+     const surface=this.ray.intersectObject(this.bridge.ground())[0];
+@@ -312,17 +415,66 @@ export class Colony {
+     const body={planetId:this.universe.currentPlanet.id,objectId:d.id,position:d.position,rotation:d.rotation,...(d.version?{expectedVersion:d.version}:{kind:d.kind,...(d.blueprintHash?{blueprintHash:d.blueprintHash}:{})})};
+     if(await this.command(route,body)){this.clearDraft();this.editor();this.bridge.notice('Saved. Everyone visiting can see your change.');}
    }
 +  private previewArrival(direction:T.Vector3){
 +    const u=this.universe;
@@ -594,7 +695,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    }
 +  }
    private async remove(){const d=this.draft;if(!d?.version||!this.universe)return;if(await this.command('objects/delete',{planetId:this.universe.currentPlanet.id,objectId:d.id,expectedVersion:d.version})){this.clearDraft();this.editor();this.bridge.notice('Removed from your planet.');}}
-@@ -317,6 +423,33 @@ export class Colony {
+   private editor(){
      const d=this.draft;el('object-tools').hidden=!d;
 -    setText(el('build-instruction'), this.busy?'Saving your change…':!this.syncing?'Connection lost. Building is paused.':d?(this.placing?'Tap an open spot on the planet, then save.':'Object selected. Move, rotate or remove it.'):'Choose something to add, or tap an existing object.');
 -    setText(el('build-selection'), d?objectName(d):'Sunseed building kit');
@@ -606,7 +707,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    el<HTMLButtonElement>('cancel-courtyard-arrival').disabled=this.busy;
 +    setText(el('courtyard-arrival-status'),!draft?'':stale?'Your planet changed. Choose the arrival point again.':draft.problem??'Visitors will follow the arrows here after you save.');
 +    setText(el('build-instruction'), this.busy?'Saving your change…':!this.syncing?'Connection lost. Building is paused.':arriving?'Tap clear ground near the courtyard.':d?(this.placing?'Tap an open spot on the planet, then save.':'Object selected. Move, rotate or remove it.'):'Choose something to add, or tap an existing object.');
-+    setText(el('build-selection'), arriving?'Courtyard arrival point':d?objectName(d):'Sunseed building kit');
++    setText(el('build-selection'), arriving?'Courtyard arrival point':d?builtName(d):'Sunseed building kit');
      const problem=d?.position?this.problem(d):null;
 -    setText(el('placement-status'), problem??(d?.position?`Turn: ${Math.round(d.rotation*180/Math.PI)}°`:''));
 +    let status=problem??(d?.position?`Turn: ${Math.round(d.rotation*180/Math.PI)}°`:'');
@@ -631,13 +732,24 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    }
 +    setText(el('placement-status'),status);
      el<HTMLButtonElement>('save-object').disabled=this.busy||!this.syncing||!d?.position||!!problem;
-@@ -340,2 +473,6 @@ export class Colony {
+     setText(el('save-object'), this.busy?'Saving…':d?.version?'Save changes':'Place object');
+     el<HTMLButtonElement>('move-object').hidden=!d?.version;el<HTMLButtonElement>('remove-object').hidden=!d?.version;
+-    el<HTMLButtonElement>('edit-structure').hidden=!d?.version||d.kind!=='structure';
++    el<HTMLButtonElement>('edit-structure').hidden=!d?.version||d.kind!=='structure'||!!courtyardPlanting(d.blueprintHash);
+     for(const id of ['rotate-object','move-object','edit-structure','remove-object','cancel-object'])el<HTMLButtonElement>(id).disabled=this.busy||!this.syncing;
+     document.querySelectorAll<HTMLButtonElement>('.catalogue-item').forEach(b=>{b.disabled=this.busy||!this.syncing;b.setAttribute('aria-pressed',String(b.dataset.kind===d?.kind));});
+   }
+@@ -338,6 +490,10 @@ export class Colony {
+     el<HTMLButtonElement>('claim-planet').disabled=this.busy||!this.syncing;
+     el<HTMLButtonElement>('build-mode').hidden=!p.mine;setText(el('build-mode'), this.building?'Building…':'Build on my planet');
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
 +    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
 +    courtyardFlower.hidden=!this.canArrangeCourtyard();
 +    courtyardFlower.disabled=this.busy||!this.syncing;
 +    this.courtyardInspiration.update(!courtyardFlower.hidden,!courtyardFlower.disabled);
      el<HTMLButtonElement>('open-workshop').hidden=!p.mine||u.player.flight.mode!=='ground';el<HTMLButtonElement>('open-workshop').disabled=this.busy||!this.syncing;
+     el('delivery-toggle').hidden=p.kind!=='hub';
+     el('my-planet').hidden=!u.ownedPlanetId||u.ownedPlanetId===p.id;
 diff --git a/src/client/flight.css b/src/client/flight.css
 index e56a89e92190efaab22096861abb75c51ac8688a..044eb69124dbd394fcdf96bfbdd5145f969e5101 100644
 --- a/src/client/flight.css
@@ -1317,7 +1429,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21de7a90135 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986a7f08393 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
 @@ -1,6 +1,8 @@
@@ -1352,7 +1464,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21d
    "Could not open photo mode.": "暂时无法进入照片模式。",
    "Photo export is unavailable.": "当前无法导出照片。",
    "Photo export failed.": "照片导出失败。",
-@@ -1031,6 +1042,26 @@ export const messages: Record<string, string> = {
+@@ -1031,6 +1042,28 @@ export const messages: Record<string, string> = {
    "A little world awaits": "一颗小星球在等你",
    "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
    "Make this my planet": "认领这颗星球",
@@ -1363,12 +1475,14 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21d
 +  "Courtyard examples": "院落布置样例",
 +  "Pathside welcome": "路边迎客",
 +  "Flower-viewing corner": "观花角",
-+  "Two pots at different heights on the grass beside the open stone path, with a lantern set back.": "石板路留空，路边草地的两盆花高低错落，灯放在花盆后侧。",
-+  "Front flower pot": "近处花盆",
-+  "Place it on lower grass beside the path, near the entrance.": "在靠入口的路边找一处较低的草地摆放。",
-+  "Raised flower pot": "高处花盆",
-+  "Place the same pot on higher grass, a little farther from the path.": "同款花盆摆在更高的草地上，离路边稍远一些。",
-+  "Set the lantern behind the pots. Leave the stone path clear from end to end.": "灯放在两盆花后侧，整条石板路留空通行。",
++  "Coral and gold flowers, low stone edging and a golden tree frame the grass beside the courtyard path.": "珊瑚色和金色花叶铺在草地上，近处是低矮石边，后面是一棵金叶树。",
++  "Flower drift": "双色花圃",
++  "Lay the flowers across the grass to make a broad band of colour.": "沿草地横摆，让两色花叶连成一片。",
++  "Low stone edging": "矮石边",
++  "Turn the trim along the grass edge. Keep the path and the front of both seats clear.": "把石边转向草地边缘，留出石板路和两张椅子前的活动空间。",
++  "Golden-leaf tree": "金叶树",
++  "Set the taller tree behind the flowers. Leave open space around the pots.": "把高树放到花圃后侧，给花盆周围留出空地。",
++  "Keep a pot within reach from the open grass so a visiting friend can water it.": "让一只花盆靠近空地，好友走近后就能选中浇水。",
 +  "Close courtyard inspiration": "关闭院落布置灵感",
 +  "Leave the stone path clear. Choose one object to preview it before placing it.": "留出石板路。点一件物品，先预览再放置。",
 +  "A flower pot and lantern beside the stone path, with a bench across the path.": "花盆和灯在石板路一侧，长椅在另一侧。",
@@ -1379,7 +1493,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21d
    "Build on my planet": "在我的星球建造",
    "Mark my planet ↗": "标记我的星球 ↗",
    "Try a delivery": "体验投递任务",
-@@ -1172,6 +1203,25 @@ export const messages: Record<string, string> = {
+@@ -1172,6 +1205,25 @@ export const messages: Record<string, string> = {
    "Saving your change…": "正在保存改动…",
    "Connection lost. Building is paused.": "连接已断开，建造已暂停。",
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
@@ -1405,7 +1519,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21d
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
    "Saving…": "正在保存…",
    "Save changes": "保存改动",
-@@ -1233,6 +1283,7 @@ export const messages: Record<string, string> = {
+@@ -1233,6 +1285,7 @@ export const messages: Record<string, string> = {
 
  // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
@@ -1413,7 +1527,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21d
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
    ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
    ["{0} · Your saved home","{0} · 你保存的家园"], ["{0} · Public starport","{0} · 公共星港"], ["{0} · Visit only · building belongs to its owner","{0} · 可参观，建筑由主人管理"], ["{0} · An unclaimed world to explore","{0} · 可探索的未认领星球"],
-@@ -1293,6 +1344,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1293,6 +1346,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
      "Turn: {0}°",
      "朝向：{0}°"
    ],
@@ -1425,6 +1539,16 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21d
    [
      "{0} / {1} objects",
      "{0} / {1} 个物件"
+@@ -1479,6 +1537,9 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+     "Custom structure {0}",
+     "自定义建筑 {0}"
+   ],
++  ["Flower drift {0}", "双色花圃 {0}"],
++  ["Low stone edging {0}", "矮石边 {0}"],
++  ["Golden-leaf tree {0}", "金叶树 {0}"],
+   [
+     "Your library has room for {0} blueprints.",
+     "你的蓝图库最多可保存 {0} 份蓝图。"
 diff --git a/src/client/public-town-art.ts b/src/client/public-town-art.ts
 index e31b823b5a69a8875885e1cde20d0b3ecb36b77b..2c01445b7080b652b279186f4250be714ecedaf0 100644
 --- a/src/client/public-town-art.ts
@@ -2979,3 +3103,37 @@ index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83
 -#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true]{outline:2px solid #378f79}
 +#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics,#world-guide-residents{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true],#world-guide-residents button[aria-pressed=true]{outline:2px solid #378f79}
  #world-guide-dialog button,#world-guide-hud button,#world-guide-home{min-height:44px;border-radius:10px;border:1px solid #acbcaa;padding:7px 10px;cursor:pointer;background:#f5f1e2;color:#293c38;font:13px system-ui}
+diff --git a/src/server/blueprints.ts b/src/server/blueprints.ts
+index 694c966485bb57b8fc0308a8d4cd40323277745a..9196a7583c518d674eb3399ab52b6a167e8126d1 100644
+--- a/src/server/blueprints.ts
++++ b/src/server/blueprints.ts
+@@ -7,6 +7,7 @@ import { BLUEPRINT_BODY_LIMIT, MAX_BLUEPRINTS } from '../shared/blueprints.ts';
+ import type { LibraryEntry } from '../shared/blueprints.ts';
+ import { RequestError } from './errors.ts';
+ import { STATION_HASH } from './station-blueprint.ts';
++import { COURTYARD_PLANTINGS, courtyardPlanting } from '../shared/courtyard-plantings.ts';
+
+ interface LibraryRow { document: string; hash: string; version: number }
+ const entry = (row: LibraryRow): LibraryEntry => {
+@@ -15,6 +16,12 @@ const entry = (row: LibraryRow): LibraryEntry => {
+   return { blueprint: decoded.value, hash: row.hash, version: row.version };
+ };
+ export function blueprintStore(db: DatabaseSync) {
++  const stock = db.prepare('INSERT OR IGNORE INTO blueprint_contents(hash,content) VALUES(?,?)');
++  for (const { hash, parts } of Object.values(COURTYARD_PLANTINGS)) {
++    const content = canonicalJson(hashInput(parts));
++    if (createHash('sha256').update(content).digest('hex') !== hash) throw new Error('Courtyard blueprint hash mismatch.');
++    stock.run(hash, content);
++  }
+   return {
+     list(owner: string): LibraryEntry[] {
+       return (db.prepare('SELECT document,hash,version FROM blueprint_library WHERE owner_id=? ORDER BY rowid').all(owner) as unknown as LibraryRow[]).map(entry);
+@@ -27,7 +34,7 @@ export function blueprintStore(db: DatabaseSync) {
+     },
+     owns(owner: string, hash: unknown) {
+       // The shared teleport station is a catalogue item: placing it needs no library slot.
+-      if (hash === STATION_HASH) return;
++      if (hash === STATION_HASH || courtyardPlanting(hash)) return;
+       if (typeof hash !== 'string' || !db.prepare('SELECT 1 FROM blueprint_library WHERE owner_id=? AND hash=?').get(owner, hash)) throw new RequestError(403, 'Place a blueprint from your own saved library.');
+     },
+     save(owner: string, body: Record<string, unknown>): LibraryEntry {
