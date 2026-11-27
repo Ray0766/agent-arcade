@@ -713,16 +713,18 @@ class SocialStore {
     const cursor=params.get('before');
     if(cursor!==null&&!isPostId(cursor))fail(400,'cursor','消息位置无效');
     const before=cursor===null?Number.MAX_SAFE_INTEGER:Number(cursor),limit=20;
-    const rows=this.all(`WITH hits AS MATERIALIZED (
-      SELECT m.id,m.chat,m.sender,m.body,m.created
+    const rows=this.all(`WITH searchable AS (
+      SELECT m.id,m.chat,m.sender,m.created,coalesce(f.name,m.body) AS text,
+        CASE WHEN f.message IS NOT NULL THEN 'file' END AS attachmentKind
       FROM members viewer CROSS JOIN messages m
+      LEFT JOIN message_files f ON f.message=m.id AND m.body=''
       WHERE viewer.account=? AND m.chat=viewer.chat AND m.id>viewer.since AND m.id<? AND m.removed=0
-        AND instr(lower(m.body),lower(?))>0
         AND NOT EXISTS (SELECT 1 FROM message_voices v WHERE v.message=m.id)
-      ORDER BY m.id DESC LIMIT ?
+    ), hits AS MATERIALIZED (
+      SELECT * FROM searchable WHERE instr(lower(text),lower(?))>0 ORDER BY id DESC LIMIT ?
     )
     SELECT h.id,h.chat AS chatId,c.type AS chatType,coalesce(r.remark,peer.name,c.title) AS chatTitle,
-      peer.number AS peerNumber,h.body AS text,h.created AS createdAt,u.name AS sender
+      peer.number AS peerNumber,h.text,h.attachmentKind,h.created AS createdAt,u.name AS sender
     FROM hits h JOIN chats c ON c.id=h.chat JOIN users u ON u.number=h.sender
     LEFT JOIN users peer ON c.type='direct' AND peer.number=CASE WHEN c.first_user=? THEN c.second_user ELSE c.first_user END
     LEFT JOIN friend_remarks r ON r.account=? AND r.friend=peer.number
