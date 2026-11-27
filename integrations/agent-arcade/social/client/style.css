@@ -148,6 +148,7 @@ dialog:has(.ai-role-library) #dialog-body > button {
 .ai-markdown :is(code,pre){background:var(--tint);border-radius:4px}
 .ai-markdown code{padding:.08em .25em}.ai-markdown pre{white-space:pre-wrap;padding:.5em .65em;overflow-wrap:anywhere}
 .ai-markdown pre code{padding:0}.ai-markdown hr{border:0;border-top:1px solid var(--line)}
+.voice-listened { color:var(--muted); font-size:.72rem; white-space:nowrap; }
 .voice-bubble {
   display:grid;
   grid-template-columns:34px minmax(0,1fr);
