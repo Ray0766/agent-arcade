@@ -24,7 +24,7 @@ export class PairedPublicFlightSession {
   constructor(private readonly post: (client: string, command?: PublicFlightCommand) => Promise<PublicFlightView>) {}
 
   get view() { return performance.now() - this.receivedAt < VIEW_MS ? this.response : null; }
-  get tracking() { return !!(this.response?.round); }
+  get tracking() { return !!(this.response?.round || this.response?.repair); }
   get resumeStatus() { return this.review; }
   get ship() {
     return performance.now() - this.shipAt < SHIP_MS ? this.view?.round?.ship ?? null : null;
@@ -116,10 +116,10 @@ export class PairedPublicFlightSession {
           this.review = 'unconfirmed';
           return;
         }
-        this.resumed = !!(response.round);
+        this.resumed = !!(response.round || response.repair);
         this.review = this.resumed ? null : 'ended';
         this.resumeClient = null;
-      } else if (this.review === 'ended' && (response.round)) {
+      } else if (this.review === 'ended' && (response.round || response.repair)) {
         this.review = null;
       }
       const previous = this.response?.round?.ship, latest = response.round?.ship;
@@ -128,7 +128,7 @@ export class PairedPublicFlightSession {
         this.shipAt = sentAt;
       }
       this.response = response;
-      this.knownClient = response.round ? client : null;
+      this.knownClient = response.round || response.repair ? client : null;
       this.receivedAt = sentAt;
       return response;
     }, error => {

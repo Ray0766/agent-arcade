@@ -1300,17 +1300,18 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa3748d2e5a3 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..0ed1c1a458beec2d4ab61f8cec62ccd3e95bd356 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -1,3 +1,6 @@
+@@ -1,3 +1,7 @@
++import { atQuayWorkbench, PairedQuayRepairControls } from './paired-quay-repair-controls.ts';
 +import { PairedPublicFlightControls } from './paired-public-flight.ts';
 +import { PairedPublicFlightSession } from './paired-public-flight-session.ts';
 +import type { PublicFlightCommand, PublicFlightPeer, PublicFlightView } from '../shared/paired-public-flight.ts';
  import {mountAmbientMusic} from './ambient-music.ts';
  import {mountSceneShortcuts,restoreSceneFocus} from './scene-shortcuts.ts';
  import {CharacterEntry} from './character-entry.ts';
-@@ -30,6 +33,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
+@@ -30,6 +34,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
  import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
  import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
@@ -1318,7 +1319,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
  import { GroundPresence } from './presence.ts';
  import { PresenceVisitGate } from './presence-visit.ts';
  import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
-@@ -69,12 +73,15 @@ import { createHomeDoor, placeHomeDoor } from './home-door.ts';
+@@ -69,12 +74,15 @@ import { createHomeDoor, placeHomeDoor } from './home-door.ts';
  import { createStateLoader } from './state-loader.ts';
  import { worldVisualSignature } from './world-visual-signature.ts';
  import { PhotoMode } from './photo-mode.ts';
@@ -1334,7 +1335,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
  import { HomeSetup } from './home-setup.ts';
  import { TeleportStations } from './teleport-station.ts';
  import { SaveProgress } from './save-progress.ts';
-@@ -144,6 +151,9 @@ let residentConversationKey='';
+@@ -144,6 +152,9 @@ let residentConversationKey='';
  let queue: Promise<unknown> = Promise.resolve();
  const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
@@ -1344,16 +1345,26 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
  function renderSaveProgress(){
    if(!state||physicsMismatch)return;
-@@ -186,6 +196,16 @@ function talkToResident(){
+@@ -181,11 +192,25 @@ function talkToResident(){
+   // the live interaction state without advancing any resident or player.
+   residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:true});
+   const found=residents?.nearest(walker.up.toArray() as Vec3,standing?.radius);
+-  if(!found||near||nearDock||homeControls?.canEnter)return;
++  if(!found||near||nearDock||homeControls?.canEnter||(found.id===IVO_REPAIR&&pairedRepairOwnsBench))return;
+   if(speakingResident?.id===found.id&&!$('conversation').hidden)return;
    clearInput();speakingResident=found;renderResidentConversation();$('conversation').dataset.resident=found.id;
    $('conversation').hidden=false;conversationUntil=Infinity;residents?.greet(found.id,elapsed);
  }
-+const quayRepair = new TownQuayRepair($('dialogue-text').parentElement!, {
-+  nearby: () => activePlanet==='hub' && !!standing?.grounded && !!residents && !!walker && online &&
++let pairedRepairActive = false, pairedRepairOwnsBench = false;
++function ivoContactAvailable() {
++  return activePlanet==='hub' && !!standing?.grounded && !!residents && !!walker && online &&
 +    !worldPending && !sceneLoadingActive() && !flight?.active && !photoPaused && !homeTransition &&
 +    !colony?.paused && !worldGuide.talking && !document.querySelector('dialog[open]') &&
 +    !overview && !near && !nearDock && !teleportStations?.canUse &&
-+    residents.nearest(walker.up.toArray() as Vec3,standing.radius)?.id===IVO_REPAIR,
++    residents.nearest(walker.up.toArray() as Vec3,standing.radius)?.id===IVO_REPAIR;
++}
++const quayRepair = new TownQuayRepair($('dialogue-text').parentElement!, {
++  nearby: () => !pairedRepairOwnsBench && ivoContactAvailable(),
 +  prepare: () => { closeResidentConversation(); clearInput(); },
 +  stage: pose => residents?.showQuayRepair(pose),
 +  restoreFocus: () => action.focus({preventScroll:true}),
@@ -1361,7 +1372,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
  function notice(message: string, duration = 5000) { setText($('notice'), message); $('notice').hidden = false; noticeUntil = performance.now() + duration; }
  class ApiError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
  async function request<T = PlayerState>(path: string, body?: unknown): Promise<T> {
-@@ -268,16 +288,20 @@ function accept(next: PlayerState) {
+@@ -268,16 +293,20 @@ function accept(next: PlayerState) {
    const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
    flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
@@ -1387,7 +1398,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
  }
  function renderTask() {
-@@ -317,6 +341,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+@@ -317,6 +346,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
  setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
  worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
@@ -1395,7 +1406,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
  const practical=createWorldPracticalLights();scene.add(practical.group);
  const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
-@@ -349,11 +374,13 @@ function tutorialContext(){
+@@ -349,11 +379,13 @@ function tutorialContext(){
      paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
  }
  function frameVillageGuide(){
@@ -1413,7 +1424,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
      visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
      homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
-@@ -362,12 +389,15 @@ function frameVillageGuide(){
+@@ -362,12 +394,15 @@ function frameVillageGuide(){
    if(context&&planet&&groundWorld&&walker){
      const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
@@ -1430,7 +1441,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
-@@ -544,6 +574,10 @@ window.addEventListener('keydown',event=> {
+@@ -544,6 +579,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
@@ -1441,7 +1452,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
      event.preventDefault();keys.add(key);target=null;
      if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
    }
-@@ -597,7 +631,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+@@ -597,7 +636,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
  renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
  renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
@@ -1450,7 +1461,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +732,120 @@ async function interact() {
+@@ -698,7 +737,136 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1465,6 +1476,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
 +}
 +let pairedDockScope: string | undefined;
 +let lastPairedRound: string | undefined;
++let lastQuayRepair: string | undefined;
 +const pairedFlight = new PairedPublicFlightSession((client, command) =>
 +  request<PublicFlightView>('paired-public-flight', { client, ...(command && { command }) }));
 +const pairedFlightDock = new PairedPublicFlightControls($('travel-guidance'), {
@@ -1478,9 +1490,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
 +    if (action.action === 'meet') {
 +      const round = pairedFlight.view?.round;
 +      if (round?.id !== action.id || !pairedMeetingVisible(round.meetingPeerId)) throw new Error('The companion is out of view.');
-+      await pairedFlight.command({ action: 'cancel', id: action.id });
-+      lastPairedRound = undefined;
-+      notice(document.documentElement.lang.startsWith('zh') ? '已在主星码头木牌旁会合。' : 'You met at the main planet dock sign.');
++      const acknowledged = await pairedFlight.command({ action: 'meet', id: action.id });
++      if (acknowledged?.repair) {
++        lastPairedRound = undefined;
++        notice(document.documentElement.lang.startsWith('zh') ? '已在主星码头木牌旁会合。' : 'You met at the main planet dock sign.');
++      }
 +      return;
 +    }
 +    const command: PublicFlightCommand = { action: action.action, id: action.id };
@@ -1495,6 +1509,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
 +  retryResume: () => pairedFlight.retryResume(),
 +  dismissResume: () => pairedFlight.dismissResume(),
 +});
++const pairedQuayRepair = new PairedQuayRepairControls($('travel-guidance'), {
++  send: async (repair, move) => {
++    if (move !== 'leave' && move !== 'decline') {
++      if (move === 'ready' && quayRepair.active) throw new Error('Finish the solo repair first.');
++      await savePosition(true);
++      await queue;
++    }
++    const acknowledged = await pairedFlight.command({ action: 'repair', id: repair.id, version: repair.version, move });
++    if ((move === 'leave' || move === 'decline') && acknowledged && !acknowledged.repair) lastQuayRepair = undefined;
++  },
++  restoreFocus: () => lookButton.focus({ preventScroll: true }),
++});
++
 +declare global {
 +  interface Window {
 +    arcadeGameWindow?: {
@@ -1572,7 +1599,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +868,75 @@ setInterval(async()=>{
+@@ -721,17 +889,92 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1605,9 +1632,10 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
 +  const publicFlightRound = publicFlightView?.round;
 +  if (pairedFlight.takeResumed()) {
 +    const zh = document.documentElement.lang.startsWith('zh');
-+    notice(zh ? '已找回这次约飞。' : 'Your shared flight plan was found.');
++    notice(publicFlightView?.repair ? (zh ? '已接回原双人修理。' : 'Your shared repair is ready to resume.') :
++      (zh ? '已找回这次约飞。' : 'Your shared flight plan was found.'));
 +  }
-+  if (publicFlightView && lastPairedRound && !publicFlightRound && !resumeStatus) {
++  if (publicFlightView && lastPairedRound && !publicFlightRound && !publicFlightView.repair && !resumeStatus) {
 +    notice(document.documentElement.lang.startsWith('zh') ? '这次约飞已结束。' : 'The shared flight plan has ended.');
 +  }
 +  if (publicFlightView || !pairingOnline) lastPairedRound = publicFlightRound?.id;
@@ -1629,6 +1657,22 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
 +    canMeet: pairedMeetingVisible(publicFlightRound?.meetingPeerId),
 +    interactive: !!pairedInput,
 +  } : null);
++  const repair = publicFlightView?.repair;
++  const repairExterior = pairingOnline && activePlanet === 'hub' && state.flight.mode === 'ground' &&
++    state.location?.kind !== 'interior' && !worldPending && !sceneLoadingActive() && !flight?.active && !homeTransition;
++  if (publicFlightView && lastQuayRepair && !repair && repairExterior && !resumeStatus) {
++    notice(document.documentElement.lang.startsWith('zh') ? '本次双人修理已结束。' : 'This shared repair has ended.');
++  }
++  if (publicFlightView || !repairExterior) lastQuayRepair = repair?.id;
++  pairedRepairOwnsBench = !!(repairExterior && repair?.myReady && repair.atBench);
++  const workbench = repairExterior && !!repair?.atBench && atQuayWorkbench(repair) && !overview && !photoPaused;
++  if (workbench && !pairedRepairActive) { closeResidentConversation(); clearInput(); }
++  pairedRepairActive = workbench;
++  pairedQuayRepair.frame(repairExterior ? repair : undefined, {
++    interactive: !overview && !photoPaused && !colony?.paused && !worldGuide.talking && !document.querySelector('dialog[open]'),
++    nearby: !quayRepair.active && ivoContactAvailable(),
++  });
++  residents?.showPairedQuayRepair(workbench ? repair! : null);
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
 +  const landedGarden=online&&colony?.syncing&&state?.flight.mode==='ground'&&garden?.kind==='garden'&&garden.claimed?garden.id:null;
@@ -1651,7 +1695,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +984,7 @@ function animate(now:number) {
+@@ -779,7 +1022,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1660,7 +1704,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -799,6 +1004,11 @@ function animate(now:number) {
+@@ -799,6 +1042,11 @@ function animate(now:number) {
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
@@ -1672,7 +1716,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +1081,7 @@ function animate(now:number) {
+@@ -871,7 +1119,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1681,7 +1725,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +1118,22 @@ function animate(now:number) {
+@@ -908,11 +1156,22 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1696,7 +1740,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
 +  if(indoorRoomView.room)indoorRoomView.render();
 +  else {
 +    const draw=()=>drawing.render(new T.Vector3(),overview);
-+    const support=quayRepair.active ? residents?.quayRepairFocus() : null;
++    const support=(quayRepair.active || pairedRepairActive) ? residents?.quayRepairFocus() : null;
 +    if(support&&groundWorld&&!overview)drawQuayRepair(camera,support,groundWorld,cameraShipCollision,innerWidth,innerHeight,draw);
 +    else draw();
 +  }
@@ -1705,8 +1749,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1185,19 @@ function animate(now:number) {
+@@ -962,9 +1221,22 @@ function animate(now:number) {
+     // readable and updates in place. Menus and scene transitions still close it.
+     teleportStations?.frame(walker.up.toArray() as Vec3,groundRadius(),!scenePaused&&!paused&&!nearDock&&!!standing?.grounded&&online&&state.flight.mode==='ground'&&state.location?.kind!=='interior'&&!colony?.building&&!homeTransition);
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
++    if(pairedRepairOwnsBench && nearResident?.id===IVO_REPAIR)nearResident=null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
@@ -1726,7 +1773,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1209,24 @@ function animate(now:number) {
+@@ -976,6 +1248,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1751,7 +1798,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1281,22 @@ function ensureColony() {
+@@ -1030,15 +1320,22 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1776,7 +1823,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..f1076929ac975408c6d5fb101957fa37
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1317,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1356,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -1994,11 +2041,11 @@ index af46a0e52754af0f16119b6056df5c529454dee6..fb9b2ec315a9892be7b8651a0ce89058
 + }
   model.stats.generationMs+=performance.now()-adaptedAt;
 diff --git a/src/client/town-residents.ts b/src/client/town-residents.ts
-index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd27c33fbd 100644
+index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..3f7509355f71ff9adcdb94a052d83e6614d10ae4 100644
 --- a/src/client/town-residents.ts
 +++ b/src/client/town-residents.ts
 @@ -1,5 +1,10 @@
-+import { quayRepairProp } from './town-quay-repair-prop.ts';
++import { isPairedQuayRepairScene, quayRepairProp, QUAY_WRENCH_PARTS, type PairedQuayRepairScene } from './town-quay-repair-prop.ts';
 +import { IVO_REPAIR, type QuayRepairPose } from './town-quay-repair.ts';
  import * as T from 'three';
  import { applyArtMaterial, ART_PALETTE } from './art-profile.ts';
@@ -2155,7 +2202,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
        break;
      case 'basket':
        piece(leftArm, 'cylinder', '#bc965f', [0, -.65, .04], [.34, .25, .29]);
-@@ -129,8 +140,8 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+@@ -129,16 +140,15 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
        piece(head, 'sphere', timber, [0, .08, -.18], [.19, .2, .16]);
        break;
      case 'cap':
@@ -2166,7 +2213,16 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
        break;
    }
    if (definition.activity === 'repair') {
-@@ -166,13 +177,14 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
+     // The same original host-made hand wrench serves apron-wearing makers too.
+     // Its wrist stays connected to the original hand, never a floating prop.
+     workTool = new T.Group(); workTool.position.set(0, -.255, .014); rightForearm.add(workTool);
+-    piece(workTool, 'box', ART_PALETTE.iron, [0, 0, .105], [.035, .04, .23]);
+-    piece(workTool, 'box', ART_PALETTE.iron, [0, 0, .23], [.095, .04, .07]);
++    for(const part of QUAY_WRENCH_PARTS)piece(workTool, 'box', ART_PALETTE.iron, part.at, part.size);
+   }
+   if (definition.activity === 'tend') {
+     wateringCan = new T.Group(); wateringCan.position.set(0, -.255, .014); leftForearm.add(wateringCan);
+@@ -166,13 +176,15 @@ function residentRig(definition: TownResidentDefinition, index: number): Rig {
  export class TownResidents {
    readonly root = new T.Group();
    readonly definitions: readonly TownResidentDefinition[];
@@ -2180,6 +2236,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
    private enabled = true;
    private animationTime = 0;
 +  private repairPose: QuayRepairPose | null = null;
++  private pairedRepair: PairedQuayRepairScene | null = null;
    private frustum = new T.Frustum();
    private projection = new T.Matrix4();
    private basis = new T.Matrix4();
@@ -2248,7 +2305,17 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
      parent.add(this.root);
    }
  
-@@ -251,21 +278,28 @@ export class TownResidents {
+@@ -238,7 +265,8 @@ export class TownResidents {
+       resident.distance = distance;
+       this.sphere.center.copy(this.up).multiplyScalar(motion.pose.radius + .8);
+       const horizon = this.sphere.center.dot(this.cameraPosition) >= this.world.baseRadius ** 2 - 2.8 * eyeRadius;
+-      const visible = motion.valid && horizon && this.frustum.intersectsSphere(this.sphere);
++      const activeRepair=resident.definition.id===IVO_REPAIR && !!this.pairedRepair && distance<=5;
++      const visible = motion.valid && horizon && (activeRepair || this.frustum.intersectsSphere(this.sphere));
+       const interval = distance < 9 ? 1 / 30 : distance < 18 ? 1 / 10 : .5;
+       if (visible) this.diagnostics.visible++;
+       if (enabled && visible && distance < 18 && resident.elapsed >= .1) {
+@@ -251,21 +279,30 @@ export class TownResidents {
          this.diagnostics.animated++;
          this.pose(resident, this.animationTime, reducedMotion || distance >= 18);
          rig.anchor.updateMatrixWorld(true);
@@ -2256,7 +2323,8 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
 +          const support=resident.quayRepair;
 +          rig.anchor.localToWorld(support.root.position.set(.245,.83,.67));
 +          support.root.quaternion.copy(rig.anchor.quaternion);
-+          support.show(this.repairPose,reducedMotion);
++          if(this.pairedRepair)support.showPaired(this.pairedRepair,reducedMotion,this.animationTime);
++          else support.show(this.repairPose,reducedMotion);
 +        }
        }
      }
@@ -2269,6 +2337,7 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
        for (const resident of this.residents) if (resident.visible) for (const piece of resident.rig.pieces) {
          if (piece.detail && resident.distance > 12) continue;
 -        const batch = this.batches[piece.shape], slot = slots[piece.shape]++;
++        if (piece.node.parent===resident.rig.workTool && !resident.rig.workTool.visible) continue;
 +        const batch = this.batches.get(piece.shape)!, slot = slots.get(piece.shape) ?? 0;
 +        slots.set(piece.shape, slot + 1);
          batch.setMatrixAt(slot, piece.node.matrixWorld); batch.setColorAt(slot, piece.color);
@@ -2281,16 +2350,19 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
          if (batch.instanceColor) batch.instanceColor.needsUpdate = true;
          this.diagnostics.visibleInstances += batch.count;
          this.diagnostics.visibleTriangles += (batch.geometry.index?.count ?? batch.geometry.attributes.position.count) / 3 * batch.count;
-@@ -295,8 +329,16 @@ export class TownResidents {
+@@ -295,8 +332,19 @@ export class TownResidents {
      } else if (definition.activity === 'repair') {
        rig.body.rotation.x = .11; rig.head.rotation.x = .2;
        const lift = reduced ? .015 : (1 + Math.sin(t * 1.8)) * .015;
 -      workReach(rig, 'right', .975 + lift, .43);
 -      if (rig.workTool) rig.workTool.rotation.x = .25 - rig.body.rotation.x - rig.rightArm.rotation.x - rig.rightForearm.rotation.x;
 +      const repair=definition.id===IVO_REPAIR ? this.repairPose : null;
++      const observingPair=definition.id===IVO_REPAIR && !!this.pairedRepair;
 +      const torque=repair?.tightening ? (reduced?.6:Math.sin(repair.tightening*Math.PI)**2) : 0;
-+      workReach(rig, 'right', (repair?1.09:.975) + lift - torque*.027, .43 + torque*.015);
++      if(observingPair)rig.head.rotation.x=.24;
++      else workReach(rig, 'right', (repair?1.09:.975) + lift - torque*.027, .43 + torque*.015);
 +      if (rig.workTool) {
++        rig.workTool.visible=!observingPair;
 +        rig.workTool.rotation.x = .25 - rig.body.rotation.x - rig.rightArm.rotation.x - rig.rightForearm.rotation.x;
 +        if(repair){
 +          rig.workTool.rotation.y=torque*.28;
@@ -2300,16 +2372,16 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
      } else if (definition.activity === 'tend') {
        rig.body.rotation.x = .18; rig.head.rotation.x = .24;
        workReach(rig, 'left', .87, .44);
-@@ -322,7 +364,7 @@ export class TownResidents {
+@@ -322,7 +370,7 @@ export class TownResidents {
        rig.head.rotation.y = reduced ? 0 : Math.sin(t * .4) * .08;
        rig.rightArm.rotation.x = -.35; rig.rightArm.rotation.z = -.24 + (reduced ? 0 : Math.sin(t) * .09);
      }
 -    if (time < resident.greetUntil && !reduced) {
-+    if (time < resident.greetUntil && !reduced && !(definition.id===IVO_REPAIR && this.repairPose)) {
++    if (time < resident.greetUntil && !reduced && !(definition.id===IVO_REPAIR && (this.repairPose||this.pairedRepair))) {
        // Wave beside the shoulder; never sweep a hand through the face or hat.
        // Repairers acknowledge a visitor with the free hand, keeping the wrench
        // over its bench instead of sweeping a tool beside their head.
-@@ -350,6 +392,16 @@ export class TownResidents {
+@@ -350,6 +398,27 @@ export class TownResidents {
      return nearest;
    }
  
@@ -2320,13 +2392,24 @@ index da3e7f54005a4d8cc94c24f7f5504e6e4fc118cb..ff38414f62bb703c6d74855a0fa429fd
 +
 +  showQuayRepair(pose: QuayRepairPose | null) {
 +    this.repairPose=pose;
-+    if(!pose)this.residents.find(resident=>resident.quayRepair)?.quayRepair?.show(null,false);
++    if(!pose&&!this.pairedRepair)this.residents.find(resident=>resident.quayRepair)?.quayRepair?.show(null,false);
++  }
++
++  showPairedQuayRepair(view: PairedQuayRepairScene | null) {
++    if (view && isPairedQuayRepairScene(view)) {
++      this.pairedRepair=view;
++    } else if (this.pairedRepair) {
++      this.pairedRepair=null;
++      const ivo=this.residents.find(resident=>resident.quayRepair);
++      ivo?.quayRepair?.show(this.repairPose,false);
++      if(ivo?.rig.workTool)ivo.rig.workTool.visible=true;
++    }
 +  }
 +
    greet(id: string, time: number) {
      const resident = this.residents.find(r => r.definition.id === id);
      if (resident?.definition.conversational) resident.greetUntil = Math.max(resident.greetUntil, time + 1.2);
-@@ -361,7 +413,13 @@ export class TownResidents {
+@@ -361,7 +430,13 @@ export class TownResidents {
    dispose() {
      if (this.disposed) return; this.disposed = true; this.root.removeFromParent();
      const materials = new Set<T.Material>();
@@ -2881,7 +2964,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..fe865f83155e7b5824bc6003deae347f4ef68019 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..c571833323f8bf0cbf36cb2760a406eab1bbc98e 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
 @@ -1,7 +1,8 @@
@@ -2926,7 +3009,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..fe865f83155e7b5824bc6003deae347f
 +const publicFlights = pairedPublicFlights({
 +  state:store.state, session:digest=>String(activeFriend.get(digest,Date.now())?.player ?? ''),
 +  owner:residentSources.owned, visit:(player,session,planet)=>friendsWorld.visitCheck(player,session,planet)?.access,
-+  allowed:friendsAuthority.canReadVisit, hubPresence:presence.hubPublicId,
++  allowed:friendsAuthority.canReadVisit, hubPresence:presence.hubPublicId, atQuay:store.atIvoBench,
 +});
  // New homes, station searches and other planets' ground are prepared on a worker thread, so one
  // player's arrival never holds everyone else's movement and presence. The harbour is built now,
@@ -3117,10 +3200,17 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..fe865f83155e7b5824bc6003deae347f
        type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
      }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7e95afc92 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..67348039bd4514becbc28a2782105466070ebc7b 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -187,3 +187,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -1,3 +1,4 @@
++import { atQuayBench } from './paired-quay-repair.ts';
+ import { createHash, randomUUID } from 'node:crypto';
+ import { encodeBlueprint, hashInput } from '../shared/blueprint-codec.ts';
+ import { canonicalJson } from '../assets/claude-geometry/core/doc.ts';
+@@ -185,7 +186,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       migrateArrivalHomes(db);
+       migrateTrips(db);
        migrateAppearances(db);
 -      db.exec('PRAGMA user_version=20; COMMIT;');
 +      db.exec(`CREATE TABLE IF NOT EXISTS courtyard_arrivals (
@@ -3128,7 +3218,11 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        route TEXT NOT NULL
 +      ); PRAGMA user_version=${STORE_SCHEMA}; COMMIT;`);
      } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
-@@ -210,2 +213,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   }
+   const history = historyStore(db);
+@@ -208,6 +212,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     if (!result) throw new RequestError(401, 'Your session has expired. Reload to start a new visit.');
+     return result;
    };
 +  function enrollArrival(id:string,now:number){
 +    db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
@@ -3136,21 +3230,40 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +    appearances.enroll(id);
 +  }
    const state = (id: string): PlayerState => {
-@@ -330,2 +338,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     row(id);const flight=navigation.flight(id);
+     const location=homeEnabled?homes.location(id):undefined;
+@@ -295,6 +304,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   };
+   return {
+     db, state, universe, migrationBackup, homeSample, integratedWorld,
++    atIvoBench(id:string) { return atQuayBench(state(id),ground.world('hub')); },
+     requireAppearance:(id:string)=>appearances.requireComplete(id),
+     startTrip(id:string,body:Record<string,unknown>,now=Date.now()){
+       const clean={...body};delete clean.visitEpoch;
+@@ -328,14 +338,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     flight(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.checkpoint(id,clean,now);return state(id);},
+     land(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.land(id,clean,now);homes.movedExterior(id);return universe(id);},
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
 +    enrollFriendsPlayer(id:string){
 +      if(!integratedWorld||!db.isTransaction)throw new RequestError(409,'Open an integrated world to link Friends.');
 +      enrollArrival(id,Date.now());
 +    },
      /** Establish identity and Hub spawn before any expensive home generation. */
-@@ -336,4 +348,4 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     createArrival(id:string,now=Date.now()){
+       if(this.has(id))return state(id);
+       if(!integratedWorld)return this.create(id,now);
+       db.exec('BEGIN IMMEDIATE');
        try{
 -        db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
 -        arrivalHomes.enroll(id,now);appearances.enroll(id);db.exec('COMMIT');
 +        enrollArrival(id,now);
 +        db.exec('COMMIT');
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
-@@ -362,4 +374,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       return state(id);
+     },
+@@ -360,8 +374,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     /** The same arrival as `create`, with the home layout and its station search run on the worker so other
+      * players are answered meanwhile. Every write still happens here, after re-checking what was read: the
       * home, its owner and the new player's place at the door in one transaction, then the station. */
 -    async createPrepared(id: string, now = Date.now(), attempt = 0): Promise<PlayerState> {
 -      const work=heavy;if(!homeEnabled||!work)return this.create(id,now);
@@ -3160,17 +3273,26 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        return this.create(id,now);
 +      }
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
-@@ -376,3 +391,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       try{
+         const inputs=homes.generationInputs(planetId,id);
+@@ -374,12 +391,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           const door=homes.door(planetId);
+           if(!door)throw new RequestError(409,'The sample home could not be prepared.');
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
 -          homes.movedExterior(id);db.exec('COMMIT');
 +          homes.movedExterior(id);bind?.();db.exec('COMMIT');
          }catch(error){
-@@ -381,3 +396,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           if(db.isTransaction)db.exec('ROLLBACK');
+           // Rare: the reserved planet was claimed meanwhile. Prepare another one, twice at most.
            if(error instanceof RequestError&&error.status===409&&!this.has(id)){
 -            if(attempt<2)return this.createPrepared(id,now,attempt+1);
 +            if(attempt<2)return this.createPrepared(id,now,attempt+1,bind);
              throw new RequestError(503,BUSY);
-@@ -449,2 +464,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           }
+           throw error;
+@@ -447,6 +464,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       homes.movedExterior(id);return universe(id);
+     },
      terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
 +    saveCourtyardArrival(id:string,body:Record<string,unknown>){
 +      homes.exterior(id,body.visitEpoch);
@@ -3180,6 +3302,8 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +      return universe(id);
 +    },
      claim(id: string, planetId: unknown) { row(id); planets.claim(id, planetId); if(homeSample){homes.initialise(String(planetId));teleport.ensureHomeStation(String(planetId));} return universe(id); },
+     createObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.create(id, body); return universe(id); },
+     updateObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.update(id, body); return universe(id); },
 diff --git a/src/shared/town-resident-motion.ts b/src/shared/town-resident-motion.ts
 index 30b342267729476ac36ece59318dd512aa98f329..220d883f09acba1b6517ecd7d996b7b6399fe3c0 100644
 --- a/src/shared/town-resident-motion.ts

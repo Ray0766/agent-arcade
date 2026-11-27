@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "5e0838e96323235b762a6529b5add2cf31632ddd",
-  "worldTree": "56af66ff2c740d3a14473b0d1316c22bb4e067d6",
-  "patchSHA256": "c4382af2ee9688d90c9deef93cbcbce6c4b05911340c29bc2d2edaaa9cb9b611",
+  "worldRevision": "95a4cd1d22f8a31313032da482305366f284a839",
+  "worldTree": "54153a60875a14fbbf52517a86261d3de394b0de",
+  "patchSHA256": "1fbb3e641a638207efb69bd9c71131e2667f65a987e690f4bd6d8d01aaec38ae",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -613,8 +613,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "f1076929ac975408c6d5fb101957fa3748d2e5a3",
-      "sha256": "d435544095d9791a4ab4381414f756a48d87998197199a3ee2bf573b18d7cf7d"
+      "blob": "0ed1c1a458beec2d4ab61f8cec62ccd3e95bd356",
+      "sha256": "c23cc7765e05c5c6cc48a80537a19ece235560b39f69446769436ce0ed94dbc1"
     },
     {
       "action": "M",
@@ -643,8 +643,8 @@
     {
       "path": "src/client/paired-public-flight-session.ts",
       "action": "A",
-      "blob": "eb2af4a5ccef9249ba746a9c6a178f4f03e8e660",
-      "sha256": "9a7a34ab4f88f7c2c56e9bece965657652d3b7d28c74aa39c41dd0ef961d376e"
+      "blob": "514930afc8edce6b1748f7a6f129f1aad9c10647",
+      "sha256": "37f2cc03e5a5557a1816f44582384b834ffeb87814155302ac5a037bf2296f11"
     },
     {
       "path": "src/client/paired-public-flight.css",
@@ -657,6 +657,18 @@
       "action": "A",
       "blob": "b40e10b02fe269eb5ca7175682112fbf6603381b",
       "sha256": "b4c1563c36bf45d89e080c2f7a14caa5c027abd2dcbb8380a2a3e80a2ab25867"
+    },
+    {
+      "path": "src/client/paired-quay-repair-controls.css",
+      "action": "A",
+      "blob": "7af66b73ac1083dc7dfd570d8fabca4bd5533397",
+      "sha256": "6b98a29ddf6760a93dfdda512f1799f46de04cbc037b30bc54abee432823370e"
+    },
+    {
+      "path": "src/client/paired-quay-repair-controls.ts",
+      "action": "A",
+      "blob": "f1adc4a2a99d4b8c263dde358eae3d1d292cce43",
+      "sha256": "7d5528bff522a6e52568820b6d35964d68100b53a5b00b705daaf6e6e20823ec"
     },
     {
       "action": "M",
@@ -733,8 +745,8 @@
     {
       "path": "src/client/town-quay-repair-prop.ts",
       "action": "A",
-      "blob": "e3c210a717c4d2ce69c7058aebe7645aa9d43855",
-      "sha256": "8587b1f27f236ee5d2749b811be524140de373853173c73bf6c53ccb6fd80a23"
+      "blob": "efe8af68daaa93286bcaeaa46b5aeabbf94079ed",
+      "sha256": "66fb191012d22718e267b6858c88156258ed7f9c1458c34103fbe661497c494d"
     },
     {
       "path": "src/client/town-quay-repair.css",
@@ -757,8 +769,8 @@
     {
       "action": "M",
       "path": "src/client/town-residents.ts",
-      "blob": "ff38414f62bb703c6d74855a0fa429fd27c33fbd",
-      "sha256": "cf5650cac37fe770f9efb131224143bcf0af7366cb7d80277cb30f7b1d3a3313"
+      "blob": "3f7509355f71ff9adcdb94a052d83e6614d10ae4",
+      "sha256": "7210fe412e608f52870d4e8da5390e720c929a831d9aba7d09df281aa32f5a19"
     },
     {
       "action": "A",
@@ -829,14 +841,20 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "fe865f83155e7b5824bc6003deae347f4ef68019",
-      "sha256": "0ce9e998b4091ccd452af308a64c0e5575b43b1b4d0e1def35fc001eb912b38e"
+      "blob": "c571833323f8bf0cbf36cb2760a406eab1bbc98e",
+      "sha256": "6f1e12e7e949e7c64f69fd02022a8208100fbd2ce82fc0b873c2ea8e5414a0a5"
     },
     {
       "path": "src/server/paired-public-flight.ts",
       "action": "A",
-      "blob": "454aee642ab3cd5fa2e32d30d3705181de70d6b7",
-      "sha256": "4e1163a98cb5f2422c637ee61b98fdf14adcef181a3b9c6cbcf43b84bb8a1fca"
+      "blob": "6f58aa278de5790c525990f3a7994f692067b7ce",
+      "sha256": "f1eb506c457db075866e726b681c296a5fa8003546a2914f3034a28a47939e39"
+    },
+    {
+      "path": "src/server/paired-quay-repair.ts",
+      "action": "A",
+      "blob": "d812ee0f2c9157bca708f6fb80ce0e5a8a6f7072",
+      "sha256": "fc7bf0cb8e803d1815db53f2c0e11ab0f8f1f86a81ffa7560aa16c37bffc566d"
     },
     {
       "action": "A",
@@ -871,8 +889,8 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "0a679fcba74b10ca6fedb33b0efb56c7e95afc92",
-      "sha256": "e2fac63f5ac814221f9436648a29afb6eb6f67585397fb6df1ce884328a18a71"
+      "blob": "67348039bd4514becbc28a2782105466070ebc7b",
+      "sha256": "450d49dfebb8e898bab81e8ff3e602ccb1b0a7784348e70c9ceee691e71edb00"
     },
     {
       "action": "A",
@@ -889,8 +907,14 @@
     {
       "path": "src/shared/paired-public-flight.ts",
       "action": "A",
-      "blob": "2584cc2b6c07c4806d9a2c9130388035e3ac635f",
-      "sha256": "a1687d2d7a55ebe72efd18942322fc76a68cde5ba2feeda418dd18b84d19f0a2"
+      "blob": "dfe0e5bdf0329a49912c11ef59dd4d2c12a6f0ec",
+      "sha256": "0a8b0eceef9bc740b308d78bb2ef98a0415eb295c9237f2aed7ee94a6f5fae76"
+    },
+    {
+      "path": "src/shared/paired-quay-repair.ts",
+      "action": "A",
+      "blob": "620ead66e99ca1610f7165a0b4c64186d05bd366",
+      "sha256": "04f5b0a8b54757279bc33ecdd3275f268ea52e1c569dc5f95fc98e250e6d2346"
     },
     {
       "action": "A",

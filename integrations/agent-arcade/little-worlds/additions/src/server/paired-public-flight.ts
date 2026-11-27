@@ -6,6 +6,8 @@ import { distance } from '../shared/world.ts';
 import { canBoard } from '../shared/ports.ts';
 import { RequestError } from './errors.ts';
 
+import { isQuayCommand, QuayRepairRound } from './paired-quay-repair.ts';
+
 interface WindowMember {
   player: string; session: string; client: string; peer: PublicFlightPeer;
   origin: string; epoch: number; access: string; pulse: number;
@@ -13,6 +15,7 @@ interface WindowMember {
 }
 interface Round {
   id: string; from: WindowMember; to: WindowMember; agreed: boolean; until: number;
+  repair?: QuayRepairRound;
   trips: Map<WindowMember, { id: string; journey: number; request: string }>;
 }
 interface Access {
@@ -20,6 +23,7 @@ interface Access {
   session(digest: string): string;
   owner(player: string): string | null | undefined;
   visit(player: string, session: string, planet: string): string | undefined;
+  atQuay(player: string): boolean;
   hubPresence(player: string, epoch: number): string | undefined;
   allowed(access: string, planet: string): Promise<boolean>;
 }
@@ -28,8 +32,10 @@ const windowId = (value: unknown): value is string => typeof value === 'string' 
 const changed = () => new RequestError(409, 'This shared departure is no longer available.');
 function parseCommand(value: unknown): PublicFlightCommand | undefined {
   if (value === undefined) return;
+  if (value && typeof value === 'object' && 'id' in value && uuid(value.id) && isQuayCommand(value as Record<string,unknown>))
+    return value as PublicFlightCommand;
   if (value && typeof value === 'object' && Object.keys(value).length === 2 && 'action' in value &&
-      ['accept','decline','cancel'].includes(String(value.action)) && 'id' in value && uuid(value.id)) return value as PublicFlightCommand;
+      ['accept','decline','cancel','meet'].includes(String(value.action)) && 'id' in value && uuid(value.id)) return value as PublicFlightCommand;
   if (value && typeof value === 'object' && Object.keys(value).length === 3 && 'action' in value && value.action === 'invite' &&
       'peerId' in value && uuid(value.peerId) && 'requestId' in value && uuid(value.requestId)) return value as PublicFlightCommand;
   throw new RequestError(400, 'Invalid shared departure action.');
@@ -112,6 +118,7 @@ export function pairedPublicFlights(access: Access, now = Date.now) {
       const m = locate(player,session,body.client);
       if (!m) { if (command) throw changed(); return empty(); }
       if (command?.action === 'cancel' || command?.action === 'decline') {
+        if (m.round?.repair) throw changed();
         if (m.round?.id === command.id && (command.action === 'cancel' || (!m.round.agreed && m.round.to === m))) end(m.round);
         return empty();
       }
@@ -136,6 +143,25 @@ export function pairedPublicFlights(access: Access, now = Date.now) {
       if (r) {
         if (!await check(r)) return empty();
         m.pulse = now();
+        if (command?.action === 'meet') {
+          if (command.id !== r.id || !r.agreed) throw changed();
+          if (!r.repair) {
+            if (stage(r.from,r) !== 'arrived' || stage(r.to,r) !== 'arrived' || !bySign(r.from) || !bySign(r.to)) throw changed();
+            r.repair = new QuayRepairRound();
+            r.until = now()+10*60000;
+          }
+        }
+        if (r.repair) {
+          const q = r.repair, other = m === r.from ? r.to : r.from;
+          const near = access.atQuay(m.player), otherNear = access.atQuay(other.player);
+          if (!q.stillAtBench(m.player,near) || !q.stillAtBench(other.player,otherNear)) { end(r); return empty(); }
+          if (command?.action === 'repair') {
+            if (!q.apply(m.player,command,near,()=>!!bySign(m) && !!bySign(other))) { end(r); return empty(); }
+          } else if (command && command.action !== 'meet') throw changed();
+          const repair = q.view(m.player,other.player,near);
+          return repair ? {peers:[],round:null,repair} : empty();
+        }
+        if (command?.action === 'repair') throw changed();
         if (command?.action === 'accept') {
           if (command.id !== r.id || r.to !== m) throw changed();
           if (!r.agreed) { r.agreed = true; r.until = now()+10*60000; }
@@ -148,7 +174,7 @@ export function pairedPublicFlights(access: Access, now = Date.now) {
           ...(meetingPeerId ? {meetingPeerId} : {}),
           ship:f && state?.trip ? {tripId:state.trip.id,journey:f.journey,sequence:f.sequence,position:f.position,yaw:f.yaw,pitch:f.pitch} : null}};
       }
-      if (command?.action === 'accept') throw changed();
+      if (command && command.action !== 'invite') throw changed();
       if (!stage(m)) return empty();
       const peers = [...members.values()].filter(other => available(m,other));
       const checked = await Promise.all(peers.map(async other => await authorized(other) && available(m,other) ? other.peer : null));
