@@ -17,6 +17,8 @@ const historyView = $('#history'), messageBox = $('#message'), composer = $('#co
 const chatSettings=$('#chat-settings'), messageActions=$('#message-actions');
 const personalAiProfileButton=$('#personal-ai-direct-profile');
 const tabs = [...root.querySelectorAll('[data-tab]')];
+const groupVoiceNotice=$('#group-voice-notice');
+const ignoredVoiceRooms=new Set();
 const labels = {messages:'消息', contacts:'通讯录', feed:'好友动态', profile:'我'};
 const aiProviderNames = {deepseek:'DeepSeek',openai:'OpenAI（GPT）',anthropic:'Claude（Anthropic）'};
 const aiService=provider=>aiProviderNames[provider]||'云服务';
@@ -27,6 +29,7 @@ let user, generation = 0, tab = 'messages', chat, conversation, chatPortrait, me
 let friends = [], incoming = [], outgoing = [], conversations = [], syncFlight, historyFlight, olderFlight, dialogGeneration = 0;
 let chatVisit=0, moderationCursor=0, historyFloor=0, historyAfter=0, dialogMessage, dialogGroup, dialogCleanup;
 let membershipRevision, historyContext, historyFinder;
+let preserveChatReadState=false;
 let socialVisible=true;
 const calls=mountLiveCalls({api,account:()=>user?.number,chat:()=>chat,goChat,groupVoiceBusy:()=>groupVoice.isBusy()});
 const groupVoice=mountGroupVoicePanel({
@@ -376,6 +379,8 @@ function leaveSession({discardFeedback=false,expired=false}={}) {
   chatPortrait=undefined;
   chat = conversation = historyContext = historyFinder = undefined;
   friends = incoming = outgoing = conversations = messages = [];
+  ignoredVoiceRooms.clear();
+  renderGroupVoiceNotice();
   readThrough.clear();
   readFlights.clear();
   removedMessages.clear();
@@ -599,8 +604,47 @@ contactSearch.append(contactQuery);
 directory.parentElement.querySelector('header').append(contactSearch);
 contactQuery.addEventListener('input',renderDirectory);
 const contactText=value=>(value??'').normalize('NFKC').trim().toLowerCase();
+function renderGroupVoiceNotice(){
+  const live=conversations.filter(item=>item.groupVoice?.numbers.length);
+  const ids=new Set(live.map(item=>item.groupVoice.id));
+  for(const id of ignoredVoiceRooms)if(!ids.has(id))ignoredVoiceRooms.delete(id);
+  const item=user&&(tab!=='messages'||chat)&&live.find(item=>
+    (tab!=='messages'||item.id!==chat)&&!item.muted&&!item.groupVoice.numbers.includes(user.number)&&!ignoredVoiceRooms.has(item.groupVoice.id));
+  groupVoiceNotice.hidden=!item;
+  if(!item){
+    groupVoiceNotice.removeAttribute('data-room');
+    groupVoiceNotice.querySelector('strong').textContent=groupVoiceNotice.querySelector('span').textContent='';
+    return;
+  }
+  groupVoiceNotice.dataset.room=item.groupVoice.id;
+  groupVoiceNotice.querySelector('strong').textContent=item.title;
+  const names=item.groupVoice.numbers.map(number=>item.members.find(member=>member.number===number)?.displayName??number);
+  groupVoiceNotice.querySelector('span').textContent=names.join('、')+'正在语音';
+}
+groupVoiceNotice.querySelector('[data-dismiss]').onclick=()=>{
+  ignoredVoiceRooms.add(groupVoiceNotice.dataset.room);
+  renderGroupVoiceNotice();
+  if(groupVoiceNotice.hidden)(tab==='messages'&&chat?messageBox:tabs.find(node=>node.dataset.tab===tab))?.focus({preventScroll:true});
+};
+groupVoiceNotice.querySelector('[data-view]').onclick=async()=>{
+  const id=groupVoiceNotice.dataset.room,epoch=generation,account=user?.number;
+  const origin=tab,visit=chatVisit,scope=dialogGeneration;
+  const revision=conversations.find(item=>item.groupVoice?.id===id)?.draftAnchor?.revision;
+  const stillHere=()=>generation===epoch&&chatVisit===visit&&dialogGeneration===scope&&tab===origin&&groupVoiceNotice.dataset.room===id;
+  if(!account||!id||!revision)return;
+  try{
+    const result=await api('/conversations',undefined,{expectedAccount:account});
+    if(!stillHere())return;
+    const item=result.conversations.find(item=>item.groupVoice?.id===id);
+    if(item?.draftAnchor?.revision!==revision){ignoredVoiceRooms.add(id);renderGroupVoiceNotice();return;}
+    await goChat(item.id,false,account,{preserveRead:true});
+  }catch{
+    if(stillHere())groupVoiceNotice.querySelector('span').textContent='暂时无法查看，可稍后重试。';
+  }
+};
 function renderDirectory() {
   if(!user) return;
+  renderGroupVoiceNotice();
   conversationList.scope(user.number,tab==='messages');
   contactSearch.hidden=tab!=='contacts';
   renderUnreadNavigation();
@@ -647,6 +691,12 @@ function renderDirectory() {
         content.insertBefore(accountLabel,content.lastElementChild);
       }
       node.dataset.chatId=item.id;
+      if(item.groupVoice?.numbers.length){
+        const text=item.groupVoice.numbers.length+' 人正在语音';
+        content.append(el('span',text,'conversation-voice-status'));
+        const label=node.getAttribute('aria-label');
+        if(label)node.setAttribute('aria-label',label+'，'+text);
+      }
       node.setAttribute('aria-current',String(chat===item.id));
       return node;
     },empty);
@@ -679,11 +729,11 @@ function routeId() {
   if(!location.hash.startsWith('#chat/')) return undefined;
   try { return decodeURIComponent(location.hash.slice(6)) || undefined; } catch {return undefined;}
 }
-async function goChat(id,focusEditor=false,expectedAccount) {
+async function goChat(id,focusEditor=false,expectedAccount,{preserveRead=false}={}) {
   tab='messages';
   const route='#chat/'+encodeURIComponent(id);
   if(location.hash!==route) window.history.pushState(null,'',route);
-  await openChat(id,expectedAccount);
+  await openChat(id,expectedAccount,preserveRead,{preserveRead});
   const active=document.activeElement;
   if(focusEditor&&chat===id&&conversation&&!dialog.open&&
      (active===document.body||active.id==='back'||active.dataset.chatId===id)){
@@ -1692,8 +1742,9 @@ $('#ai-proactive').addEventListener('click',async()=>{
     if(current())body.textContent=textError(error);
   }
 });
-async function openChat(id,expectedAccount,reload=false) {
+async function openChat(id,expectedAccount,reload=false,{preserveRead=false}={}) {
   if(!user) return;
+  preserveChatReadState=preserveRead;
   if(!reload&&id===chat && (conversation||!id)) {renderDirectory();showChatHeader();return;}
   stopVoicePlayback();
   if(dialogMessage||chat&&dialogGroup===chat)closeDialog();
@@ -1771,7 +1822,7 @@ async function loadChatPortrait(id,visit) {
   }
 }
 async function acknowledgeRead() {
-  if(!user||!chat||historyContext||historyFinder||!Number.isSafeInteger(conversation?.readThrough)||!socialVisible||document.hidden||readFlights.has(chat))return;
+  if(!user||!chat||preserveChatReadState||historyContext||historyFinder||!Number.isSafeInteger(conversation?.readThrough)||!socialVisible||document.hidden||readFlights.has(chat))return;
   const id=chat, epoch=generation, expectedAccount=user.number;
   const through=messages.findLast(row=>row.id<=historyAfter&&row.sender.number!==expectedAccount&&!row.removed)?.id;
   if(!(through>(readThrough.get(id)??0)))return;

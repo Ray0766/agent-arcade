@@ -664,7 +664,7 @@ class SocialStore {
     return this.one(`SELECT coalesce(s.enabled,c.type='group') AS enabled,coalesce(s.revision,0) AS revision
       FROM chats c LEFT JOIN ai_web_search_settings s ON s.chat=c.id WHERE c.id=?`,chat);
   }
-  conversation(a,id) {
+  conversation(a,id,includeDraftAnchor=false) {
     const c = this.access(a,id);
     const members = this.all(`SELECT u.number,u.name AS displayName,u.kind,a.revision AS avatarRevision FROM users u
       JOIN members m ON m.account=u.number LEFT JOIN human_avatars a ON a.account=u.number AND u.kind='human'
@@ -686,6 +686,7 @@ class SocialStore {
     const search=hasAi&&this.webSearchSetting(id);
     const webSearch=hasAi&&{enabled:!!search?.enabled,revision:search?.revision??0,canManage:c.type==='direct'||c.owner===a};
     return {id, type:c.type, title:c.type === 'direct' ? members.find(m => m.number !== a).displayName : c.title,
+      ...(includeDraftAnchor&&{draftAnchor:{floor:c.since,revision:c.membershipRevision}}),
       ownerNumber:c.owner, members, lastMessage:last ? this.message(last) : null, readThrough, unreadThrough, ...(cloudChat&&{cloudChat}),
       ...(c.friendRemoved&&{friendRemoved:true}),
       ...(aiProvider&&{aiProvider}),...(requiresAiCloudConsent&&{requiresAiCloudConsent}),...(webSearch&&{webSearch}),
@@ -705,7 +706,7 @@ class SocialStore {
   conversations(a) {
     return this.all(`SELECT c.id FROM members m JOIN chats c ON c.id=m.chat WHERE m.account=?
       ORDER BY coalesce((SELECT created FROM messages WHERE chat=c.id AND id>m.since ORDER BY id DESC LIMIT 1), c.created) DESC,c.id`,a)
-      .map(row => this.conversation(a,row.id));
+      .map(row => this.conversation(a,row.id,true));
   }
   history(a,id,params) {
     return this.historyPage(a,id,params).messages;

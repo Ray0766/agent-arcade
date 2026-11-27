@@ -34,6 +34,13 @@ function createGroupVoice(store,privateBusy,now=Date.now){
     if(room)refresh(room,roster(room.chat));
     return seated.has(number);
   }
+  // Only called for conversations already selected for the authenticated viewer.
+  function summary(conversation){
+    const room=rooms.get(conversation.id);
+    if(!room)return;
+    refresh(room,roster(room.chat));
+    if(room.members.size)return {id:room.id,numbers:[...room.members.keys()]};
+  }
   function project(room,self){
     if(!room)return {room:null};
     return {room:{id:room.id,chat:room.chat,
@@ -108,6 +115,6 @@ function createGroupVoice(store,privateBusy,now=Date.now){
     for(const [attempt,until] of retired)if(until<=now())retired.delete(attempt);
   },lease);
   sweep.unref();
-  return {handle,disconnect,isBusy,close:()=>clearInterval(sweep)};
+  return {handle,disconnect,isBusy,summary,close:()=>clearInterval(sweep)};
 }
 module.exports={createGroupVoice};

@@ -67,10 +67,16 @@ test('three real HTTP sessions share one room, with private pairwise signaling, 
   assert.equal(discovery.self,null);
   assert.equal(discovery.signals,undefined);
   assert.equal(discovery.participants.length,2);
+  const listed=async w=>(await w.api('/conversations')).conversations.find(item=>item.id===chat);
+  const activeChat=await listed(chen);
+  assert.equal(activeChat.draftAnchor.revision,chen.revision);
+  assert.deepEqual(activeChat.groupVoice,{id:lr.id,numbers:discovery.participants.map(p=>p.number)});
+  assert.equal(await listed(other),undefined);
   const signal=(from,to,type,sdp,status=200)=>from.post('signal',{...from.joined(),to:to.self,type,sdp},status);
   const offer=description('lin-to-zhou');
   await signal(lin,zhou,'offer',offer);
   await signal(lin,zhou,'offer',offer);
+  assert.deepEqual(Object.keys((await listed(chen)).groupVoice).sort(),['id','numbers']);
   assert.deepEqual((await zhou.get(zhou.joined())).room.signals,[{from:lin.self,type:'offer',sdp:offer}]);
   await chen.get(zhou.joined(),409);
   await chen.post('ice',zhou.joined(),409);
@@ -98,6 +104,7 @@ test('three real HTTP sessions share one room, with private pairwise signaling, 
   await chen.post('leave',old,409);
   assert.deepEqual((await chen.get(chen.joined())).room.signals,[]);
   store.remove('chen_yu',chat,'chen_yu',true);
+  assert.equal(await listed(chen),undefined);
   await chen.get(chen.joined(),404);
   assert.equal((await lin.get(lin.joined())).room.participants.length,2);
   store.addMembers('lin_xiao',chat,['chen_yu']);
@@ -121,6 +128,7 @@ test('three real HTTP sessions share one room, with private pairwise signaling, 
   assert.equal((await lin.get(lin.joined())).room.participants.length,1);
   await lin.post('leave',lin.joined());
   assert.deepEqual(await lin.get(),{room:null});
+  assert.equal((await listed(lin)).groupVoice,undefined);
   const privateCall=(await second.api('/calls/'+second.device,{action:'dial',chat:direct,kind:'audio'})).call;
   await lin.post('join',{joinId:randomUUID()},409);
   await second.api('/calls/'+second.device,{action:'end',id:privateCall.id});

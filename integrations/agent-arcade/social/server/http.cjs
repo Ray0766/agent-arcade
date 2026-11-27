@@ -69,7 +69,7 @@ function legacyConversation(conversation) {
       {...member,displayName:member.displayName+'（'+hint+'）'}:member)};
 }
 const bothousePairing = require('./bothouse/pairing.cjs');
-function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders) {
+function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders,groupVoice) {
   const {method, parts:[root,id,action,msg,sub], parts, claudeUi, friendRolesUi} = route;
   const visibleRole=role=>claudeUi||role.number!==AI_JU_NUMBER;
   const conversationView=conversation=>claudeUi?conversation:legacyConversation(conversation);
@@ -142,7 +142,10 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
       const {conversation}=store.acceptAiFriendRequest(a,target.number);
       return {conversation:conversationView(conversation)};
     }
-    case 'GET conversations': return {conversations:store.conversations(a).map(conversationView)};
+    case 'GET conversations': return {conversations:store.conversations(a).map(item=>{
+      const view=conversationView(item),summary=groupVoice.summary(item);
+      return summary?{...view,groupVoice:summary}:view;
+    })};
     case 'POST direct': {
       const direct = store.direct(a,number(body.number));
       if (!direct) fail(403,'friends_only','请先添加好友');
@@ -701,7 +704,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         const preparedTask=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3
           ? await workOrders.prepare(account,chat,body):undefined;
         if(preparedTask&&current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
-        const handle = () => dispatch(store,account,{method:req.method,parts,claudeUi,preparedTask,friendRolesUi:req.headers['x-social-ai-friend-roles']==='1'},body,url.searchParams,build,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders);
+        const handle = () => dispatch(store,account,{method:req.method,parts,claudeUi,preparedTask,friendRolesUi:req.headers['x-social-ai-friend-roles']==='1'},body,url.searchParams,build,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders,groupVoice);
         result = req.method === 'POST' ? store.transaction(handle) : handle();
         if(result.cancelWebChat){
           web.cancel(result.cancelWebChat);
