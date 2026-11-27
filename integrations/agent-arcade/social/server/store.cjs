@@ -664,6 +664,53 @@ class SocialStore {
     return this.one(`SELECT coalesce(s.enabled,c.type='group') AS enabled,coalesce(s.revision,0) AS revision
       FROM chats c LEFT JOIN ai_web_search_settings s ON s.chat=c.id WHERE c.id=?`,chat);
   }
+  conversationReadFloor(account,chat){
+    return Math.max(chat.since,this.one('SELECT through FROM conversation_reads WHERE chat=? AND account=?',
+      chat.id,account)?.through??0);
+  }
+  latestIncoming(account,id,floor,last){
+    return this.one(`SELECT id FROM messages WHERE chat=? AND id>? AND id<=? AND sender<>? AND removed=0
+      ORDER BY id DESC LIMIT 1`,id,floor,last,account)?.id??null;
+  }
+  noticeTarget(account,id,params){
+    if(params.get('account')!==account)fail(409,'notice_session','账号已切换');
+    const through=Number(params.get('through')),kind=params.get('kind'),after=params.get('after');
+    if(!isPostId(params.get('through'))||(after!==null&&after!=='0'&&!isPostId(after)))
+      fail(400,'cursor','通知位置无效');
+    const click=kind!==null;
+    if(click&&(!['direct','mention','none'].includes(kind)||!params.get('membershipRevision')||
+      (kind==='none'?params.has('messageId'):!isPostId(params.get('messageId')))))
+      fail(400,'notice_target','通知目标无效');
+    const chat=this.access(account,id);
+    const result={account,chat:id,through,membershipRevision:chat.membershipRevision,eligible:false,target:null};
+    if(chat.friendRemoved||this.one('SELECT 1 FROM muted_conversations WHERE chat=? AND account=?',id,account))return result;
+    let floor=chat.since;
+    if(click){
+      result.eligible=true;
+      if(kind==='none'||params.get('membershipRevision')!==chat.membershipRevision)return result;
+      // A later group reply can be removed without removing the earlier mention.
+      if(!this.one('SELECT 1 FROM messages WHERE chat=? AND id=? AND id>? AND sender<>?',id,through,floor,account))return result;
+    }else{
+      floor=Math.max(this.conversationReadFloor(account,chat),Number(after));
+      if(this.latestIncoming(account,id,floor,Number.MAX_SAFE_INTEGER)!==through)return result;
+      result.eligible=true;
+    }
+    const requested=click?Number(params.get('messageId')):null;
+    let row;
+    if(chat.type==='group'&&(!click||kind==='mention')){
+      row=this.one(`SELECT m.id FROM message_mentions mention JOIN messages m ON m.id=mention.message
+        WHERE mention.account=? AND m.chat=? AND m.id>? AND m.id<=? AND m.sender<>? AND m.removed=0
+        AND (? IS NULL OR m.id=?) ORDER BY m.id DESC LIMIT 1`,account,id,floor,through,account,requested,requested);
+      if(row)result.target={kind:'mention',messageId:row.id};
+    }else if(chat.type==='direct'&&(!click||kind==='direct'&&requested===through)){
+      const peer=chat.first_user===account?chat.second_user:chat.first_user;
+      row=this.one(`SELECT m.id FROM messages m JOIN users u ON u.number=m.sender AND u.kind='human'
+        JOIN users viewer ON viewer.number=? AND viewer.kind='human'
+        WHERE m.chat=? AND m.id=? AND m.id>? AND m.sender=? AND m.removed=0`,account,id,through,floor,peer);
+      if(row)result.target={kind:'direct',messageId:row.id};
+    }
+    return result;
+  }
   conversation(a,id) {
     const c = this.access(a,id);
     const members = this.all(`SELECT u.number,u.name AS displayName,u.kind,a.revision AS avatarRevision FROM users u
@@ -671,9 +718,8 @@ class SocialStore {
       WHERE m.chat=? ORDER BY u.number`,id)
       .map(({avatarRevision,...member})=>avatarRevision?{...member,avatarRevision}:member);
     const last = this.one('SELECT * FROM messages WHERE chat=? AND id>? ORDER BY id DESC LIMIT 1',id,c.since);
-    const readThrough=Math.max(c.since,this.one('SELECT through FROM conversation_reads WHERE chat=? AND account=?',id,a)?.through??0);
-    const unreadThrough=last?.id>readThrough?this.one(`SELECT id FROM messages
-      WHERE chat=? AND id>? AND id<=? AND sender<>? AND removed=0 ORDER BY id DESC LIMIT 1`,id,readThrough,last.id,a)?.id??null:null;
+    const readThrough=this.conversationReadFloor(a,c);
+    const unreadThrough=last?.id>readThrough?this.latestIncoming(a,id,readThrough,last.id):null;
     const muted=!!this.one('SELECT 1 FROM muted_conversations WHERE chat=? AND account=?',id,a);
     const permission=c.type==='direct'&&this.directAiConsent(a,id);
     const cloudChat=permission&&{enabled:!!permission.enabled,revision:permission.revision};
