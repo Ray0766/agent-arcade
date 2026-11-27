@@ -12,6 +12,7 @@ import { landingSites, nearbyDoorstepFlower, residentWalkEnd } from './bothouse-
 import { planResidentBench, type ResidentBenchPlan } from './resident-bench-rest.ts';
 import { distance } from '../shared/world.ts';
 import type { ResidentGuideEntry } from './resident-guide-target.ts';
+import { residentArrivalSubject } from './resident-arrival-view.ts';
 
 type Resident = PlanetResident & Parameters<typeof residentPortrait>[1];
 type Portrait = ReturnType<typeof residentPortrait>;
@@ -337,6 +338,12 @@ export class BothouseResidents {
       const motion = this.figures.get(id)?.motion;
       return { id, name: displayName, pose: motion?.valid ? motion.pose : null };
     });
+  }
+  guideSight(id: string, world: GroundWorld, epoch: number) {
+    if (world !== this.visitorWorld || !this.friendVisitAllowed || !this.closure.hidden ||
+        this.visit !== world.planetId+'/'+epoch+'/'+world.revision) return null;
+    const figure = this.figures.get(id);
+    return figure?.motion.valid ? residentArrivalSubject(figure.model.root) : null;
   }
   private greetingDistance(figure: ResidentFigure, viewer: T.Vector3, camera: T.Camera) {
     const world = this.visitorWorld;
