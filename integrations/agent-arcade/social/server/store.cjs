@@ -1,4 +1,5 @@
 'use strict';
+const {createHash}=require('node:crypto');
 
 const {attribution}=require('./public-reactions.cjs');
 
@@ -43,6 +44,9 @@ const savedStickerVisibility=`FROM saved_stickers s JOIN messages m ON m.id=s.me
   JOIN members viewer ON viewer.chat=m.chat AND viewer.account=s.account
   WHERE s.account=? AND m.removed=0 AND m.id>viewer.since`;
 
+function postBodyDigest(value){
+  return createHash('sha256').update(value).digest('hex');
+}
 class SocialStore {
   constructor(filename) {
     this.db = new DatabaseSync(filename);
@@ -478,6 +482,7 @@ class SocialStore {
     const webResults=!r.removed&&r.nonce.startsWith('ai-reply-')&&
       this.one('SELECT sources FROM message_web_results WHERE message=?',r.id)?.sources;
     return {id:r.id, conversationId:r.chat, sender:this.messagePerson(r.sender), clientId:r.nonce,
+      ...(!r.removed&&r.nonce.startsWith('forward-')&&this.one('SELECT 1 FROM forwarded_messages WHERE message=?',r.id)&&{forwarded:true}),
       ...(webResults&&{webResults:JSON.parse(webResults)}),
       text:r.removed ? '[已移除]' : image?(drawing!==null?'[AI 绘图]':label?'[表情图]':'[图片]'):voice?'[语音]':file?'[文件] '+file.name:r.body,
       createdAt:r.created, removed:Boolean(r.removed),
@@ -821,6 +826,54 @@ class SocialStore {
     const quotes=new Map(rows.map(row=>[row.message,row.id===null?{unavailable:true}:
       {id:row.id,name:row.name,text:row.text}]));
     return messages.map(message=>quotes.has(message.id)?{...message,quote:quotes.get(message.id)}:message);
+  }
+  messageForwardPreview(account,source,{expectedAccount,sourceRevision,target,ids}){
+    if(expectedAccount!==account)fail(409,'forward_session','账号已切换，请重新打开会话');
+    const from=this.access(account,source);
+    if(from.membershipRevision!==sourceRevision)fail(409,'forward_session','来源会话权限已变更，请重新选择消息');
+    if(this.user(account).kind!=='human'||typeof target!=='string'||!Array.isArray(ids)||
+      !ids.length||ids.length>20||new Set(ids).size!==ids.length||ids.some(id=>!Number.isSafeInteger(id)||id<1))
+      fail(400,'forward_selection','请选择 1 至 20 条普通文字消息');
+    const to=this.writableChat(account,target);
+    const conversation=this.conversation(account,target);
+    if(to.type==='direct'&&(conversation.members.length!==2||conversation.members.some(member=>member.kind!=='human')))
+      fail(403,'forward_target','请选择真人私聊或群聊');
+    const sources=this.all(`SELECT * FROM messages WHERE chat=? AND id>? AND removed=0
+      AND id IN (${ids.map(()=>'?').join(',')}) ORDER BY id`,source,from.since,...ids);
+    if(sources.length!==ids.length)fail(409,'forward_source','有原消息已撤回、移除或不可查看，请重新选择');
+    const entries=sources.map(row=>{
+      const message=this.message(row);
+      if(message.attachment||message.task||message.imageQuestion||message.webResults?.length||
+        !row.body.trim()||Array.from(row.body).length>4000)
+        fail(400,'forward_selection','批量转发仅支持普通文字和文字中的链接');
+      return {id:row.id,text:row.body.trim()};
+    });
+    const recipient={id:target,type:to.type,title:conversation.title,members:conversation.members
+      .filter(member=>member.number!==account).map(({number,displayName,kind})=>({number,displayName,kind}))};
+    const review=postBodyDigest(JSON.stringify([source,sourceRevision,to.membershipRevision,recipient,entries]));
+    return {recipient,entries,review};
+  }
+  forwardMessages(account,source,body){
+    const {expectedAccount,target,ids,review,clientId}=body;
+    if(expectedAccount!==account)fail(409,'forward_session','账号已切换，请重新打开会话');
+    if(typeof clientId!=='string'||!/^[a-f0-9]{32}$/u.test(clientId)||
+      typeof review!=='string'||!/^[a-f0-9]{64}$/u.test(review))
+      fail(400,'forward_request','请先查看转发预览');
+    const intent=postBodyDigest(JSON.stringify([source,target,ids,review]));
+    const previous=this.one('SELECT intent,count FROM message_forward_batches WHERE account=? AND nonce=?',account,clientId);
+    if(previous){
+      if(previous.intent!==intent)fail(409,'forward_request','本次确认与原转发请求不一致');
+      return {count:previous.count};
+    }
+    // POST dispatch wraps the full permission check and all inserts in one transaction.
+    const confirmed=this.messageForwardPreview(account,source,body);
+    if(confirmed.review!==review)fail(409,'forward_changed','收件方或消息已变更，请返回重新预览');
+    for(const {text} of confirmed.entries)
+      this.send(account,target,{text,clientId:'forward-'+randomUUID()},message=>
+        this.run('INSERT INTO forwarded_messages(message) VALUES(?)',message.id));
+    const count=confirmed.entries.length;
+    this.run('INSERT INTO message_forward_batches(account,nonce,intent,count) VALUES(?,?,?,?)',account,clientId,intent,count);
+    return {count};
   }
   send(a,id,body,onInsert) {
     const chat = this.writableChat(a,id);

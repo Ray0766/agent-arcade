@@ -193,6 +193,10 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
     if (parts.length===3&&method==='POST'&&action==='remove-friend')return store.removeFriend(a,id,body);
     if (parts.length===3&&method==='POST'&&action==='friend-remark')return store.saveFriendRemark(a,id,body);
     if (parts.length === 3 && action === 'read' && method === 'POST') return store.markConversationRead(a,id,body);
+    if(parts.length===3&&method==='POST'){
+      if(action==='forward-preview')return store.messageForwardPreview(a,id,body);
+      if(action==='forward')return store.forwardMessages(a,id,body);
+    }
     if (parts.length === 3 && action === 'history-search' && method === 'GET') {
       const page=store.historySearch(a,id,params);
       return page.messages?{...page,messages:store.withMessageReactions(a,id,store.withReplyPreviews(a,id,page.messages))}:page;

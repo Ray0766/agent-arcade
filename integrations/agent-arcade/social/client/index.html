@@ -89,6 +89,15 @@
    <textarea id="message" rows="1" maxlength="4000" placeholder="写消息…" aria-controls="mention-suggestions" required></textarea>
    <button type="submit" class="primary">发送</button>
   </form>
+  <div id="message-selection" class="message-selection" role="group" aria-label="多选消息" hidden>
+   <div class="message-selection-feedback">
+    <p id="message-selection-count" role="status"></p>
+    <p id="message-selection-status" class="minor" role="status"></p>
+   </div>
+   <button id="message-selection-exit" type="button" class="outline">退出多选</button>
+   <button id="message-selection-copy" type="button" class="outline" disabled>复制所选</button>
+   <button id="message-selection-forward" type="button" class="primary" disabled>转发所选</button>
+  </div>
  </section>
  <section id="friend-feed" class="friend-feed" aria-labelledby="feed-title" hidden>
   <div class="feed-column">
@@ -133,6 +142,7 @@
  <div id="message-reaction-choices" class="message-reactions" role="group" aria-label="添加或撤掉表情回应"></div>
  <button id="reply-message" type="button" hidden>回复</button>
  <button id="copy-message" type="button">复制文字</button>
+ <button id="select-messages" type="button" hidden>多选</button>
  <button id="save-message-sticker" type="button" hidden>收藏为表情</button>
  <button id="report-message" type="button">举报消息</button>
  <p id="message-action-status" role="status"></p>

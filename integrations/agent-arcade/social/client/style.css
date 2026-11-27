@@ -459,3 +459,57 @@ button.message-quote { display:block; width:100%; font:inherit; color:inherit; b
 .message-quote strong { display:block; font-size:.85em; }
 .reply-target:not([hidden]) { display:flex; align-items:center; gap:.5rem; grid-column:1/-1; }
 .reply-target span { flex:1; }
+
+.message-selection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: .5rem;
+  padding: .625rem clamp(11px, 3vw, 38px) max(.625rem, env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+.message-selection-feedback {
+  font-size: .875rem;
+  font-weight: 650;
+}
+.message-selection-feedback .minor { font-weight: 400; }
+.message-selection-feedback .minor:empty { display: none; }
+.forward-panel { display: grid; gap: .65rem; min-width: 0; }
+.forward-panel h3, .forward-panel p { margin: 0; overflow-wrap: anywhere; }
+.forward-panel label { display: grid; gap: .4rem; }
+.forward-panel select { width: 100%; min-height: 44px; padding: 0 .65rem; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: .6rem; font: inherit; }
+.forward-panel form > button { justify-self: start; }
+.forward-entries { margin: 0; padding: .3rem .7rem .3rem 2rem; max-height: 42vh; overflow: auto; background: var(--wash); border-radius: .65rem; }
+.forward-entries li { padding: .5rem .15rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.forward-entries li + li { border-top: 1px solid var(--line); }
+.forwarded-label { margin: .15rem 0; }
+@media(max-width:480px) {
+  .message-selection { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .message-selection-feedback { grid-column: 1/-1; }
+}
+.message-select-toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  min-height: 44px;
+  margin-top: .35rem;
+  cursor: pointer;
+}
+.message-select-toggle input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--plum);
+  cursor: pointer;
+}
+.bubble.message-selected .body {
+  box-shadow: inset 0 0 0 1px var(--plum);
+  background: var(--select);
+}
+#message-actions { max-height: calc(100dvh - 16px); overflow: auto; }
+.forward-panel { display:grid; gap:.75rem; min-width:0; }
+.forward-panel select { display:block; width:100%; margin-top:.25rem; }
+.forward-entries { margin:0; padding-inline-start:1.5rem; overflow-wrap:anywhere; }
+.forward-entries li { margin-block:.375rem; white-space:pre-wrap; }
+.forwarded-label { margin:0; }
