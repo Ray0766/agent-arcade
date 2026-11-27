@@ -7,6 +7,9 @@ if(process.isMainFrame&&location.pathname==='/'&&!location.search){
       open:({account,number})=>ipcRenderer.invoke('arcade:visitFriend',{account,number}),
     });
   }
+  require('electron').contextBridge.exposeInMainWorld('arcadeCallCamera',{
+    prepare:input=>ipcRenderer.invoke('arcade:prepareCallCamera',input),
+  });
   const versionArgument='--arcade-feedback-desktop-version=';
   const desktopVersion=process.argv.find(arg=>arg.startsWith(versionArgument))?.slice(versionArgument.length);
   document.addEventListener('DOMContentLoaded',()=>{
