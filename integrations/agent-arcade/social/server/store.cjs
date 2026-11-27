@@ -416,6 +416,33 @@ class SocialStore {
     if(!row.body.trim()||message.attachment||message.task||message.imageQuestion)unavailable();
     return message;
   }
+  reviewGroupTaskSource(account,prompt){
+    const anchor=this.one(`SELECT s.source_chat AS chatId,s.source_message AS messageId
+      FROM bothouse_work_order_group_sources s JOIN bothouse_work_orders w ON w.prompt=s.prompt
+      WHERE s.prompt=? AND w.human=?`,prompt,account);
+    if(!anchor)fail(404,'group_task_source','这条回件没有可用的原群消息');
+    const group=this.group(account,anchor.chatId);
+    const message=this.checkGroupTaskSource(account,{...anchor,membershipRevision:group.membershipRevision});
+    const [{quote}]=this.withReplyPreviews(account,anchor.chatId,[message]);
+    const questionSender=quote?.id&&this.one('SELECT sender FROM messages WHERE id=?',quote.id)?.sender;
+    const question=questionSender&&questionSender!==account?{id:quote.id,text:quote.text,author:quote.name}:undefined;
+    return {group:{id:anchor.chatId,title:group.title,membershipRevision:group.membershipRevision},
+      source:{id:message.id,text:message.text,author:message.sender.displayName},...(question&&{question})};
+  }
+  groupTaskResult(account,id,result){
+    const direct=this.access(account,id);
+    if(direct.type!=='direct'||direct.friendRemoved)return;
+    return this.one(`SELECT w.* FROM bothouse_work_orders w
+      JOIN bothouse_work_order_group_sources link ON link.prompt=w.prompt
+      JOIN messages result ON result.chat=w.chat AND result.sender=w.ai
+        AND result.nonce='work_'||w.request||'_'||w.attempt||'_returned'
+      JOIN messages prompt ON prompt.id=w.prompt AND prompt.chat=w.chat AND prompt.sender=w.human
+      JOIN members viewer ON viewer.chat=link.source_chat AND viewer.account=w.human
+      JOIN messages source ON source.id=link.source_message AND source.chat=viewer.chat AND source.sender=w.human
+      WHERE w.chat=? AND w.human=? AND w.state='returned' AND result.id=?
+        AND result.id>? AND result.removed=0 AND prompt.id>? AND prompt.removed=0
+        AND source.id>viewer.since AND source.removed=0`,id,account,result,direct.since,direct.since);
+  }
   access(a,id) {
     // Existing memberships keep a stable identity until they are removed.
     const chat = this.one(`SELECT c.*,m.since,COALESCE(r.revision,c.id||'/'||m.account) AS membershipRevision,
@@ -833,7 +860,12 @@ class SocialStore {
       since,id,since,...messages.map(message=>message.id));
     const quotes=new Map(rows.map(row=>[row.message,row.id===null?{unavailable:true}:
       {id:row.id,name:row.name,text:row.text}]));
-    return messages.map(message=>quotes.has(message.id)?{...message,quote:quotes.get(message.id)}:message);
+    return messages.map(message=>{
+      const quote=quotes.get(message.id);
+      const hasGroupTaskSource=!message.removed&&message.sender.kind==='ai'&&
+        /^work_.+_[0-9]+_returned$/u.test(message.clientId)&&Boolean(this.groupTaskResult(a,id,message.id));
+      return quote||hasGroupTaskSource?{...message,...(quote&&{quote}),...(hasGroupTaskSource&&{hasGroupTaskSource})}:message;
+    });
   }
   send(a,id,body,onInsert) {
     const chat = this.writableChat(a,id);

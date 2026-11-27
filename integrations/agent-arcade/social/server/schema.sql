@@ -564,4 +564,9 @@ CREATE TABLE IF NOT EXISTS bothouse_task_claims (
   attempt INTEGER NOT NULL, state TEXT NOT NULL, updated INTEGER NOT NULL, result TEXT,
   PRIMARY KEY(prompt,attempt)
 );
+CREATE TABLE IF NOT EXISTS bothouse_work_order_group_sources (
+  prompt INTEGER PRIMARY KEY REFERENCES bothouse_work_orders(prompt) ON DELETE CASCADE,
+  source_chat TEXT NOT NULL REFERENCES chats(id),
+  source_message INTEGER NOT NULL REFERENCES messages(id)
+);
 CREATE INDEX IF NOT EXISTS bothouse_work_due ON bothouse_work_orders(state,next_check);

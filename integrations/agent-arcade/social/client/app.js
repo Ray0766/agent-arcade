@@ -31,6 +31,7 @@ let inlineVoice, messageAction;
 let feedScope='friends', feedCursor=null, feedRead=0, pendingPost;
 let feedRoles=[], feedFollowFlight=false;
 const postDraftKey='arcade.friendPost.pending';
+const groupTaskReplyDrafts=new Map();
 const removedMessages=new Set();
 let authMode = 'login', authFlight = false;
 const drafts = new Map(), sending = new Set();
@@ -363,6 +364,7 @@ function leaveSession({discardFeedback=false,expired=false}={}) {
   readThrough.clear();
   readFlights.clear();
   removedMessages.clear();
+  groupTaskReplyDrafts.clear();
   drafts.clear();
   persistChatDrafts();
   sending.clear();
@@ -1934,6 +1936,7 @@ function renderHistory(scroll) {
       results.append(info);
       content.append(meta,results);
     }else content.append(meta,textBubble(message,text));
+    if(message.hasGroupTaskSource&&!message.removed)content.append(groupTaskReplyControl(message));
     if(message.quote&&!message.removed)meta.after(quoteControl(message.quote,locateQuotedMessage));
     if(mine&&!message.removed&&message.personalVoiceOffer)content.append(voiceOfferControls(message));
     if(message.imageQuestion){
@@ -4006,6 +4009,142 @@ async function openWorldAiChat(account) {
     if(!current()||error.status===409)return;
   }
   if(current())showAiContacts();
+}
+function groupTaskReplyControl(message){
+  const control=button('摘录答复原群',()=>void openGroupTaskReply(message),'outline');
+  return control;
+}
+
+async function openGroupTaskReply(message){
+  const account=user?.number,id=chat,epoch=generation,visit=chatVisit;
+  const current=()=>socialVisible&&user?.number===account&&generation===epoch&&chatVisit===visit&&
+    chat===id&&routeId()===id;
+  if(!account||!current()||message.conversationId!==id||
+     !visibleHistory().some(row=>row.id===message.id&&!row.removed&&row.hasGroupTaskSource))return;
+  const route=thread(id)+'/messages/'+message.id+'/task-group-source';
+  const status=el('p','正在核对原群和原问题…','minor');
+  status.setAttribute('role','status');
+  const scope=openDialog('摘录答复原群',[status]);
+  const showing=()=>current()&&dialogGeneration===scope&&dialog.open;
+  const options={expectedAccount:account};
+
+  try{
+    const preview=await api(route+'?'+new URLSearchParams({account}),undefined,options);
+    if(!showing())return;
+    const {group,source,question}=preview;
+    const key=JSON.stringify([account,id,message.id]);
+    const draft=groupTaskReplyDrafts.get(key)??{text:''};
+    const cancelDraft=()=>{
+      groupTaskReplyDrafts.delete(key);
+      closeDialog();
+    };
+    const form=el('form',null,'group-message-task-form task-group-reply');
+    const recipient=el('p',null,'group-message-task-recipient');
+    recipient.append(el('span','发送到原群','minor'),el('strong',group.title));
+    const quoted=el('fieldset',null,'task-group-reply-question');
+    quoted.append(el('legend',question?'选择要引用的消息':'将引用的消息'));
+    for(const [row,kind] of [[question,'原问题'],[source,'交办来源']]){
+      if(!row)continue;
+      const label=el('label',null,'task-group-reply-quote');
+      const choice=el('input');
+      choice.name='task-group-reply-quote';
+      choice.type='radio';
+      choice.value=String(row.id);
+      choice.required=true;
+      choice.checked=!question||row.id===draft.replyTo;
+      choice.addEventListener('change',()=>{
+        draft.replyTo=row.id;
+        groupTaskReplyDrafts.set(key,draft);
+      });
+      label.append(choice,el('strong',kind+' · '+row.author),el('blockquote',row.text));
+      quoted.append(label);
+    }
+    const replyLabel=el('label','将发送的答复');
+    const reply=el('textarea');
+    reply.rows=3;
+    reply.maxLength=messageBox.maxLength;
+    reply.placeholder='选择一段回件，或写下你自己的答复';
+    reply.required=true;
+    reply.value=draft.text;
+    const saveDraft=()=>{
+      draft.text=reply.value;
+      groupTaskReplyDrafts.set(key,draft);
+    };
+    reply.addEventListener('input',saveDraft);
+    replyLabel.append(reply);
+    const details=el('details',null,'task-group-reply-excerpt');
+    const selectLabel=el('label','选中要采用的回件文字');
+    const result=el('textarea');
+    result.readOnly=true;
+    result.rows=3;
+    result.value=message.text.replace(/^任务 #[1-9]\d* · 已交回\n/u,'');
+    selectLabel.append(result);
+    const excerpt=button('采用选中文字',()=>{
+      const selection=result.value.slice(result.selectionStart,result.selectionEnd).trim();
+      if(!selection||selection.length>reply.maxLength){
+        hint.textContent=selection?'所选文字太长，请缩短后采用。':'请先选中要采用的回件文字。';
+        result.focus({preventScroll:true});
+        return;
+      }
+      reply.value=selection;
+      saveDraft();
+      hint.textContent='';
+      details.open=false;
+      reply.focus({preventScroll:true});
+    });
+    const hint=el('p',null,'minor');
+    hint.setAttribute('role','status');
+    details.append(el('summary','从角色回件选一段'),selectLabel,excerpt,hint);
+    const actions=el('div',null,'group-message-task-actions');
+    const cancel=button('取消',cancelDraft);
+    const submit=el('button','发送到原群','primary');
+    submit.type='submit';
+    actions.append(cancel,submit);
+    form.append(recipient,quoted,details,replyLabel,actions);
+    status.replaceWith(form);
+    form.querySelector('summary').focus({preventScroll:true});
+
+    const feedback=$('#dialog-error');
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();
+      if(!showing()||submit.disabled)return;
+      const text=reply.value.trim();
+      const replyTo=Number(form.elements.namedItem('task-group-reply-quote').value);
+      if(replyTo!==source.id&&replyTo!==question?.id)return;
+      if(!text||text.length>reply.maxLength){
+        feedback.textContent='请填写要发送的答复。';
+        reply.focus();
+        return;
+      }
+      draft.clientId??=clientNonce();
+      saveDraft();
+      submit.disabled=cancel.disabled=excerpt.disabled=quoted.disabled=reply.readOnly=true;
+      submit.textContent='正在发送…';
+      feedback.textContent='';
+      try{
+        await api(thread(group.id)+'/messages',{clientId:draft.clientId,text,replyTo,
+          membershipRevision:group.membershipRevision,taskHandback:{chatId:id,resultId:message.id}},options);
+        groupTaskReplyDrafts.delete(key);
+        if(!showing())return;
+        closeDialog();
+        $('#send-error').textContent='已向「'+group.title+'」发送引用答复。';
+        void sync();
+      }catch(error){
+        if(showing())feedback.textContent=replyProblem(error)+' 答复正文仍在这里。';
+      }finally{
+        if(showing()){
+          submit.disabled=cancel.disabled=excerpt.disabled=quoted.disabled=reply.readOnly=false;
+          submit.textContent='发送到原群';
+        }
+      }
+    });
+  }catch(error){
+    if(showing())status.textContent=replyProblem(error);
+  }
+}
+function replyProblem(error){
+  if([403,404,409].includes(error.status))return '原群、引用消息或当前权限已变化，请重新核对。';
+  return textError(error);
 }
 function groupTaskPeer(target,account){
   if(target?.type!=='direct'||target.friendRemoved)return null;
