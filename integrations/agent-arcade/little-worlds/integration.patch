@@ -1696,10 +1696,20 @@ index fe2d73710c28b3c18654ea14a8b1f377be925f85..fd93bd9dd610d8a1960b20fb987e8e92
 +  document.getElementById('travel-guidance')!.append(root);
    const get = <E extends HTMLElement = HTMLElement>(name: string) => root.querySelector<E>(name)!;
 diff --git a/src/client/village-polish.ts b/src/client/village-polish.ts
-index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d217801d7039f 100644
+index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..5343c6934d3748aaf621bb80922fed15e172827c 100644
 --- a/src/client/village-polish.ts
 +++ b/src/client/village-polish.ts
-@@ -7,3 +7,8 @@ import type { Vec3 } from '../shared/world.ts';
+@@ -1,16 +1,25 @@
+ import * as T from 'three';
+ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+ import { mainPlanetNetwork, MAIN_PLANET_LEDGER } from '../shared/planet-plan/main-planet.ts';
+-import { arc, fromLocal, heading } from '../shared/planet-plan/sphere.ts';
++import { arc, cross, fromLocal, heading, walk } from '../shared/planet-plan/sphere.ts';
+ import { SPAWN } from '../shared/world.ts';
++import { HUB_DOCK } from '../shared/ports.ts';
++import { TOWN_RESIDENT_ANCHORS } from '../shared/town-residents.ts';
++import { sampleAt } from '../shared/planet-plan/network.ts';
+ import type { Vec3 } from '../shared/world.ts';
  import type { HomeDescriptor } from '../shared/home.ts';
 +import type { PlanetView } from '../shared/planets.ts';
 +import type { GroundWorld } from '../shared/physics/world.ts';
@@ -1708,32 +1718,124 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
  import { ART_PALETTE, applyArtMaterial } from './art-profile.ts';
 +import { townMeshPieces } from './authored-town-mesh.ts';
  import type { TutorialSurface } from './tutorial-route.ts';
-@@ -13,2 +18,3 @@ export interface VillagePolishFrame {
+
+ export type VillagePolishTier = 'smooth' | 'standard' | 'beautiful';
+ export interface VillagePolishFrame {
    planetId: string; radius: number; quality: VillagePolishTier; home?: HomeDescriptor | null;
 +  courtyard?: { planet: PlanetView; world: GroundWorld };
    /** Visibility only; menus keep their scenery, interiors hide exterior art. */
-@@ -27,4 +33,4 @@ export function publicVillagePolishSites(): VillagePolishSite[] {
+   visible?: boolean; reducedMotion?: boolean; time?: number;
+ }
+@@ -25,8 +34,75 @@ export function publicVillagePolishSites(): VillagePolishSite[] {
+     return door ? [{ id, position: [...door.from] as Vec3, toward: [...door.to] as Vec3, label }] : [];
+   });
  }
 -const labelRows = { post: 0, glasshouse: 1, gate: 2, home: 3 } as const;
 -const labelText = [['邮局', 'POST OFFICE'], ['温室', 'GLASSHOUSE'], ['回家 · 广场', 'HOME · SQUARE'], ['我的小屋', 'MY LITTLE HOME']];
 +const labelRows = { post: 0, glasshouse: 1, gate: 2, home: 3, courtyard: 4 } as const;
 +const labelText = [['邮局', 'POST OFFICE'], ['温室', 'GLASSHOUSE'], ['回家 · 广场', 'HOME · SQUARE'], ['我的小屋', 'MY LITTLE HOME'], ['公共院落', 'PUBLIC COURTYARD']];
++
++const staticLabelHeight = 128;
++const wayfindingTop = staticLabelHeight * labelText.length;
++const wayfindingRow = 168;
++const atlasHeight = wayfindingTop + 3 * wayfindingRow;
++
++function paintWayfinding(context: CanvasRenderingContext2D) {
++  const rows = [
++    ['仓库边 · 找伊沃修托臂', 'Ivo · Repair the quay support', '沿码头左侧', -Math.PI / 2],
++    ['邮局巷 · 找帕克斯分信', 'Pax · Sort mail', '沿港湾大道到抵达广场', 0],
++    ['邮局巷 · 帕克斯', 'Post Lane · Pax', '', -Math.PI / 2],
++  ] as const;
++  rows.forEach(([title, english, detail, angle], row) => {
++    context.save();
++    context.translate(0, wayfindingTop + row * wayfindingRow);
++    context.fillStyle = '#f4ead0';
++    context.fillRect(0, 0, 512, wayfindingRow);
++    context.fillStyle = '#263e30';
++    context.textAlign = 'left';
++    context.textBaseline = 'middle';
++    context.font = '750 41px system-ui, "Microsoft YaHei UI", sans-serif';
++    context.fillText(title, 96, detail ? 47 : 62, 401);
++    context.font = '650 28px system-ui, "Microsoft YaHei UI", sans-serif';
++    if (detail) context.fillText(detail, 96, 98, 401);
++    context.font = '600 21px system-ui, sans-serif';
++    context.fillText(english, 96, detail ? 137 : 109, 401);
++    context.translate(51, 83);
++    context.rotate(angle);
++    context.beginPath();
++    context.moveTo(0, 26);
++    context.lineTo(0, -24);
++    context.moveTo(-20, -4);
++    context.lineTo(0, -24);
++    context.lineTo(20, -4);
++    context.lineWidth = 8;
++    context.lineCap = 'round';
++    context.lineJoin = 'round';
++    context.strokeStyle = '#263e30';
++    context.stroke();
++    context.restore();
++  });
++}
++
++export function mainTownWayfindingSites() {
++  const network = mainPlanetNetwork(), radius = network.radius;
++  const arrival = network.point('arrival');
++  const harbour = network.roads.find(road => road.id === 'harbour-way');
++  const post = network.roads.find(road => road.id === 'post-lane');
++  if (!harbour || !post || !TOWN_RESIDENT_ANCHORS['ivo-repair'] || !TOWN_RESIDENT_ANCHORS['pax-courier']) return null;
++
++  // Place the dock board on the warehouse side of the town exit, facing the landing circle.
++  const townward = heading(HUB_DOCK, arrival);
++  const dockAhead = walk(HUB_DOCK, townward, 2.3, radius);
++  const dock = walk(dockAhead, cross(dockAhead, heading(dockAhead, arrival)), 1.63, radius);
++
++  // Mark the left turn into Post Lane from the verge at the Harbour Way mouth.
++  const mouth = sampleAt(harbour.line, 3.55);
++  const square = walk(mouth.p, mouth.r, 2.12, radius);
++  const squareFace = sampleAt(harbour.line, 9).p;
++  return { dock, dockFace: HUB_DOCK, square, squareFace };
++}
++
++function labelPlane(width: number, height: number, top: number, bandHeight = staticLabelHeight) {
++  const plane = new T.PlaneGeometry(width, height), uv = plane.getAttribute('uv');
++  for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - (top + bandHeight * (1 - uv.getY(i))) / atlasHeight);
++  return plane;
++}
 
-@@ -48,3 +54,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+ /** Always-bounded host art, separate from temporary tutorial guidance. Three
+  * shared draws at most; no lights, bloom, particle systems or per-frame mesh
+@@ -46,13 +122,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+   const base = new T.Mesh(new T.BufferGeometry(), material), details = new T.Mesh(new T.BufferGeometry(), detailMaterial);
+   const atlas = typeof document === 'undefined' ? null : document.createElement('canvas');
    if (atlas) {
 -    atlas.width = 512; atlas.height = 512; const context = atlas.getContext('2d');
-+    atlas.width = 512; atlas.height = 128 * labelText.length; const context = atlas.getContext('2d');
++    atlas.width = 512; atlas.height = atlasHeight; const context = atlas.getContext('2d');
      if (context) for (let row = 0; row < labelText.length; row++) {
-@@ -63,3 +69,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+       context.fillStyle = '#f4ead0'; context.fillRect(0, row * 128, 512, 128);
+       context.fillStyle = '#54453e'; context.textAlign = 'center'; context.textBaseline = 'middle';
+       context.font = '600 36px system-ui, sans-serif'; context.fillText(labelText[row][0], 256, row * 128 + 43, 480);
+       context.font = '600 23px system-ui, sans-serif'; context.fillText(labelText[row][1], 256, row * 128 + 92, 480);
+     }
++    if (context) paintWayfinding(context);
+   }
+   const texture = atlas ? new T.CanvasTexture(atlas) : null;
+   if (texture) { texture.colorSpace = T.SRGBColorSpace; texture.minFilter = T.LinearFilter; texture.generateMipmaps = false; }
+@@ -61,10 +138,11 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+   for (const mesh of [base, details, signs]) { mesh.raycast = () => {}; mesh.castShadow = false; mesh.receiveShadow = true; root.add(mesh); }
+   base.name = 'village-focus-silhouette'; details.name = 'village-focus-fine-relief'; signs.name = 'village-bilingual-sign-atlas';
    let disposed = false, key = '';
 -  const diagnostics = { sites: 0, triangles: 0, detailTriangles: 0, drawCalls: 0, collision: false, animation: false };
 +  const diagnostics = { sites: 0, courtyardPosition: null as Vec3 | null, triangles: 0, detailTriangles: 0, drawCalls: 0, collision: false, animation: false };
    root.userData.villagePolish = diagnostics;
-@@ -67,2 +73,3 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+
    function rebuild(input: VillagePolishFrame) {
 +    diagnostics.courtyardPosition = null;
      const basic: T.BufferGeometry[] = [], fine: T.BufferGeometry[] = [], labels: T.BufferGeometry[] = [];
-@@ -78,7 +85,10 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+     const add = (geometry: T.BufferGeometry, color: string, transform: T.Matrix4, detailed = false) => {
+       const flat = geometry.index ? geometry.toNonIndexed() : geometry.clone(); geometry.dispose(); flat.applyMatrix4(transform);
+@@ -76,11 +154,14 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+     };
+     const local = (frame: T.Matrix4, x: number, y: number, z: number, rotation = 0) => frame.clone().multiply(new T.Matrix4().makeTranslation(x, y, z)).multiply(new T.Matrix4().makeRotationZ(rotation));
      const box = (frame: T.Matrix4, color: string, w: number, h: number, d: number, x: number, y: number, z: number, detailed = false) => add(new T.BoxGeometry(w, h, d), color, local(frame, x, y, z), detailed);
 -    const doorTrim = (frame: T.Matrix4, label: keyof typeof labelRows) => {
 +    const doorTrim = (frame: T.Matrix4, label: keyof typeof labelRows, twoFaces = false) => {
@@ -1747,13 +1849,49 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
 +        add(geometry, slot === 'leaf' ? ART_PALETTE.sage : ART_PALETTE.wood, cap);
 +      }
        box(frame, ART_PALETTE.wood, 1.42, .43, .065, 0, 2.37, -.04);
-@@ -95,3 +105,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
-       const plane = new T.PlaneGeometry(1.25, .33), uv = plane.getAttribute('uv'), row = labelRows[label];
+       for (const side of [-1, 1]) {
+         box(frame, ART_PALETTE.wood, .05, .48, .09, side * .69, 2.37, -.01);
+@@ -92,8 +173,8 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+           add(new T.SphereGeometry(.028, 4, 3), petal % 2 ? ART_PALETTE.gold : '#e18c83', local(frame, side * .57 + Math.cos(a) * .065, 2.25 + Math.sin(a) * .055, .045), true);
+         }
+       }
+-      const plane = new T.PlaneGeometry(1.25, .33), uv = plane.getAttribute('uv'), row = labelRows[label];
 -      for (let i = 0; i < uv.count; i++) uv.setY(i, (3 - row + uv.getY(i)) / 4);
-+      for (let i = 0; i < uv.count; i++) uv.setY(i, (labelText.length - 1 - row + uv.getY(i)) / labelText.length);
++      const plane = labelPlane(1.25, .33, labelRows[label] * staticLabelHeight);
 +      if (twoFaces) labels.push(plane.clone().rotateY(Math.PI).applyMatrix4(local(frame, 0, 2.37, -.079)));
        plane.applyMatrix4(local(frame, 0, 2.37, .003)); labels.push(plane);
-@@ -117,6 +128,19 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+     };
+     const surfaceFrame = (position: Vec3, toward: Vec3) => {
+@@ -102,6 +183,26 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+     };
+     if (input.planetId === 'hub' && Math.abs(input.radius - 21.6) < .001) {
+       const sites = publicVillagePolishSites(); sites.forEach(site => doorTrim(surfaceFrame(site.position, site.toward), site.label)); diagnostics.sites = sites.length;
++      const wayfinding = mainTownWayfindingSites();
++      if (wayfinding) {
++        const board = (frame: T.Matrix4, firstRow: number, count: number, width: number, top: number) => {
++          const rowHeight = width * wayfindingRow / 512;
++          const height = rowHeight * count;
++          const middle = top - height / 2;
++          for (const side of [-1, 1]) {
++            box(frame, ART_PALETTE.wood, .075, top + .09, .09, side * (width / 2 - .10), (top + .03) / 2, -.021);
++          }
++          box(frame, ART_PALETTE.wood, width + .09, height + .09, .075, 0, middle, 0);
++          for (let index = 0; index < count; index++) {
++            const y = top - rowHeight * (index + .5);
++            labels.push(labelPlane(width, rowHeight, wayfindingTop + (firstRow + index) * wayfindingRow, wayfindingRow)
++              .applyMatrix4(local(frame, 0, y, .041)));
++          }
++          if (count > 1) box(frame, ART_PALETTE.wood, width, .022, .025, 0, top - rowHeight, .047);
++        };
++        board(surfaceFrame(wayfinding.dock, wayfinding.dockFace), 0, 2, 2.32, 2.39);
++        board(surfaceFrame(wayfinding.square, wayfinding.squareFace), 2, 1, 1.82, 1.77);
++      }
+       // Dressed fan accents stay a maximum 45 mm above the existing surface.
+       // Only the arrival plaza and its two closest authored junctions receive
+       // the accent, rather than adding geometry along every town street.
+@@ -115,10 +216,23 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+         box(frame, k % 3 ? ART_PALETTE.stone : ART_PALETTE.clay, .22, .018, .10, 0, .032, 0);
+         box(frame, ART_PALETTE.gold, .09, .009, .025, 0, .044, 0, true);
        }
 -    } else if (input.home?.planetId === input.planetId && input.home.door.frame) {
 -      const frame = input.home.door.frame;
@@ -1777,12 +1915,18 @@ index fb01ffaebf2bdb880563ee0e1fdbbc7a26ddaae6..bf4d8e88fe0c25f7f3003c3c214d2178
 +      }
 +    }
      const finish = (mesh: T.Mesh, pieces: T.BufferGeometry[]) => {
-@@ -131,3 +155,4 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+       const merged = pieces.length ? mergeGeometries(pieces) : null; pieces.forEach(g => g.dispose());
+       mesh.geometry.dispose(); mesh.geometry = merged ?? new T.BufferGeometry(); if (merged) merged.computeBoundingSphere(); mesh.visible = pieces.length > 0;
+@@ -129,7 +243,8 @@ export function createVillagePolish(parent: T.Object3D, surface: TutorialSurface
+   }
+   function frame(input: VillagePolishFrame) {
      if (disposed) return;
 -    const nextKey = JSON.stringify([input.planetId, input.radius, input.home?.buildingId, input.home?.door.frame]);
 +    const nextKey = JSON.stringify([input.planetId, input.radius, input.home?.buildingId, input.home?.door.frame,
 +      input.courtyard?.planet.revision]);
      if (nextKey !== key) { rebuild(input); key = nextKey; }
+     root.visible = input.visible !== false;
+     details.visible = input.quality === 'beautiful' && diagnostics.detailTriangles > 0;
 diff --git a/src/client/world-guide.ts b/src/client/world-guide.ts
 index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884b266918f 100644
 --- a/src/client/world-guide.ts
