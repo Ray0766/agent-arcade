@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
-  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
+  "worldRevision": "80fe6abaec627ca37202e2de4513932862c251c3",
+  "worldTree": "01e43999cc19749c13d259c1786175badf8da1da",
+  "patchSHA256": "d5357a1cec227f563220005aafc39f1eddd5b6ae1b7910367f8c50769e1e5061",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -613,14 +613,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "92983bc0cbfab0bfae35edf381fdedf000a7de7b",
-      "sha256": "867ce3d4b574d1af231325087a0e4660afa4d056201b6344af7a1d5f779a91eb"
+      "blob": "9e61119d06a65145c9b9a0086e1bbed23e84f17e",
+      "sha256": "5d88f8a7b5e528bedb517f67a9a728e5637394747a6d939f0757561222197cd0"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "992cafe704edc69412e8a22d704386db99b6f449",
-      "sha256": "46428718fd216b2e9ace2a49ebe4772e0c3dfafd785737db0beb1123a0a4556d"
+      "blob": "28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920",
+      "sha256": "02ded8106e7ee55083be9ab8b2a508585ee17b0a89d83ec17d31a2761e882c60"
     },
     {
       "action": "A",
@@ -727,8 +727,8 @@
     {
       "action": "M",
       "path": "src/client/village-polish.ts",
-      "blob": "bf4d8e88fe0c25f7f3003c3c214d217801d7039f",
-      "sha256": "7c0c17219dd76923d05b5e11f75224f471ef2b2c624519140f0a007e76e86d2b"
+      "blob": "60797ad0a45ed50f868751a0a91d8363bf8a801a",
+      "sha256": "7566492d0d2c6d63c9d409a3bc931cc1804529a3614e9e2a1ad42b02d981f169"
     },
     {
       "action": "M",
@@ -739,8 +739,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "faed0a799741bf12007cbf4f0d224884b266918f",
-      "sha256": "59dbcb913a462654f1d10e031a02a49fbaf60dffc4304c43c87f9bd659ff2a41"
+      "blob": "479e67a0d45fd7307d2ef6675d52340e6200c0c2",
+      "sha256": "3b48c1b5a98a08e2f1f2735221d4dd4ad31d4182c6a0047a2dfc57bf8a353e91"
     },
     {
       "action": "A",
