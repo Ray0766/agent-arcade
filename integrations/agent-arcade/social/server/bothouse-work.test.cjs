@@ -2,12 +2,44 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {once}=require('node:events');
-const {execFileSync}=require('node:child_process');
+const cp=require('node:child_process');
+const execFile=cp.execFile;
+const {execFileSync}=cp;
+const firstSubmit=new Set();
+// Test-only probe. Log output shape and error classes, never the child arguments or free-form output.
+cp.execFile=function(file,args,options,callback){
+  if(!Array.isArray(args)||typeof callback!=='function'||!String(args[4]).endsWith('work_board.py')||args[9]!=='submit')
+    return Reflect.apply(execFile,this,arguments);
+  const t0=performance.now(),role=args[7];
+  return Reflect.apply(execFile,this,[file,args,options,(error,stdout,stderr)=>{
+    if(!firstSubmit.has(role)){
+      firstSubmit.add(role);
+      let receipt;
+      try{receipt=JSON.parse(stdout);}catch{}
+      const frames=[...String(stderr).matchAll(/File "[^"\r\n]*[/\\](work_board\.py|board\.py|filelock\.py|datadir\.py)", line (\d+), in ([A-Za-z_][A-Za-z_0-9]*|<module>)/g)]
+        .map(match=>[match[1],Number(match[2]),match[3]]);
+      const exception=String(stderr).match(/^(ModuleNotFoundError|ImportError|PermissionError|OSError|RuntimeError|ValueError|KeyError|TypeError|UnicodeDecodeError|JSONDecodeError|FileNotFoundError|TimeoutError|KeyboardInterrupt):/m)?.[1];
+      const osError=String(stderr).match(/\[(?:WinError|Errno) (\d{1,5})\]/)?.[1];
+      const code=error?.code;
+      console.log('Legacy board submit probe '+JSON.stringify({
+        target:role==='fixture-whale'?'first-direct':role==='fixture-dragon'?'first-group':'other',
+        milliseconds:Math.round(performance.now()-t0),code:typeof code==='number'||/^[A-Z][A-Z0-9_]{1,30}$/.test(code??'')?code:null,
+        killed:error?.killed===true,signal:error?.signal==='SIGTERM'?'SIGTERM':Boolean(error?.signal),
+        stdoutBytes:Buffer.byteLength(stdout??''),stderrBytes:Buffer.byteLength(stderr??''),
+        parsed:receipt!==undefined,validReceipt:receipt?.state==='accepted'&&Number.isSafeInteger(receipt?.boardId)&&receipt.boardId>0&&receipt.key===args[8]&&receipt.role===role,
+        exception,osError,frames,
+        boardAddRejected:/^board add:/m.test(stderr??''),guardRejected:/test.guard|datadir\.guard|线上|生产/i.test(stderr??'')
+      }));
+    }
+    callback(error,stdout,stderr);
+  }]);
+};
 const {createHash}=require('node:crypto');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
 const {SocialStore}=require('./store.cjs');
 const {createServer}=require('./http.cjs');
 const {scopeDirectory,directoryBoardReceiver}=require('./bothouse/board-receiver.cjs');
+cp.execFile=execFile;
 const {createDeepSeekProvider}=require('./ai-deepseek.cjs');
 const {createOpenAIGroupProvider}=require('./ai-openai.cjs');
 
