@@ -255,6 +255,7 @@ function time(value, format=date) {
   return value && !Number.isNaN(Date.parse(value)) ? format.format(new Date(value)) : '';
 }
 function textError(error) {
+  if(error.message==='forward_note')return '转发说明最多 200 字，请调整后重新核对。';
   if(error.message==='file_name')return '文件名含不支持的字符，请重命名后再选择。';
   if(error.message==='file_too_large')return '文件超过 16 MiB，请选择较小的文件。';
   if(error.message==='file_session')return '账号或群成员身份已变化，请重新打开目标会话。';
@@ -2248,9 +2249,15 @@ function showForwardRecord(message){
   const scope=openDialog('聊天记录',[el('p',message.sender.displayName+'转发 · '+message.forwardRecord.count+' 条消息','minor'),body],id);
   dialogMessage={chatId:id,messageId:message.id};
   void perform(async()=>{
-    const {entries}=await api(thread(id)+'/messages/'+message.id+'/forward-record?account='+encodeURIComponent(account),
+    const {entries,note}=await api(thread(id)+'/messages/'+message.id+'/forward-record?account='+encodeURIComponent(account),
       undefined,{expectedAccount:account});
-    if(dialogGeneration===scope&&user?.number===account&&chat===id)body.replaceChildren(recordEntries(entries));
+    if(dialogGeneration!==scope||user?.number!==account||chat!==id)return;
+    const list=recordEntries(entries);
+    if(note){
+      const explanation=el('section',null,'forward-record-note');
+      explanation.append(el('strong',message.sender.displayName+'的转发说明'),el('p',note));
+      body.replaceChildren(explanation,list);
+    }else body.replaceChildren(list);
   },null,scope);
 }
 function showForwardPicker(){
@@ -2267,7 +2274,7 @@ function showForwardPicker(){
   const scope=openDialog('转发消息',[panel],source);
   const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&chat===source&&
     membershipRevision===sourceRevision&&messageSelection===selection;
-  let textMode='text';
+  let textMode='text',recordNote='';
   function choose(){
     const form=el('form',null,'forward-panel');
     const label=el('label','转发到'),select=el('select');
@@ -2306,7 +2313,8 @@ function showForwardPicker(){
       const target=select.value;
       if(!current()||!target)return;
       const requestKind=textMode;
-      const request={expectedAccount:account,sourceRevision,target,ids,kind:requestKind};
+      const request={expectedAccount:account,sourceRevision,target,ids,kind:requestKind,
+        ...(requestKind==='record'&&recordNote&&{note:recordNote})};
       if(mode)mode.disabled=true;
       select.disabled=true;
       void perform(async()=>{
@@ -2323,7 +2331,7 @@ function showForwardPicker(){
       select.focus();
     }else panel.replaceChildren(el('p','暂无可转发的真人私聊或群聊。'));
   }
-  function showPreview(request,{recipient,entries,review}){
+  function showPreview(request,{recipient,entries,review,note=''}){
     const heading=el('h3','发给 '+recipient.title);
     heading.tabIndex=-1;
     const audience=el('p',recipient.type==='direct'?'私聊 · '+recipient.members[0].number:
@@ -2332,8 +2340,20 @@ function showForwardPicker(){
     const list=record?recordEntries(entries):el('ol',null,'forward-entries');
     if(!record)list.append(...entries.map(entry=>el('li',entry.text)));
     const confirmLabel=record?'确认转发聊天记录':'确认转发 '+entries.length+' 条';
+    const noteField=record?el('textarea'):null;
     const confirm=button(confirmLabel,()=>void perform(async()=>{
       if(!current())return;
+      if(noteField&&noteField.value.trim()!==note){
+        const revised=noteField.value.trim();
+        if(Array.from(revised).length>200)throw Error('forward_note');
+        cancel.disabled=back.disabled=noteField.disabled=true;
+        try{
+          const updated={...request,note:revised};
+          const result=await api(thread(source)+'/forward-preview',updated);
+          if(current())showPreview(updated,result);
+        }finally{cancel.disabled=back.disabled=noteField.disabled=false;}
+        return;
+      }
       const key='arcade.forward.pending:'+account+':'+review;
       let clientId=pendingForwards.get(key);
       try{clientId??=sessionStorage.getItem(key);}catch{}
@@ -2344,7 +2364,8 @@ function showForwardPicker(){
         pendingForwards.delete(key);
         try{sessionStorage.removeItem(key);}catch{}
       };
-      back.disabled=true;
+      cancel.disabled=back.disabled=true;
+      if(noteField)noteField.disabled=true;
       try{
         const {count}=await api(thread(source)+'/forward',{...request,review,clientId});
         clearPending();
@@ -2356,11 +2377,15 @@ function showForwardPicker(){
       }catch(error){
         if(error.status>=400&&error.status<500)clearPending();
         throw error;
-      }finally{back.disabled=false;}
+      }finally{
+        cancel.disabled=back.disabled=false;
+        if(noteField)noteField.disabled=false;
+      }
     },confirm,scope),'primary');
     const back=button('更换收件方',choose);
     const actions=el('div',null,'actions');
-    actions.append(button('取消',closeDialog),back,confirm);
+    const cancel=button('取消',closeDialog);
+    actions.append(cancel,back,confirm);
     panel.replaceChildren(heading,audience);
     if(recipient.type==='group'){
       const members=el('details');
@@ -2368,7 +2393,18 @@ function showForwardPicker(){
         recipient.members.map(member=>member.displayName+'（'+member.number+'）').join('、'):'群内只有你'));
       panel.append(members);
     }
-    if(record)panel.append(el('strong','合并为 1 张聊天记录 · '+entries.length+' 条消息'));
+    if(noteField){
+      recordNote=note;
+      noteField.rows=2;
+      noteField.value=note;
+      const label=el('label','转发说明（选填，最多 200 字）');
+      label.append(noteField);
+      noteField.addEventListener('input',()=>{
+        recordNote=noteField.value.trim();
+        confirm.textContent=recordNote===note?confirmLabel:'重新核对说明';
+      });
+      panel.append(label,el('strong','合并为 1 张聊天记录 · '+entries.length+' 条消息'));
+    }
     panel.append(list,actions);
     heading.focus({preventScroll:true});
   }

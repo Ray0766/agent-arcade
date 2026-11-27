@@ -168,7 +168,8 @@ CREATE TABLE IF NOT EXISTS group_member_nicknames (
 CREATE TABLE IF NOT EXISTS message_forward_records (
   message INTEGER PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
   entry_count INTEGER NOT NULL CHECK(entry_count BETWEEN 1 AND 20),
-  entries TEXT NOT NULL
+  entries TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS message_forward_batches (
   account TEXT NOT NULL REFERENCES users(number),

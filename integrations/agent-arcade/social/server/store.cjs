@@ -49,11 +49,23 @@ function postBodyDigest(value){
 }
 const forwardableText=(message,body)=>!message.attachment&&!message.task&&!message.imageQuestion&&!message.forwardRecord&&
   !message.webResults?.length&&Boolean(body.trim())&&Array.from(body).length<=4000;
+function forwardRecordNote(kind,value){
+  if(value===undefined)return '';
+  if(kind!=='record'||typeof value!=='string')fail(400,'forward_note','转发说明仅用于合并聊天记录');
+  const note=value.replace(/\r\n?/gu,'\n').trim();
+  if(Array.from(note).length>200||/[\x00-\x08\x0b-\x1f\x7f]/u.test(note))
+    fail(400,'forward_note','转发说明最多 200 字');
+  return note;
+}
 class SocialStore {
   constructor(filename) {
     this.db = new DatabaseSync(filename);
     const oldVoiceTable=this.one("SELECT 1 FROM sqlite_schema WHERE name='message_voices' AND type='table'");
     this.db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+    if(!this.one("SELECT 1 FROM pragma_table_info('message_forward_records') WHERE name='note'"))this.transaction(()=>{
+      if(!this.one("SELECT 1 FROM pragma_table_info('message_forward_records') WHERE name='note'"))
+        this.db.exec("ALTER TABLE message_forward_records ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+    });
     if(this.one('PRAGMA user_version').user_version===0)this.transaction(()=>{
       if(oldVoiceTable)this.db.exec(`
         ALTER TABLE message_voices RENAME TO message_voices_v0;
@@ -833,12 +845,12 @@ class SocialStore {
   }
   readForwardRecord(account,chat,message){
     const {since}=this.access(account,chat);
-    const record=this.one(`SELECT r.entries FROM message_forward_records r JOIN messages m ON m.id=r.message
+    const record=this.one(`SELECT r.entries,r.note FROM message_forward_records r JOIN messages m ON m.id=r.message
       WHERE m.chat=? AND m.id=? AND m.id>? AND m.removed=0`,chat,message,since);
     if(!record)fail(404,'unknown_message','这份聊天记录已不可查看');
-    return {entries:JSON.parse(record.entries)};
+    return {entries:JSON.parse(record.entries),...(record.note&&{note:record.note})};
   }
-  messageForwardPreview(account,source,{expectedAccount,sourceRevision,target,ids,kind='text'}){
+  messageForwardPreview(account,source,{expectedAccount,sourceRevision,target,ids,kind='text',note:rawNote}){
     if(expectedAccount!==account)fail(409,'forward_session','账号已切换，请重新打开会话');
     const from=this.access(account,source);
     const record=kind==='record';
@@ -871,14 +883,16 @@ class SocialStore {
     const recipient={id:target,type:to.type,title:conversation.title,members:conversation.members
       .filter(member=>member.number!==account).map(({number,displayName,kind})=>({number,displayName,kind}))};
     const snapshot=[source,sourceRevision,to.membershipRevision,recipient,entries];
+    const note=forwardRecordNote(kind,rawNote);
     if(record)snapshot.push(kind);
+    if(note)snapshot.push(note);
     if(record&&to.type==='group'){
       // A member leaving and rejoining starts a new membership, even with the same account number.
       snapshot.push(this.all(`SELECT m.account,r.revision FROM members m LEFT JOIN conversation_membership_revisions r
         ON r.chat=m.chat AND r.account=m.account WHERE m.chat=? ORDER BY m.account`,target));
     }
     const review=postBodyDigest(JSON.stringify(snapshot));
-    return {recipient,entries,review};
+    return {recipient,entries,review,...(note&&{note})};
   }
   forwardMessages(account,source,body){
     const {expectedAccount,target,ids,review,clientId}=body;
@@ -887,7 +901,8 @@ class SocialStore {
       typeof review!=='string'||!/^[a-f0-9]{64}$/u.test(review))
       fail(400,'forward_request','请先查看转发预览');
     const explicitKind=body.kind==='record'?[body.kind]:[];
-    const intent=postBodyDigest(JSON.stringify([source,target,ids,review,...explicitKind]));
+    const note=forwardRecordNote(body.kind,body.note);
+    const intent=postBodyDigest(JSON.stringify([source,target,ids,review,...explicitKind,...(note?[note]:[])]));
     const previous=this.one('SELECT intent,count FROM message_forward_batches WHERE account=? AND nonce=?',account,clientId);
     if(previous){
       if(previous.intent!==intent)fail(409,'forward_request','本次确认与原转发请求不一致');
@@ -902,8 +917,8 @@ class SocialStore {
       const entries=confirmed.entries.map(({author,text})=>({author,text}));
       this.send(account,target,{text:'[聊天记录]',clientId:'forward-'+randomUUID()},message=>{
         markForwarded(message);
-        this.run('INSERT INTO message_forward_records(message,entry_count,entries) VALUES(?,?,?)',
-          message.id,entries.length,JSON.stringify(entries));
+        this.run('INSERT INTO message_forward_records(message,entry_count,entries,note) VALUES(?,?,?,?)',
+          message.id,entries.length,JSON.stringify(entries),note);
       });
     }else{
       for(const {text} of confirmed.entries)
