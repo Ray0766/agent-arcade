@@ -77,12 +77,13 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
   const exit=panel.querySelector<HTMLButtonElement>('#planet-minimap-close')!;
   const route=panel.querySelector<HTMLButtonElement>('#planet-minimap-courtyard')!;
   const types=['you','dock','courtyard'] as const;
+  const dockPin=document.createElement('button');dockPin.type='button';dockPin.id='planet-minimap-dock-pin';
   const courtyardPin=document.createElement('button');
   courtyardPin.id='planet-minimap-courtyard-pin';courtyardPin.type='button';courtyardPin.hidden=true;
   const markers=types.map(kind=>{
-    const marker=kind==='courtyard'?courtyardPin:document.createElement('span');
+    const marker=kind==='courtyard'?courtyardPin:kind==='dock'?dockPin:document.createElement('span');
     marker.className='planet-minimap-pin';marker.dataset.kind=kind;
-    if(kind!=='courtyard')marker.setAttribute('aria-hidden','true');
+    if(kind==='you')marker.setAttribute('aria-hidden','true');
     plot.append(marker);return marker;
   });
   const keys=types.map(kind=>{
@@ -97,6 +98,7 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
     const words=lang==='zh'?zh:en;
     launcher.textContent=words.open;exit.setAttribute('aria-label',words.close);north.textContent=words.north;
     types.forEach((kind,i)=>{keys[i].textContent=words[kind];});
+    dockPin.setAttribute('aria-label',lang==='zh'?'寻找返航飞船':'Find the ship back');
     route.textContent=words.route;courtyardPin.setAttribute('aria-label',words.route);
   }
   function close(returnFocus:boolean){
@@ -107,6 +109,8 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
   function render(){
     if(!current||panel.hidden)return;
     const {terrain,player,dock,courtyard}=current;
+    if(!current.canRouteToDock && document.activeElement===dockPin)exit.focus({preventScroll:true});
+    dockPin.disabled=!current.canRouteToDock;
     const points=courtyard?[player,dock,courtyard]:[player,dock];
     if(!view||painted!==terrain||points.some(point=>{
       const p=pixels(point,view!);return p.x<INSET||p.y<INSET||p.x>WIDTH-INSET||p.y>HEIGHT-INSET;
@@ -129,6 +133,7 @@ export function createPlanetMinimap(options:PlanetMinimapOptions):PlanetMinimap 
     render();exit.focus({preventScroll:true});panel.scrollIntoView({block:'nearest'});
   };
   exit.onclick=()=>close(true);
+  dockPin.onclick=()=>{if(current?.canRouteToDock&&options.onDock())close(true);};
   courtyardPin.onclick=route.onclick=()=>{if(current?.courtyard&&options.onCourtyard())close(true);};
 
   return {

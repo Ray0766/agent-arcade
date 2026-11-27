@@ -19,6 +19,7 @@ export interface MinimapTerrain {
 export interface PlanetMinimapFrame {
   readonly terrain: MinimapTerrain;
   readonly player: MinimapPoint;
+  readonly canRouteToDock: boolean;
   readonly dock: MinimapPoint;
   readonly courtyard?: MinimapPoint;
 }
@@ -27,6 +28,7 @@ export interface PlanetMinimap {
   dispose(): void;
 }
 export interface PlanetMinimapOptions {
+  onDock(): boolean;
   onCourtyard(): boolean;
 }
 export type CreatePlanetMinimap = (options: PlanetMinimapOptions) => PlanetMinimap;

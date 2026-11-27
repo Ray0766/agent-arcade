@@ -23,3 +23,7 @@ span.planet-minimap-pin{pointer-events:none}
 #planet-minimap-panel #planet-minimap-courtyard{width:100%;background:#294e39;color:#fff4d8}
 #planet-minimap-panel button:focus-visible,#planet-minimap-open:focus-visible{outline:3px solid #165567;outline-offset:2px}
 @media(max-width:700px){#planet-minimap-panel{padding:6px}}
+
+#planet-minimap-panel #planet-minimap-dock-pin{width:44px;height:44px;padding:0;border:0;box-shadow:none;background:transparent;touch-action:manipulation}
+#planet-minimap-dock-pin::before{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;background:#fff1bf;border:2px solid #284235}
+#planet-minimap-dock-pin:disabled{pointer-events:none}
