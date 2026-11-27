@@ -11,6 +11,7 @@ const net = require('node:net');
 const {createHash} = require('node:crypto');
 const {friendShareLookup}=require('./bothouse/friend-share-lookup.cjs');
 const {fail,number} = require('./store.cjs');
+const {createLiveCalls}=require('./live-calls.cjs');
 const {current,makeAuth,sessionDigest} = require('./auth.cjs');
 const {planetPublishers}=require('./bothouse/planet-residents.cjs');
 const {createAiDirect} = require('./ai-direct.cjs');
@@ -316,6 +317,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
   groupAiProviders=[aiProvider,openaiProvider,claudeProvider].filter(Boolean),privacyContact,publicSource,voiceEngine,drawingProvider,feedClock,appointmentClock,webSearchFetch,personalAiFetch,bothouse,filename,friendLookupToken,taskReceiver=stockTaskReceiver(store,bothouse)} = {}) {
   let loadedClient;
   const clientRelease=()=>loadedClient??=loadClientRelease(client);
+  const calls=createLiveCalls(store);
   const auth = makeAuth(store,Boolean(publicOrigin));
   const residents=planetPublishers({store,bothouse,socialOrigin:()=>publicOrigin||'http://127.0.0.1:'+server.address().port});
   const workOrders=createWorkOrders(store,taskReceiver);
@@ -356,7 +358,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
     res.setHeader('X-Content-Type-Options','nosniff');
     res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'");
-    res.setHeader('Permissions-Policy','microphone=(self), camera=(), display-capture=()');
+    res.setHeader('Permissions-Policy','microphone=(self), camera=(self), display-capture=()');
     try {
       if(req.method==='GET' && req.url?.startsWith('/api/v1/bothouse-share-recipient?')){
         const recipient=friendShareLookup(store,req,friendLookupToken?.());
@@ -544,13 +546,21 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         result=residents.visitStatus(access,body);
       } else if (req.method === 'POST' && ['register','login'].includes(key)) {
         result = await auth.enter(key === 'register',body,req,res);
+        calls.disconnect(sessionDigest(req));
         residents.endSession(sessionDigest(req));
       } else if (req.method === 'POST' && key === 'logout') {
         result = auth.logout(req,res);
+        calls.disconnect(sessionDigest(req));
         residents.endSession(sessionDigest(req));
       }
       else {
         const account = current(store,req);
+        if(collection==='calls'&&parts.length===2){
+          if(req.headers['x-social-account']!==account)fail(409,'call_session','账号已切换，请重新打开会话');
+          const answer=calls.handle(account,sessionDigest(req),chat,body,url.searchParams.get('known'));
+          res.setHeader('Content-Type','application/json; charset=utf-8');
+          return res.end(JSON.stringify(answer));
+        }
         if(req.method==='GET'&&req.headers['x-social-account']!==undefined&&
            req.headers['x-social-account']!==account&&
            (['ai-contacts','ai-contacts/pair','personal-ai','conversations','stickers'].includes(key)||
@@ -725,6 +735,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
       res.end(JSON.stringify({error:{code:error.status ? error.code : 'internal',message:error.status ? error.message : '服务器暂时无法处理请求'}}));
     }
   });
+  server.once('close',calls.close);
   server.once('listening',workOrders.start);
   server.once('close',workOrders.stop);
   server.once('listening',residents.start);

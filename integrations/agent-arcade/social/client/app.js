@@ -1,3 +1,4 @@
+import { mountLiveCalls } from './live-calls.js';
 import { mountConversationList } from './conversation-list.js';
 import { quoteControl,focusOriginal } from './message-reply.js';
 import { VoiceQueuePlayer } from './voice-queue-player.js';
@@ -26,6 +27,7 @@ let friends = [], incoming = [], outgoing = [], conversations = [], syncFlight, 
 let chatVisit=0, moderationCursor=0, historyFloor=0, historyAfter=0, dialogMessage, dialogGroup, dialogCleanup;
 let membershipRevision, historyContext, historyFinder;
 let socialVisible=true;
+const calls=mountLiveCalls({api,account:()=>user?.number,chat:()=>chat,goChat});
 const readThrough=new Map(), readFlights=new Map();
 let inlineVoice, messageAction;
 let feedScope='friends', feedCursor=null, feedRead=0, pendingPost;
@@ -338,6 +340,7 @@ function toggleAuthMode(mode) {
   $('#auth-error').textContent = '';
 }
 function leaveSession({discardFeedback=false,expired=false}={}) {
+  calls.reset();
   closeStartMenu();
   if(expired)for(const key of localDraftKeys(draftScope))refreshLocalDraft(key.slice(draftScope.prefix.length));
   interruptedDrafts=expired?suspendChatDrafts(user?.number,[...drafts],chat):undefined;
@@ -1372,6 +1375,8 @@ function showChatHeader() {
   const peer=meta.members.find(person=>person.number!==user.number);
   const canRemark=meta.type==='direct'&&peer?.kind==='human'&&!meta.friendRemoved;
   const privateRemark=canRemark&&friends.find(person=>person.number===peer.number)?.remark;
+  $('#call-menu').hidden=!canRemark;
+  if(!canRemark)$('#call-menu').open=false;
   remarkControl.hidden=!canRemark;
   $('#chat-title').textContent=privateRemark||meta.title;
   const cloud=meta.cloudChat, paused=cloud?.enabled===false;
@@ -2230,6 +2235,7 @@ async function syncHistory(loadOlder=false) {
 }
 async function sync() {
   if(!user||syncFlight) return;
+  void calls.poll();
   const epoch=generation, lock={};
   syncFlight=lock;
   try {

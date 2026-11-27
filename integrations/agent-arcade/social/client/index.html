@@ -64,6 +64,9 @@
    <div id="chat-avatar"></div>
    <div class="chat-title"><h2 id="chat-title"></h2><p id="chat-detail"></p></div>
    <button id="members" class="chat-tool" type="button" hidden>群成员</button>
+   <details id="call-menu" hidden><summary class="chat-tool">通话</summary><div>
+    <button id="call-audio" type="button">语音通话</button><button id="call-video" type="button">视频通话</button>
+   </div></details>
    <div id="chat-consent-action"></div>
    <button id="chat-settings-toggle" class="chat-tool" type="button" popovertarget="chat-settings" hidden>会话设置</button>
   </header>
@@ -141,6 +144,12 @@
  <header><h2 id="dialog-title"></h2><button id="dialog-close" type="button" class="outline">关闭</button></header>
  <div id="dialog-body"></div><p id="dialog-error" class="feedback" role="alert"></p>
 </dialog>
+<section id="live-call" aria-label="好友通话" hidden>
+ <p id="call-status" role="status"></p>
+ <video id="call-remote" autoplay playsinline hidden></video>
+ <video id="call-local" aria-label="我的画面" muted autoplay playsinline hidden></video>
+ <div class="actions"><button id="call-play" hidden>播放对方声音</button><button id="call-accept" class="primary">接听</button><button id="call-end" class="outline">挂断</button></div>
+</section>
 <noscript>请启用 JavaScript 后打开 Agent Arcade 好友。</noscript>
 </body>
 </html>

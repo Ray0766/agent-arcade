@@ -317,11 +317,16 @@ test('only a direct friend-image download from the active main frame requests a 
   assert.equal(calls[0].current(),false);
 });
 
-test('the visible social chat may request only its own top-frame microphone',async()=>{
+test('camera permission is bound to an accepted video call in the active chat',async()=>{
   const origin='https://social.arcade-example.com';
   const url=origin+'/#chat/12345678-1111-2222-3333-123456789abc';
-  let active=true,request,check,deactivated;
+  let active=true,request,check,deactivated,prepare,accepted=false;
+  const device='d61a2777-d608-449a-9011-4d955a2d3097';
   const isolated=Object.assign(new EventEmitter(),{
+    async fetch(endpoint){
+      assert.equal(endpoint,origin+'/api/v1/calls/'+device);
+      return {ok:true,json:async()=>({call:{id:'test-call',chat:url.split('/').pop(),kind:'video',accepted}})};
+    },
     setPermissionRequestHandler(fn){request=fn;},
     setPermissionCheckHandler(fn){check=fn;},
     webRequest:{onBeforeRequest(){}},
@@ -330,6 +335,7 @@ test('the visible social chat may request only its own top-frame microphone',asy
     constructor() {
       this.webContents=Object.assign(new EventEmitter(),{
         mainFrame:{url},isDestroyed:()=>false,setWindowOpenHandler(){},
+        ipc:{handle(name,cb){if(name==='arcade:prepareCallCamera')prepare=cb;}},
         executeJavaScript:async code=>{deactivated=code;},
       });
     }
@@ -349,6 +355,14 @@ test('the visible social chat may request only its own top-frame microphone',asy
   expect(false,caller,'media',origin,{isMainFrame:false});
   expect(false,caller,'media',origin,{mediaType:'video',mediaTypes:['video']});
   request(caller,'media',result=>assert.equal(result,false),{...details,mediaTypes:['audio','video']});
+  const event={sender:caller,senderFrame:caller.mainFrame},input={account:'alfa',device,id:'test-call'};
+  assert.equal(await prepare(event,input),false);
+  accepted=true;
+  assert.equal(await prepare(event,input),true);
+  const video={...details,mediaType:'video',mediaTypes:['audio','video']};
+  assert.equal(check(caller,'media',origin,video),true);
+  request(caller,'media',result=>assert.equal(result,true),video);
+  request(caller,'media',result=>assert.equal(result,false),video);
   active=false;
   expect(false);
   deactivate();

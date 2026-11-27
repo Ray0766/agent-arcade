@@ -229,6 +229,25 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
     }catch{return false;}
     finally{openingSupport=false;}
   });
+  let cameraGrant;
+  contents.ipc?.handle('arcade:prepareCallCamera',async(event,input)=>{
+    const frame=event.senderFrame,address=frame?.url;
+    const current=()=>event.sender===contents&&frame===contents.mainFrame&&isActive()&&
+      !contents.isDestroyed()&&frame.url===address;
+    if(!input||!isTrusted(address)||!current()||!/^[a-f0-9-]{36}$/u.test(input.device))return false;
+    const url=new URL(address);
+    if(url.pathname!=='/'||!chatFragment.test(url.hash))return false;
+    try{
+      const response=await browserSession.fetch(origin+'/api/v1/calls/'+input.device,{
+        credentials:'include',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(4000),
+        headers:{'X-Social-Account':input.account}});
+      const {call}=response.ok?await response.json():{};
+      if(!current()||!call?.accepted||call.kind!=='video'||call.id!==input.id||url.hash!=='#chat/'+call.chat)return false;
+      cameraGrant={address,until:Date.now()+10000};
+      return true;
+    }catch{return false;}
+  });
+  const canUseCamera=()=>cameraGrant?.address===contents.mainFrame?.url&&cameraGrant?.until>Date.now();
   const mayRecord = (caller, permission, details) => {
     if(caller!==contents||permission!=='media'||!isActive()||contents.isDestroyed()||
         !details?.isMainFrame||!isTrusted(details.requestingUrl)||!isTrusted(contents.mainFrame?.url))return false;
@@ -236,9 +255,15 @@ function createSocialView({ WebContentsView, session, configuration, saveImage, 
     return page.pathname==='/'&&chatFragment.test(page.hash);
   };
   browserSession.setPermissionCheckHandler((caller,permission,requestingOrigin,details)=>
-    details?.mediaType==='audio'&&isTrusted(requestingOrigin)&&mayRecord(caller,permission,details));
+    (details?.mediaType==='audio'||details?.mediaType==='video'&&canUseCamera())&&isTrusted(requestingOrigin)&&mayRecord(caller,permission,details));
   browserSession.setPermissionRequestHandler((caller,permission,callback,details)=>
-    callback(details?.mediaTypes?.length===1&&details.mediaTypes[0]==='audio'&&mayRecord(caller,permission,details)));
+    {
+      const types=details?.mediaTypes;
+      const video=types?.includes('video');
+      const granted=!!types?.length&&types.every(type=>type==='audio'||type==='video'&&canUseCamera())&&mayRecord(caller,permission,details);
+      if(video&&granted)cameraGrant=undefined;
+      callback(granted);
+    });
   for (const eventName of ['will-navigate', 'will-redirect', 'will-frame-navigate']) {
     contents.on(eventName, (event, target) => {
       const url = typeof target === 'string' ? target : target?.url ?? event.url;
