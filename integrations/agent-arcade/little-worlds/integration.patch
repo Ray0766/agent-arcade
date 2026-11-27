@@ -1317,20 +1317,30 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db99b6f449 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..97ad8cce6a8bb533919d6f9a6ef7c21de7a90135 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
-@@ -3,2 +3,4 @@
+@@ -1,6 +1,8 @@
+ // Host-owned UI translations. English source strings are the stable fallback.
+ // Saved names, IDs, resource snapshots and server payloads are not translated.
  export const messages: Record<string, string> = {
 +  'This friend’s planet is unavailable.': '暂时无法拜访这位好友的星球。',
 +  'You are on your friend’s planet.': '已到达好友的星球。',
    'Show kit': '展开建造工具',
-@@ -221,2 +223,4 @@ export const messages: Record<string, string> = {
+   'Hide kit': '收起建造工具',
+   "Your traveller": "我的旅人",
+@@ -219,6 +221,8 @@ export const messages: Record<string, string> = {
+   "Your home is ready. Walk to its door to enter.": "家已经准备好了，走到门口即可进入。",
+   "Could not set up this home.": "暂时无法设置家园。",
    "Photo mode": "照片模式",
 +  "Show resident names": "显示居民姓名",
 +  "Photograph this view": "拍下当前画面",
    "Back to exploring": "返回探索",
-@@ -234,2 +238,9 @@ export const messages: Record<string, string> = {
+   "Current view": "当前视角",
+   "Whole scene": "全景",
+@@ -232,6 +236,13 @@ export const messages: Record<string, string> = {
+   "Drag to orbit. Your world stays as you left it.": "拖动环绕取景，世界保持原样。",
+   "Rendering your photo\u2026": "正在生成照片…",
    "Photo saved. Keep exploring or try another view.": "照片已保存，可以继续探索或换个角度。",
 +  "Bring back to chat": "带回私聊",
 +  "This photo is too large for chat. Choose 2K or save the PNG locally.": "照片太大，无法带回私聊。请选择 2K 或把 PNG 保存到本机。",
@@ -1340,12 +1350,25 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +  "Preparing the photo for your chat…": "正在准备把照片带回私聊…",
 +  "Returning to your chat…": "正在返回原私聊…",
    "Could not open photo mode.": "暂时无法进入照片模式。",
-@@ -1033,2 +1044,13 @@ export const messages: Record<string, string> = {
+   "Photo export is unavailable.": "当前无法导出照片。",
+   "Photo export failed.": "照片导出失败。",
+@@ -1031,6 +1042,26 @@ export const messages: Record<string, string> = {
+   "A little world awaits": "一颗小星球在等你",
+   "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
    "Make this my planet": "认领这颗星球",
 +  "Place a courtyard flower pot": "在院落放花盆",
 +  "Rest on the bench": "坐下休息",
 +  "Stand up": "起身",
 +  "Courtyard inspiration": "院落布置灵感",
++  "Courtyard examples": "院落布置样例",
++  "Pathside welcome": "路边迎客",
++  "Flower-viewing corner": "观花角",
++  "Two pots at different heights on the grass beside the open stone path, with a lantern set back.": "石板路留空，路边草地的两盆花高低错落，灯放在花盆后侧。",
++  "Front flower pot": "近处花盆",
++  "Place it on lower grass beside the path, near the entrance.": "在靠入口的路边找一处较低的草地摆放。",
++  "Raised flower pot": "高处花盆",
++  "Place the same pot on higher grass, a little farther from the path.": "同款花盆摆在更高的草地上，离路边稍远一些。",
++  "Set the lantern behind the pots. Leave the stone path clear from end to end.": "灯放在两盆花后侧，整条石板路留空通行。",
 +  "Close courtyard inspiration": "关闭院落布置灵感",
 +  "Leave the stone path clear. Choose one object to preview it before placing it.": "留出石板路。点一件物品，先预览再放置。",
 +  "A flower pot and lantern beside the stone path, with a bench across the path.": "花盆和灯在石板路一侧，长椅在另一侧。",
@@ -1354,7 +1377,11 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +  "Set it farther along the same side, leaving room to walk.": "沿同一侧往里放，留出行走空间。",
 +  "Set it opposite the lantern, facing the path.": "放在灯的对面，朝向石板路。",
    "Build on my planet": "在我的星球建造",
-@@ -1174,2 +1196,21 @@ export const messages: Record<string, string> = {
+   "Mark my planet ↗": "标记我的星球 ↗",
+   "Try a delivery": "体验投递任务",
+@@ -1172,6 +1203,25 @@ export const messages: Record<string, string> = {
+   "Saving your change…": "正在保存改动…",
+   "Connection lost. Building is paused.": "连接已断开，建造已暂停。",
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
 +  "An idle resident may stop to admire this pot.": "居民空闲时可能会停下来欣赏这盆花。",
 +  "With this layout, residents won’t stop to admire this pot.": "按当前布置，居民不会欣赏这盆花。",
@@ -1376,11 +1403,19 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +  "Leave room for the courtyard landmark beside the walking route.": "请在步道旁留出地标的位置。",
 +  "The current layout is incomplete. Reload before choosing an arrival point.": "当前布局资料不完整，请重新加载后再指定到达点。",
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
-@@ -1235,2 +1276,3 @@ export const messages: Record<string, string> = {
+   "Saving…": "正在保存…",
+   "Save changes": "保存改动",
+@@ -1233,6 +1283,7 @@ export const messages: Record<string, string> = {
+
+ // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
-@@ -1295,2 +1337,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+   ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
+   ["{0} · Your saved home","{0} · 你保存的家园"], ["{0} · Public starport","{0} · 公共星港"], ["{0} · Visit only · building belongs to its owner","{0} · 可参观，建筑由主人管理"], ["{0} · An unclaimed world to explore","{0} · 可探索的未认领星球"],
+@@ -1293,6 +1344,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+     "Turn: {0}°",
+     "朝向：{0}°"
    ],
 +  [
 +    "Turn: {0}° · {1}",
@@ -1388,6 +1423,8 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +    [1]
 +  ],
    [
+     "{0} / {1} objects",
+     "{0} / {1} 个物件"
 diff --git a/src/client/public-town-art.ts b/src/client/public-town-art.ts
 index e31b823b5a69a8875885e1cde20d0b3ecb36b77b..2c01445b7080b652b279186f4250be714ecedaf0 100644
 --- a/src/client/public-town-art.ts

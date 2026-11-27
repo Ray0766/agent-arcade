@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
-  "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
+  "worldRevision": "b5b267b67a10c6d4236fa80664c4464dec4fa5f1",
+  "worldTree": "4c66ccaed49a6532efc35c382a7e64e3e99809fd",
+  "patchSHA256": "c2762a8511eda9d2f23219a4a129cea61c5a127f6ffb2a6c28590f39b21e4f41",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -225,6 +225,12 @@
       "path": "spec/window-boxes.test.ts",
       "blob": "e2c9149c3359a564244b0bb979827c672eddaa71",
       "sha256": "4a044e22b82510b253257c47d13541a876159c4205584ed481627982b614c688"
+    },
+    {
+      "action": "A",
+      "path": "src/assets/courtyard-flower-corner.webp",
+      "blob": "c106bf700d84ccf7f14a0a639dd5afb28be1cc04",
+      "sha256": "1f8774918040a265be04816db254e9f6d223ba0860f9a8dbcdeb6fcabac45c1f"
     },
     {
       "action": "A",
@@ -547,14 +553,14 @@
     {
       "action": "A",
       "path": "src/client/courtyard-inspiration.css",
-      "blob": "c64e2e289d70370ca339dfedb5563699a0071f27",
-      "sha256": "fc4e5565affb7e7df1693eaf0ec8a0f2af9dd04209841c289aac9256906bc0da"
+      "blob": "7dc31333cbd3dd9923646ca2d3355b149b664e2d",
+      "sha256": "b6e9ab8a8df476e04d3bd0c37f8ac0529137b2560047b22ca5189558e3090c65"
     },
     {
       "action": "A",
       "path": "src/client/courtyard-inspiration.ts",
-      "blob": "167d266c8a6dd078a0f8a112bda0b079733141ab",
-      "sha256": "f7542f2ba2e3e820869165f108b90ca8f5390aead3e814f655ed3a39b1b19f0d"
+      "blob": "fec8e56b9660788486dca992ba0311f9ea2ede4a",
+      "sha256": "15ca3a3bf996657bb82db096df17f6a89455c2527327e3154e5ea35606f1c596"
     },
     {
       "action": "A",
@@ -619,8 +625,8 @@
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "992cafe704edc69412e8a22d704386db99b6f449",
-      "sha256": "46428718fd216b2e9ace2a49ebe4772e0c3dfafd785737db0beb1123a0a4556d"
+      "blob": "97ad8cce6a8bb533919d6f9a6ef7c21de7a90135",
+      "sha256": "3593334afb4dfeb4059faaba1d1859e487ecbedfc93596113cd93522567872ba"
     },
     {
       "action": "A",

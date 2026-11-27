@@ -16,6 +16,17 @@ body:has(#courtyard-inspiration[open]) #menu-dialog::backdrop { background: tran
   gap: 16px;
   align-items: start;
 }
+.courtyard-inspiration-examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.courtyard-inspiration-examples button {
+  min-height: 44px;
+  padding: 0 12px;
+  font: inherit;
+  background: var(--ui-choice);
+  color: var(--ui-dialog-text);
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 6px;
+}
+.courtyard-inspiration-examples button[aria-pressed=true] { background: var(--ui-selected); font-weight: 650; }
 .courtyard-inspiration-layout img {
   display: block;
   width: 100%;
