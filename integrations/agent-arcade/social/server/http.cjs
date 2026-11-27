@@ -213,13 +213,19 @@ function dispatch(store,a,route,body,params,clientBuild,ai,aiGroup,aiFeed,proact
       if (method === 'GET') {
         const page=store.historyPage(a,id,params);
         const visible=store.withReplyPreviews(a,id,page.messages).map(message=>personal.withVoiceOffer(a,message));
-        const ids=params.has('reactionIds')?params.get('reactionIds').split(','):[];
-        if(ids.length>100||ids.some(value=>!(/^[1-9]\d*$/u.test(value)&&Number.isSafeInteger(Number(value)))))
-          fail(400,'cursor','消息位置无效');
+        const readIds=key=>{
+          const values=params.has(key)?params.get(key).split(','):[];
+          if(values.length>100||values.some(value=>!(/^[1-9]\d*$/u.test(value)&&Number.isSafeInteger(Number(value)))))
+            fail(400,'cursor','消息位置无效');
+          return values.map(Number);
+        };
+        const ids=readIds('reactionIds'),correctionIds=readIds('correctionIds');
         return {...page,messages:store.withMessageReactions(a,id,visible),
-          ...(ids.length&&{reactionUpdates:store.reactionSummaries(a,id,ids.map(Number))})};
+          ...(ids.length&&{reactionUpdates:store.reactionSummaries(a,id,ids)}),
+          ...(correctionIds.length&&{correctionUpdates:store.correctionTargets(a,id,correctionIds)})};
       }
       if (method === 'POST') {
+        if(body.correctionOf!==undefined)return {message:store.send(a,id,body)};
         if(!bothouse&&!claudeUi)guard(store.directAiConsent(a,id)?.ai);
         let directTurn=false,groupTurn,personalTurn,abortProactive,bothouseTurn;
         const message=store.send(a,id,body,row=>{
@@ -680,7 +686,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
           res.setHeader('Content-Type','application/json; charset=utf-8');
           return res.end(JSON.stringify(output));
         }
-        const preparedTask=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3
+        const preparedTask=req.method==='POST'&&collection==='conversations'&&action==='messages'&&parts.length===3&&body.correctionOf===undefined
           ? await workOrders.prepare(account,chat,body):undefined;
         if(preparedTask&&current(store,req)!==account)fail(409,'message_session','账号已切换，请重新打开会话');
         const handle = () => dispatch(store,account,{method:req.method,parts,claudeUi,preparedTask,friendRolesUi:req.headers['x-social-ai-friend-roles']==='1'},body,url.searchParams,build,ai,aiGroup,aiFeed,proactive,aiFriends,appointments,web,personal,bothouse,workOrders);
@@ -703,7 +709,7 @@ function createServer(store,{publicOrigin,client = path.join(__dirname,'../clien
         if(req.method==='POST'&&(parts[0]==='groups'||parts[0]==='conversations'||parts[0]==='personal-ai'))personal.cancelStale();
         if(req.method==='POST'&&parts[0]==='personal-ai')ai.cancelStalePersonal();
         if(req.method==='POST'&&parts[0]==='groups')aiGroup.cancelStale();
-        if(result.message){
+        if(result.message&&!result.message.isCorrection){
           const {message,directTurn,groupTurn,personalTurn,bothouseTurn}=result;
           aiGroup.cancelStale();
           if(message.task||workOrders.view(message.id))workOrders.wake();
