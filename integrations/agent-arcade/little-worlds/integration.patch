@@ -342,15 +342,20 @@ index 4ac5126e36616101ce4acd38b28bcf638c114fd2..434dca5f7d35749a931c1732c274edb7
 +    return handle.object;
    }
 diff --git a/src/client/character-sample.ts b/src/client/character-sample.ts
-index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa95db123c1 100644
+index 9e2e1f9978b075934705f6aaaf25981ddaa57039..2de821815f0778f87788a9483f0514676afeac70 100644
 --- a/src/client/character-sample.ts
 +++ b/src/client/character-sample.ts
-@@ -14,3 +14,3 @@ const material=(color:string)=>{if(!materialCache.has(color)){const m=applyArtMa
+@@ -12,21 +12,24 @@ const sphere=()=>shared('sphere',()=>new T.SphereGeometry(1,12,8));
+ const capsule=()=>shared('capsule',()=>new T.CapsuleGeometry(1,1,3,8));
+ const material=(color:string)=>{if(!materialCache.has(color)){const m=applyArtMaterial(new T.MeshStandardMaterial({color,roughness:.9,metalness:0}));m.userData.sharedResource=true;materialCache.set(color,m);}return materialCache.get(color)!;};
  const eyeMaterial=new T.MeshStandardMaterial({vertexColors:true,roughness:.65,metalness:0});eyeMaterial.userData.sharedResource=true;
 -function eyeGeometry(color:string){return shared('eye:'+color,()=>{
 +function eyeGeometry(color:string,compact:boolean){return shared('eye:'+color+':'+compact,()=>{
   const parts:Array<{color:string;scale:number[];position:number[]}>= [
-@@ -21,5 +21,8 @@ function eyeGeometry(color:string){return shared('eye:'+color,()=>{
+   {color:'#fff6e5',scale:[.060,.067,.023],position:[0,0,0]},
+   {color,scale:[.033,.044,.014],position:[0,-.003,.019]},
+   {color:'#26352f',scale:[.017,.031,.008],position:[0,-.003,.030]},
+   {color:'#fffdf0',scale:[.008,.010,.005],position:[-.010,.015,.037]},
   ];
 - const geometries=parts.map(p=>{const g=new T.SphereGeometry(1,10,6);g.scale(p.scale[0],p.scale[1],p.scale[2]);g.translate(p.position[0],p.position[1],p.position[2]);const c=new T.Color(p.color),values=new Float32Array(g.attributes.position.count*3);for(let i=0;i<values.length;i+=3)values.set([c.r,c.g,c.b],i);g.setAttribute('color',new T.BufferAttribute(values,3));return g;});const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());return merged;
 + const geometries=parts.map(p=>{const g=new T.SphereGeometry(1,compact?4:10,compact?3:6);g.scale(p.scale[0],p.scale[1],p.scale[2]);g.translate(p.position[0],p.position[1],p.position[2]);const c=new T.Color(p.color),values=new Float32Array(g.attributes.position.count*3);for(let i=0;i<values.length;i+=3)values.set([c.r,c.g,c.b],i);g.setAttribute('color',new T.BufferAttribute(values,3));return g;});const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());return merged;
@@ -361,14 +366,18 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 + const sphereGeometry=()=>compact?shared('town-sphere',()=>new T.SphereGeometry(1,6,4)):sphere();
 + const capsuleGeometry=()=>compact?shared('town-capsule',()=>new T.CapsuleGeometry(1,1,2,5)):capsule();
   const root=new T.Group(),rig=new T.Group(),torso=new T.Group(),head=new T.Group();root.name='little-worlds-traveller';root.userData.characterVariant='sample';root.add(rig);rig.add(torso);torso.position.y=.87;
-@@ -27,4 +30,4 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  const tinted:T.Mesh[]=[];
   const add=(parent:T.Object3D,g:T.BufferGeometry,color:string,position:number[],scale:number[],tint=false)=>{const mesh=new T.Mesh(g,material(color));mesh.position.fromArray(position);mesh.scale.fromArray(scale);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);if(tint)tinted.push(mesh);return mesh;};
 - const ellipsoid=(p:T.Object3D,color:string,pos:number[],scale:number[],tint=false)=>add(p,sphere(),color,pos,scale,tint);
 - const coat=COURIER_LOOK.coats[identity],skin=SKIN_COLORS[options.skin],hair='#504338',cream='#f3e8ce',dark='#405653',leather='#865e43';
 + const ellipsoid=(p:T.Object3D,color:string,pos:number[],scale:number[],tint=false)=>add(p,sphereGeometry(),color,pos,scale,tint);
 + const coat=townCoat??COURIER_LOOK.coats[identity],skin=SKIN_COLORS[options.skin],hair='#504338',cream='#f3e8ce',dark='#405653',leather='#865e43';
   // Soft fitted jacket, curved hem, open cream collar and modest scarf.
-@@ -37,6 +40,8 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  ellipsoid(torso,coat,[0,.01,0],[.215,.29,.15],true);
+  add(torso,shared('hem',()=>new T.CylinderGeometry(.19,.23,.12,12)),coat,[0,-.20,0],[1,1,.74],true);
+@@ -35,25 +38,27 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  ellipsoid(torso,leather,[0,-.16,.151],[.205,.025,.022]);
+  ellipsoid(torso,'#dac794',[.035,-.16,.173],[.028,.024,.01]);
   // Diagonal strap and a rounded canvas field bag, visible from the follow view.
 - const strap=add(torso,shared('strap',()=>new T.BoxGeometry(.035,.48,.025)),leather,[0,.01,-.145],[1,1,1]);strap.rotation.z=-.48;
 - ellipsoid(torso,'#b69363',[-.16,-.10,-.15],[.135,.16,.07]);
@@ -381,22 +390,29 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  ellipsoid(torso,leather,[-.16,-.075,-.229],[.018,.035,.008]);
 + }
   // Head: softer jaw, ears, clear eyes and a sculpted side-swept hair silhouette.
-@@ -44,3 +49,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  torso.add(head);head.position.set(0,.47,.005);
   head.scale.fromArray(options.face==='oval'?[.92,1.08,.98]:options.face==='round'?[1.06,.95,1.04]:[1,1,1]);
 - add(head,shared('head',()=>new T.SphereGeometry(1,16,12)),skin,[0,0,0],[.215,.235,.195]);
 + add(head,compact?shared('town-head',()=>new T.SphereGeometry(1,8,6)):shared('head',()=>new T.SphereGeometry(1,16,12)),skin,[0,0,0],[.215,.235,.195]);
   ellipsoid(head,skin,[0,-.10,.05],[.17,.14,.15]);
-@@ -51,3 +56,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  for(const side of [-1,1]){
+   ellipsoid(head,skin,[side*.208,-.015,0],[.040,.066,.035]);
+   ellipsoid(head,new T.Color(skin).multiplyScalar(.75).getStyle(),[side*.225,-.018,.017],[.015,.036,.016]);
+   ellipsoid(head,new T.Color(skin).lerp(new T.Color('#c46d64'),.3).getStyle(),[side*.123,-.075,.161],[.044,.020,.012]);
   }
 - const eyes=[-1,1].map(side=>{const eye=new T.Mesh(eyeGeometry(EYE_COLORS[options.eyes]),eyeMaterial);eye.position.set(side*.078,.015,.173);eye.rotation.y=side*.13;head.add(eye);return eye;});
 + const eyes=[-1,1].map(side=>{const eye=new T.Mesh(eyeGeometry(EYE_COLORS[options.eyes],compact),eyeMaterial);eye.position.set(side*.078,.015,.173);eye.rotation.y=side*.13;head.add(eye);return eye;});
   for(const side of [-1,1]){const brow=ellipsoid(head,hair,[side*.081,.093,.169],[.059,.014,.013]);brow.rotation.z=side*.10;}
-@@ -55,3 +60,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+  ellipsoid(head,skin,[0,-.038,.199],[.027,.040,.029]);
   const mouth=shared('smile',()=>new T.TubeGeometry(new T.QuadraticBezierCurve3(new T.Vector3(-.041,-.121,.172),new T.Vector3(0,-.140,.180),new T.Vector3(.041,-.121,.172)),8,.007,4,false));add(head,mouth,'#956b5a',[0,0,0],[1,1,1]);
 - const cap=add(head,shared('hair-cap',()=>new T.SphereGeometry(1,16,9,0,Math.PI*2,0,1.70)),hair,[0,.04,-.025],[.232,.237,.213]);
 + const cap=add(head,compact?shared('town-hair-cap',()=>new T.SphereGeometry(1,8,5,0,Math.PI*2,0,1.70)):shared('hair-cap',()=>new T.SphereGeometry(1,16,9,0,Math.PI*2,0,1.70)),hair,[0,.04,-.025],[.232,.237,.213]);
   if(options.hair==='swept'){
-@@ -67,9 +72,17 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+   for(const [x,y,z,sx,sy,sz,rotation] of [[-.115,.148,.147,.117,.087,.062,-.58],[.008,.185,.145,.118,.068,.061,-.4],[.12,.19,.102,.105,.068,.071,.20]]){const lock=ellipsoid(head,hair,[x,y,z],[sx,sy,sz]);lock.rotation.z=rotation;}
+   for(const side of [-1,1]){const lock=ellipsoid(head,hair,[side*.196,.042,-.025],[.055,.145,.115]);lock.rotation.z=-side*.12;}
+@@ -65,20 +70,29 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
+   for(const side of [-1,1]){const lock=ellipsoid(head,hair,[side*.194,-.055,-.025],[.067,.205,.126]);lock.rotation.z=-side*.08;const fringe=ellipsoid(head,hair,[side*.113,.137,.155],[.112,.075,.05]);fringe.rotation.z=side*.38;}
+  }
   // Articulated limbs reuse shared low-resolution geometry and existing game API.
 - const arms=[-1,1].map(side=>{const upper=new T.Group(),forearm=new T.Group();torso.add(upper);upper.position.set(side*.225,.16,0);ellipsoid(upper,coat,[side*.014,-.085,0],[.085,.145,.085],true);upper.add(forearm);forearm.position.y=-.22;add(forearm,capsule(),coat,[0,-.085,0],[.061,.067,.061],true);ellipsoid(forearm,cream,[0,-.17,0],[.066,.025,.066]);ellipsoid(forearm,skin,[0,-.226,.014],[.059,.069,.056]);return{upper,forearm};});
 - const legs=[-1,1].map(side=>{const hip=new T.Group(),knee=new T.Group();rig.add(hip);hip.position.set(side*.102,.65,0);add(hip,capsule(),dark,[0,-.125,0],[.081,.09,.078]);hip.add(knee);knee.position.y=-.25;add(knee,capsule(),dark,[0,-.115,0],[.064,.085,.064]);ellipsoid(knee,leather,[0,-.28,.040],[.091,.076,.144]);ellipsoid(knee,'#c8ae82',[0,-.33,.042],[.094,.018,.142]);return{hip,knee};});
@@ -416,13 +432,21 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  legs.forEach(({hip,knee})=>{hip.rotation.x=-Math.PI/2;knee.rotation.x=Math.PI/2;});
 +  arms.forEach(({upper,forearm},i)=>{upper.rotation.set(-.32,0,(i?1:-1)*.08);forearm.rotation.x=-.72;});
 +  if(shadow)shadow.visible=false;
-+ },animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){
++ },animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true,carryingProp=false){
    const dt=Math.min(.05,Math.max(0,t-lastTime));lastTime=t;const stride=Math.min(1,speed/3);gait+=dt*speed*4.4;const phase=reduced?0:gait;
-@@ -80,3 +93,3 @@ export function sampleCourier(identity:Character,options:Appearance={...defaultA
-   arms.forEach((arm,i)=>{arm.upper.rotation.set(parcel.visible?-.92:-Math.sin(phase+i*Math.PI)*.35*stride,0,(i?1:-1)*.09);arm.forearm.rotation.x=parcel.visible?-.72:-.18;});
+   rig.position.y=reduced?0:Math.abs(Math.sin(phase))*.018*stride;torso.rotation.set(reduced?0:.035*stride,0,reduced?0:Math.sin(phase)*.025*stride-turn*.035);
+   head.rotation.y=reduced?0:Math.sin(t*.65)*.045*(1-stride);head.rotation.z=reduced?0:Math.sin(t*.45)*.012;
+   const blink=reduced?1:(t%5.3>.08&&t%5.3<.20?.08:1);eyes.forEach(e=>e.scale.y=blink);
+   legs.forEach((leg,i)=>{const s=Math.sin(phase+i*Math.PI);leg.hip.rotation.x=s*.50*stride;leg.knee.rotation.x=Math.max(0,-s)*.62*stride;});
+-  arms.forEach((arm,i)=>{arm.upper.rotation.set(parcel.visible?-.92:-Math.sin(phase+i*Math.PI)*.35*stride,0,(i?1:-1)*.09);arm.forearm.rotation.x=parcel.visible?-.72:-.18;});
 -  shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
+-  if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
++  const carrying=parcel.visible||carryingProp;
++  arms.forEach((arm,i)=>{arm.upper.rotation.set(carrying?-.92:-Math.sin(phase+i*Math.PI)*.35*stride,0,(i?1:-1)*.09);arm.forearm.rotation.x=carrying?-.72:-.18;});
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
-   if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
++  if(t<gestureUntil&&!reduced&&!carrying){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
+  }};
+ }
 diff --git a/src/client/colony.ts b/src/client/colony.ts
 index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..c87199f83150689967c763079550b8c63ae9a336 100644
 --- a/src/client/colony.ts
@@ -1155,30 +1179,46 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf000a7de7b 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..e92faf55ae358b779c096b9a437ec976f77965f8 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
+@@ -30,6 +30,8 @@ import { createTutorialRoute } from './tutorial-route.ts';
+ import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
+ import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
++import { VisitorFlowerBouquet } from './visitor-flower-bouquet.ts';
 +import { BothouseResidents } from './bothouse-residents.ts';
  import { GroundPresence } from './presence.ts';
-@@ -77,2 +78,3 @@ import {buildCameraFrame} from './build-camera.ts';
+ import { PresenceVisitGate } from './presence-visit.ts';
+ import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
+@@ -75,6 +77,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
+ import {createVillageDrawing} from './village-drawing.ts';
+ import {buildCameraFrame} from './build-camera.ts';
  import {arrivalViewScore} from './arrival-camera.ts';
 +import { benchSeat, type BenchSeat } from './bench-rest.ts';
  import { HomeSetup } from './home-setup.ts';
-@@ -146,2 +148,5 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
+ import { TeleportStations } from './teleport-station.ts';
+ import { SaveProgress } from './save-progress.ts';
+@@ -144,6 +147,9 @@ let residentConversationKey='';
+ let queue: Promise<unknown> = Promise.resolve();
+ const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
 +const interaction = action.parentElement!;
 +const benchChoice = $<HTMLButtonElement>('visitor-bench-choice');
 +let benchRest: { id: string; model: T.Object3D; seat: BenchSeat; footing: T.Vector3 } | null = null;
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
-@@ -270,3 +275,4 @@ function accept(next: PlayerState) {
+ function renderSaveProgress(){
+   if(!state||physicsMismatch)return;
+@@ -268,16 +274,20 @@ function accept(next: PlayerState) {
+   const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
+   flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
 -  physicsMismatch=false;online = navigator.onLine; renderSaveProgress(); renderTask();
 +  // An accepted world response proves this server is reachable, even on a local-only network.
 +  physicsMismatch=false;online=true;renderSaveProgress();renderTask();
    homeInterior?.receive(state);homeInterior?.setOnline(online);homeControls?.receivePlayer(state);
-@@ -275,7 +281,10 @@ function accept(next: PlayerState) {
+   placeHomeDoor(exteriorHomeDoor,state.flight.mode==='ground'?state.home:null);
+   return true;
  }
 -function failed(error: unknown) {
 -  clearGroundMotion();
@@ -1193,11 +1233,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +function failed(error: unknown) {
 +  worldUnavailable();
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
-@@ -319,2 +328,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
+ }
+ function renderTask() {
+@@ -317,6 +327,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+ setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
+ worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
 +const bothouseResidents=new BothouseResidents(scene,reduced);
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
-@@ -351,7 +361,9 @@ function tutorialContext(){
+ const practical=createWorldPracticalLights();scene.add(practical.group);
+ const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
+@@ -349,11 +360,13 @@ function tutorialContext(){
+     paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
+ }
  function frameVillageGuide(){
 -  tutorial?.frame(tutorialContext());
 +  const context=tutorialContext(),planet=colony?.universe?.currentPlanet;
@@ -1211,30 +1259,56 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    ? {planet,world:groundWorld} : undefined;
 +  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
-@@ -364,2 +376,5 @@ function frameVillageGuide(){
+     visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
+     homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
+@@ -362,12 +375,15 @@ function frameVillageGuide(){
+   if(context&&planet&&groundWorld&&walker){
+     const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
 +      approvedCourtyard:!!courtyard,
 +      residentRoster:context.online&&context.ready&&!indoor&&state?.flight.mode==='ground'
 +        ? bothouseResidents.guideRoster(groundWorld,state.location?.visitEpoch??0) : [],
        visible:context.ready&&!photoPaused&&!colony?.paused&&!flight?.active&&!departure&&(!homeInterior?.active||!!room),enabled:context.ready&&online&&!photoPaused&&!colony?.paused&&!document.querySelector('dialog[open]'),
-@@ -369,3 +384,3 @@ function frameVillageGuide(){
+       scene:room?.scene??scene,camera:room?.camera??renderCamera(),feet,up:room?new T.Vector3(0,1,0):walker.up.clone(),forward:room?.forward??walker.north.clone(),
+       roomKey:room?.key??indoorRoomView.room?.id??activePlanet,indoor,online,time:elapsed,reducedMotion:reduced,
+       stand:room?.stand??(point=>{const normal=point.clone().normalize().toArray() as Vec3,support=groundWorld!.support(normal,feet.length()+.2),pose={position:normal,radius:support.radius,verticalSpeed:0,grounded:true};return Math.abs(support.radius-feet.length())<.28&&!groundWorld!.blocked(pose)?new T.Vector3(...normal).multiplyScalar(support.radius):null;})});
      renderer.domElement.dataset.worldGuide=JSON.stringify(guideState);
 -  }
 +  } else worldGuide.clearResidentVisit();
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
-@@ -546,2 +561,6 @@ window.addEventListener('keydown',event=> {
+   renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
+   renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
+@@ -470,6 +486,7 @@ function prepareSurface(planet:PlanetView){
+ }
+ configureGround();
+ const player = courier('clay');scene.add(player.root);
++const bouquet = new VisitorFlowerBouquet(interaction,player.root,()=>{mouseLook?.release();clearInput();});
+ // The same head/coat/shoulder/satchel/parcel set as the independent upper-body
+ // framing contract. Bounds follow the actual current animation, including yaw.
+ const cameraUpperMeshes:T.Mesh[]=[];
+@@ -544,6 +561,10 @@ window.addEventListener('keydown',event=> {
+   if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
+   const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
 +    if (benchRest && key !== 'shift') {
 +      benchRest = null;
 +      if (key === 'e') { event.preventDefault(); return; }
 +    }
      event.preventDefault();keys.add(key);target=null;
-@@ -599,3 +618,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
+     if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
+   }
+@@ -597,7 +618,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+ renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
+ renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
 -  if(flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
 +  if(benchRest || flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
-@@ -700,3 +719,46 @@ async function interact() {
+   const hit=raycaster.intersectObject(world.globe)[0];
+   if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
+@@ -698,7 +719,50 @@ async function interact() {
+     player.greet(elapsed);
+   }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
 -action.onclick=()=>void interact();
 +function canGreetVisitor() {
@@ -1282,23 +1356,37 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +  if (canGreetVisitor()) bothouseResidents.greetVisitor(id,walker.up,renderCamera());
 +};
  setInterval(()=>void savePosition(),350);
-@@ -723,3 +785,3 @@ setInterval(async()=>{
+ setInterval(async()=>{
+   if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
+@@ -721,17 +785,42 @@ setInterval(async()=>{
+   if(online || busy || physicsMismatch || stateLoader.pending) return;
+   if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
 -    const next=await serial(()=>stateLoader.read());if(!accept(next))return;
 +    const next=await serial(()=>stateLoader.read());if(online||!accept(next))return;
      walker=new SurfaceWalker(next.position);lastSaved.copy(walker.up);clearInput();rebaseGroundCamera();ensureColony();notice('Back at your last saved spot. Welcome home.');
-@@ -727,4 +789,2 @@ setInterval(async()=>{
+   }catch(error){if(!arrivalRefused(error))status('Offline · retrying',true);else if(!arrival.stopped)notice(error instanceof Error?error.message:'Please try again.');}
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
 
-@@ -734,2 +794,21 @@ function animate(now:number) {
+ let previous=performance.now(),elapsed=0,uiTick=0,started=false;
+ function animate(now:number) {
+   requestAnimationFrame(animate);
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
 +  const landedGarden=online&&colony?.syncing&&state?.flight.mode==='ground'&&garden?.kind==='garden'&&garden.claimed?garden.id:null;
 +  if (!visitVisible || photoPaused) interaction.removeAttribute('data-visitor-greeting');
 +  bothouseResidents.frame(visitVisible?groundWorld:null,landedGarden,state?.location?.visitEpoch??0,now,!!garden?.mine&&garden.id===activePlanet&&online,garden?.objects);
++  const epoch = state?.location?.visitEpoch ?? 0;
++  const bouquetScope = visitVisible && !garden.mine && !flight?.active && groundWorld && bothouseResidents.canPhotographVisit(groundWorld,epoch)
++    ? garden.id+'/'+epoch : null;
++  const bouquetContext = bouquetScope && garden && groundWorld && standing ? {
++    world:groundWorld, pose:standing, objects:garden.objects, getModel:(id:string)=>colony?.savedObjectModel(id),
++  } : null;
++  bouquet.frame(bouquetScope,bouquetContext,!!bouquetContext && !benchRest && canGreetVisitor(),!overview && !benchRest && canSceneInput());
++
 +  visitPhotoButton.hidden=!canTakeVisitPhoto();
 +  if (benchRest && (!visitVisible || !groundWorld || !standing?.grounded ||
 +    !canUseOutdoorBench(groundWorld) || bothouseResidents.occupiesBench(benchRest.id) || !canSceneInput() || overview || indoorRoomView.room ||
@@ -1314,34 +1402,61 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    benchChoice.hidden=true;
 +  }
    if(graphicsLost)return;
-@@ -781,3 +860,3 @@ function animate(now:number) {
+   if(qualityApplyPending&&!photoMode?.capturing)resize();
+   observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
+@@ -779,7 +868,7 @@ function animate(now:number) {
+   // A rejected isolated pose must not let unrendered motion reach the save
+   // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
 -    if(paused){clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
 +    if(paused||benchRest){if(paused)clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
        physicsClock=Math.min(.05,physicsClock+dt);
-@@ -801,2 +880,7 @@ function animate(now:number) {
-   player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
+       while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
+         physicsClock-=FIXED_STEP;const before=standing;
+@@ -798,7 +887,15 @@ function animate(now:number) {
+   }
+   destinationRing.visible=!!target;
+   const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
+-  player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
++  if(x||y||target)bouquet.resumeWalking();
++  const holdBouquet=bouquet.holding&&!benchRest;
++  player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,bouquet.faceViewer&&!benchRest?walker.north.clone().negate():walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true,holdBouquet);
++  bouquet.attach(player.parcel,holdBouquet);
 +  if (benchRest) {
 +    player.root.position.copy(benchRest.seat.position);
 +    player.root.quaternion.copy(benchRest.seat.rotation);
 +    player.sit();
 +  }
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-@@ -873,3 +957,3 @@ function animate(now:number) {
+   const renderUp=surfaceNormal(walker.up);
+   const hub=activePlanet==='hub',phone=innerWidth<600;
+@@ -871,7 +968,7 @@ function animate(now:number) {
+     }else{
+       const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
 -      player.root.visible=pose.playerVisible;
 +      player.root.visible=pose.playerVisible||!!benchRest;
        // Retain the baseline hub/craft geometry checks alongside static proxies.
-@@ -910,2 +994,4 @@ function animate(now:number) {
+       const shortenAgainst=(root:T.Object3D)=>{
+         const offset=pose.position.clone().sub(headPoint),length=offset.length();
+@@ -908,11 +1005,14 @@ function animate(now:number) {
+   fitGroundSunShadowDepth(sun);
+   if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
 +  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused,'exploration',
 +    {usedByPlayer:benchRest?.id,getModel:id=>colony?.savedObjectModel(id)});
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +1001,3 @@ function animate(now:number) {
+   world.npcs.forEach(n=>{n.avatar.animate(elapsed,0,reduced);if(near===n.id){const local=n.anchor.worldToLocal(player.root.position.clone());const yaw=Math.atan2(local.x,local.z);const diff=Math.atan2(Math.sin(yaw-n.avatar.root.rotation.y),Math.cos(yaw-n.avatar.root.rotation.y));n.avatar.root.rotation.y+=diff*(1-Math.exp(-4*dt));}n.beacon.position.y=2.0+(reduced?0:Math.sin(elapsed*2)*.06);n.beacon.visible=state.quest!=='delivered'&&n.id===(state.quest==='available'?'mica':'sol');});
+   presence.frame(now,dt,walker.up,reduced);
+   colony?.updateShadows(feet);
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -966,3 +1053,14 @@ function animate(now:number) {
+   // never move the player, steer the camera, or write a saved position.
+   if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
+@@ -964,7 +1064,18 @@ function animate(now:number) {
+     nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
+     renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
@@ -1357,7 +1472,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    delete action.dataset.benchRest;
 +    action.hidden=interactionPaused||(!near&&!nearResident&&(!greeting||greeting.greeted)&&(!bench||offerBenchChoice));
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
-@@ -978,2 +1076,20 @@ function animate(now:number) {
+     else if(nearResident){
+       const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
+@@ -976,6 +1087,24 @@ function animate(now:number) {
+         setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
+       }
      }
 +    else if(greeting){
 +      delete action.dataset.residentPrompt;
@@ -1378,7 +1497,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      setText($('nearby'),'');
 +    }
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
-@@ -1032,5 +1148,6 @@ function ensureColony() {
+     if(state.quest!=='delivered') {
+       const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
+@@ -1030,15 +1159,17 @@ function ensureColony() {
+     confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
+     ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
 +  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
@@ -1386,13 +1509,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
      applyPlayer:accept,
-@@ -1040,3 +1157,4 @@ function ensureColony() {
+     universe:u=>{guideStationApproaches=tutorialStationApproaches(u.currentPlanet);homeSetup?.receive(u);teleportStations?.receive(u);homeControls?.receive(u);flight?.universe(u);tutorial?.receive(u);prepareSurface(u.currentPlanet);},bearing:id=>flight?.mark(id),
+     obstacles:blocks=>{placedObstacles=blocks;if(activePlanet!=='hub')world.blocks.splice(0,world.blocks.length,...blocks);},
+     pause:building=>{clearInput();overview=building;setAttribute($('view-mode'), 'aria-label', overview?'Walking view':'View planet');setHTML($('view-mode'), overview?'↗ <span>Walking view</span>':'◉ <span>Planet view</span>');},
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1179,8 @@ photoMode=new PhotoMode({renderer,
+   mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
+   tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
+@@ -1059,12 +1190,36 @@ photoMode=new PhotoMode({renderer,
+       const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
+     }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
@@ -1402,7 +1531,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1065,4 +1188,23 @@ photoMode=new PhotoMode({renderer,
+ });
  const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
 -$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 -window.addEventListener('open-photo-mode',()=>void photoMode?.open());
@@ -1428,6 +1557,8 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +visitPhotoButton.onclick=()=>openWorldPhoto('follow');
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
+ async function startInitialVisit(){
+   initialStateReady=false;welcomeCommitted=false;welcome.stage('connecting');
 diff --git a/src/client/messages.ts b/src/client/messages.ts
 index d70699bd82d9f5a8977872996503a0f5100d8343..dda2bb244deedee7b77147fd921e1986a7f08393 100644
 --- a/src/client/messages.ts
@@ -2714,14 +2845,17 @@ index e9dd7aaeec28c2f759fa14694cf7e45f543b203f..faf4192aa5083eaa2d78bc191a82f0b2
 +.interaction[data-bench-rest] #interact:not([hidden]),#visitor-bench-choice{min-height:44px}
 +@media(max-width:600px){#visitor-bench-choice{margin-top:6px}}
 diff --git a/src/client/character.ts b/src/client/character.ts
-index 2397a4bbd91144e845c1c8a6d9112c5559508622..518a41790130ba41a6ad6ae44a698f27b3eb1f88 100644
+index 2397a4bbd91144e845c1c8a6d9112c5559508622..50002af99269d5f6e57e1f4320cf5e2339012a17 100644
 --- a/src/client/character.ts
 +++ b/src/client/character.ts
-@@ -15,3 +15,3 @@ export function courier(identity:Character|'mica'|'sol',initial?:Appearance){
+@@ -13,6 +13,6 @@ export function courier(identity:Character|'mica'|'sol',initial?:Appearance){
+  const publish=()=>{root.userData.characterVariant='sample';root.userData.appearance={...options};};publish();
+  return{root,get head(){return body.head;},get parcel(){return body.parcel;},
    setAppearance(next:Appearance){next={...next,model:'sample'};if(named||appearanceKey(next)===appearanceKey(options))return false;const carrying=body.parcel.visible;disposeGeometry(body.root);options={...next};body=make();body.parcel.visible=carrying;root.add(body.root);publish();return true;},
 -  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
-+  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},sit(){body.sit();},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true){body.animate(t,speed,reduced,turn,grounded);}
++  setColor(coat:Character){options={...options,coat};body.setColor(coat);publish();},greet(t:number){body.greet(t);},sit(){body.sit();},animate(t:number,speed:number,reduced:boolean,turn=0,grounded=true,carryingProp=false){body.animate(t,speed,reduced,turn,grounded,carryingProp);}
   };
+ }
 diff --git a/src/client/photo-mode.ts b/src/client/photo-mode.ts
 index 9fd97606d63b4700b2f17dbc8175a41cac00f1aa..b827ccc218a09106f5a68c9da855fa10b73cc7eb 100644
 --- a/src/client/photo-mode.ts

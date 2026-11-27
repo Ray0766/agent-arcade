@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "a753ed10b154f2982d0b69e69f252416c1486002",
-  "worldTree": "d14ab0bb21dcf1da2f70c77938e20798e60d11a2",
-  "patchSHA256": "1f6620b658951b72d0559c44aa72ff3236f7b3510212c8aefdc981951c7ac3eb",
+  "worldRevision": "9e0577632d706f65728b12cd2910301d443f38d5",
+  "worldTree": "3dd0227ae6c64cfd8ab9054954b9db083d5e6eaa",
+  "patchSHA256": "a0babca5c53d073f5611c5f448384ee0a76a6004b9c68cbab608d80fdb20321f",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -535,14 +535,14 @@
     {
       "action": "M",
       "path": "src/client/character-sample.ts",
-      "blob": "d621be9dcc697e99164dad8926c4dfa95db123c1",
-      "sha256": "17d7dcb7c152fdb1ce863b2b16540b767be6c3aa7632af2f3f57ce4826552ad1"
+      "blob": "2de821815f0778f87788a9483f0514676afeac70",
+      "sha256": "535e581a2ec433c6e37e52c18c9108bcdda32dd2ed06b4a5e10a6905b45f998d"
     },
     {
       "action": "M",
       "path": "src/client/character.ts",
-      "blob": "518a41790130ba41a6ad6ae44a698f27b3eb1f88",
-      "sha256": "d27e184368b6203473ede6504ab644e5289f87d7d84d24e23a997de8aad4663e"
+      "blob": "50002af99269d5f6e57e1f4320cf5e2339012a17",
+      "sha256": "a9b6db78ac303b751c4cf33c80cb92bc1d47463eb501738fb6bc0622c1d3156b"
     },
     {
       "action": "M",
@@ -625,8 +625,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "92983bc0cbfab0bfae35edf381fdedf000a7de7b",
-      "sha256": "867ce3d4b574d1af231325087a0e4660afa4d056201b6344af7a1d5f779a91eb"
+      "blob": "e92faf55ae358b779c096b9a437ec976f77965f8",
+      "sha256": "463649d4c61a15982d79f268bd31f555c1ce5e529af810157e5207e94bac0542"
     },
     {
       "action": "M",
@@ -741,6 +741,18 @@
       "path": "src/client/village-polish.ts",
       "blob": "bf4d8e88fe0c25f7f3003c3c214d217801d7039f",
       "sha256": "7c0c17219dd76923d05b5e11f75224f471ef2b2c624519140f0a007e76e86d2b"
+    },
+    {
+      "action": "A",
+      "path": "src/client/visitor-flower-bouquet.css",
+      "blob": "1e88001e6d3e2adc8f43804435669a526006deb9",
+      "sha256": "d0fff102c95b8380af27bac0002eeb3ac5160dd2629a21580e0976070e07dd49"
+    },
+    {
+      "action": "A",
+      "path": "src/client/visitor-flower-bouquet.ts",
+      "blob": "dc621a837392cef4053b0d7e4abdc1e187374937",
+      "sha256": "e029b7d54321bd6251aa118830bb7b0e592c5d46c4054323cd0bff04bcaf36ab"
     },
     {
       "action": "M",
