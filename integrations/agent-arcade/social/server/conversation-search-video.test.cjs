@@ -1,0 +1,62 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {test}=require('node:test');
+const {SocialStore}=require('./store.cjs');
+
+test('history video search combines filename, sender and date before paging visible source messages',t=>{
+  const store=new SocialStore(':memory:');
+  t.after(()=>store.db.close());
+  for(const name of ['owner','guest','outsider'])store.register(name,name,'human','fixture');
+  store.decide('guest',store.request('owner','guest').id,true);
+  const group=store.createGroup('owner','周日河边小队',['guest']).id;
+  const from='2026-11-29T00:00:00.000Z',until='2026-11-30T00:00:00.000Z';
+  const history=(extra={},account='guest')=>
+    store.historySearch(account,group,new URLSearchParams({account,...extra}));
+  const send=(account,clientId,mime,name,created=from)=>{
+    const bytes=Buffer.from(clientId);
+    const video={clientId,mime,name,bytes,digest:clientId,width:320,height:180,durationMs:3000};
+    const {membershipRevision}=store.access(account,group);
+    const {id}=store.transaction(()=>store.sendVideo(account,group,video,membershipRevision));
+    store.run('UPDATE messages SET created=? WHERE id=?',created,id);
+    return id;
+  };
+  const mp4='video/mp4',webm='video/webm';
+  const old=send('owner','history-old-mp4',mp4,'东桥到北门.MP4');
+  const clips=Array.from({length:20},(_,i)=>send('owner','history-webm-'+i,webm,'东桥到北门-'+i+'.webm'));
+  const other=send('guest','history-other-sender',mp4,'东桥到北门-同伴.mp4');
+  send('owner','history-later-date',mp4,'东桥到北门-隔日.mp4',until);
+  send('owner','history-other-title',mp4,'集合照.mp4');
+  const plain=store.send('owner',group,{text:'东桥到北门只是普通文字',clientId:'history-plain'}).id;
+  const filters={type:'video',q:'东桥到北门',sender:'owner',from,until};
+  assert.throws(()=>history({type:'video',senders:1}),{code:'cursor'});
+  assert.throws(()=>history({type:'video',around:old}),{code:'cursor'});
+  const page=history(filters);
+  assert.deepEqual(page.results.map(row=>row.id),clips.toReversed());
+  assert.equal(page.next,clips[0]);
+  const second=history({...filters,before:page.next});
+  assert.deepEqual(second.results,[{id:old,text:'东桥到北门.MP4',category:'video',mime:mp4,
+    durationMs:3000,createdAt:from,sender:'owner',senderNumber:'owner'}]);
+  assert.equal(second.next,null);
+  assert.deepEqual(history({q:'.mp4',before:clips[0]}).results,second.results);
+  assert.deepEqual(history({type:'video',q:'找不到这部片'}).results,[]);
+  assert.deepEqual(history({type:'video',sender:'guest'}).results.map(row=>row.id),[other]);
+  assert.deepEqual(history({q:'只是普通文字'}).results.map(row=>row.id),[plain]);
+  assert.deepEqual(history({type:'video',q:'只是普通文字'}).results,[]);
+  assert.equal(history({type:'video'}).results.find(row=>row.id===clips.at(-1)).mime,webm);
+  assert.equal(history({type:'video',q:'短视频'}).results[0].category,'video');
+  const located=history({around:old});
+  assert.equal(located.anchor,old);
+  assert.equal(located.messages.find(row=>row.id===old).attachment.mime,mp4);
+  store.run('UPDATE messages SET removed=1 WHERE id=?',old);
+  assert.deepEqual(history({...filters,before:page.next}).results,[]);
+  assert.throws(()=>history({around:old}),{code:'unknown_message'});
+  assert.throws(()=>history(filters,'outsider'),{code:'unknown_chat'});
+  assert.throws(()=>history({...filters,account:'owner'}),{code:'history_session'});
+  store.remove('owner',group,'guest',false);
+  assert.throws(()=>history(filters),{code:'unknown_chat'});
+  store.addMembers('owner',group,['guest']);
+  assert.deepEqual(history({type:'video'}).results,[]);
+  assert.throws(()=>history({around:clips[0]}),{code:'unknown_message'});
+  const newClip=send('owner','history-new-clip',mp4,'重新入群后的短片.mp4');
+  assert.deepEqual(history({type:'video'}).results.map(row=>row.id),[newClip]);
+});

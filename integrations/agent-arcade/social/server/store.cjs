@@ -750,7 +750,7 @@ class SocialStore {
       if(!/^[1-9]\d*$/u.test(raw)||!Number.isSafeInteger(value))fail(400,'cursor','消息位置无效');
       return value;
     };
-    const filters=['q','sender','from','until','before'];
+    const filters=['q','sender','from','until','before','type'];
     if(params.has('senders')){
       if(params.has('around')||filters.some(key=>params.has(key)))fail(400,'cursor','请选择一种查询方式');
       const senders=this.all(`SELECT u.number,u.name AS displayName FROM users u JOIN (
@@ -772,22 +772,30 @@ class SocialStore {
     }
     const query=params.has('q')?string(params.get('q'),100,'搜索关键词'):null;
     const sender=params.has('sender')?number(params.get('sender')):null;
-    const from=params.get('from'),until=params.get('until');
+    const from=params.get('from'),until=params.get('until'),type=params.get('type');
+    if(type!==null&&type!=='video')fail(400,'history_type','消息类型无效');
     if(from!==null||until!==null){
       const valid=value=>/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)&&
         Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
       if(!valid(from)||!valid(until)||until<=from||Date.parse(until)-Date.parse(from)>48*3600000)
         fail(400,'history_date','搜索日期无效');
     }
-    if(!query&&!sender&&!from)fail(400,'invalid_text','请选择日期或发送人，或填写关键词');
+    if(!query&&!sender&&!from&&!type)fail(400,'invalid_text','请选择消息类型、日期或发送人，或填写关键词');
     const before=readId('before',Number.MAX_SAFE_INTEGER), limit=20;
-    const matches=this.all(`SELECT m.id,m.body AS text,m.created AS createdAt,u.name AS sender
+    const videoOnly=type==='video';
+    const matches=this.all(`SELECT m.id,coalesce(video.name,m.body) AS text,m.created AS createdAt,u.name AS sender,
+      m.sender AS senderNumber,video.mime AS videoMime,video.duration_ms AS videoDurationMs
       FROM messages m JOIN users u ON u.number=m.sender
+      LEFT JOIN message_videos video ON video.message=m.id AND video.bytes IS NOT NULL AND u.kind='human' AND ?
       WHERE m.chat=? AND m.id>? AND m.id<? AND m.removed=0
         AND (? IS NULL OR m.sender=?) AND (? IS NULL OR (m.created>=? AND m.created<?))
-        AND (? IS NULL OR instr(lower(m.body),lower(?))>0)
-      ORDER BY m.id DESC LIMIT ?`,id,chat.since,before,sender,sender,from,from,until,query,query,limit+1);
-    const results=matches.slice(0,limit);
+        AND (? IS NULL OR instr(lower(coalesce(video.name||' '||m.body,m.body)),lower(?))>0)
+        AND (NOT ? OR video.message IS NOT NULL)
+      ORDER BY m.id DESC LIMIT ?`,
+      Number(this.user(a).kind==='human'),id,chat.since,before,sender,sender,from,from,until,
+      query,query,Number(videoOnly),limit+1);
+    const results=matches.slice(0,limit).map(({senderNumber,videoMime,videoDurationMs,...row})=>
+      videoMime?{...row,senderNumber,category:'video',mime:videoMime,durationMs:videoDurationMs}:row);
     return {...scope,results,next:matches.length>limit?results.at(-1).id:null};
   }
   historyPage(a,id,params) {
