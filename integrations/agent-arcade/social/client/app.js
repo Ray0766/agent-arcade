@@ -2114,6 +2114,7 @@ function showMessageActions(id,control){
   if(reply)reply.hidden=messageBox.readOnly||sending.has(chat)||!$('#reply-target');
   $('#copy-message').hidden=!!row.attachment;
   $('#forward-own-photo').hidden=!membershipRevision||conversation?.friendRemoved||!isOwnPhoto(row,user?.number);
+  $('#forward-own-file').hidden=!membershipRevision||conversation?.friendRemoved||!isOwnFile(row,user?.number);
   const select=$('#select-messages');
   if(select)select.hidden=!messageSelectionBar||!canSelectMessage(row);
   const favorite=$('#save-message-sticker');
@@ -2224,10 +2225,21 @@ $('#forward-own-photo').addEventListener('click',()=>{
   messageActions.hidePopover();
   showForwardPicker(row);
 });
-function showForwardPicker(singlePhoto,{onCancel}={}){
+function isOwnFile(row,account){
+  return Boolean(account&&!row?.removed&&row?.sender?.number===account&&row.sender.kind==='human'&&row.attachment?.type==='file');
+}
+$('#forward-own-file').addEventListener('click',()=>{
+  const row=resolveMessageAction();
+  if(!isOwnFile(row,user?.number)||conversation?.friendRemoved||!membershipRevision)return;
+  messageActions.hidePopover();
+  showForwardPicker(row);
+});
+function showForwardPicker(singleMessage,{onCancel}={}){
   const selection=messageSelection,source=chat,sourceRevision=membershipRevision,account=user.number,epoch=generation;
-  const photo=Boolean(singlePhoto);
-  const ids=singlePhoto?[singlePhoto.id]:Array.from(selection?.ids??[]).sort((a,b)=>a-b);
+  const file=singleMessage?.attachment?.type==='file';
+  const photo=!file&&Boolean(singleMessage);
+  const kind=file?'file':photo?'photo':undefined;
+  const ids=singleMessage?[singleMessage.id]:Array.from(selection?.ids??[]).sort((a,b)=>a-b);
   if(selection?.unavailable)return;
   if(!ids.length||!sourceRevision)return;
   if(ids.length>20){
@@ -2235,7 +2247,7 @@ function showForwardPicker(singlePhoto,{onCancel}={}){
     return;
   }
   const panel=el('div',null,'forward-panel');
-  const scope=openDialog(photo?'转发照片':'转发消息',[panel],source);
+  const scope=openDialog(file?'转发文件':photo?'转发照片':'转发消息',[panel],source);
   const current=()=>dialog.open&&dialogGeneration===scope&&generation===epoch&&chat===source&&
     membershipRevision===sourceRevision&&messageSelection===selection;
   let confirming=false;
@@ -2245,19 +2257,17 @@ function showForwardPicker(singlePhoto,{onCancel}={}){
     if(onCancel&&current()){void onCancel(current);return;}
     closeDialog();
   };
-  if(photo){
-    forwardPickerDismiss=cancelPicker;
-  }
+  if(kind)forwardPickerDismiss=cancelPicker;
   function choose(selectedTarget){
     const targets=conversations.filter(item=>{
       if(item.friendRemoved||photo&&item.id===source)return false;
       const allHuman=item.members.every(member=>member.kind==='human');
-      return item.type==='group'?(!photo||allHuman):item.type==='direct'&&item.members.length===2&&allHuman;
+      return item.type==='group'?(!kind||allHuman):item.type==='direct'&&item.members.length===2&&allHuman;
     });
     const form=el('form',null,'forward-panel');
     const label=el('label','转发到'),select=el('select');
     select.required=true;
-    const placeholder=el('option',photo?'选择真人好友或全真人群聊':'选择好友或群聊');
+    const placeholder=el('option',kind?'选择真人好友或全真人群聊':'选择好友或群聊');
     placeholder.value='';
     select.append(placeholder);
     label.append(select);
@@ -2277,7 +2287,7 @@ function showForwardPicker(singlePhoto,{onCancel}={}){
       event.preventDefault();
       const target=select.value;
       if(!current()||!target)return;
-      const request={expectedAccount:account,sourceRevision,target,ids,...(photo&&{kind:'photo'})};
+      const request={expectedAccount:account,sourceRevision,target,ids,...(kind&&{kind})};
       select.disabled=true;
       void perform(async()=>{
         try{
@@ -2288,7 +2298,7 @@ function showForwardPicker(singlePhoto,{onCancel}={}){
     });
     $('#dialog-error').textContent='';
     form.append(label,preview);
-    if(photo)form.append(button('取消',cancelPicker));
+    if(kind)form.append(button('取消',cancelPicker));
     if(targets.length){
       panel.replaceChildren(form);
       select.focus();
@@ -2300,9 +2310,10 @@ function showForwardPicker(singlePhoto,{onCancel}={}){
     const audience=el('p',recipient.type==='direct'?'私聊 · '+recipient.members[0].number:
       '群聊 · '+(recipient.members.length+1)+' 位成员','minor');
     const multiplePhotos=photo&&entries.length>1;
-    const list=multiplePhotos?el('ol',null,'forward-photo-list'):
+    const list=file?el('div',null,'forward-entries forward-file-preview'):
+      multiplePhotos?el('ol',null,'forward-photo-list'):
       photo?el('figure',null,'forward-photo-preview'):el('ol',null,'forward-entries');
-    const confirmLabel=multiplePhotos?'确认转发 '+entries.length+' 张':photo?'确认转发照片':'确认转发 '+entries.length+' 条';
+    const confirmLabel=file?'确认转发文件':multiplePhotos?'确认转发 '+entries.length+' 张':photo?'确认转发照片':'确认转发 '+entries.length+' 条';
     const confirm=button(confirmLabel,()=>void perform(async()=>{
       if(!current())return;
       const key='arcade.forward.pending:'+account+':'+review;
@@ -2322,11 +2333,12 @@ function showForwardPicker(singlePhoto,{onCancel}={}){
         if(!current())return;
         closeDialog();
         exitMessageSelection();
-        $('#send-error').textContent='已向「'+recipient.title+'」转发 '+count+(photo?' 张照片。':' 条消息。');
+        $('#send-error').textContent='已向「'+recipient.title+'」转发 '+count+(file?' 份文件。':photo?' 张照片。':' 条消息。');
         void sync();
       }catch(error){
         if(error.status>=400&&error.status<500)clearPending();
-        if(photo&&recipient.type==='group'&&current()&&['forward_changed','forward_target','unknown_chat'].includes(error.message)){
+        if(current()&&(file&&error.message==='forward_changed'||
+          kind&&recipient.type==='group'&&['forward_changed','forward_target','unknown_chat'].includes(error.message))){
           choose(request.target);
         }
         throw error;
@@ -2355,6 +2367,9 @@ function showForwardPicker(singlePhoto,{onCancel}={}){
           if(entry.caption)list.append(el('figcaption',entry.caption));
         }
       }
+    }else if(file){
+      const {name,bytes}=entries[0];
+      list.append(el('strong',name,'chat-file-name'),el('small',fileSize(bytes),'minor'));
     }else list.append(...entries.map(entry=>el('li',entry.text)));
     const actions=el('div',null,'actions');
     actions.append(cancel,back,confirm);
