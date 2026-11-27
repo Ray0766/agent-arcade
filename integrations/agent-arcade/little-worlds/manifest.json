@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "386b5e8bb054538b5cf4782546dbdb41f2bee22d",
-  "worldTree": "f78648b58d9e31da47bc9e2436cd4a822a553154",
-  "patchSHA256": "5af9e6a29fb8b893614af2ada3c0c6b98e6930aec71769592ba3a78692a468f7",
+  "worldRevision": "c5683a5f1bd5cc25e3d85a0ef58c76591297467a",
+  "worldTree": "1eee3269fe488dfcbf47d7ec6cd282fec6865152",
+  "patchSHA256": "650f0cc24774ac7e1e5daead76b2d90363ea4683807f3c67649254d427d0bf06",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -159,6 +159,12 @@
       "path": "spec/guide-interaction.test.ts",
       "blob": "6ae7e86665a1cce7cfa13e6385d52c84f5a6dfb6",
       "sha256": "9bf8bb4ac1e6950dd3935a7b565c3dd9d661b02dbc6bbcb5633e642eb95c97d3"
+    },
+    {
+      "path": "spec/home-door-badge-art.test.ts",
+      "action": "A",
+      "blob": "6e16f82fb15ab4c0a0fe21313d917e96bada870c",
+      "sha256": "487f783d9e93b5381b9ce4515e2792923fc21a44b498fc6a6ca2efc41c3d0c14"
     },
     {
       "action": "M",
@@ -529,8 +535,8 @@
     {
       "action": "M",
       "path": "src/client/camera-blueprint-model.ts",
-      "blob": "bbd0b0a77f800b9f6d90588d8a22f6787baf3f0b",
-      "sha256": "16dea1f567fac62cc27a34ea0de390a2ef2db141e79f2cd0e4771ea857ab4f23"
+      "blob": "86cf8fda99cfda92f8caff38bc4ccf72f206c3bf",
+      "sha256": "3e1675d087e55c0865820e3dd9b83d46a2f59fc4adb164111d549889f62d49e1"
     },
     {
       "action": "M",
@@ -547,8 +553,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "b8a50c52cddcf05a91ee528051c91eeccc7d39b6",
-      "sha256": "9a5554e6b93284fd44d1393c6ac947bb448ad820682a4462c344101cfaf9c124"
+      "blob": "ff51159ab6ea222b211f582cfd2eb5874b1938d8",
+      "sha256": "a34e8a752ed23bbe7f6ba0180f51b9f29bf7e25274760205e989a6e9dedae349"
     },
     {
       "action": "A",
@@ -589,14 +595,20 @@
     {
       "action": "M",
       "path": "src/client/home-controls.css",
-      "blob": "4c0912d498c3b2df98813591ac96214bf13c4ac2",
-      "sha256": "9b6c0d0301e0af2de1852da74c1a8de907829fd6e53b1eaed8d24296d98e163a"
+      "blob": "cc73f00c09d53d2bd94382173043de485ab83d87",
+      "sha256": "e40385657550c9463216be6a36b1b10ebd592d85520e5e760237e533a91a5eb9"
     },
     {
       "action": "M",
       "path": "src/client/home-controls.ts",
-      "blob": "c804d9f212290ff509cff086fe280f7fc84ed7bd",
-      "sha256": "758a4e38e23311c9e66670e11e3e5ead6f7f6135c6e4f07e998506eb08804025"
+      "blob": "41cc9d87521db1c221abd9b8126ca243db3a9984",
+      "sha256": "b29224d1ce4b1873a44031127eaf1aac871fec29577ebde80b82f83332d3939d"
+    },
+    {
+      "path": "src/client/home-door-badge-art.ts",
+      "action": "A",
+      "blob": "4e469e16bb00d36be759c4deee6da483e084818b",
+      "sha256": "cfb0059ce2c32acd09383f84e7d43cf1d046361e940300c39861d6111fb55d07"
     },
     {
       "action": "A",
@@ -637,14 +649,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "da23619040aa1ad6ed8618dc696045c9ac39f654",
-      "sha256": "1809f50e9c9137e488a42a76ab2e66711982f4c426c854042313024bcb2a789e"
+      "blob": "5bc0e70d61db20c80aac186284033f37b5900978",
+      "sha256": "c987926d5f9b00d697b6aab9c5a27439290cca0a8d965407c644a591061fcc2b"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "c67d2557c651b4f75d3d39125759ff70c60724b8",
-      "sha256": "58392c85f88b4d394e754708e211dca33f74a4baea21e85c0d88bc846c94b51c"
+      "blob": "d2d03a941847be998a00a8b11ecb2964b8216ede",
+      "sha256": "5f6609405d0947a12b413800167fbf91811d7d2fcfe7994feb318da2affd4668"
     },
     {
       "action": "A",
@@ -705,6 +717,12 @@
       "path": "src/client/shipyard.ts",
       "blob": "5772ead4c82fa8aa62571fa933ac4b4c7dee4bf8",
       "sha256": "37fe250628d55e63f7870ca3c75606001ab175f19b7524ed7c6f907721d2fa8b"
+    },
+    {
+      "path": "src/client/structure-finish.ts",
+      "action": "M",
+      "blob": "ee69ce32c965cffd2915dccbcb121e6ca566df2d",
+      "sha256": "3264ae678d61e6e13cc59642f5b6c28b751774dd580379bd4f78cc70685c80e2"
     },
     {
       "action": "M",
@@ -769,8 +787,8 @@
     {
       "action": "M",
       "path": "src/client/world-visual-signature.ts",
-      "blob": "ab62c2dbb150beb9ec5a9b7e2f3cdd5b6b6fb899",
-      "sha256": "783b5ef14dc443509b7b64d5c04cb0a284df22c8525c6dff9202299003a0eef7"
+      "blob": "1a8eb28ef11712cb467be4fb581eb0412f838f21",
+      "sha256": "f91cfb1a437143765ba247abb684c9df8d3024aeca6ee62d5aea2943d47ec9b5"
     },
     {
       "action": "A",
@@ -781,8 +799,8 @@
     {
       "action": "M",
       "path": "src/server/arrival-homes.ts",
-      "blob": "fa4a78dd8461ae117ae23de6bcd097f7531be4fb",
-      "sha256": "0f72e13de6dfbd4fb96d205c174f023cde6c5388c3f62221451f9d94617ad5d8"
+      "blob": "8f7e997e14a2631427975d2cbaabe36e20eab661",
+      "sha256": "44bfca4e546667afe70b8072c1532cea461dc9238d4d17f2473ca7f0c0da8afa"
     },
     {
       "action": "M",
@@ -805,14 +823,14 @@
     {
       "action": "M",
       "path": "src/server/home.ts",
-      "blob": "bc76161593e4de1b8ded8e3bd5fb3986228dfa4b",
-      "sha256": "222a73625bc2edf14278500b46f5bc34228cba8f85676ff4c76f28dd9914d6ec"
+      "blob": "d18c37208ad6889a1eea340f9265c378a7385857",
+      "sha256": "ecefa4157a5b44f9aed9368a07ec9a7b196754287d4c663b4da8376446538cfe"
     },
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "35cb2d1df1903d548e1e1cff0dfd073cb0d2ae14",
-      "sha256": "b939f9ada74a1aac2a3c58264b8b8cddf3b041efc5c8aaf097e9d6841e484d96"
+      "blob": "1b055e89c057200aa51ec8d3d07e189b18d37d88",
+      "sha256": "fe250a33930715ca5acef9e149cd50204970357012c2c666564584cd18f4be2e"
     },
     {
       "action": "A",
@@ -841,8 +859,8 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "44e3570b6d153688b0f0c2df3ce221a201c241d4",
-      "sha256": "2f83c6cb64abebcbd3070a31d95bd4d341822e780879d0ffa84689e79042e851"
+      "blob": "9f35fb9a39a9dc995e5a1a6272ff175ac06e733c",
+      "sha256": "6b038ea16a0c57afdc52d7bebb229a8c7447f1dc1a97adc9bd0f8042e619c8ce"
     },
     {
       "action": "A",
@@ -851,10 +869,22 @@
       "sha256": "43565b441e61e0077903d884d39ae6c122df58f85afe997c0a736e3260b39b07"
     },
     {
+      "path": "src/shared/home-door-badge.ts",
+      "action": "A",
+      "blob": "d75dea1edd176971a49ffe7481e06d1d03b56c6f",
+      "sha256": "0b36bc00d858030036e74ddc3801cc621c271c6578beabe03b0a661f67aa6b38"
+    },
+    {
+      "path": "src/shared/home-exterior.ts",
+      "action": "A",
+      "blob": "f5c24408a48beb2344d3d0526685e39ff322f8cc",
+      "sha256": "ef69d9553690e50a29cc030a679b885abe801665368b9e471971fcd5548b222f"
+    },
+    {
       "action": "M",
       "path": "src/shared/home.ts",
-      "blob": "7918a012c6b61f2b0b05531a491f8c1e1587b8f1",
-      "sha256": "83c5544c1d62448fb7360c7d83889f68f21a1fa685e10e2fca9777deb6b63eac"
+      "blob": "7d9c2eaaf20f08ef4cdff7a508ee660cab9bae6b",
+      "sha256": "4f8bf8d795661a5ce375ac475a53883e7d20f165e2a68836828079291297933a"
     },
     {
       "action": "A",
@@ -865,14 +895,20 @@
     {
       "action": "M",
       "path": "src/shared/planets.ts",
-      "blob": "57104bb8553bf4cedb471fcf6272dc77f1719bc4",
-      "sha256": "0647d5953e730cb0b32e9290f4b4a69ea747b29d2423528d65997809d7466e6b"
+      "blob": "e2751a98e78d224b7f028a378cd2acb3bbbc50f5",
+      "sha256": "78174fbf1012d010a1d04cdfa2272d62d1010ceab3d9886db6d365d5d8de0d4d"
     },
     {
       "action": "A",
       "path": "src/shared/resident-portrait.ts",
       "blob": "9f6a08cdaf111ec2f3c4386ac53303138c7ac50f",
       "sha256": "24836ed60409e82b0d0d4eef34e86a3da691c09f98d1f8a6a9b0786cabd79d28"
+    },
+    {
+      "path": "src/shared/structure-exterior.ts",
+      "action": "A",
+      "blob": "1f20accaf1760278ddff61736bd6bd6465d4e0ee",
+      "sha256": "78e9ecfb33e580849dbcf95d37427ab2ee58762c8faa915e2d84a2533000b3e9"
     },
     {
       "action": "M",
