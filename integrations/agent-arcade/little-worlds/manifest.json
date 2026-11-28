@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "b4e7a2d811b4469edb5da3dd8b03409289b71073",
-  "worldTree": "ffeec7261ab4bd0c397b173e589a7f7e30abb26d",
-  "patchSHA256": "eeead81e320ad8b28290d2b993c8c0f056629f9ffcd76d39cd7c3e70f71025cd",
+  "worldRevision": "eee9df1f2e96750359ccaa9edabcda8160eece95",
+  "worldTree": "e812adcdef7dabc6273e8f0cc6c71270c8a7e471",
+  "patchSHA256": "416d277767865967fa2f52560e8f96979b053e35a8be63a92c69a05a3de82986",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -563,16 +563,22 @@
       "sha256": "a587ddc259cd49281713374b49fc7c2048a22ee09d533c016c8d7ae05204f190"
     },
     {
+      "path": "src/client/courtyard-stamp-api.ts",
+      "action": "A",
+      "blob": "e5d1ba31fbefeb773b7f88d152be2bd6c60fb372",
+      "sha256": "14cb574247c0a2cb50e2e5124130f3b3be7d3c9ee32760c68d42caca3976fa27"
+    },
+    {
       "path": "src/client/courtyard-stamp-card.css",
       "action": "A",
-      "blob": "3ec20cb042fca76b6ab243977535cf38a4bf18c2",
-      "sha256": "10bca9d73754e32d171e024d9fa58388f12365b1fa3ff6e30b29b08e295bb299"
+      "blob": "19ea745d19755f68b53323da157a2d91dbeceb5a",
+      "sha256": "38d5941aa2121adafa4a9e1f1805c521e939bc6012135d185be06a0933a25de2"
     },
     {
       "path": "src/client/courtyard-stamp-card.ts",
       "action": "A",
-      "blob": "c694fe36af53bbbf717f63614355c1415e197674",
-      "sha256": "4c0c1183b256d4549e624fdbb4f43153decbcde3599a6d2af431213d48d480be"
+      "blob": "3eda55b57687d04fec18acbe837fab87d9ae64ee",
+      "sha256": "a8356e6e93c13fd5810f0628b8b5d9b38daeca4b73402633c4cf149c276a1852"
     },
     {
       "action": "M",
@@ -607,8 +613,20 @@
     {
       "action": "M",
       "path": "src/client/home-interior.ts",
-      "blob": "8e164b713b68f9f65a0cb099e5918e27453f035e",
-      "sha256": "53f1a889d4f6d10afa8dd8f757965df78494db9098761b2d7cce5bf47f28f20e"
+      "blob": "3bb9d6cdafa25b144fe3eedc89316f900eae2c49",
+      "sha256": "f699d95580e9ccaf30419a5ef7cff5baaea9b5e71013b18111b1643ddfd4930c"
+    },
+    {
+      "path": "src/client/home-stamp-album.css",
+      "action": "A",
+      "blob": "8911e087a434ddfd0cd9e16cfdd50cca961dbc53",
+      "sha256": "ae16b7d1371584364b37e9111bd95bfb61cda40702c5d9c65ed42259712cb291"
+    },
+    {
+      "path": "src/client/home-stamp-album.ts",
+      "action": "A",
+      "blob": "e469f41255f730851592e08444969388ee37ced9",
+      "sha256": "4f0e877fbe1527909d38df056bec1f4426c9d9ca53bc623e8837d09684f8b125"
     },
     {
       "action": "M",
@@ -625,8 +643,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "b1b78bf93bede8bdb78fc6d6dade3056733fc24d",
-      "sha256": "b4342f05e2d23c295183db5dcf5b5fe65a9975541610b29ea15bf5068b2efd35"
+      "blob": "6daf32f167a29bddaea531a5a5c79051302594e2",
+      "sha256": "bc28d0ecc3435b5b4b85599384927b55ceb7d6346f91e9d3d13cec9feae8da21"
     },
     {
       "action": "M",
@@ -781,8 +799,14 @@
     {
       "action": "M",
       "path": "src/server/business-log.ts",
-      "blob": "56166825821eec9ea86ff97dbcf2675cffa4d4cd",
-      "sha256": "43ea05f6cdb0021b5426b270d2aa9e6c5ebef24fb689fa68cc1b9a17ed498bd2"
+      "blob": "ed171b7f378199ccf390255c535e7707e5ede0d5",
+      "sha256": "1664bf7d2c553db3a95590ee831cc4703a5d486b0d594ac907025ae0ec1d0169"
+    },
+    {
+      "path": "src/server/courtyard-stamp-collection.ts",
+      "action": "A",
+      "blob": "ffb53475245a050e48a7e8ce344c3a852bfcce8d",
+      "sha256": "76a68301f6926f7896d327769dec468265fb03a35852d40bdde588e9de7e01e3"
     },
     {
       "action": "A",
@@ -799,8 +823,8 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "e4d054a91c00d77aa2a9c17b150fda8a06a15475",
-      "sha256": "014113509c49f6e2616d5904c4a9224a31abd54006a3853ccd79b236dc5fc697"
+      "blob": "6ce43154262164be406b09ff6b8a74e5aad3a2a5",
+      "sha256": "fc37b230cb7ddbe3fa9142ef13f806b3b8e1fb1871586a41f4e99591cb10e98f"
     },
     {
       "action": "A",
@@ -837,6 +861,12 @@
       "path": "src/shared/courtyard-arrival.ts",
       "blob": "c3ff42a4c1edccdd15a868eeea00a4fc4bba1d93",
       "sha256": "43565b441e61e0077903d884d39ae6c122df58f85afe997c0a736e3260b39b07"
+    },
+    {
+      "path": "src/shared/courtyard-stamp-collection.ts",
+      "action": "A",
+      "blob": "5bb50ea82376d455c6c236ce47a0e3d2cc420517",
+      "sha256": "cd07badfabbdee958dc4d65af9a7a8c7f91d791767408465bb43767156de139c"
     },
     {
       "action": "A",

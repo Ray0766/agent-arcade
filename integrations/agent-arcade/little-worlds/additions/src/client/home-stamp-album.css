@@ -1,0 +1,108 @@
+#home-stamp-album { padding: clamp(16px, 3vw, 30px); }
+#home-stamp-album p { margin: 0 0 10px; }
+.stamp-album-cards, .stamp-album-stamps { list-style: none; padding: 0; margin: 0; }
+.stamp-album-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(245px, 100%), 1fr)); gap: 16px; }
+.stamp-album-cards > li { padding: 18px; border: 1px solid #ae9b76; border-radius: 6px; background: #fcf4df; box-shadow: 0 3px 0 #e4d2ad; }
+#home-stamp-album h3 { margin-bottom: 3px; font-size: clamp(18px, 2.5vw, 26px); overflow-wrap: anywhere; }
+.stamp-album-stamps {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(6px, 2vw, 18px);
+}
+.stamp-album-stamps li {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  padding: 4px 3px 0;
+  text-align: center;
+  font: 500 .85rem/1.5 system-ui;
+}
+.stamp-album-seal {
+  --stamp-ink: #6d6250;
+  --stamp-paper: #fcf4df;
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: min(72px, 100%);
+  aspect-ratio: 1;
+  margin-bottom: 5px;
+  border: 1px dashed currentColor;
+  border-radius: 9px;
+  color: var(--stamp-ink);
+}
+[data-motif="water"] .stamp-album-seal { border-radius: 50%; }
+.stamp-album-stamps [data-stamped="true"] .stamp-album-seal {
+  --stamp-ink: #31533f;
+  --stamp-paper: #e2ead4;
+  border: 3px double currentColor;
+  background: var(--stamp-paper);
+}
+.stamp-album-stamps [data-motif="water"][data-stamped="true"] .stamp-album-seal {
+  --stamp-ink: #285758;
+  --stamp-paper: #dfebe0;
+}
+.stamp-album-stamps [data-stamped="true"] .stamp-album-seal::after {
+  content: '✓';
+  display: grid;
+  place-items: center;
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 19px;
+  height: 19px;
+  border: 2px solid #fcf4df;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--stamp-ink);
+  font: 700 11px/1 system-ui;
+}
+.stamp-album-state { font-size: .75rem; color: #574e3e; }
+.stamp-album-symbol { position: relative; width: 42px; height: 36px; }
+/* The wood sign keeps its paired posts and framed face. */
+[data-motif="plaque"] .stamp-album-symbol {
+  background: linear-gradient(currentColor, currentColor) 8px 17px / 3px 15px no-repeat,
+    linear-gradient(currentColor, currentColor) 31px 17px / 3px 15px no-repeat;
+}
+[data-motif="plaque"] .stamp-album-symbol::before {
+  content: '';
+  position: absolute;
+  inset: 5px 2px 13px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  background: linear-gradient(currentColor, currentColor) center 4px / 17px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) center 9px / 11px 2px no-repeat, var(--stamp-paper);
+}
+[data-motif="plaque"][data-stamped="true"] .stamp-album-symbol::before {
+  color: var(--stamp-paper);
+  background-color: var(--stamp-ink);
+  border-color: var(--stamp-ink);
+}
+/* The watering can keeps its top handle, body and raised sprinkler spout. */
+[data-motif="water"] .stamp-album-symbol::before {
+  content: '';
+  position: absolute;
+  inset: 4px 21px 13px 7px;
+  border: 2px solid currentColor;
+  border-radius: 6px 6px 2px 2px;
+}
+[data-motif="water"] .stamp-album-symbol::after {
+  content: '';
+  position: absolute;
+  inset: 13px 17px 5px 3px;
+  border: 2px solid currentColor;
+  border-radius: 3px 3px 6px 6px;
+  background: var(--stamp-paper);
+}
+[data-motif="water"] .stamp-album-symbol {
+  background: linear-gradient(-48deg, transparent 31%, currentColor 33% 51%, transparent 53%) 21px 11px / 15px 20px no-repeat,
+    linear-gradient(35deg, transparent 27%, currentColor 29% 67%, transparent 69%) 32px 10px / 6px 9px no-repeat,
+    radial-gradient(circle, currentColor 1px, transparent 1.3px) 38px 14px / 4px 4px no-repeat,
+    radial-gradient(circle, currentColor 1px, transparent 1.3px) 38px 20px / 4px 4px no-repeat;
+}
+[data-motif="water"][data-stamped="true"] .stamp-album-symbol::after { background: currentColor; }
+
+#home-stamp-book { max-width: min(620px, 90vw); max-height: 85vh; overflow: auto; }
+#home-stamp-book > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
