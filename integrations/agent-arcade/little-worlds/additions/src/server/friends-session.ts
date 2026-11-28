@@ -11,7 +11,7 @@ const conflict = () => new RequestError(409, 'Reopen your original world profile
 const year = 365 * 24 * 60 * 60 * 1000;
 
 export function friendsIdentity({issuer,audience}:{issuer:string|null;audience:string|null}) {
-  return {
+  const authority = {
     audience,
     async verify(body: Record<string, unknown>, visitorCheck=false) {
       if (!issuer || !audience) throw unavailable();
@@ -41,7 +41,7 @@ export function friendsIdentity({issuer,audience}:{issuer:string|null;audience:s
         legacy: legacy as {sourceId:string;planetId:string} | null,
         visitAccess:typeof record.visitAccess==='string'&&/^[a-f0-9]{64}$/.test(record.visitAccess)?record.visitAccess:null};
     },
-    async canReadVisit(access:string,planetId:string) {
+    async visitStatus(access:string,planetId:string) {
       if(!issuer||!audience||!access)throw unavailable();
       try{
         const response=await fetch(issuer+'/api/v1/world-visit-status',{
@@ -50,12 +50,14 @@ export function friendsIdentity({issuer,audience}:{issuer:string|null;audience:s
           body:JSON.stringify({worldOrigin:audience,planetId})
         });
         if(!response.ok){await response.body?.cancel();throw unavailable();}
-        const {allowed}=await response.json();
+        const {allowed,displayName}=await response.json();
         if(typeof allowed!=='boolean')throw unavailable();
-        return allowed;
+        const name=allowed && typeof displayName==='string' ? displayName.trim() : '';
+        return {allowed,...(name && {displayName:name})};
       }catch{throw unavailable();}
     },
   };
+  return {...authority,async canReadVisit(access:string,planetId:string){return (await authority.visitStatus(access,planetId)).allowed;}};
 }
 
 type Identity = Awaited<ReturnType<ReturnType<typeof friendsIdentity>['verify']>>;

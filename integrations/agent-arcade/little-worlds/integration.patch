@@ -639,10 +639,12 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    this.courtyardInspiration.update(!courtyardFlower.hidden,!courtyardFlower.disabled);
      el<HTMLButtonElement>('open-workshop').hidden=!p.mine||u.player.flight.mode!=='ground';el<HTMLButtonElement>('open-workshop').disabled=this.busy||!this.syncing;
 diff --git a/src/client/flight.css b/src/client/flight.css
-index e56a89e92190efaab22096861abb75c51ac8688a..044eb69124dbd394fcdf96bfbdd5145f969e5101 100644
+index e56a89e92190efaab22096861abb75c51ac8688a..431c9c7fcb46481d0dad9b9db8301f4fc32b35e5 100644
 --- a/src/client/flight.css
 +++ b/src/client/flight.css
-@@ -36 +36,44 @@
+@@ -34,3 +34,60 @@
+ .flat-flight-navigation #flight-return,.flat-flight-navigation #flight-look-forward{grid-column:1/-1}#trip-departure,#planet-name-input{width:100%;min-height:44px;padding:10px;font:inherit;background:#f2ead6;color:#173541;border:1px solid #8aa89b;border-radius:8px}#trip-preview{padding:14px;border-left:5px solid #c8ad70;background:#284a4d;color:#f3ead6}#rename-dialog button{margin:8px 10px 0 0;min-height:40px}#rename-dialog p{max-width:100%}@media(max-width:700px){.flat-flight-navigation{bottom:18px}.in-space .notice{top:250px!important}.in-space .flight-speed{top:90px}.flight-course{max-width:170px}}
+ 
  #trip-preview::before{content:'';display:block;width:54px;height:54px;border-radius:50%;margin:0 12px 0 0;float:left;background:radial-gradient(circle at 32% 25%,#fff8,transparent 55%),var(--destination-color,#73ad80);box-shadow:inset -9px -8px 0 #17354133}#trip-preview{min-height:54px;display:flow-root}
 +
 +#friend-visit-route{position:fixed;top:76px;left:16px;z-index:4;max-width:min(24rem,80vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#f2ead6;color:#173541;border:1px solid #8aa89b;border-radius:8px;padding:8px 12px}
@@ -687,27 +689,60 @@ index e56a89e92190efaab22096861abb75c51ac8688a..044eb69124dbd394fcdf96bfbdd5145f
 +#friend-visit-closure a:not([hidden]) { display: inline-block; margin-top: 8px; }
 +.scene-loading-overlay #friend-visit-closure { position: static; margin: 12px auto 0; }
 +#welcome-panel #friend-visit-closure { position: static; width: fit-content; margin: 0 auto 12px; }
++
++/* While the world bar is inert, the dialog provides its own language control. */
++body:has(#flight-dialog[open]) .minimal-bar .language-picker { visibility: hidden; }
++#flight-title { width: fit-content; max-width: 100%; }
++#flight-title:focus-visible {
++  outline: 1px solid var(--ui-teal);
++  outline-offset: 5px;
++  border-radius: 3px;
++}
++#flight-dialog > .dialog-language {
++  margin: 19px 0 0;
++  padding-top: 13px;
++  border-top: 1px solid var(--ui-dialog-border);
++}
 diff --git a/src/client/flight.ts b/src/client/flight.ts
-index eeb7d88eabbcb938873d370abbcf3434b7202330..7b499e2157dd600fbcbf208a63b09c652cb61e55 100644
+index eeb7d88eabbcb938873d370abbcf3434b7202330..dea90da8db4ec0027ca97442dd403ff12a129cd5 100644
 --- a/src/client/flight.ts
 +++ b/src/client/flight.ts
-@@ -32,3 +32,3 @@ interface Bridge {
+@@ -25,16 +25,25 @@ import {FlightControls,shipHeading} from './flight-controls.ts';
+ 
+ import {flightCheckpointDelay} from './flight-checkpoint.ts';
+ const el=<E extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as E;
++interface FriendDestination { planetId: string; displayName?: string }
++const departureHelp='Choose a planet. Takeoff, flight and landing are automatic. You can look around, skip after loading, or return to departure.';
++const unavailableVisit='This friend’s planet is unavailable.';
+ interface Bridge {
+   progress?: SaveProgress;
+   canvas:HTMLCanvasElement; renderer:T.WebGLRenderer; online:()=>boolean; player:()=>PlayerState|undefined;
+   checkpoint:(body:unknown)=>Promise<PlayerState>; command:(route:string,body:unknown)=>Promise<Universe>;
++  visitDestination:(planetId:string)=>Promise<FriendDestination>;
    apply:(p:PlayerState)=>void; applyUniverse:(u:Universe)=>void; flushGround:()=>Promise<void>;
 -  clearGround:()=>void; canBoard:()=>boolean; failed:(error:unknown)=>void; notice:(message:string)=>void;
 +  clearGround:()=>void; canBoard:()=>boolean; findShip:()=>void; failed:(error:unknown)=>void; notice:(message:string)=>void;
  }
-@@ -37,2 +37,4 @@ export class SpaceFlight {
+ export class SpaceFlight {
+   scene=new T.Scene();camera=new T.PerspectiveCamera(58,innerWidth/innerHeight,.1,18000);
    presentation=false;pilot:FlightState|null=null; planets:PlanetSummary[]=[];busy=false;
 +  private friendPlanet=new URLSearchParams(location.search).get('visit');
 +  private friendRoute=document.createElement('button');
++  private friendDestination: FriendDestination | null = null;
++  private friendCheck: Promise<void> | null = null;
++  private friendCheckedAt = -Infinity;
    private route:Vec3[]=[];private routeIndex=0;private travelling=false;private routeNote='Choose a destination. The ship handles takeoff and landing.';
-@@ -57,2 +59,15 @@ export class SpaceFlight {
+   private travelSelect=document.createElement('select');private travelButton=document.createElement('button');private travelStatus=document.createElement('p');
+   private departureSelect=document.createElement('select');private preview=document.createElement('p');private requestId=crypto.randomUUID();
+@@ -55,11 +64,33 @@ export class SpaceFlight {
+     this.orbitNotice.className='orbit-preparation';this.orbitNotice.hidden=true;this.orbitNotice.setAttribute('role','status');this.orbitNotice.setAttribute('aria-live','polite');
+     this.orbitNotice.innerHTML='<span></span><progress></progress><button type="button" hidden></button>';el('flight-hud').append(this.orbitNotice);
      configureSpace(this.scene,bridge.renderer);this.scene.fog=null;this.scene.add(this.ship.root);this.drawing=createVillageDrawing(bridge.renderer,this.scene,this.camera,true);
 +    if(this.friendPlanet){
 +      this.friendRoute.id='friend-visit-route';
 +      this.friendRoute.type='button';this.friendRoute.hidden=true;
 +      this.friendRoute.onclick=()=>{
-+        if(!this.friendPlanet)return;
++        if(!this.friendPlanet||this.friendDestination?.planetId!==this.friendPlanet)return;
 +        if(!this.active&&!this.bridge.canBoard()){
 +          this.bridge.findShip();
 +          return;
@@ -716,21 +751,171 @@ index eeb7d88eabbcb938873d370abbcf3434b7202330..7b499e2157dd600fbcbf208a63b09c65
 +      };
 +      el('travel-guidance').prepend(this.friendRoute);
 +    }
++    const language = this.dialog.querySelector(':scope > .dialog-language');
++    if (language) this.dialog.append(language);
++    const title = el('flight-title');
++    title.tabIndex = -1;
++    title.autofocus = true;
++    this.dialog.setAttribute('aria-describedby', 'flight-detail');
      el('board-ship').onclick=()=>this.openLaunch();
-@@ -98,2 +113,13 @@ export class SpaceFlight {
+     el('cancel-flight').onclick=()=>this.dialog.close();el('confirm-flight').onclick=()=>void this.transition();
+     this.dialog.addEventListener('cancel',e=>{if(this.busy)e.preventDefault();});
+     this.departureSelect.id='trip-departure';this.departureSelect.setAttribute('aria-label','Destination');this.preview.id='trip-preview';
+-    el('flight-detail').after(this.departureSelect,this.preview);this.departureSelect.onchange=()=>this.updatePreview();
++    el('flight-detail').after(this.departureSelect,this.preview);this.departureSelect.onchange=()=>{
++      if(this.departureSelect.value===this.friendPlanet)this.checkFriendDestination(true);
++      this.updatePreview();
++    };
+     const navigation=document.createElement('section');navigation.className='flat-flight-navigation';navigation.setAttribute('aria-label','Automatic journey');
+     const label=document.createElement('label');setText(label,'Destination');this.travelSelect.id='flight-destination';label.htmlFor=this.travelSelect.id;
+     this.travelButton.id='flight-travel';this.travelButton.type='button';setText(this.travelButton,'Resume journey');this.travelButton.onclick=()=>void this.startTravel();
+@@ -96,11 +127,21 @@ export class SpaceFlight {
+   }
+   universe(u:Universe){
      this.planets=u.planets;
 +    if(this.friendPlanet){
 +      const friend=u.planets.find(p=>p.id===this.friendPlanet&&p.kind==='garden'&&p.claimed);
 +      if(friend&&u.player.flight.mode==='ground'&&u.currentPlanet.id===friend.id){
-+        this.friendRoute.hidden=true;this.friendPlanet=null;this.pendingTarget=null;
++        this.friendRoute.hidden=true;this.friendPlanet=null;this.friendDestination=null;this.pendingTarget=null;
 +        this.bridge.notice('You are on your friend’s planet.');
-+      }else{
-+        this.friendRoute.hidden=false;this.friendRoute.disabled=!friend;
-+        setText(this.friendRoute,friend?'Visit friend · '+friend.name:'This friend’s planet is unavailable.');
-+        if(friend&&!this.pendingTarget)this.pendingTarget=friend.id;
++      }else {
++        this.checkFriendDestination();
 +      }
 +    }
      const selected=this.travelSelect.value,departure=this.departureSelect.value;
+     const ordered=[...u.planets].sort((a,b)=>(a.kind==='hub'?0:a.mine?1:a.claimed?2:3)-(b.kind==='hub'?0:b.mine?1:b.claimed?2:3));
+     for(const select of [this.travelSelect,this.departureSelect]){select.replaceChildren(...ordered.map(p=>{const option=document.createElement('option');option.value=p.id;setText(option,`${p.kind==='hub'?'Main planet':p.mine?'My planet':p.claimed?'Neighbour':'Unclaimed'} · ${p.name}`);return option;}));}
+     this.travelSelect.value=u.player.trip?.status==='active'?u.player.trip.targetId:selected||u.ownedPlanetId||'hub';
+-    this.departureSelect.value=this.dialog.open?departure:this.pendingTarget??u.ownedPlanetId??'hub';this.renameButton.hidden=!u.ownedPlanetId;
++    this.departureSelect.value=this.dialog.open?departure:this.pendingTarget??this.availableVisitPlanet()?.id??u.ownedPlanetId??'hub';this.renameButton.hidden=!u.ownedPlanetId;
++    this.paintFriendDestination();
+     if(!this.busy&&this.dialog.open&&this.action==='retarget'&&(u.player.trip?.status!=='active'||u.player.trip.revision!==this.confirmRevision)){this.dialog.close();this.bridge.notice('Your trip changed. Refresh its destination before trying again.');}
+     if(this.travelling&&this.routeTrip!==this.tripKey())this.clear();this.updatePreview();
+     let changed=false;
+@@ -180,7 +221,66 @@ export class SpaceFlight {
+     })();
+   }
+   private tripKey(){const t=this.bridge.player()?.trip;return t?`${t.id}:${t.revision}`:'';}
+-  private updatePreview(){const p=this.planets.find(p=>p.id===this.departureSelect.value);if(!p)return;this.preview.style.setProperty('--destination-color',p.kind==='hub'?'#ddc78f':p.mine?'#73ad80':'#8fb6b8');setText(this.preview,`${p.name} · ${p.kind==='hub'?'Public starport':p.mine?'Your saved home':p.claimed?'Visit only · building belongs to its owner':'An unclaimed world to explore'}`);}
++  private availableVisitPlanet() {
++    return this.planets.find(p=>p.id===this.friendPlanet&&p.kind==='garden'&&p.claimed&&!p.mine);
++  }
++  private checkFriendDestination(force=false) {
++    const planet=this.availableVisitPlanet();
++    if(!planet||this.friendCheck||!this.bridge.online()||(!force&&performance.now()-this.friendCheckedAt<2200))return;
++    const id=planet.id;
++    const request=this.bridge.visitDestination(id);
++    const pending=request.then(result=>{
++      if (this.friendCheck===pending&&this.friendPlanet===id) this.friendDestination=result.planetId===id ? result : null;
++    },()=>{
++      if(this.friendCheck===pending&&this.friendPlanet===id)this.friendDestination=null;
++    }).finally(()=>{
++      if(this.friendCheck!==pending)return;
++      this.friendCheck=null;
++      this.friendCheckedAt=performance.now();
++      this.paintFriendDestination();
++      this.updatePreview();
++    });
++    this.friendCheck=pending;
++  }
++  private paintFriendDestination() {
++    if(!this.friendPlanet)return;
++    const planet=this.availableVisitPlanet(), allowed=planet&&this.friendDestination?.planetId===planet.id;
++    this.friendRoute.hidden=false;
++    this.friendRoute.disabled=!allowed;
++    setText(this.friendRoute,allowed?'Visit friend · '+(this.friendDestination?.displayName??planet.name):
++      this.friendCheckedAt===-Infinity&&planet?'Checking visit permission…':unavailableVisit);
++    const option=[...this.departureSelect.options].find(entry=>entry.value===this.friendPlanet);
++    if(option){
++      option.disabled=!allowed;
++      setText(option,allowed?'Friend’s planet · '+planet.name:'Visit permission unavailable');
++    }
++  }
++  private updatePreview(){
++    if(!this.dialog.open&&this.action==='retarget')return;
++    const chosen=this.action==='launch'?this.departureSelect.value:this.confirmTarget;
++    const p=this.planets.find(p=>p.id===chosen);
++    const friend=!!chosen&&chosen===this.friendPlanet;
++    const allowed=friend&&p&&this.friendDestination?.planetId===chosen;
++    const name=allowed?this.friendDestination?.displayName:undefined;
++    el<HTMLButtonElement>('confirm-flight').disabled=this.busy||!p||(friend&&!allowed);
++    this.preview.hidden=this.action==='retarget'||friend;
++    if(friend){
++      const waiting=this.friendCheckedAt===-Infinity&&!!this.friendCheck;
++      setText(el('flight-title'),allowed?(name?`Visit ${name}?`:'Visit your friend’s planet?'):waiting?'Checking visit permission…':unavailableVisit);
++      setText(el('flight-detail'),allowed
++        ? this.action==='retarget'&&name?`Fly to ${name} · ${p.name}? Your current trip stays unchanged until you confirm.`:`Destination: ${p.name}. Confirm to depart.`
++        : waiting?'':'Choose another destination or reopen the visit from Friends.');
++      setText(el('confirm-flight'),this.action==='launch'?'Confirm departure':'Change destination');
++      return;
++    }
++    if(this.action==='retarget')return;
++    setText(el('flight-title'),'Where would you like to go?');
++    setText(el('flight-detail'),departureHelp);
++    setText(el('confirm-flight'),'Depart');
++    if(!p){setText(this.preview,'');return;}
++    this.preview.style.setProperty('--destination-color',p.kind==='hub'?'#ddc78f':p.mine?'#73ad80':'#8fb6b8');
++    setText(this.preview,`${p.name} · ${p.kind==='hub'?'Public starport':p.mine?'Your saved home':p.claimed?'Visit only · building belongs to its owner':'An unclaimed world to explore'}`);
++  }
+   async startTravel(){
+     if(!this.pilot||this.busy||!this.bridge.online())return;
+     const trip=this.bridge.player()?.trip;
+@@ -206,20 +306,49 @@ export class SpaceFlight {
+     const trip=this.bridge.player()?.trip;
+     if(this.active&&trip?.status==='active'){
+       this.travelSelect.value=trip.targetId;if(id===trip.targetId)return;this.action='retarget';this.confirmTarget=id;this.confirmRevision=trip.revision;this.departureSelect.hidden=true;this.preview.hidden=true;
+-      setText(el('flight-title'),'Change destination?');setText(el('flight-detail'),`Fly to ${this.planets.find(p=>p.id===id)!.name}? Your current trip stays unchanged until you confirm.`);setText(el('confirm-flight'),'Change destination');setText(el('cancel-flight'),'Keep destination');this.dialog.showModal();
++      setText(el('flight-title'),'Change destination?');setText(el('flight-detail'),`Fly to ${this.planets.find(p=>p.id===id)!.name}? Your current trip stays unchanged until you confirm.`);setText(el('confirm-flight'),'Change destination');setText(el('cancel-flight'),'Keep destination');this.dialog.showModal();if(id===this.friendPlanet)this.checkFriendDestination(true);this.updatePreview();
+     }else{this.pendingTarget=id;this.departureSelect.value=id;this.openLaunch();}
+   }
+   setDesign(design:ShipDesign){this.ship.setDesign(design);el('flight-hud').dataset.shipDesign=this.ship.document;setText(document.querySelector('.flight-ident b')!,design.registration||design.name);setText(document.querySelector('.flight-ident span')!,design.name);}
+   openLaunch(){if(this.busy||!this.bridge.player())return;if(!this.active&&!this.bridge.canBoard()){this.bridge.notice('Walk to the boarding gate beside your parked ship.');return;}this.clear();this.bridge.clearGround();this.action='launch';this.openTripDialog();}
+-  private openTripDialog(){this.requestId=crypto.randomUUID();this.departureSelect.hidden=false;this.preview.hidden=false;setText(el('flight-title'),'Where would you like to go?');setText(el('flight-detail'),'Choose a planet. Takeoff, flight and landing are automatic. You can look around, skip after loading, or return to departure.');setText(el('confirm-flight'),'Depart');setText(el('cancel-flight'),this.active?'Cancel':'Stay here');this.updatePreview();this.dialog.showModal();}
++  private openTripDialog(){
++    this.requestId=crypto.randomUUID();
++    this.departureSelect.hidden=false;
++    const friend=this.availableVisitPlanet();
++    if (friend&&!this.pendingTarget) this.departureSelect.value=friend.id;
++    if(this.departureSelect.value===this.friendPlanet)this.checkFriendDestination(true);
++    setText(el('cancel-flight'),this.active?'Cancel':'Stay here');
++    this.updatePreview();
++    this.dialog.showModal();
++  }
+   private nearby(){if(!this.pilot)return null;return [...this.planets].sort((a,b)=>spaceDistance(this.pilot!.position,a.center)-spaceDistance(this.pilot!.position,b.center))[0]??null;}
+   private async transition(){
+-    if(this.busy||!this.bridge.online())return;this.busy=true;el<HTMLButtonElement>('confirm-flight').disabled=true;el<HTMLButtonElement>('cancel-flight').disabled=true;
++    if(this.busy||!this.bridge.online())return;
++    const action=this.action, targetId=action==='launch'?this.departureSelect.value:this.confirmTarget;
++    const friendVisit=!!targetId&&targetId===this.friendPlanet;
++    if(!targetId||(friendVisit&&this.friendDestination?.planetId!==targetId))return;
++    this.busy=true;
++    this.departureSelect.disabled=true;
++    this.updatePreview();
++    el<HTMLButtonElement>('cancel-flight').disabled=true;
+     try{
+       this.clear();if(this.active)await this.flush();else await this.bridge.flushGround();const p=this.bridge.player()!,t=p.trip;
+-      const body=this.action==='launch'?{targetId:this.departureSelect.value,journey:p.flight.journey,requestId:this.requestId,visitEpoch:p.location?.visitEpoch??0}:{tripId:t?.id,revision:this.confirmRevision,targetId:this.confirmTarget,action:'retarget',visitEpoch:p.location?.visitEpoch??0};
+-      const u=await this.bridge.command(this.action==='launch'?'trip/start':'trip/change',body);this.bridge.applyUniverse(u);this.dialog.close();this.busy=false;await this.startTravel();
+-    }catch(error){this.bridge.failed(error);}finally{this.busy=false;el<HTMLButtonElement>('confirm-flight').disabled=false;el<HTMLButtonElement>('cancel-flight').disabled=false;}
++      const body=action==='launch'?{targetId,journey:p.flight.journey,requestId:this.requestId,visitEpoch:p.location?.visitEpoch??0}:{tripId:t?.id,revision:this.confirmRevision,targetId,action:'retarget',visitEpoch:p.location?.visitEpoch??0};
++      const u=await this.bridge.command(action==='launch'?'trip/start':'trip/change',{...body,...(friendVisit&&{friendVisit:true})});this.bridge.applyUniverse(u);this.dialog.close();this.busy=false;await this.startTravel();
++    }catch(error){
++      if(friendVisit&&error instanceof Error&&'status' in error&&[401,403,503].some(status=>status===error.status)){
++        this.friendDestination=null;
++        this.friendCheck=null;
++        this.friendCheckedAt=performance.now();
++        this.paintFriendDestination();
++        this.bridge.notice(unavailableVisit);
++      }else this.bridge.failed(error);
++    }finally{
++      this.busy=false;
++      this.departureSelect.disabled=false;
++      el<HTMLButtonElement>('cancel-flight').disabled=false;
++      this.updatePreview();
++    }
+   }
+   private openRename(){
+     const p=this.planets.find(p=>p.mine);if(!p)return;el<HTMLDialogElement>('menu-dialog').close();el<HTMLDialogElement>('star-map').close();
 diff --git a/src/client/harbour.ts b/src/client/harbour.ts
 index 5e243b9ac17c704ab24ecf75238869f6006af5f8..353faeb78c3b1508899eece2aebc32edcf831162 100644
 --- a/src/client/harbour.ts
@@ -1043,30 +1228,45 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf000a7de7b 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..ba468c1c6fc2df2617f6cff5d2bd45d0ed752d0b 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -32,2 +32,3 @@ import { createVillagePolish } from './village-polish.ts';
+@@ -30,6 +30,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
+ import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
+ import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
 +import { BothouseResidents } from './bothouse-residents.ts';
  import { GroundPresence } from './presence.ts';
-@@ -77,2 +78,3 @@ import {buildCameraFrame} from './build-camera.ts';
+ import { PresenceVisitGate } from './presence-visit.ts';
+ import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
+@@ -75,6 +76,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
+ import {createVillageDrawing} from './village-drawing.ts';
+ import {buildCameraFrame} from './build-camera.ts';
  import {arrivalViewScore} from './arrival-camera.ts';
 +import { benchSeat, type BenchSeat } from './bench-rest.ts';
  import { HomeSetup } from './home-setup.ts';
-@@ -146,2 +148,5 @@ const helpDialog = $<HTMLDialogElement>('help-dialog');
+ import { TeleportStations } from './teleport-station.ts';
+ import { SaveProgress } from './save-progress.ts';
+@@ -144,6 +146,9 @@ let residentConversationKey='';
+ let queue: Promise<unknown> = Promise.resolve();
+ const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
 +const interaction = action.parentElement!;
 +const benchChoice = $<HTMLButtonElement>('visitor-bench-choice');
 +let benchRest: { id: string; model: T.Object3D; seat: BenchSeat; footing: T.Vector3 } | null = null;
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
-@@ -270,3 +275,4 @@ function accept(next: PlayerState) {
+ function renderSaveProgress(){
+   if(!state||physicsMismatch)return;
+@@ -268,16 +273,20 @@ function accept(next: PlayerState) {
+   const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
+   flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
 -  physicsMismatch=false;online = navigator.onLine; renderSaveProgress(); renderTask();
 +  // An accepted world response proves this server is reachable, even on a local-only network.
 +  physicsMismatch=false;online=true;renderSaveProgress();renderTask();
    homeInterior?.receive(state);homeInterior?.setOnline(online);homeControls?.receivePlayer(state);
-@@ -275,7 +281,10 @@ function accept(next: PlayerState) {
+   placeHomeDoor(exteriorHomeDoor,state.flight.mode==='ground'?state.home:null);
+   return true;
  }
 -function failed(error: unknown) {
 -  clearGroundMotion();
@@ -1081,11 +1281,19 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +function failed(error: unknown) {
 +  worldUnavailable();
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
-@@ -319,2 +328,3 @@ worldMaterials().attachRenderer(renderer,textureFormat());
+ }
+ function renderTask() {
+@@ -317,6 +326,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+ setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
+ worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
 +const bothouseResidents=new BothouseResidents(scene,reduced);
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
-@@ -351,7 +361,9 @@ function tutorialContext(){
+ const practical=createWorldPracticalLights();scene.add(practical.group);
+ const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
+@@ -349,11 +359,13 @@ function tutorialContext(){
+     paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
+ }
  function frameVillageGuide(){
 -  tutorial?.frame(tutorialContext());
 +  const context=tutorialContext(),planet=colony?.universe?.currentPlanet;
@@ -1099,30 +1307,48 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    ? {planet,world:groundWorld} : undefined;
 +  villagePolish.frame({planetId:activePlanet,radius:activeRadius,quality:getQualityProfile().id,home:state?.home,visible,reducedMotion:reduced,time:elapsed,courtyard});
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
-@@ -364,2 +376,5 @@ function frameVillageGuide(){
+     visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
+     homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
+@@ -362,12 +374,15 @@ function frameVillageGuide(){
+   if(context&&planet&&groundWorld&&walker){
+     const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
 +      approvedCourtyard:!!courtyard,
 +      residentRoster:context.online&&context.ready&&!indoor&&state?.flight.mode==='ground'
 +        ? bothouseResidents.guideRoster(groundWorld,state.location?.visitEpoch??0) : [],
        visible:context.ready&&!photoPaused&&!colony?.paused&&!flight?.active&&!departure&&(!homeInterior?.active||!!room),enabled:context.ready&&online&&!photoPaused&&!colony?.paused&&!document.querySelector('dialog[open]'),
-@@ -369,3 +384,3 @@ function frameVillageGuide(){
+       scene:room?.scene??scene,camera:room?.camera??renderCamera(),feet,up:room?new T.Vector3(0,1,0):walker.up.clone(),forward:room?.forward??walker.north.clone(),
+       roomKey:room?.key??indoorRoomView.room?.id??activePlanet,indoor,online,time:elapsed,reducedMotion:reduced,
+       stand:room?.stand??(point=>{const normal=point.clone().normalize().toArray() as Vec3,support=groundWorld!.support(normal,feet.length()+.2),pose={position:normal,radius:support.radius,verticalSpeed:0,grounded:true};return Math.abs(support.radius-feet.length())<.28&&!groundWorld!.blocked(pose)?new T.Vector3(...normal).multiplyScalar(support.radius):null;})});
      renderer.domElement.dataset.worldGuide=JSON.stringify(guideState);
 -  }
 +  } else worldGuide.clearResidentVisit();
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
-@@ -546,2 +561,6 @@ window.addEventListener('keydown',event=> {
+   renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
+   renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
+@@ -544,6 +559,10 @@ window.addEventListener('keydown',event=> {
+   if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
+   const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
 +    if (benchRest && key !== 'shift') {
 +      benchRest = null;
 +      if (key === 'e') { event.preventDefault(); return; }
 +    }
      event.preventDefault();keys.add(key);target=null;
-@@ -599,3 +618,3 @@ renderer.domElement.addEventListener('pointerup',e=> {
+     if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
+   }
+@@ -597,7 +616,7 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+ renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
+ renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
 -  if(flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
 +  if(benchRest || flight?.active || !canSceneInput() || !released || released.dragged || Math.hypot(e.clientX-released.x,e.clientY-released.y)>10) return;
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
-@@ -700,3 +719,46 @@ async function interact() {
+   const hit=raycaster.intersectObject(world.globe)[0];
+   if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
+@@ -698,7 +717,50 @@ async function interact() {
+     player.greet(elapsed);
+   }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
 -action.onclick=()=>void interact();
 +function canGreetVisitor() {
@@ -1170,17 +1396,23 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +  if (canGreetVisitor()) bothouseResidents.greetVisitor(id,walker.up,renderCamera());
 +};
  setInterval(()=>void savePosition(),350);
-@@ -723,3 +785,3 @@ setInterval(async()=>{
+ setInterval(async()=>{
+   if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
+@@ -721,17 +783,34 @@ setInterval(async()=>{
+   if(online || busy || physicsMismatch || stateLoader.pending) return;
+   if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
 -    const next=await serial(()=>stateLoader.read());if(!accept(next))return;
 +    const next=await serial(()=>stateLoader.read());if(online||!accept(next))return;
      walker=new SurfaceWalker(next.position);lastSaved.copy(walker.up);clearInput();rebaseGroundCamera();ensureColony();notice('Back at your last saved spot. Welcome home.');
-@@ -727,4 +789,2 @@ setInterval(async()=>{
+   }catch(error){if(!arrivalRefused(error))status('Offline · retrying',true);else if(!arrival.stopped)notice(error instanceof Error?error.message:'Please try again.');}
  },2500);
 -window.addEventListener('online',()=>notice('Reconnecting to your worlds…'));
 -window.addEventListener('offline',()=>{presence.clear();online=false;homeInterior?.setOnline(false);clearGroundMotion();clearInput();flight?.clear();status('Offline · retrying',true);});
-
-@@ -734,2 +794,21 @@ function animate(now:number) {
+ 
+ let previous=performance.now(),elapsed=0,uiTick=0,started=false;
+ function animate(now:number) {
+   requestAnimationFrame(animate);
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
 +  const garden=colony?.universe?.currentPlanet;
 +  const visitVisible=online&&colony?.syncing&&!document.hidden&&!graphicsLost&&!worldPending&&!state?.appearanceRequired&&state?.flight.mode==='ground'&&state.location?.kind!=='interior'&&!homeTransition&&garden?.id===activePlanet&&garden.claimed&&garden.kind==='garden';
@@ -1202,12 +1434,20 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    benchChoice.hidden=true;
 +  }
    if(graphicsLost)return;
-@@ -781,3 +860,3 @@ function animate(now:number) {
+   if(qualityApplyPending&&!photoMode?.capturing)resize();
+   observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
+@@ -779,7 +858,7 @@ function animate(now:number) {
+   // A rejected isolated pose must not let unrendered motion reach the save
+   // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
 -    if(paused){clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
 +    if(paused||benchRest){if(paused)clearInput();walker.velocity.set(0,0,0);physicsClock=0;}else{
        physicsClock=Math.min(.05,physicsClock+dt);
-@@ -801,2 +880,7 @@ function animate(now:number) {
+       while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
+         physicsClock-=FIXED_STEP;const before=standing;
+@@ -799,6 +878,11 @@ function animate(now:number) {
+   destinationRing.visible=!!target;
+   const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
 +  if (benchRest) {
 +    player.root.position.copy(benchRest.seat.position);
@@ -1215,21 +1455,35 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    player.sit();
 +  }
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-@@ -873,3 +957,3 @@ function animate(now:number) {
+   const renderUp=surfaceNormal(walker.up);
+   const hub=activePlanet==='hub',phone=innerWidth<600;
+@@ -871,7 +955,7 @@ function animate(now:number) {
+     }else{
+       const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
 -      player.root.visible=pose.playerVisible;
 +      player.root.visible=pose.playerVisible||!!benchRest;
        // Retain the baseline hub/craft geometry checks alongside static proxies.
-@@ -910,2 +994,4 @@ function animate(now:number) {
+       const shortenAgainst=(root:T.Object3D)=>{
+         const offset=pose.position.clone().sub(headPoint),length=offset.length();
+@@ -908,11 +992,14 @@ function animate(now:number) {
+   fitGroundSunShadowDepth(sun);
+   if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
 +  bothouseResidents.animate(dt,walker.up.toArray() as Vec3,renderCamera(),!scenePaused,'exploration',
 +    {usedByPlayer:benchRest?.id,getModel:id=>colony?.savedObjectModel(id)});
    residents?.update({dt,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:renderCamera(),reducedMotion:reduced,enabled:!scenePaused});
-@@ -915,2 +1001,3 @@ function animate(now:number) {
+   world.npcs.forEach(n=>{n.avatar.animate(elapsed,0,reduced);if(near===n.id){const local=n.anchor.worldToLocal(player.root.position.clone());const yaw=Math.atan2(local.x,local.z);const diff=Math.atan2(Math.sin(yaw-n.avatar.root.rotation.y),Math.cos(yaw-n.avatar.root.rotation.y));n.avatar.root.rotation.y+=diff*(1-Math.exp(-4*dt));}n.beacon.position.y=2.0+(reduced?0:Math.sin(elapsed*2)*.06);n.beacon.visible=state.quest!=='delivered'&&n.id===(state.quest==='available'?'mica':'sol');});
+   presence.frame(now,dt,walker.up,reduced);
+   colony?.updateShadows(feet);
    practical.update(scene,renderCamera(),dt);if(indoorRoomView.room)indoorRoomView.render();else drawing.render(new T.Vector3(),overview);readyWelcome();
 +  if(measureCamera)renderer.domElement.dataset.companions=JSON.stringify(bothouseResidents.snapshot(renderCamera()));
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
-@@ -966,3 +1053,14 @@ function animate(now:number) {
+   // never move the player, steer the camera, or write a saved position.
+   if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
+@@ -964,7 +1051,18 @@ function animate(now:number) {
+     nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
+     renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
 -    action.hidden=(!near&&!nearResident)||paused||nearDock||!!teleportStations?.canUse;
 +    const greeting = bothouseResidents.greetingPrompt(walker.up,renderCamera(),!benchRest && !paused && canGreetVisitor());
@@ -1245,7 +1499,11 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +    delete action.dataset.benchRest;
 +    action.hidden=interactionPaused||(!near&&!nearResident&&(!greeting||greeting.greeted)&&(!bench||offerBenchChoice));
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
-@@ -978,2 +1076,20 @@ function animate(now:number) {
+     else if(nearResident){
+       const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
+@@ -976,6 +1074,24 @@ function animate(now:number) {
+         setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
+       }
      }
 +    else if(greeting){
 +      delete action.dataset.residentPrompt;
@@ -1266,21 +1524,31 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      setText($('nearby'),'');
 +    }
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
-@@ -1032,5 +1148,6 @@ function ensureColony() {
+     if(state.quest!=='delivered') {
+       const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
+@@ -1030,15 +1146,17 @@ function ensureColony() {
+     confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
+     ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
 -  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
-+  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
++  flight=new SpaceFlight({progress:saveProgress,canvas:renderer.domElement,renderer,online:()=>online,player:()=>state,checkpoint:body=>serial(()=>request('flight/checkpoint',body)),command:changeVisit,visitDestination:id=>request('visit-destination?planetId='+encodeURIComponent(id)),findShip:()=>worldGuide.findShip(),apply:accept,applyUniverse:u=>{if(colony?.universe!==u)colony?.accept(u);},flushGround:async()=>{await savePosition(true);await queue;},clearGround:()=>{clearInput();colony?.stopBuilding();},canBoard:()=>!sceneLoadingActive()&&!homeTransition&&state.location?.kind!=='interior'&&!!walker&&!!standing?.grounded&&!colony?.building&&distance(walker.up.toArray() as Vec3,portPoint(activePlanet),groundRadius())<BOARD_RADIUS-.12,failed,notice});
    flight.setDesign((state.ship??defaultShip()).design);flight.receive(state.flight);scene.environment=flight.scene.environment;scene.environmentIntensity=groundPresentation(activePlanet,activeRadius).environmentIntensity;
    colony = new Colony({canvas:renderer.domElement,camera,scene,ground:()=>world.globe,deferObjects:true,cameraCutaway:cameraCutawayB,
 +    ownerRosterSize:(planet,epoch)=>online&&!worldPending?bothouseResidents.ownerRosterSize(planet,epoch):null,
      applyPlayer:accept,
-@@ -1040,3 +1157,4 @@ function ensureColony() {
+     universe:u=>{guideStationApproaches=tutorialStationApproaches(u.currentPlanet);homeSetup?.receive(u);teleportStations?.receive(u);homeControls?.receive(u);flight?.universe(u);tutorial?.receive(u);prepareSurface(u.currentPlanet);},bearing:id=>flight?.mark(id),
+     obstacles:blocks=>{placedObstacles=blocks;if(activePlanet!=='hub')world.blocks.splice(0,world.blocks.length,...blocks);},
+     pause:building=>{clearInput();overview=building;setAttribute($('view-mode'), 'aria-label', overview?'Walking view':'View planet');setHTML($('view-mode'), overview?'↗ <span>Walking view</span>':'◉ <span>Planet view</span>');},
      libraryRead:()=>request<import('../shared/blueprints.ts').LibraryEntry[]>('blueprints'),librarySave:body=>serial(()=>request<import('../shared/blueprints.ts').LibraryEntry>('blueprints/save',body)),
 -    read:()=>request<Universe>('universe'),write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
 +    read:()=>request<Universe>('universe'),onReadFailure:()=>{if(online)worldUnavailable();},
 +    write:(route,body)=>serial(()=>request<Universe>(route,body)),flush:async()=>{await savePosition(true);await queue;},notice,
    });
-@@ -1061,3 +1179,8 @@ photoMode=new PhotoMode({renderer,
+   mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
+   tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
+@@ -1059,12 +1177,36 @@ photoMode=new PhotoMode({renderer,
+       const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
+     }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
 -    return {scene,camera:view,target,prepare:photo=>{updateGroundFog(scene,activePlanet,activeRadius,photo.position.length());world.animate(elapsed,true,photo.position,walker.up,mode==='overview');residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});}};
 +    return {scene,camera:view,target,residentNames:true,prepare:(photo,showResidentNames)=>{
@@ -1290,7 +1558,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +      residents?.update({dt:0,time:elapsed,viewer:walker.up.toArray() as Vec3,camera:photo,reducedMotion:reduced,enabled:false});
 +    }};
    },notice,
-@@ -1065,4 +1188,23 @@ photoMode=new PhotoMode({renderer,
+ });
  const photoButton=document.createElement('button');photoButton.id='open-photo';setText(photoButton,'Photo mode');
 -$('view-mode').after(photoButton);photoButton.onclick=()=>void photoMode?.open();
 -window.addEventListener('open-photo-mode',()=>void photoMode?.open());
@@ -1316,21 +1584,39 @@ index 0639a7b2e636be2963ca2599618308f12632025a..92983bc0cbfab0bfae35edf381fdedf0
 +visitPhotoButton.onclick=()=>openWorldPhoto('follow');
 +window.addEventListener('open-photo-mode',()=>openWorldPhoto('overview'));
  requestAnimationFrame(animate);
+ async function startInitialVisit(){
+   initialStateReady=false;welcomeCommitted=false;welcome.stage('connecting');
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db99b6f449 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..b7b05f42f3a20c9d663ba2c0fe3b26f35a2bce50 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
-@@ -3,2 +3,4 @@
+@@ -1,6 +1,14 @@
+ // Host-owned UI translations. English source strings are the stable fallback.
+ // Saved names, IDs, resource snapshots and server payloads are not translated.
  export const messages: Record<string, string> = {
++  'Checking visit permission…': '正在确认来访许可…',
++  'Visit your friend’s planet?': '拜访好友的星球？',
++  'Confirm departure': '确认启航',
++  'Visit permission unavailable': '来访许可不可用',
++  'Choose another destination or reopen the visit from Friends.': '可以另选目的地，或从好友私聊重新发起拜访。',
++  'Friend’s planet': '好友星球',
 +  'This friend’s planet is unavailable.': '暂时无法拜访这位好友的星球。',
 +  'You are on your friend’s planet.': '已到达好友的星球。',
    'Show kit': '展开建造工具',
-@@ -221,2 +223,4 @@ export const messages: Record<string, string> = {
+   'Hide kit': '收起建造工具',
+   "Your traveller": "我的旅人",
+@@ -219,6 +227,8 @@ export const messages: Record<string, string> = {
+   "Your home is ready. Walk to its door to enter.": "家已经准备好了，走到门口即可进入。",
+   "Could not set up this home.": "暂时无法设置家园。",
    "Photo mode": "照片模式",
 +  "Show resident names": "显示居民姓名",
 +  "Photograph this view": "拍下当前画面",
    "Back to exploring": "返回探索",
-@@ -234,2 +238,9 @@ export const messages: Record<string, string> = {
+   "Current view": "当前视角",
+   "Whole scene": "全景",
+@@ -232,6 +242,13 @@ export const messages: Record<string, string> = {
+   "Drag to orbit. Your world stays as you left it.": "拖动环绕取景，世界保持原样。",
+   "Rendering your photo\u2026": "正在生成照片…",
    "Photo saved. Keep exploring or try another view.": "照片已保存，可以继续探索或换个角度。",
 +  "Bring back to chat": "带回私聊",
 +  "This photo is too large for chat. Choose 2K or save the PNG locally.": "照片太大，无法带回私聊。请选择 2K 或把 PNG 保存到本机。",
@@ -1340,7 +1626,11 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +  "Preparing the photo for your chat…": "正在准备把照片带回私聊…",
 +  "Returning to your chat…": "正在返回原私聊…",
    "Could not open photo mode.": "暂时无法进入照片模式。",
-@@ -1033,2 +1044,13 @@ export const messages: Record<string, string> = {
+   "Photo export is unavailable.": "当前无法导出照片。",
+   "Photo export failed.": "照片导出失败。",
+@@ -1031,6 +1048,17 @@ export const messages: Record<string, string> = {
+   "A little world awaits": "一颗小星球在等你",
+   "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
    "Make this my planet": "认领这颗星球",
 +  "Place a courtyard flower pot": "在院落放花盆",
 +  "Rest on the bench": "坐下休息",
@@ -1354,7 +1644,11 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +  "Set it farther along the same side, leaving room to walk.": "沿同一侧往里放，留出行走空间。",
 +  "Set it opposite the lantern, facing the path.": "放在灯的对面，朝向石板路。",
    "Build on my planet": "在我的星球建造",
-@@ -1174,2 +1196,21 @@ export const messages: Record<string, string> = {
+   "Mark my planet ↗": "标记我的星球 ↗",
+   "Try a delivery": "体验投递任务",
+@@ -1172,6 +1200,25 @@ export const messages: Record<string, string> = {
+   "Saving your change…": "正在保存改动…",
+   "Connection lost. Building is paused.": "连接已断开，建造已暂停。",
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
 +  "An idle resident may stop to admire this pot.": "居民空闲时可能会停下来欣赏这盆花。",
 +  "With this layout, residents won’t stop to admire this pot.": "按当前布置，居民不会欣赏这盆花。",
@@ -1376,11 +1670,23 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +  "Leave room for the courtyard landmark beside the walking route.": "请在步道旁留出地标的位置。",
 +  "The current layout is incomplete. Reload before choosing an arrival point.": "当前布局资料不完整，请重新加载后再指定到达点。",
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
-@@ -1235,2 +1276,3 @@ export const messages: Record<string, string> = {
+   "Saving…": "正在保存…",
+   "Save changes": "保存改动",
+@@ -1233,6 +1280,11 @@ export const messages: Record<string, string> = {
+ 
+ // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
++  ['Friend’s planet · {0}', '好友星球 · {0}'],
++  ['Visit {0}?', '拜访{0}？'],
++  ['Destination: {0}. Confirm to depart.', '目的地是「{0}」。确认后启航。'],
++  ['Fly to {0} · {1}? Your current trip stays unchanged until you confirm.', '改飞{0}的「{1}」？确认前保持当前航程。'],
 +  ['Visit friend · {0}', '拜访好友 · {0}'],
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
-@@ -1295,2 +1337,7 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+   ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
+   ["{0} · Your saved home","{0} · 你保存的家园"], ["{0} · Public starport","{0} · 公共星港"], ["{0} · Visit only · building belongs to its owner","{0} · 可参观，建筑由主人管理"], ["{0} · An unclaimed world to explore","{0} · 可探索的未认领星球"],
+@@ -1293,6 +1345,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+     "Turn: {0}°",
+     "朝向：{0}°"
    ],
 +  [
 +    "Turn: {0}° · {1}",
@@ -1388,6 +1694,8 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..992cafe704edc69412e8a22d704386db
 +    [1]
 +  ],
    [
+     "{0} / {1} objects",
+     "{0} / {1} 个物件"
 diff --git a/src/client/public-town-art.ts b/src/client/public-town-art.ts
 index e31b823b5a69a8875885e1cde20d0b3ecb36b77b..2c01445b7080b652b279186f4250be714ecedaf0 100644
 --- a/src/client/public-town-art.ts
@@ -2068,15 +2376,21 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a06a15475 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0ec70923a 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
-@@ -3,3 +3,3 @@ import { createHash, randomBytes } from 'node:crypto';
+@@ -1,7 +1,7 @@
+ import { createServer } from 'node:http';
+ import { createHash, randomBytes } from 'node:crypto';
  import { readFile } from 'node:fs/promises';
 -import { resolve, extname } from 'node:path';
 +import { resolve, extname, sep } from 'node:path';
  import { marked } from 'marked';
-@@ -14,2 +14,8 @@ import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
+ import { BLUEPRINT_BODY_LIMIT } from '../shared/blueprints.ts';
+ import { presenceStore } from './presence.ts';
+@@ -12,6 +12,12 @@ import { workerScript } from './worker-script.ts';
+ import { createGuideHelp } from './guide-help.ts';
+ import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
  import {guideConfiguration} from './guide-config.ts';
 +import {serveResidentArt,withResidentArt} from './resident-art.ts';
 +import {readFriendsOrigins} from './friends-origins.ts';
@@ -2085,7 +2399,11 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +import {planetResidents} from './planet-residents.ts';
 +import {jsonBody,residentSettings} from './resident-http.ts';
  import { businessLog } from './business-log.ts';
-@@ -27,2 +33,8 @@ if (store.migrationBackup) console.log(`Before migration, saved a consistent bac
+ 
+ const homeSample=process.env.HOME_SAMPLE==='1';
+@@ -25,6 +31,12 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
+ const cookieName=homeSample?(samplePort===8126?'little_home_sample':`little_home_sample_p${samplePort}`):'little_post';
+ if (store.migrationBackup) console.log(`Before migration, saved a consistent backup: ${store.migrationBackup}`);
  const audit=businessLog(databasePath);
 +const residentSources=planetResidents(store.db);
 +const appResidentLinks=appResidents(store.db,residentSources);
@@ -2094,12 +2412,16 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +  homeSample ? (player,bind)=>store.createPrepared(player,Date.now(),0,bind) : undefined);
 +const residents=withResidentArt(store.db,{...residentSources,read:appResidentLinks.read});
  const guideHelp=createGuideHelp();
-@@ -55,3 +67,3 @@ const server = createServer(async (req, res) => {
+ // Default off; production requires explicit approval configuration and the transferred ledger.
+ const aiConfig=guideConfiguration(process.env);
+@@ -53,18 +65,114 @@ const server = createServer(async (req, res) => {
+   try {
+     const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
 -    if (url.pathname.startsWith('/api/')) {
 +    if (url.pathname.startsWith('/api/')||url.pathname==='/resident-settings') {
        auditRoute=url.pathname.slice(5);
-@@ -59,4 +71,85 @@ const server = createServer(async (req, res) => {
+       auditContext={planetId:url.searchParams.get('planetId')};
        const cookie = new RegExp('(?:^|;\\s*)'+cookieName+'=([a-f0-9]{64})(?:;|$)').exec(req.headers.cookie ?? '')?.[1];
 -      let id = cookie ? hash(cookie) : '';
 +      const cookieDigest=cookie ? hash(cookie) : '';
@@ -2120,6 +2442,22 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +        send(200,{ok:true,account:identity.account});return;
 +      }
        if(id&&store.has(id))auditIdentity=id;
++      const friendDestination = async (planet: unknown) => {
++        if (typeof planet !== 'string' || !/^p-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(planet)) {
++          throw new RequestError(400,'Choose a valid friend destination.');
++        }
++        const access = friendsWorld.visitCheck(id,cookieDigest,planet)?.access;
++        const visit = access ? await friendsAuthority.visitStatus(access,planet) : {allowed:false};
++        if (!visit.allowed) throw new RequestError(403,'This friend’s planet is unavailable.');
++        if (friendsWorld.resolve(cookieDigest) !== id || friendsWorld.visitCheck(id,cookieDigest,planet)?.access !== access) throw new RequestError(401,'Reload to reconnect your visit.');
++        return {planetId:planet,...(visit.displayName && {displayName:visit.displayName})};
++      };
++      if (url.pathname === '/api/visit-destination' && req.method === 'GET') {
++        auditRoute=undefined;
++        if (!id || !store.has(id)) throw new RequestError(401,'Reload to reconnect your visit.');
++        send(200,await friendDestination(url.searchParams.get('planetId')));
++        return;
++      }
 +      const residentVisitAccess=async(planet:string)=>{
 +        residentSources.requireLanded(id,planet);
 +        const check=friendsWorld.visitCheck(id,cookieDigest,planet);
@@ -2186,13 +2524,18 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +        }
 +      }
        if (url.pathname === '/api/state' && req.method === 'GET') {
-@@ -65,4 +158,3 @@ const server = createServer(async (req, res) => {
+         if (!id || !store.has(id)) {
+           const token = randomBytes(32).toString('hex'); id = hash(token); const created = store.integratedWorld?store.createArrival(id):await store.createPrepared(id);
            auditIdentity=id;auditCreated=true;
 -          const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
 -          res.setHeader('Set-Cookie', `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000${secure}`);
 +          setSession(token,req.headers['x-forwarded-proto']==='https');
            send(200, created); return;
-@@ -97,8 +189,9 @@ const server = createServer(async (req, res) => {
+         }
+         send(200, store.state(id)); return;
+@@ -95,12 +203,13 @@ const server = createServer(async (req, res) => {
+       if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
+       else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
 -      const chunks: Buffer[] = []; let byteLength = 0;
 -      for await (const chunk of req) { const bytes = Buffer.from(chunk); byteLength += bytes.length; if (byteLength > bodyLimit) throw new RequestError(413, 'Request too large.'); chunks.push(bytes); }
@@ -2208,15 +2551,39 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..e4d054a91c00d77aa2a9c17b150fda8a
 +        throw new RequestError(400,'Choose a resident connection action.');
 +      }
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
-@@ -143,2 +236,3 @@ const server = createServer(async (req, res) => {
+       if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
+       if(url.pathname==='/api/guide/ask'){
+@@ -137,10 +246,19 @@ const server = createServer(async (req, res) => {
+       }
+       else if(url.pathname==='/api/ground/recover'){const result=store.recoverGround(id,body);presence.leave(id);send(200,result);}
+       else if (url.pathname === '/api/interact') send(200, store.interact(id, body.action));
+-      else if(url.pathname==='/api/trip/start'){const u=store.startTrip(id,body);presence.leave(id);send(200,u);}
+-      else if(url.pathname==='/api/trip/change')send(200,store.changeTrip(id,body));
++      else if(url.pathname==='/api/trip/start'||url.pathname==='/api/trip/change'){
++        const {friendVisit,...tripBody}=body;
++        if (friendVisit !== undefined) {
++          if (friendVisit !== true) throw new RequestError(400,'Choose a valid friend destination.');
++          await friendDestination(tripBody.targetId);
++        }
++        if (url.pathname.endsWith('/start')) {
++          const u=store.startTrip(id,tripBody);presence.leave(id);send(200,u);
++        } else send(200,store.changeTrip(id,tripBody));
++      }
+       else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
        else if(url.pathname==='/api/planets/rename')send(200,store.renamePlanet(id,body));
 +      else if(url.pathname==='/api/courtyard/arrival')send(200,store.saveCourtyardArrival(id,body));
        else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
-@@ -170,3 +264,3 @@ const server = createServer(async (req, res) => {
+       else if (url.pathname === '/api/flight/checkpoint') send(200,store.flight(id,body));
+       else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
+@@ -168,7 +286,7 @@ const server = createServer(async (req, res) => {
+       type = 'text/html; charset=utf-8';
+     } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
 -      if (!path.startsWith(root + '/')) throw new RequestError(404, 'Not found.');
 +      if (!path.startsWith(root + sep)) throw new RequestError(404, 'Not found.');
        try { body = await readFile(path); } catch { throw new RequestError(404, 'Not found.'); }
+       type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
+     }
 diff --git a/src/server/store.ts b/src/server/store.ts
 index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7e95afc92 100644
 --- a/src/server/store.ts
