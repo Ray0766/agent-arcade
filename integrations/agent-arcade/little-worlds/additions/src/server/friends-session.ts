@@ -99,9 +99,10 @@ export function friendsPlayers(db:DatabaseSync, enroll:(player:string)=>void, pr
       return owner&&owner!==viewer ? {access:String(visitAccess.get(cookieDigest,Date.now())?.access??'')} : null;
     },
     destination(identity:Identity) {
-      const home=db.prepare(`SELECT p.id FROM friends_players f JOIN planets p ON p.owner_id=f.player AND p.kind='garden'
+      const home=db.prepare(`SELECT p.id,p.name FROM friends_players f JOIN planets p ON p.owner_id=f.player AND p.kind='garden'
         WHERE f.issuer=? AND f.instance=? AND f.account=?`).get(identity.issuer,identity.instance,identity.account);
-      return {ok:true,account:identity.account,planetId:home ? String(home.id) : null};
+      const planetName = typeof home?.name === 'string' ? home.name.trim() || null : null;
+      return {ok:true,account:identity.account,planetId:home ? String(home.id) : null,planetName};
     },
     async open(identity:Identity, cookieDigest:string):Promise<string|null> {
       const {issuer,instance,account,legacy} = identity;

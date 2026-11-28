@@ -2,8 +2,8 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "05e9a8029b68993a516736ee575843736e00cefe",
-  "worldTree": "aca86103a2973bbea2c3c50925a36e4d6e8e4d4b",
+  "worldRevision": "e5ac024eee456aceaca65ffdad2ff6780fff15f5",
+  "worldTree": "be4c2ba997a5b7f23b4e71e1155d81a2c5926caf",
   "patchSHA256": "19914fb6751217ad19d7cd6def2aaf0b9a5667e42b14da074c655f517503fd31",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
@@ -103,8 +103,8 @@
     {
       "action": "A",
       "path": "scripts/verify-friends-world.mjs",
-      "blob": "dece79c8a91d4e8d7e8d5a7896af6e1263963603",
-      "sha256": "9835ce5cdd725ae2c4ea01c9b4134ffc4c6ee128268b04faf01846cddf24bd03"
+      "blob": "7340ab600f7bc7503a5ad93515a095fdf1d2b18a",
+      "sha256": "cf58ff5a674fb3b6a0cff21212baeb026045c7ccd28b7562283e7208b7cb2d54"
     },
     {
       "action": "A",
@@ -769,8 +769,8 @@
     {
       "action": "A",
       "path": "src/server/friends-session.ts",
-      "blob": "986ea594b03eb325dc0b00be582d9d45b492f7cc",
-      "sha256": "54aac812a80ce1486c4f5bc0069e3b99969c56dccd595019d0a208f2435b58b1"
+      "blob": "feb72158d05fb36710c616f88ace2e07bd8367f1",
+      "sha256": "af5e29aece8543d5afe3f7e66e3af42029d293b04e142ca5250f28d266af49f3"
     },
     {
       "action": "M",
