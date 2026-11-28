@@ -1,3 +1,4 @@
+import { stampNextVisit } from './stamp-next-visit.ts';
 import { STAMP_BIT, stampCount, type SavedCourtyardCard } from '../shared/courtyard-stamp-collection.ts';
 import { readStampAlbum } from './courtyard-stamp-api.ts';
 import './home-stamp-album.css';
@@ -23,6 +24,7 @@ export class HomeStampAlbum {
     const reading = new AbortController();
     this.reading = reading;
     this.root.hidden = false;
+    void stampNextVisit.refresh();
     this.cards.replaceChildren();
     this.retry.hidden = true;
     this.status.hidden = false;
@@ -81,6 +83,38 @@ export class HomeStampAlbum {
       stamps.append(stamp);
     }
     item.append(title, count, stamps);
+    if (stampCount(card.stamps) === 1 && this.reading) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.stampNext = card.planetId;
+      const message = document.createElement('p');
+      message.setAttribute('role','status');
+      const missing = card.stamps & STAMP_BIT.plaque ? (zh ? '浇花章' : 'watering stamp') : (zh ? '认牌章' : 'signpost stamp');
+      const update = () => {
+        const next = stampNextVisit.current;
+        const selected = next?.planetId === card.planetId;
+        button.textContent = selected ? (zh ? '取消下一站' : 'Cancel next stop')
+          : zh ? '下次去补' + missing : 'Plan a visit for the ' + missing;
+        message.textContent = selected ? (zh ? '下一站 · ' : 'Next stop · ') + next.planetName +
+          (next.displayName ? ' · ' + next.displayName : '') + (zh ? '。出门去码头，登船时确认。' : '. Confirm at your ship.') : '';
+        message.hidden = !selected;
+      };
+      update();
+      stampNextVisit.addEventListener('change',update,{signal:this.reading.signal});
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          if (stampNextVisit.current?.planetId === card.planetId) await stampNextVisit.cancel(card.planetId);
+          else await stampNextVisit.select(card.planetId);
+        } catch (error) {
+          message.hidden = false;
+          message.textContent = error instanceof Error && ['401','403'].includes(error.message)
+            ? (zh ? '请从「可拜访的好友」或原私聊重新确认访问许可。' : 'Reopen the visit from your Friends list or chat.')
+            : (zh ? '下一站未确认。请重新打开卡册查看。' : 'Next stop unconfirmed. Reopen the album to check.');
+        } finally { button.disabled = false; }
+      };
+      item.append(button,message);
+    }
     return item;
   }
 }

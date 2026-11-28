@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "f8f767e4faced8c5fb82c64a0cbd1c54fe32c098",
-  "worldTree": "1f57d470f62c2c533d1cb1a089c8beeb06ce0b6c",
-  "patchSHA256": "c29aa4c4854bbc376636a65ddbdbb8a1f881e04999e505d3eef7612f82bf99db",
+  "worldRevision": "51e523ba8c999c36e977331385a34a9f87c93137",
+  "worldTree": "69f1b8f65aab3d342f9f92e43661eb93c1a8afae",
+  "patchSHA256": "592ef3a383f426fa56268e3c4a35d5a6752d989ce9a39ff2e1878d5af0637145",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -511,8 +511,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "19827b14e0192306231f2bd98a28e97d6931b3c1",
-      "sha256": "f9f001e323f56cb5b465f4d012dc2b8b7009da7014d80a624df4a26ef717e052"
+      "blob": "52ca190dfde3d999b555aa33f3aeb19491871dce",
+      "sha256": "0dd289a89cdff117f68f885f5bdcdc45c09e812a38c6b7da6803cf0ce48b337c"
     },
     {
       "action": "A",
@@ -577,8 +577,8 @@
     {
       "path": "src/client/courtyard-stamp-card.ts",
       "action": "A",
-      "blob": "3eda55b57687d04fec18acbe837fab87d9ae64ee",
-      "sha256": "a8356e6e93c13fd5810f0628b8b5d9b38daeca4b73402633c4cf149c276a1852"
+      "blob": "ef4109d06985345b5c1f438a0f9e9cf1d24b6a6c",
+      "sha256": "823a30dc707b5690bab2b0ef78b594e7c8bcfea75bee7df68a1b3ecea3659993"
     },
     {
       "action": "M",
@@ -589,8 +589,8 @@
     {
       "action": "M",
       "path": "src/client/flight.ts",
-      "blob": "dea90da8db4ec0027ca97442dd403ff12a129cd5",
-      "sha256": "bf26dd4f1a1454a80b37d0aa8bd254068742ae2fc9c922432711a7edbdb86486"
+      "blob": "7527b01ab0043429ea8d92e0bec840eff69a799d",
+      "sha256": "896134c3e7ec1b453eed606082fec12b33f7578f84a301073e3d4f0693b24c56"
     },
     {
       "action": "M",
@@ -625,8 +625,8 @@
     {
       "path": "src/client/home-stamp-album.ts",
       "action": "A",
-      "blob": "e469f41255f730851592e08444969388ee37ced9",
-      "sha256": "4f0e877fbe1527909d38df056bec1f4426c9d9ca53bc623e8837d09684f8b125"
+      "blob": "45a5c364b2d4410e2b24b8cccf024cfa17c19e41",
+      "sha256": "a059ed6b9ad71273c8fd68a55f8664b561cefdb808ec02c68f3f06f54322659f"
     },
     {
       "action": "M",
@@ -643,8 +643,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "b1c0e36441a1edf92980cb9a0d49b505056fe9b3",
-      "sha256": "7a450c3def25bcf65d6ff189828aa9ebcc7f8f1cad2a2e8fb64d52b270b56c06"
+      "blob": "545506a2d5a7dc3a705be77461d34fb24e0a12eb",
+      "sha256": "8d3048647e933ca0e0eab85e3373fe8898122df032fd5dcbe7d9606f5e7972a7"
     },
     {
       "action": "M",
@@ -711,6 +711,12 @@
       "path": "src/client/shipyard.ts",
       "blob": "5772ead4c82fa8aa62571fa933ac4b4c7dee4bf8",
       "sha256": "37fe250628d55e63f7870ca3c75606001ab175f19b7524ed7c6f907721d2fa8b"
+    },
+    {
+      "path": "src/client/stamp-next-visit.ts",
+      "action": "A",
+      "blob": "e62c41e7f238387a7c04e559320cf42e48b99a68",
+      "sha256": "6707a6b53ab4fcdbb0ac29a06161dc9846d9f24780be19415ed2ee6193fce219"
     },
     {
       "action": "M",
@@ -781,8 +787,8 @@
     {
       "action": "M",
       "path": "src/client/world-guide.ts",
-      "blob": "479e67a0d45fd7307d2ef6675d52340e6200c0c2",
-      "sha256": "3b48c1b5a98a08e2f1f2735221d4dd4ad31d4182c6a0047a2dfc57bf8a353e91"
+      "blob": "4a4458368917127f65713906670d4c42872db14b",
+      "sha256": "407b85df6fb155aa07f94e95a7da47ca397a1a84cd1382b9c8fcd6fdf61070f6"
     },
     {
       "action": "A",
@@ -823,8 +829,8 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "c342d0b5524859d75501070c99fb9c23fe03c3e2",
-      "sha256": "52dbe4651ecdb6b1b719afad67a984ef9add963df54dab4e7d6dcb69781c20e8"
+      "blob": "7b502717e1b1955879548785adb6c597ee3d3fdf",
+      "sha256": "5623acdfd002bd1ec5d774e132bad93193b0deca0dde6a1635886d8c07d2be0e"
     },
     {
       "action": "A",
@@ -851,10 +857,22 @@
       "sha256": "361061fd2a9d60c57bb02542d96980819eec1ebe01a4b6372c2266aa96c3a569"
     },
     {
+      "path": "src/server/stamp-next-visit.ts",
+      "action": "A",
+      "blob": "1ab1a7900624da4e54ad86db97fb71f5c8cdf645",
+      "sha256": "68618000ed53f22197e8be65ee8c745b15c20fbb8bcc37f7c48ae3706d9ee53c"
+    },
+    {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "0a679fcba74b10ca6fedb33b0efb56c7e95afc92",
-      "sha256": "e2fac63f5ac814221f9436648a29afb6eb6f67585397fb6df1ce884328a18a71"
+      "blob": "6304cb57e752d36a570479d1626de157c77e1fa0",
+      "sha256": "97548ca647c364d23b3503642858a92926e275e43900ad9da4a5fa5cf53682f8"
+    },
+    {
+      "path": "src/server/trips.ts",
+      "action": "M",
+      "blob": "f7642038e5376052c8f2e2cc06b59ad297b9b9a6",
+      "sha256": "462ebd18122f47b648933558d639f96a23a55a852730a0f912a140006367dc6c"
     },
     {
       "action": "A",
@@ -885,6 +903,12 @@
       "path": "src/shared/resident-portrait.ts",
       "blob": "9f6a08cdaf111ec2f3c4386ac53303138c7ac50f",
       "sha256": "24836ed60409e82b0d0d4eef34e86a3da691c09f98d1f8a6a9b0786cabd79d28"
+    },
+    {
+      "path": "src/shared/stamp-next-visit.ts",
+      "action": "A",
+      "blob": "4568329ec283e90f585edbca32a413a3d3fdd730",
+      "sha256": "3255c6b2f3655e9abd1efe6621f281b87c669b63536aa7620885cbfe1db2ca7a"
     },
     {
       "action": "M",
