@@ -424,30 +424,49 @@ index 9e2e1f9978b075934705f6aaaf25981ddaa57039..d621be9dcc697e99164dad8926c4dfa9
 +  if(shadow)shadow.visible=grounded;if(!grounded&&!reduced){legs.forEach(l=>{l.hip.rotation.x=-.15;l.knee.rotation.x=.35;});}
    if(t<gestureUntil&&!reduced&&!parcel.visible){arms[1].upper.rotation.z=-2.25;arms[1].forearm.rotation.x=Math.sin(t*14)*.25;}
 diff --git a/src/client/colony.ts b/src/client/colony.ts
-index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f1955aa0a0f2 100644
+index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..b8a50c52cddcf05a91ee528051c91eeccc7d39b6 100644
 --- a/src/client/colony.ts
 +++ b/src/client/colony.ts
-@@ -1,3 +1,5 @@
+@@ -1,5 +1,8 @@
 +import {addTownExterior} from './town-exterior.ts';
++import type { HomeRoofFinish } from '../shared/home.ts';
  import { localizedOption, setAttribute, setText, translate } from './i18n.ts';
  import { makePlacementPreview } from './placement-preview.ts';
 +import { createCourtyardInspiration } from './courtyard-inspiration.ts';
  import { PlacedObjectShadows } from './placed-shadows.ts';
-@@ -12,2 +14,6 @@ import {RADIUS} from '../shared/world.ts';
+ import * as T from 'three';
+ import {fieldOf,objectSeat} from '../shared/terrain.ts';
+@@ -10,6 +13,10 @@ import type { BuildKind, PlacedObject, PlanetView, Universe } from '../shared/pl
+ import type { PlayerState, Vec3 } from '../shared/world.ts';
+ import {RADIUS} from '../shared/world.ts';
  import { builtObject, disposeGeometry } from './build-art.ts';
 +import { flowerPlacementHint } from './bothouse-resident-sites.ts';
 +import { courtyardPlacementImpact } from './courtyard-placement-impact.ts';
 +import {planCourtyardArrival} from '../shared/courtyard-arrival.ts';
 +import {GroundWorld} from '../shared/physics/world.ts';
  import type { Workshop } from './workshop.ts';
-@@ -34,4 +40,5 @@ export interface ColonyBridge {
+ import { canAcceptUniverse } from './sync.ts';
+ import {lazyPanel,openPanel} from './lazy-panel.ts';
+@@ -32,8 +39,9 @@ const el = <E extends HTMLElement = HTMLElement>(id:string) => document.getEleme
+ export interface ColonyBridge {
+   canvas: HTMLCanvasElement; camera: T.Camera; scene: T.Scene;
    ground: () => T.Mesh; applyPlayer: (p:PlayerState) => boolean;
 +  ownerRosterSize?: (planet:PlanetView, epoch:number) => number|null;
    obstacles: (blocks:Obstacle[]) => void; pause: (building:boolean) => void;
 -  read: () => Promise<Universe>; write: (route:string, body:unknown) => Promise<Universe>;
 +  read: () => Promise<Universe>; onReadFailure?: () => void; write: (route:string, body:unknown) => Promise<Universe>;
    libraryRead: () => Promise<LibraryEntry[]>; librarySave: (body:unknown) => Promise<LibraryEntry>;
-@@ -55,2 +62,9 @@ export class Colony {
+   universe:(u:Universe)=>void; bearing:(id:string)=>void;
+   flush: () => Promise<void>; notice: (text:string) => void;
+@@ -48,24 +56,48 @@ export class Colony {
+   private map = el<HTMLDialogElement>('star-map');
+   private layer = new T.Group(); private ghost: T.Group | null = null;
+   private pathPreview = new T.Group();
++  private roofPreview: { saved: T.Group; group: T.Group } | null = null;
+   private cutawayController:TownCameraCutaway|undefined;
+   get cutaway(){return this.cutawayController;}
+   private objects = new Map<string,T.Group>(); private draft: Draft | null = null;
+   private shadows = new PlacedObjectShadows(PRESENTATION.ground.garden.shadowExtent * .75);
    private placing = false; private selected: string | null = null;
 +  private flowerHint: {key:string; text:string}|null=null;
 +  private courtyardImpact: {key:string; text:string|null}|null=null;
@@ -457,17 +476,20 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    color:0xf3d180,side:T.DoubleSide,depthTest:false,depthWrite:false,
 +  }));
    private painted = ''; private cards = ''; private pointer: {id:number;x:number;y:number} | null = null;
-@@ -59,2 +73,3 @@ export class Colony {
+   private workshop: Workshop|null=null;
+   private structureWorkshopOpening:symbol|null=null;
    private loadWorkshop: () => Promise<Workshop>;
 +  private readonly courtyardInspiration: ReturnType<typeof createCourtyardInspiration>;
    private localParts: Record<string,PartPlacement[]> = {};
-@@ -64,2 +79,5 @@ export class Colony {
+   private ray = new T.Raycaster(); private pollBusy = false;
+   constructor(private bridge: ColonyBridge) {
+     bridge.scene.add(this.layer);
      bridge.scene.add(this.pathPreview);
 +    this.arrivalMarker.visible=false;
 +    this.arrivalMarker.renderOrder=10;
 +    bridge.scene.add(this.arrivalMarker);
      const loadWorkshop=this.loadWorkshop=lazyPanel(async()=>{const {Workshop}=await import('./workshop.ts');return this.workshop = new Workshop({read:bridge.libraryRead,save:bridge.librarySave,allowed:()=>!!this.universe?.currentPlanet.mine&&this.universe.player.flight.mode==='ground'&&this.universe.player.location?.kind!=='interior'&&this.syncing,
-@@ -67,3 +85,15 @@ export class Colony {
+       place:entry=>{this.localParts[entry.hash]=entry.blueprint.parts;this.setBuilding(true);this.draft={id:crypto.randomUUID(),kind:'structure',blueprintHash:entry.hash,...structureSize(entry.blueprint.parts),position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);bridge.notice('Tap an open spot, turn the structure, then Place object.');}});});
      const workshopButton=document.createElement('button');workshopButton.id='open-workshop';workshopButton.className='primary';setText(workshopButton, 'Open workshop');workshopButton.hidden=true;
 -    el('build-mode').after(workshopButton);
 +    const addCourtyardFlower=document.createElement('button');
@@ -484,7 +506,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      this.startCourtyardPlacement('flowers');
 +    };
      workshopButton.onclick=()=>void openPanel(workshopButton,loadWorkshop,async panel=>{if(!this.universe?.currentPlanet.mine||this.universe.player.flight.mode!=='ground'||!this.setBuilding(false))return;await bridge.flush();el<HTMLDialogElement>('menu-dialog').close();await panel.open();});
-@@ -84,2 +114,20 @@ export class Colony {
+     el<HTMLSelectElement>('region-select').onchange=()=>{this.cards='';this.starMap();};
+     el('open-map').onclick=()=>{el<HTMLDialogElement>('menu-dialog').close();bridge.pause(this.building);this.cards='';if(this.universe)this.starMap();this.map.showModal();void this.poll();};
+@@ -82,12 +114,30 @@ export class Colony {
+     el('move-object').after(editStructure);editStructure.onclick=()=>{if(this.selected)void this.openStructureWorkshop(this.selected);};
+     el('cancel-object').onclick=()=>{if(!this.discardPlacement())return;this.clearDraft();this.editor();};
      el('save-object').onclick=()=>void this.save();
 +    const chooseArrival=document.createElement('button');
 +    chooseArrival.id='choose-courtyard-arrival';chooseArrival.className='quiet';
@@ -505,16 +531,26 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    cancelArrival.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.editor();};
 +    arrivalActions.append(saveArrival,cancelArrival);arrivalTools.append(arrivalStatus,arrivalActions);chooseArrival.after(arrivalTools);
      el('remove-object').onclick=()=>void this.remove();
-@@ -89,3 +137,3 @@ export class Colony {
+     el<HTMLSelectElement>('built-list').onchange=()=>this.select(el<HTMLSelectElement>('built-list').value);
+     for(const kind of Object.keys(CATALOGUE) as BuildKind[]) {
+       const button=document.createElement('button');button.className='catalogue-item';button.dataset.kind=kind;setAttribute(button, 'aria-label', `Add ${CATALOGUE[kind].name.toLowerCase()}`);
        const icon=document.createElement('span');setText(icon, CATALOGUE[kind].icon);const name=document.createElement('strong');setText(name, CATALOGUE[kind].name);
 -      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.clearDraft();this.draft={id:crypto.randomUUID(),kind,assetVersion:2,position:null,rotation:0};this.placing=true;this.editor();this.setKitCollapsed(innerWidth<=700);};el('catalogue').append(button);
 +      button.append(icon,name);button.onclick=()=>{if(this.busy||!this.discardPlacement())return;this.startPlacement(kind);};el('catalogue').append(button);
      }
-@@ -111,2 +159,3 @@ export class Colony {
+     bridge.canvas.addEventListener('pointerdown',e=>{
+       this.pointer=this.building&&!this.busy&&!document.querySelector('dialog[open]')&&e.button===0&&e.isPrimary!==false?{id:e.pointerId,x:e.clientX,y:e.clientY}:null;
+@@ -109,6 +159,7 @@ export class Colony {
+     void this.poll();
+   }
    get paused() { return this.building || this.map.open || this.busy || this.workshop?.opened; }
 +  savedObjectModel(id: string) { return this.objects.get(id); }
    private setKitCollapsed(collapsed:boolean){
-@@ -118,4 +167,21 @@ export class Colony {
+     const panel=el('builder'),choices=el('building-kit-choices'),toggle=el('toggle-building-kit');
+     panel.classList.toggle('kit-collapsed',collapsed);toggle.setAttribute('aria-expanded',String(!collapsed));
+@@ -116,8 +167,25 @@ export class Colony {
+     // Move keyboard focus before its selected catalogue control is visually hidden.
+     if(collapsed&&choices.contains(document.activeElement))toggle.focus();
    }
 -  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
 -  private hasDraft(){const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
@@ -538,7 +574,48 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +  private clearDraft(){this.setKitCollapsed(false);this.pointer=null;this.draft=null;this.selected=null;this.placing=false;this.pickingArrival=false;this.arrivalDraft=null;this.arrivalMarker.visible=false;el<HTMLSelectElement>('built-list').value='';if(this.ghost){disposeGeometry(this.ghost);this.ghost=null;}}
 +  private hasDraft(){if(this.arrivalDraft&&!this.arrivalDraft.problem)return true;const d=this.draft;if(!d?.position)return false;const old=this.universe?.currentPlanet.objects.find(o=>o.id===d.id);return !old||old.rotation!==d.rotation||old.position.some((v,i)=>Math.abs(v-d.position![i])>1e-8);}
    private discardPlacement(){return !this.hasDraft()||window.confirm(translate('Discard the unsaved building placement or changes?'));}
-@@ -226,3 +292,13 @@ export class Colony {
+   private setBuilding(value:boolean,force=false){
+     if(!value&&!force&&!this.discardPlacement())return false;
+@@ -180,7 +248,8 @@ export class Colony {
+     this.hud();this.editor();this.starMap();
+   }
+   private commitObjects(planet:PlanetView,objects:Map<string,T.Group>,cutaway?:TownCameraCutaway){
+-    this.previewPaths([]);this.painted=worldVisualSignature(planet);
++    this.previewPaths([]);this.clearRoofFinishPreview();this.painted=worldVisualSignature(planet);
++    this.bridge.canvas.dataset.homeRoofFinish = planet.homeRoofFinish?.finish ?? '';
+     this.bridge.canvas.dataset.placedAssetKit=SHARED_ASSET_VERSION;this.bridge.canvas.dataset.placedAssetKinds=planet.objects.map(o=>o.kind).join(',');
+     // Restore source materials before the old model handles release their
+     // owned lamps/geometry. Shared library resources remain library-owned.
+@@ -208,6 +277,26 @@ export class Colony {
+       check();return {root,cutaway,dispose,commit:()=>{if(released)return;check();this.commitObjects(planet,objects,cutaway);released=true;root.removeFromParent();}};
+     }catch(error){dispose();throw error;}
+   }
++  clearRoofFinishPreview() {
++    if (!this.roofPreview) return;
++    const { saved, group } = this.roofPreview;
++    this.roofPreview = null;
++    saved.visible = true;
++    disposeGeometry(group);
++    delete this.bridge.canvas.dataset.homeRoofPreview;
++  }
++  previewRoofFinish(buildingId: string, finish: HomeRoofFinish | null) {
++    this.clearRoofFinishPreview();
++    const planet = this.universe?.currentPlanet, saved = this.objects.get(buildingId);
++    const object = planet?.objects.find(item => item.id === buildingId && item.kind === 'structure');
++    if (!planet?.mine || !saved || !object || this.universe?.player.home?.buildingId !== buildingId) return false;
++    const group = this.renderObject(object, planet, false, finish);
++    this.roofPreview = { saved, group };
++    saved.visible = false;
++    this.layer.add(group);
++    this.bridge.canvas.dataset.homeRoofPreview = finish ?? 'original';
++    return true;
++  }
+   previewHome(addition:HomeSetupAddition|undefined){
+     this.previewPaths([]);if(!addition||!this.universe)return;
+     const parts=addition.blueprint.parts,planet=this.universe.currentPlanet;
+@@ -224,7 +313,17 @@ export class Colony {
+   private async poll(){
+     if(this.pollBusy||this.busy||this.workshop?.opened)return;this.pollBusy=true;
      const before=this.universe;
 -    try{this.accept(await this.bridge.read());}catch{if(this.universe===before){this.syncing=false;this.hud();this.editor();}}finally{this.pollBusy=false;}
 +    let received=false;
@@ -553,15 +630,37 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      }
 +    }finally{this.pollBusy=false;}
    }
-@@ -277,3 +353,6 @@ export class Colony {
+   private async command(route:string,body:unknown){
+     if(this.busy||!this.syncing)return false;this.busy=true;this.editor();this.hud();
+@@ -267,15 +366,21 @@ export class Colony {
+       group.traverse(node=>{if(node instanceof T.Mesh)cutaway.unregisterMesh(node);});disposeGeometry(group);throw error;
+     }
+   }
+-  private renderObject(obj:PlacedObject,planet=this.universe!.currentPlanet,cameraCutaway=false){
++  private renderObject(obj:PlacedObject,planet=this.universe!.currentPlanet,cameraCutaway=false, previewFinish?: HomeRoofFinish | null){
+     if(obj.kind!=='structure'){const group=builtObject(obj.kind,obj.assetVersion??1);this.locate(group,obj.position,obj.rotation,planet);if(planet.environment)group.position.set(...obj.position).multiplyScalar(objectSeat(fieldOf(planet.environment,planet.radius),obj,planet.blueprints).baseRadius+.015);return group;}
+     const parts=planet.blueprints?.[obj.blueprintHash!]??this.localParts[obj.blueprintHash!]??[],fit=structureFit(parts,obj.position,obj.rotation,fieldOf(planet.environment,planet.radius));
+     const door=planet.homeDoor;
+     const visibleParts=door?.buildingId===obj.id?parts.filter(part=>part.n!==door.partNumber):parts;
+-    const options={foundationDepth:fit.foundationDepth,pivot:pivotOf(parts)};
+-    const model=cameraCutaway?buildCameraBlueprintModel(visibleParts,worldMaterials(),'medium',{...options,identityParts:parts})
++    const roofFinish = previewFinish === undefined
++      ? (planet.homeRoofFinish?.buildingId === obj.id ? planet.homeRoofFinish.finish : undefined)
++      : previewFinish ?? undefined;
++    const options={foundationDepth:fit.foundationDepth,pivot:pivotOf(parts),roofFinish};
++    const model=cameraCutaway||roofFinish?buildCameraBlueprintModel(visibleParts,worldMaterials(),'medium',{...options,identityParts:parts})
        :buildBlueprintModel(visibleParts,worldMaterials(),'medium',options);
 -    const finish=buildStructureFinish(parts,worldMaterials(),cameraCutaway?{cameraPartSlots:cameraPartSlots(parts)}:{});model.object.add(finish.object);
 +    const slots=cameraCutaway?cameraPartSlots(parts):undefined;
 +    const finish=buildStructureFinish(parts,worldMaterials(),{cameraPartSlots:slots});model.object.add(finish.object);
 +    const gardenStructure = planet.kind === 'garden' && !!planet.homeManifest?.objects?.some(original => original.id === obj.id);
-+    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure);
++    addTownExterior(model.object,parts,worldMaterials(),slots,gardenStructure,roofFinish);
      const transform=placedTransform({dir:obj.position,yaw:obj.rotation},fit);
-@@ -293,2 +372,7 @@ export class Colony {
+     model.object.position.fromArray(transform.position);model.object.quaternion.fromArray(transform.quaternion);
+     model.object.userData.disposeOwned=()=>{finish.dispose();model.dispose();};
+@@ -291,6 +396,11 @@ export class Colony {
+   }
+   private point(x:number,y:number){
      this.ray.setFromCamera(new T.Vector2(x/innerWidth*2-1,-y/innerHeight*2+1),this.bridge.camera);
 +    if(this.pickingArrival){
 +      const hit=this.ray.intersectObject(this.bridge.ground())[0];
@@ -569,7 +668,11 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +      return;
 +    }
      if(this.placing&&this.draft){const hit=this.ray.intersectObject(this.bridge.ground())[0];if(hit){this.draft.position=hit.point.normalize().toArray() as Vec3;this.preview();this.editor();}return;}
-@@ -314,2 +398,24 @@ export class Colony {
+     const hit=this.ray.intersectObjects([...this.objects.values()],true)[0];
+     const surface=this.ray.intersectObject(this.bridge.ground())[0];
+@@ -312,13 +422,62 @@ export class Colony {
+     const body={planetId:this.universe.currentPlanet.id,objectId:d.id,position:d.position,rotation:d.rotation,...(d.version?{expectedVersion:d.version}:{kind:d.kind,...(d.blueprintHash?{blueprintHash:d.blueprintHash}:{})})};
+     if(await this.command(route,body)){this.clearDraft();this.editor();this.bridge.notice('Saved. Everyone visiting can see your change.');}
    }
 +  private previewArrival(direction:T.Vector3){
 +    const u=this.universe;
@@ -594,7 +697,7 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    }
 +  }
    private async remove(){const d=this.draft;if(!d?.version||!this.universe)return;if(await this.command('objects/delete',{planetId:this.universe.currentPlanet.id,objectId:d.id,expectedVersion:d.version})){this.clearDraft();this.editor();this.bridge.notice('Removed from your planet.');}}
-@@ -317,6 +423,33 @@ export class Colony {
+   private editor(){
      const d=this.draft;el('object-tools').hidden=!d;
 -    setText(el('build-instruction'), this.busy?'Saving your change…':!this.syncing?'Connection lost. Building is paused.':d?(this.placing?'Tap an open spot on the planet, then save.':'Object selected. Move, rotate or remove it.'):'Choose something to add, or tap an existing object.');
 -    setText(el('build-selection'), d?objectName(d):'Sunseed building kit');
@@ -631,13 +734,19 @@ index 09549aaf6fa80e4da5e025d2cea68daff88c3d4a..01cf312f46a7f0ac7795a8146c05f195
 +    }
 +    setText(el('placement-status'),status);
      el<HTMLButtonElement>('save-object').disabled=this.busy||!this.syncing||!d?.position||!!problem;
-@@ -340,2 +473,6 @@ export class Colony {
+     setText(el('save-object'), this.busy?'Saving…':d?.version?'Save changes':'Place object');
+     el<HTMLButtonElement>('move-object').hidden=!d?.version;el<HTMLButtonElement>('remove-object').hidden=!d?.version;
+@@ -338,6 +497,10 @@ export class Colony {
+     el<HTMLButtonElement>('claim-planet').disabled=this.busy||!this.syncing;
+     el<HTMLButtonElement>('build-mode').hidden=!p.mine;setText(el('build-mode'), this.building?'Building…':'Build on my planet');
      el<HTMLButtonElement>('build-mode').disabled=this.busy||!this.syncing;
 +    const courtyardFlower=el<HTMLButtonElement>('place-courtyard-flower');
 +    courtyardFlower.hidden=!this.canArrangeCourtyard();
 +    courtyardFlower.disabled=this.busy||!this.syncing;
 +    this.courtyardInspiration.update(!courtyardFlower.hidden,!courtyardFlower.disabled);
      el<HTMLButtonElement>('open-workshop').hidden=!p.mine||u.player.flight.mode!=='ground';el<HTMLButtonElement>('open-workshop').disabled=this.busy||!this.syncing;
+     el('delivery-toggle').hidden=p.kind!=='hub';
+     el('my-planet').hidden=!u.ownedPlanetId||u.ownedPlanetId===p.id;
 diff --git a/src/client/flight.css b/src/client/flight.css
 index e56a89e92190efaab22096861abb75c51ac8688a..431c9c7fcb46481d0dad9b9db8301f4fc32b35e5 100644
 --- a/src/client/flight.css
@@ -1228,7 +1337,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..ba468c1c6fc2df2617f6cff5d2bd45d0ed752d0b 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..550780cbca3f6814bb114e87f3fdc86f0745de04 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -30,6 +30,7 @@ import { createTutorialRoute } from './tutorial-route.ts';
@@ -1326,6 +1435,15 @@ index 0639a7b2e636be2963ca2599618308f12632025a..ba468c1c6fc2df2617f6cff5d2bd45d0
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
+@@ -388,7 +403,7 @@ function prepareSurface(planet:PlanetView){
+   pendingPlanet=planet;
+   // Public terrain consumes the fixed template; generated private terrain
+   // follows every saved construction edit, excluding door-only changes.
+-  const key=worldVisualSignature(planet),surfaceKey=planet.kind==='hub'||!planet.environment?JSON.stringify([planet.id,planet.radius??10,planet.environment??null]):key;
++  const key=worldVisualSignature(planet),surfaceKey=planet.kind==='hub'||!planet.environment?JSON.stringify([planet.id,planet.radius??10,planet.environment??null]):worldVisualSignature(planet,false);
+   if(!worldPending&&key===renderedWorldKey){
+     if(!groundWorld||groundWorld.planetId!==planet.id||groundWorld.revision!==planet.revision)groundWorld=new GroundWorld(planet);
+     return;
 @@ -544,6 +559,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
@@ -1526,7 +1644,17 @@ index 0639a7b2e636be2963ca2599618308f12632025a..ba468c1c6fc2df2617f6cff5d2bd45d0
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1146,17 @@ function ensureColony() {
+@@ -1011,7 +1127,8 @@ function ensureColony() {
+       if(!online)throw new Error('Offline · retrying');
+       return await serial(async()=>{const next=await request<Universe>(route,body);colony?.accept(next);return next;});
+     }finally{homeTransition=false;}
+-  },apply:next=>{if(colony?.universe!==next)colony?.accept(next);},workshop:async()=>{await colony?.openHomeWorkshop();},pathPreview:planetId=>serial(()=>request<import('../shared/home-paths.ts').HomePathPreview>('home/paths/preview',{planetId})),previewPaths:objects=>{colony?.previewPaths(objects);if(objects.length){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},notice});
++  },apply:next=>{if(colony?.universe!==next)colony?.accept(next);},workshop:async()=>{await colony?.openHomeWorkshop();},previewRoofFinish:(buildingId,finish)=>colony?.previewRoofFinish(buildingId,finish)??false,
++    clearRoofFinishPreview:()=>colony?.clearRoofFinishPreview(),pathPreview:planetId=>serial(()=>request<import('../shared/home-paths.ts').HomePathPreview>('home/paths/preview',{planetId})),previewPaths:objects=>{colony?.previewPaths(objects);if(objects.length){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},notice});
+   homeSetup=new HomeSetup({preview:planetId=>serial(()=>request<import('../shared/home-setup.ts').HomeSetupPreview>('home/setup/preview',{planetId})),confirm:body=>serial(()=>request<Universe>('home/setup/confirm',body)),apply:next=>colony?.accept(next),ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},notice});
+   teleportStations=new TeleportStations({findShip:()=>worldGuide.findShip(),
+     teleport:async(planetId,requestId)=>{
+@@ -1030,15 +1147,17 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1546,7 +1674,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..ba468c1c6fc2df2617f6cff5d2bd45d0
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1177,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1178,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -1587,7 +1715,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..ba468c1c6fc2df2617f6cff5d2bd45d0
  async function startInitialVisit(){
    initialStateReady=false;welcomeCommitted=false;welcome.stage('connecting');
 diff --git a/src/client/messages.ts b/src/client/messages.ts
-index d70699bd82d9f5a8977872996503a0f5100d8343..b7b05f42f3a20c9d663ba2c0fe3b26f35a2bce50 100644
+index d70699bd82d9f5a8977872996503a0f5100d8343..da851ca2e27e2460edc628a4559577eef056c192 100644
 --- a/src/client/messages.ts
 +++ b/src/client/messages.ts
 @@ -1,6 +1,14 @@
@@ -1628,7 +1756,26 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..b7b05f42f3a20c9d663ba2c0fe3b26f3
    "Could not open photo mode.": "暂时无法进入照片模式。",
    "Photo export is unavailable.": "当前无法导出照片。",
    "Photo export failed.": "照片导出失败。",
-@@ -1031,6 +1048,17 @@ export const messages: Record<string, string> = {
+@@ -257,6 +274,18 @@ export const messages: Record<string, string> = {
+   "Make it yours": "改造我的家",
+   "Add a terrace": "添加露台",
+   "Change the roof": "更换屋顶",
++  "Roof colours": "屋顶配色",
++  "Original finish": "原色",
++  "Slate tiles": "青灰瓦",
++  "Terracotta tiles": "暖陶瓦",
++  "Preview on your roof. Confirm to save.": "在自家屋顶预览，确认后保存。",
++  "Save roof colour": "保存屋顶配色",
++  "Roof colour saved.": "屋顶配色已保存。",
++  "Could not save the roof colour.": "无法保存屋顶配色。",
++  "Choose a roof finish.": "请选择一种屋顶配色。",
++  "This home has no tiled roof.": "这座住宅没有可换色的瓦顶。",
++  "Only the home owner can change the roof finish.": "只有房主可以更改屋顶配色。",
++  "Stand outside your home to change its roof finish.": "请到自家住宅外更改屋顶配色。",
+   "Extend the home": "扩建房屋",
+   "Original cottage": "恢复初始小屋",
+   "Undo last remodel": "撤销上次改造",
+@@ -1031,6 +1060,17 @@ export const messages: Record<string, string> = {
    "A little world awaits": "一颗小星球在等你",
    "Find a blank planet, make it yours, and invite the world in.": "找一颗空白星球，安个家，欢迎大家来做客。",
    "Make this my planet": "认领这颗星球",
@@ -1646,7 +1793,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..b7b05f42f3a20c9d663ba2c0fe3b26f3
    "Build on my planet": "在我的星球建造",
    "Mark my planet ↗": "标记我的星球 ↗",
    "Try a delivery": "体验投递任务",
-@@ -1172,6 +1200,25 @@ export const messages: Record<string, string> = {
+@@ -1172,6 +1212,25 @@ export const messages: Record<string, string> = {
    "Saving your change…": "正在保存改动…",
    "Connection lost. Building is paused.": "连接已断开，建造已暂停。",
    "Tap an open spot on the planet, then save.": "点击星球上的空地，然后保存。",
@@ -1672,7 +1819,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..b7b05f42f3a20c9d663ba2c0fe3b26f3
    "Object selected. Move, rotate or remove it.": "已选中物件，可以移动、旋转或移除。",
    "Saving…": "正在保存…",
    "Save changes": "保存改动",
-@@ -1233,6 +1280,11 @@ export const messages: Record<string, string> = {
+@@ -1233,6 +1292,11 @@ export const messages: Record<string, string> = {
  
  // Third tuple item lists system-term slots. Other slots, including user names, stay verbatim.
  export const patterns: readonly (readonly [string, string, (readonly number[])?])[] = [
@@ -1684,7 +1831,7 @@ index d70699bd82d9f5a8977872996503a0f5100d8343..b7b05f42f3a20c9d663ba2c0fe3b26f3
    ["Fly to {0}? Your current trip stays unchanged until you confirm.","飞往 {0}？确认前不会改变当前旅程。"],
    ["Main planet · {0}","主星球 · {0}"], ["My planet · {0}","我的星球 · {0}"], ["Neighbour · {0}","邻居星球 · {0}"], ["Unclaimed · {0}","未认领 · {0}"],
    ["{0} · Your saved home","{0} · 你保存的家园"], ["{0} · Public starport","{0} · 公共星港"], ["{0} · Visit only · building belongs to its owner","{0} · 可参观，建筑由主人管理"], ["{0} · An unclaimed world to explore","{0} · 可探索的未认领星球"],
-@@ -1293,6 +1345,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
+@@ -1293,6 +1357,11 @@ export const patterns: readonly (readonly [string, string, (readonly number[])?]
      "Turn: {0}°",
      "朝向：{0}°"
    ],
@@ -2376,7 +2523,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..faed0a799741bf12007cbf4f0d224884
 +    paint();return {mode:talking?'talking':selected?'route':'idle',position:actor.root.visible?actor.root.position.toArray():null,topic,selected,route:route.root.visible?route.diagnostics.reason:'hidden',routeVisible:route.root.visible,routeTarget:selected?target?.position??null:null,routeResidentId:selected==='resident'?residentId:null,aiEnabled:ai?.enabled??false,actorVisible:actor.root.visible};
    }};
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0ec70923a 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..3efcdeea965110952c69472bb026b67032b1d174 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
 @@ -1,7 +1,7 @@
@@ -2414,7 +2561,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0
  const guideHelp=createGuideHelp();
  // Default off; production requires explicit approval configuration and the transferred ledger.
  const aiConfig=guideConfiguration(process.env);
-@@ -53,18 +65,114 @@ const server = createServer(async (req, res) => {
+@@ -53,25 +65,136 @@ const server = createServer(async (req, res) => {
    try {
      const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
@@ -2464,6 +2611,21 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0
 +        if(!check)return 'allowed';
 +        if(!check.access)return 'reopen';
 +        return await friendsAuthority.canReadVisit(check.access,planet)?'friend':'closed';
++      };
++      const sendVisitUniverse = async (universe: ReturnType<typeof store.universe>) => {
++        const planet = universe.currentPlanet;
++        if (!planet.mine && universe.player.flight.mode === 'ground') {
++          const homeRoofFinish = store.homeRoofFinish(planet.id);
++          const access = homeRoofFinish ? await residentVisitAccess(planet.id).catch((error: unknown) => {
++            if (error instanceof RequestError && (error.status === 403 || error.status === 503)) return 'closed';
++            throw error;
++          }) : null;
++          if (homeRoofFinish && access === 'friend') {
++            send(200, { ...universe, currentPlanet: { ...planet, homeRoofFinish } });
++            return;
++          }
++        }
++        send(200, universe);
 +      };
 +      if(url.pathname.startsWith('/api/resident-feed/art/') || url.pathname.includes('/residents/') && url.pathname.includes('/art/')){
 +        auditRoute=undefined;
@@ -2533,7 +2695,15 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0
            send(200, created); return;
          }
          send(200, store.state(id)); return;
-@@ -95,12 +203,13 @@ const server = createServer(async (req, res) => {
+       }
+       if (url.pathname === '/api/universe' && req.method === 'GET') {
+         if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
+-        send(200, store.universe(id)); return;
++        await sendVisitUniverse(store.universe(id)); return;
+       }
+       if (url.pathname === '/api/blueprints' && req.method === 'GET') {
+         if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
+@@ -95,12 +218,13 @@ const server = createServer(async (req, res) => {
        if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
        else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
@@ -2553,12 +2723,21 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
        if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
        if(url.pathname==='/api/guide/ask'){
-@@ -137,10 +246,19 @@ const server = createServer(async (req, res) => {
+@@ -119,6 +243,7 @@ const server = createServer(async (req, res) => {
+       else if(url.pathname==='/api/home/move')send(200,store.moveHome(id,body));
+       else if(url.pathname==='/api/home/exit'){const result=store.exitHome(id,body);presence.leave(id);send(200,result);}
+       else if(url.pathname==='/api/home/save')send(200,store.saveHome(id,body));
++      else if(url.pathname==='/api/home/roof-finish')send(200,store.setHomeRoofFinish(id,body));
+       else if(url.pathname==='/api/home/door')send(200,store.setHomeDoor(id,body));
+       else if(url.pathname==='/api/home/paths/preview')send(200,store.previewHomePaths(id,body));
+       else if(url.pathname==='/api/home/paths/apply')send(200,store.applyHomePaths(id,body));
+@@ -137,14 +262,23 @@ const server = createServer(async (req, res) => {
        }
        else if(url.pathname==='/api/ground/recover'){const result=store.recoverGround(id,body);presence.leave(id);send(200,result);}
        else if (url.pathname === '/api/interact') send(200, store.interact(id, body.action));
 -      else if(url.pathname==='/api/trip/start'){const u=store.startTrip(id,body);presence.leave(id);send(200,u);}
 -      else if(url.pathname==='/api/trip/change')send(200,store.changeTrip(id,body));
+-      else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
 +      else if(url.pathname==='/api/trip/start'||url.pathname==='/api/trip/change'){
 +        const {friendVisit,...tripBody}=body;
 +        if (friendVisit !== undefined) {
@@ -2569,13 +2748,19 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0
 +          const u=store.startTrip(id,tripBody);presence.leave(id);send(200,u);
 +        } else send(200,store.changeTrip(id,tripBody));
 +      }
-       else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
++      else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);await sendVisitUniverse(u);}
        else if(url.pathname==='/api/planets/rename')send(200,store.renamePlanet(id,body));
 +      else if(url.pathname==='/api/courtyard/arrival')send(200,store.saveCourtyardArrival(id,body));
        else if (url.pathname === '/api/flight/takeoff') {const result=store.takeoff(id,body);presence.leave(id);send(200,result);}
        else if (url.pathname === '/api/flight/checkpoint') send(200,store.flight(id,body));
-       else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
-@@ -168,7 +286,7 @@ const server = createServer(async (req, res) => {
+-      else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);send(200,result);}
+-      else if (url.pathname === '/api/teleport') {await store.prepareTeleport(id,body);const result=store.teleport(id,body);presence.leave(id);send(200,result);}
++      else if (url.pathname === '/api/flight/land') {await store.prepareLanding(id,body);const result=store.land(id,body);presence.leave(id);await sendVisitUniverse(result);}
++      else if (url.pathname === '/api/teleport') {await store.prepareTeleport(id,body);const result=store.teleport(id,body);presence.leave(id);await sendVisitUniverse(result);}
+       else if (url.pathname === '/api/teleport/station/preview') send(200,store.previewStation(id,body));
+       else if (url.pathname === '/api/teleport/station/confirm') send(200,store.confirmStation(id,body));
+       else if (url.pathname === '/api/planets/visit') throw new RequestError(410,'Board your ship and fly to the planet before landing.');
+@@ -168,7 +302,7 @@ const server = createServer(async (req, res) => {
        type = 'text/html; charset=utf-8';
      } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
@@ -2585,10 +2770,12 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..df796b569c400c1d99bc16ba3d43d2b0
        type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
      }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7e95afc92 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..44e3570b6d153688b0f0c2df3ce221a201c241d4 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -187,3 +187,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -185,7 +185,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       migrateArrivalHomes(db);
+       migrateTrips(db);
        migrateAppearances(db);
 -      db.exec('PRAGMA user_version=20; COMMIT;');
 +      db.exec(`CREATE TABLE IF NOT EXISTS courtyard_arrivals (
@@ -2596,7 +2783,11 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        route TEXT NOT NULL
 +      ); PRAGMA user_version=${STORE_SCHEMA}; COMMIT;`);
      } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
-@@ -210,2 +213,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+   }
+   const history = historyStore(db);
+@@ -208,6 +211,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     if (!result) throw new RequestError(401, 'Your session has expired. Reload to start a new visit.');
+     return result;
    };
 +  function enrollArrival(id:string,now:number){
 +    db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
@@ -2604,21 +2795,44 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +    appearances.enroll(id);
 +  }
    const state = (id: string): PlayerState => {
-@@ -330,2 +338,6 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     row(id);const flight=navigation.flight(id);
+     const location=homeEnabled?homes.location(id):undefined;
+@@ -291,7 +299,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       if(heavy)void prepareStation(heavy,owned).catch(error=>console.error('Station preparation deferred:',error instanceof Error?error.message:error));
+       else teleport.ensureHomeStation(owned);
+     }
+-    const player = state(id); return { player, planets: planets.list(id), ownedPlanetId: planets.owned(id), currentPlanet: planets.view(id, player.planetId) };
++    const player = state(id), currentPlanet = planets.view(id, player.planetId);
++    const homeRoofFinish = currentPlanet.mine ? homes.roofFinish(currentPlanet.id) : undefined;
++    return { player, planets: planets.list(id), ownedPlanetId: planets.owned(id),
++      currentPlanet: homeRoofFinish ? { ...currentPlanet, homeRoofFinish } : currentPlanet };
+   };
+   return {
+     db, state, universe, migrationBackup, homeSample, integratedWorld,
+@@ -328,14 +339,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     flight(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.checkpoint(id,clean,now);return state(id);},
+     land(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.land(id,clean,now);homes.movedExterior(id);return universe(id);},
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
 +    enrollFriendsPlayer(id:string){
 +      if(!integratedWorld||!db.isTransaction)throw new RequestError(409,'Open an integrated world to link Friends.');
 +      enrollArrival(id,Date.now());
 +    },
      /** Establish identity and Hub spawn before any expensive home generation. */
-@@ -336,4 +348,4 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     createArrival(id:string,now=Date.now()){
+       if(this.has(id))return state(id);
+       if(!integratedWorld)return this.create(id,now);
+       db.exec('BEGIN IMMEDIATE');
        try{
 -        db.prepare('INSERT INTO players(id,position,moved_at) VALUES(?,?,?)').run(id,JSON.stringify(SPAWN),now);
 -        arrivalHomes.enroll(id,now);appearances.enroll(id);db.exec('COMMIT');
 +        enrollArrival(id,now);
 +        db.exec('COMMIT');
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
-@@ -362,4 +374,7 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       return state(id);
+     },
+@@ -360,8 +375,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     /** The same arrival as `create`, with the home layout and its station search run on the worker so other
+      * players are answered meanwhile. Every write still happens here, after re-checking what was read: the
       * home, its owner and the new player's place at the door in one transaction, then the station. */
 -    async createPrepared(id: string, now = Date.now(), attempt = 0): Promise<PlayerState> {
 -      const work=heavy;if(!homeEnabled||!work)return this.create(id,now);
@@ -2628,17 +2842,26 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +        return this.create(id,now);
 +      }
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
-@@ -376,3 +391,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       try{
+         const inputs=homes.generationInputs(planetId,id);
+@@ -374,12 +392,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           const door=homes.door(planetId);
+           if(!door)throw new RequestError(409,'The sample home could not be prepared.');
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
 -          homes.movedExterior(id);db.exec('COMMIT');
 +          homes.movedExterior(id);bind?.();db.exec('COMMIT');
          }catch(error){
-@@ -381,3 +396,3 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           if(db.isTransaction)db.exec('ROLLBACK');
+           // Rare: the reserved planet was claimed meanwhile. Prepare another one, twice at most.
            if(error instanceof RequestError&&error.status===409&&!this.has(id)){
 -            if(attempt<2)return this.createPrepared(id,now,attempt+1);
 +            if(attempt<2)return this.createPrepared(id,now,attempt+1,bind);
              throw new RequestError(503,BUSY);
-@@ -449,2 +464,9 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+           }
+           throw error;
+@@ -447,6 +465,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+       homes.movedExterior(id);return universe(id);
+     },
      terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
 +    saveCourtyardArrival(id:string,body:Record<string,unknown>){
 +      homes.exterior(id,body.visitEpoch);
@@ -2648,6 +2871,17 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..0a679fcba74b10ca6fedb33b0efb56c7
 +      return universe(id);
 +    },
      claim(id: string, planetId: unknown) { row(id); planets.claim(id, planetId); if(homeSample){homes.initialise(String(planetId));teleport.ensureHomeStation(String(planetId));} return universe(id); },
+     createObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.create(id, body); return universe(id); },
+     updateObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.update(id, body); return universe(id); },
+@@ -455,6 +480,8 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+     moveHome(id:string,body:Record<string,unknown>,now=Date.now()){row(id);homes.move(id,body,now);return state(id);},
+     exitHome(id:string,body:Record<string,unknown>,now=Date.now()){row(id);homes.exit(id,body,now);return universe(id);},
+     setHomeDoor(id:string,body:Record<string,unknown>){row(id);homes.setDoor(id,body);return universe(id);},
++    homeRoofFinish: homes.roofFinish,
++    setHomeRoofFinish(id: string, body: Record<string, unknown>) { row(id); homes.setRoofFinish(id, body); return universe(id); },
+     saveHome(id:string,body:Record<string,unknown>){row(id);homes.save(id,body);return universe(id);},
+     replaceObject(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.replace(id,body);return universe(id);},
+     undoObject(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.undo(id,body);return universe(id);},
 diff --git a/src/shared/town-resident-motion.ts b/src/shared/town-resident-motion.ts
 index 30b342267729476ac36ece59318dd512aa98f329..220d883f09acba1b6517ecd7d996b7b6399fe3c0 100644
 --- a/src/shared/town-resident-motion.ts
@@ -3227,14 +3461,18 @@ index 71ed1e58ea13b6067bfea1fced2e5eb87b00235b..9e48801c480f5ae609e7ae7d69e465ef
 +      expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(STORE_SCHEMA);
        expect(s.db.prepare('PRAGMA integrity_check').get()!.integrity_check).toBe('ok');
 diff --git a/src/server/arrival-homes.ts b/src/server/arrival-homes.ts
-index 441fc1bc451816aea76c162e01ff16dc58e762d7..137d9ff162d8b02451631755f60574e48bfc52e7 100644
+index 441fc1bc451816aea76c162e01ff16dc58e762d7..fa4a78dd8461ae117ae23de6bcd097f7531be4fb 100644
 --- a/src/server/arrival-homes.ts
 +++ b/src/server/arrival-homes.ts
-@@ -5,3 +5,3 @@ import {RequestError} from './errors.ts';
-
+@@ -3,7 +3,7 @@ import type {ArrivalState} from '../shared/world.ts';
+ import type {HeavyWork} from './heavy-work.ts';
+ import {RequestError} from './errors.ts';
+ 
 -export const STORE_SCHEMA=20;
-+export const STORE_SCHEMA=21;
++export const STORE_SCHEMA=22;
  export function migrateArrivalHomes(db:DatabaseSync){
+   db.exec(`CREATE TABLE IF NOT EXISTS home_preparations (
+     player_id TEXT PRIMARY KEY REFERENCES players(id),
 diff --git a/src/server/business-log.ts b/src/server/business-log.ts
 index 3419b40c794c32ee5d9a99e69f5be3fb3eb798bd..56166825821eec9ea86ff97dbcf2675cffa4d4cd 100644
 --- a/src/server/business-log.ts
@@ -3288,18 +3526,28 @@ index 58abbc123c08374e6d02e3c5a795ed67338760b5..b4fb62da4c54828ab8fd282430162c77
 +  return api;
  }
 diff --git a/src/shared/planets.ts b/src/shared/planets.ts
-index c604ffe65eb1aa58f611c58decadadfbe3b363dd..289bee97e274cd249b0d48f3fa56855ec06e8e1a 100644
+index c604ffe65eb1aa58f611c58decadadfbe3b363dd..57104bb8553bf4cedb471fcf6272dc77f1719bc4 100644
 --- a/src/shared/planets.ts
 +++ b/src/shared/planets.ts
-@@ -11,2 +11,3 @@ import type { HomeDoorState } from './home-door.ts';
- import type { HomeDescriptor, HomeInfrastructureManifest } from './home.ts';
+@@ -8,7 +8,8 @@ import { pathPlacementCheck, PATH_STRUCTURE_REACH } from './path-structure-place
+ import type { PathPlacementCache } from './path-structure-placement.ts';
+ import { StructurePlacementCache, structurePlacementProblem, structurePlacementRadius } from './structure-placement.ts';
+ import type { HomeDoorState } from './home-door.ts';
+-import type { HomeDescriptor, HomeInfrastructureManifest } from './home.ts';
++import type { HomeDescriptor, HomeInfrastructureManifest, HomeRoofFinish } from './home.ts';
 +import type { HomeSurfaceRoute } from './home-layout.ts';
-
-@@ -28,3 +29,3 @@ export const objectHeight = (o: Pick<PlacedObject, 'kind' | 'height' | 'assetVer
+ 
+ export const CATALOGUE = {
+   cottage: { name: 'Cottage', icon: '⌂', radius: 1.05, height: 2.5, description: 'Panelled cabin · shared Sunseed components' },
+@@ -26,7 +27,7 @@ export const objectName = (o: Pick<PlacedObject, 'kind'>) => o.kind === 'structu
+ export const objectRadius = (o: Pick<PlacedObject, 'kind' | 'radius' | 'assetVersion'>) => o.kind === 'structure' ? o.radius ?? 0 : o.assetVersion===2?(o.kind==='lamp'?.3694:QUICK_PARTS[o.kind]?.radius??CATALOGUE[o.kind].radius):CATALOGUE[o.kind].radius;
+ export const objectHeight = (o: Pick<PlacedObject, 'kind' | 'height' | 'assetVersion'>) => o.kind === 'structure' ? o.height ?? 0 : o.assetVersion===2?(o.kind==='lamp'?2.2:QUICK_PARTS[o.kind]?.height??CATALOGUE[o.kind].height):CATALOGUE[o.kind].height;
  export interface PlanetSummary { id: string; name: string; kind: 'hub' | 'garden'; claimed: boolean; mine: boolean; revision: number; objectCount: number; center:Vec3; slot:number; radius?:number; environment?:string|null; publicTown?: { objects:number; structures:number; districts:number; version:number } }
 -export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest }
-+export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeManifest?: HomeInfrastructureManifest; courtyardArrival?: HomeSurfaceRoute }
++export interface PlanetView extends PlanetSummary { objects: PlacedObject[]; blueprints?: BlueprintContents; home?: HomeDescriptor | null; homeDoor?: HomeDoorState; homeRoofFinish?: { buildingId: string; finish: HomeRoofFinish }; homeManifest?: HomeInfrastructureManifest; courtyardArrival?: HomeSurfaceRoute }
  export interface Universe { player: PlayerState; planets: PlanetSummary[]; ownedPlanetId: string | null; currentPlanet: PlanetView }
+ export function isBuildKind(value: unknown): value is BuildKind { return typeof value === 'string' && Object.hasOwn(CATALOGUE, value); }
+ export interface PlacementDetails { rotation:number; blueprintHash?:string; blueprints:BlueprintContents; field:HeightField; terrainSeating?:boolean; cache?:PathPlacementCache; structureCache?:StructurePlacementCache }
 diff --git a/src/client/world-guide.css b/src/client/world-guide.css
 index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83174bd804 100644
 --- a/src/client/world-guide.css
@@ -3309,3 +3557,356 @@ index d278b7997d1a0d93aee240860913b8a73f16fb6a..17521eef977a179cab5891569819ee83
 -#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true]{outline:2px solid #378f79}
 +#world-guide-close{position:absolute;top:4px;right:4px;width:44px;font-size:22px}#world-guide-topics,#world-guide-residents{display:flex;flex-wrap:wrap;gap:5px}#world-guide-topics button[aria-pressed=true],#world-guide-residents button[aria-pressed=true]{outline:2px solid #378f79}
  #world-guide-dialog button,#world-guide-hud button,#world-guide-home{min-height:44px;border-radius:10px;border:1px solid #acbcaa;padding:7px 10px;cursor:pointer;background:#f5f1e2;color:#293c38;font:13px system-ui}
+diff --git a/src/client/camera-blueprint-model.ts b/src/client/camera-blueprint-model.ts
+index 11cf73056ae24564996eaec778ee968e40b125dd..bbd0b0a77f800b9f6d90588d8a22f6787baf3f0b 100644
+--- a/src/client/camera-blueprint-model.ts
++++ b/src/client/camera-blueprint-model.ts
+@@ -12,6 +12,7 @@ import type { BlueprintModel, BlueprintModelOptions } from '../assets/claude-geo
+ import { emitPart, isOpenDoorPartId } from '../shared/blueprint-parts.ts';
+ import { homeDoorLeaves } from '../shared/home-door.ts';
+ import type { HomeDoorState } from '../shared/home-door.ts';
++import type { HomeRoofFinish } from '../shared/home.ts';
+ import { PART_COLLIDERS } from '../shared/physics/parts.ts';
+ import { VILLAGE_PART_BOUNDS } from '../shared/physics/village-bounds.ts';
+ import { placedTransform } from '../assets/claude-geometry/blueprint/placement.ts';
+@@ -20,12 +21,14 @@ import type { PlacedObject } from '../shared/planets.ts';
+ import type { CameraCutawayPart } from './camera-cutaway.ts';
+ import { partTransform, pivotOf, toVendorParts } from '../shared/blueprint-model.ts';
+ import type { PartPlacement } from '../shared/blueprint-model.ts';
++import { homeRoofMaterial, isTiledRoofPart } from './home-roof-appearance.ts';
+ 
+ export const CAMERA_PART_ATTRIBUTE = 'townCameraPart';
+ export interface CameraBlueprintModelOptions extends BlueprintModelOptions {
+   /** A separately drawn home door stays in the identity list. Drawing, cover
+    * and foundations still use the original visible-parts list unchanged. */
+   identityParts?: readonly PartPlacement[];
++  roofFinish?: HomeRoofFinish;
+ }
+ export type CameraPartCategory = 'protected' | 'wall' | 'roof' | 'deck' | 'beam';
+ export function cameraPartCategory(part: PartPlacement): CameraPartCategory {
+@@ -56,6 +59,8 @@ export function buildCameraBlueprintModel(parts: readonly PartPlacement[] | { pa
+       throw new Error('Camera model part identity does not match the saved blueprint.');
+   }
+   const builder = new PartBuilder(lod), source = libraryMaterials(lib), kit = makeKit(builder, source);
++  const tile = homeRoofMaterial(lib, options.roofFinish);
++  const roofKit = tile ? { ...kit, m: (name: Parameters<typeof kit.m>[0]) => name === 'corrugated' ? tile : kit.m(name) } : kit;
+   const ordered = [...list].sort((a, b) => a.n - b.n), group = new T.Group(); group.name = 'blueprint';
+   const buckets = new Map<T.Material, T.BufferGeometry[]>(), emitters: unknown[] = [];
+   const temporary: T.BufferGeometry[] = [];
+@@ -71,7 +76,8 @@ export function buildCameraBlueprintModel(parts: readonly PartPlacement[] | { pa
+   try {
+     for (const part of ordered) {
+       const transform = partTransform(part, pivot);
+-      builder.within({ position: transform.position, rotation: [0, transform.yaw, 0] }, () => emitPart(part.part, lib.look, kit));
++      const partKit = tile && isTiledRoofPart(part.part) ? roofKit : kit;
++      builder.within({ position: transform.position, rotation: [0, transform.yaw, 0] }, () => emitPart(part.part, lib.look, partKit));
+       flush(slots.get(part.n)!);
+     }
+     if (options.foundationDepth !== undefined) {
+diff --git a/src/client/home-controls.css b/src/client/home-controls.css
+index 66564ed795a48498ec024935eabc4327c14c58c2..4c0912d498c3b2df98813591ac96214bf13c4ac2 100644
+--- a/src/client/home-controls.css
++++ b/src/client/home-controls.css
+@@ -4,6 +4,11 @@ body.building #home-controls{display:none!important}
+ body.home-interior-active #home-controls,body.home-interior-active #joystick,body.home-interior-active #boarding-prompt,body.home-interior-active #dock-guide,body.home-interior-active #interact,body.home-interior-active #conversation,body.home-interior-active .npc-label,body.home-interior-active #onboarding,body.home-interior-active #view-mode{display:none!important}
+ @media(max-width:699px){#home-controls{top:76px;right:12px;width:185px;padding:10px 12px;border-radius:13px}.home-caption{font-size:12px}#home-controls button{min-height:43px;font-size:11px}#home-controls summary{font-size:13px}.home-remodel-actions{grid-template-columns:1fr}#home-remodel[open]{max-height:calc(100dvh - 230px);overflow:auto}}
+ 
++#home-roof-finish { margin-top: 8px; }
++#home-roof-finish-open { width: 100%; text-align: left; }
++.home-roof-choices { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
++#home-controls .home-roof-choices button[aria-pressed="true"] { background: #2e6758; border-color: #2e6758; color: #fff8e8; }
++
+ /* Keep transient directions outside the home card and touch-control band. */
+ @media(max-width:699px){body:has(#home-controls:not([hidden])) #notice{top:auto;bottom:195px}}
+ 
+diff --git a/src/client/home-controls.ts b/src/client/home-controls.ts
+index 04404375445998454e086ad61c0c2263136f85e9..c804d9f212290ff509cff086fe280f7fc84ed7bd 100644
+--- a/src/client/home-controls.ts
++++ b/src/client/home-controls.ts
+@@ -1,3 +1,5 @@
++import { isHomeRoofFinish } from '../shared/home.ts';
++import type { HomeRoofFinish } from '../shared/home.ts';
+ import type {HomePathPreview} from '../shared/home-paths.ts';
+ import type {PlacedObject} from '../shared/planets.ts';
+ import type { Universe } from '../shared/planets.ts';
+@@ -12,6 +14,8 @@ interface HomeControlsBridge {
+   apply(next: Universe): void;
+   workshop(): Promise<void>;
+   pathPreview(planetId: string): Promise<HomePathPreview>;
++  previewRoofFinish(buildingId: string, finish: HomeRoofFinish | null): boolean;
++  clearRoofFinishPreview(): void;
+   previewPaths(objects: readonly PlacedObject[]): void;
+   notice(message: string): void;
+ }
+@@ -25,6 +29,7 @@ export class HomeControls {
+   private near = false;
+   private enabled = false;
+   private paths: HomePathPreview | null = null;
++  private roof: { buildingId: string; version: number; epoch: number; saved: HomeRoofFinish | null; finish: HomeRoofFinish | null } | null = null;
+   constructor(private bridge: HomeControlsBridge) {
+     this.root.id = 'home-controls';
+     this.root.hidden = true;
+@@ -36,7 +41,16 @@ export class HomeControls {
+       <button id="home-extend" data-home-variant="extended">Extend the home</button>
+       <button id="home-base" data-home-variant="base">Original cottage</button>
+       <button id="home-undo">Undo last remodel</button><button id="home-workshop">Edit with building parts</button>
+-      </div><div id="home-paths" hidden><button id="home-path-preview">Preview path tiles</button><p id="home-path-count" hidden></p><p id="home-path-help" hidden>These ordinary path tiles use your building budget. Grass gaps keep space for your own building.</p><div class="home-remodel-actions"><button id="home-path-apply" hidden>Add previewed tiles</button><button id="home-path-cancel" hidden>Cancel preview</button></div></div><p>One home, one room. Your furniture stays with your home.</p></details>`);
++      </div><div id="home-roof-finish" hidden><button id="home-roof-finish-open" aria-expanded="false" aria-controls="home-roof-finish-options">Roof colours</button>
++      <div id="home-roof-finish-options" hidden>
++        <div class="home-roof-choices" role="group" aria-label="Roof colours">
++          <button data-roof-finish="" aria-pressed="false">Original finish</button>
++          <button data-roof-finish="slate" aria-pressed="false">Slate tiles</button>
++          <button data-roof-finish="terracotta" aria-pressed="false">Terracotta tiles</button>
++        </div>
++        <p>Preview on your roof. Confirm to save.</p>
++        <div class="home-remodel-actions"><button id="home-roof-finish-confirm" disabled>Save roof colour</button><button id="home-roof-finish-cancel">Cancel preview</button></div>
++      </div></div><div id="home-paths" hidden><button id="home-path-preview">Preview path tiles</button><p id="home-path-count" hidden></p><p id="home-path-help" hidden>These ordinary path tiles use your building budget. Grass gaps keep space for your own building.</p><div class="home-remodel-actions"><button id="home-path-apply" hidden>Add previewed tiles</button><button id="home-path-cancel" hidden>Cancel preview</button></div></div><p>One home, one room. Your furniture stays with your home.</p></details>`);
+     document.body.append(this.root);
+     this.get<HTMLButtonElement>('door-toggle').onclick = () => void this.toggleDoor();
+     this.get<HTMLButtonElement>('enter').onclick = () => void this.enter();
+@@ -44,7 +58,19 @@ export class HomeControls {
+       button.onclick = () => void this.remodel(button.dataset.homeVariant!);
+     }
+     this.get<HTMLButtonElement>('undo').onclick = () => void this.remodel();
+-    this.get<HTMLButtonElement>('workshop').onclick = () => void this.bridge.workshop();
++    this.get<HTMLButtonElement>('workshop').onclick = () => { this.clearRoof(); void this.bridge.workshop(); };
++    this.get<HTMLDetailsElement>('remodel').addEventListener('toggle', () => {
++      if (!this.get<HTMLDetailsElement>('remodel').open) this.clearRoof();
++    });
++    this.get<HTMLButtonElement>('roof-finish-open').onclick = () => this.roof ? this.clearRoof() : this.openRoof();
++    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-roof-finish]')) {
++      button.onclick = () => {
++        const value = button.dataset.roofFinish;
++        this.chooseRoof(isHomeRoofFinish(value) ? value : null);
++      };
++    }
++    this.get<HTMLButtonElement>('roof-finish-confirm').onclick = () => void this.confirmRoof();
++    this.get<HTMLButtonElement>('roof-finish-cancel').onclick = () => this.clearRoof(true);
+     this.get<HTMLButtonElement>('path-preview').onclick = () => void this.previewPathTiles();
+     this.get<HTMLButtonElement>('path-apply').onclick = () => void this.applyPathTiles();
+     this.get<HTMLButtonElement>('path-cancel').onclick = () => this.clearPaths();
+@@ -52,9 +78,65 @@ export class HomeControls {
+   private get<E extends HTMLElement>(suffix: string) { return this.root.querySelector(`#home-${suffix}`) as E; }
+   receive(universe: Universe) {
+     if(this.paths && (this.paths.planetId!==universe.currentPlanet.id || this.paths.expectedRevision!==universe.currentPlanet.revision))this.clearPaths();
++    if (this.roof && this.universe?.currentPlanet.revision !== universe.currentPlanet.revision) this.clearRoof();
+     this.universe = universe; this.receivePlayer(universe.player);
+     this.get('paths').hidden = !universe.currentPlanet.mine || !universe.currentPlanet.homeManifest || universe.currentPlanet.homeManifest.version>2;
+   }
++  private openRoof() {
++    const home = this.player?.home, location = this.player?.location;
++    if (this.pending || !this.enabled || !home?.canEdit || !home.roofFinishAvailable || location?.kind !== 'exterior') return;
++    this.clearPaths();
++    const saved = home.roofFinish ?? null;
++    this.roof = { buildingId: home.buildingId, version: home.buildingVersion, epoch: location.visitEpoch, saved, finish: saved };
++    this.paintRoof();
++  }
++  private chooseRoof(finish: HomeRoofFinish | null) {
++    if (!this.roof || this.pending || !this.enabled || this.roof.finish === finish) return;
++    if (finish === this.roof.saved) this.bridge.clearRoofFinishPreview();
++    else if (!this.bridge.previewRoofFinish(this.roof.buildingId, finish)) return;
++    this.roof.finish = finish;
++    this.paintRoof();
++  }
++  private clearRoof(focus = false) {
++    if (!this.roof) return;
++    this.roof = null;
++    this.bridge.clearRoofFinishPreview();
++    this.paintRoof();
++    if (focus) this.get('roof-finish-open').focus();
++  }
++  private paintRoof() {
++    const roof = this.roof;
++    this.get('roof-finish-options').hidden = !roof;
++    this.get('roof-finish-open').setAttribute('aria-expanded', String(!!roof));
++    this.get<HTMLButtonElement>('roof-finish-confirm').disabled = !roof || this.pending || !this.enabled || roof.saved === roof.finish;
++    this.get<HTMLButtonElement>('roof-finish-open').disabled = this.pending || !this.enabled;
++    this.get<HTMLButtonElement>('roof-finish-cancel').disabled = this.pending;
++    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-roof-finish]')) {
++      button.setAttribute('aria-pressed', String(!!roof && button.dataset.roofFinish === (roof.finish ?? '')));
++      button.disabled = this.pending || !this.enabled;
++    }
++  }
++  private async confirmRoof() {
++    const roof = this.roof;
++    if (!roof || this.pending || !this.enabled || roof.saved === roof.finish) return;
++    this.pending = true;
++    this.paintRoof();
++    try {
++      const next = await this.bridge.command('home/roof-finish', {
++        buildingId: roof.buildingId, visitEpoch: roof.epoch, expectedVersion: roof.version,
++        expectedFinish: roof.saved, finish: roof.finish,
++      });
++      this.bridge.apply(next);
++      this.clearRoof();
++      this.bridge.notice('Roof colour saved.');
++    } catch (error) {
++      this.clearRoof();
++      this.bridge.notice(error instanceof Error ? error.message : 'Could not save the roof colour.');
++    } finally {
++      this.pending = false;
++      this.paintRoof();
++    }
++  }
+   private clearPaths(){this.paths=null;this.bridge.previewPaths([]);this.paintPaths();}
+   private paintPaths(){
+     const plan=this.paths;
+@@ -64,6 +146,7 @@ export class HomeControls {
+   }
+   private async previewPathTiles(){
+     if(this.pending||!this.enabled||!this.universe?.currentPlanet.mine)return;
++    this.clearRoof();
+     this.pending=true;
+     try{const plan=await this.bridge.pathPreview(this.universe.currentPlanet.id);this.paths=plan;this.bridge.previewPaths(plan.objects);}
+     catch(error){this.bridge.notice(error instanceof Error?error.message:'Could not preview paths.');}
+@@ -81,11 +164,18 @@ export class HomeControls {
+     const home = player.home;
+     this.root.hidden = !home || player.location?.kind === 'interior' || player.flight.mode !== 'ground';
+     this.get('remodel').hidden = !home?.canEdit;
++    this.get('roof-finish').hidden = !home?.canEdit || !home.roofFinishAvailable;
++    const roof = this.roof;
++    if (roof && (this.root.hidden || !home?.canEdit || !home.roofFinishAvailable || home.buildingId !== roof.buildingId ||
++        home.buildingVersion !== roof.version || player.location?.visitEpoch !== roof.epoch ||
++        (home.roofFinish ?? null) !== roof.saved)) this.clearRoof();
+     setText(this.get('caption'), home?.canEdit ? 'My home' : 'A neighbour’s home');
+     this.get<HTMLButtonElement>('undo').disabled = this.pending || !home?.canUndo;
+   }
+   frame(position: Vec3, radius: number, enabled: boolean) {
+     this.enabled = enabled;
++    if (this.roof && !enabled && !this.pending) this.clearRoof();
++    this.paintRoof();
+     const home = this.player?.home;
+     const d = home ? distance(position, home.door.position, radius) : Infinity;
+     this.near = d <= 1.6;
+@@ -125,6 +215,7 @@ export class HomeControls {
+   private async remodel(variant?: string) {
+     const home = this.player?.home;
+     if (this.pending || !this.enabled || !home?.canEdit || !this.universe) return;
++    this.clearRoof();
+     this.pending = true;
+     try {
+       const next = await this.bridge.command(variant ? 'home/remodel' : 'home/undo', {
+diff --git a/src/client/world-visual-signature.ts b/src/client/world-visual-signature.ts
+index 316bbc899113d6e694098c81970d2f9e7b0bda4b..ab62c2dbb150beb9ec5a9b7e2f3cdd5b6b6fb899 100644
+--- a/src/client/world-visual-signature.ts
++++ b/src/client/world-visual-signature.ts
+@@ -1,9 +1,9 @@
+ import type { PlanetView } from '../shared/planets.ts';
+ 
+ /** A door state changes physics, but not the terrain or saved building meshes. */
+-export function worldVisualSignature(planet: PlanetView): string {
++export function worldVisualSignature(planet: PlanetView, includeRoofFinish = true): string {
+   const door = planet.homeDoor;
+   return JSON.stringify([planet.id, planet.kind, planet.radius, planet.environment,
+     planet.objects, planet.blueprints, planet.homeManifest?.routes,
+-    door ? [door.buildingId, door.partNumber] : null]);
++    door ? [door.buildingId, door.partNumber] : null, includeRoofFinish ? planet.homeRoofFinish : null]);
+ }
+diff --git a/src/server/home.ts b/src/server/home.ts
+index 6e607660c4d20c80b38389f1b3f0a462f7077709..bc76161593e4de1b8ded8e3bd5fb3986228dfa4b 100644
+--- a/src/server/home.ts
++++ b/src/server/home.ts
+@@ -1,11 +1,11 @@
+-import { isOpenDoorPartId } from '../shared/blueprint-parts.ts';
++import { isOpenDoorPartId, PARTS } from '../shared/blueprint-parts.ts';
+ import type { HomeDoorPartId } from '../shared/home-door.ts';
+ import { occupiedExteriorDoor } from './home-door-safety.ts';
+ import { homeDoorSweepContains, homeIndoorDoorOrigin, homeDoorCenterOffset } from '../shared/home-door.ts';
+ import { GroundWorld } from '../shared/physics/world.ts';
+ import { createHash, randomUUID } from 'node:crypto';
+ import type { DatabaseSync } from 'node:sqlite';
+-import { defaultHomeInterior, HOME_BODY_RADIUS, homeEntry, homeNearDoor, normalizeHomeInterior, HOME_ITEM_KINDS, HOME_MATERIALS, HOME_MAX_ITEMS, HOME_MOVE_SPEED, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
++import { defaultHomeInterior, HOME_BODY_RADIUS, homeEntry, homeNearDoor, normalizeHomeInterior, HOME_ITEM_KINDS, isHomeRoofFinish, HOME_MATERIALS, HOME_MAX_ITEMS, HOME_MOVE_SPEED, homeItemBounds, homeDoorFurnitureAllowed, homePathAllowed, homePositionAllowed } from '../shared/home.ts';
+ import type { HomeDescriptor, HomeInfrastructureManifest, HomeInterior, HomeItem, HomeLocation, HomeRoom } from '../shared/home.ts';
+ import { distance } from '../shared/world.ts';
+ import type { Vec3 } from '../shared/world.ts';
+@@ -52,11 +52,13 @@ export function migrateHomes(db: DatabaseSync) {
+     CREATE TRIGGER IF NOT EXISTS home_building_no_delete BEFORE DELETE ON planet_objects
+       WHEN EXISTS(SELECT 1 FROM home_interiors WHERE building_id=OLD.id)
+       BEGIN SELECT RAISE(ABORT,'The home contains a persistent interior and cannot be deleted'); END;`);
++  if (!db.prepare('PRAGMA table_info(home_interiors)').all().some(column => column.name === 'roof_finish'))
++    db.exec("ALTER TABLE home_interiors ADD COLUMN roof_finish TEXT CHECK(roof_finish IN ('slate','terracotta'))");
+ }
+ const strict=(body:Record<string,unknown>,keys:string[])=>{if(Object.keys(body).some(k=>!keys.includes(k)))throw new RequestError(400,'Unexpected home field.');};
+ const vec=(v:unknown):v is Vec3=>Array.isArray(v)&&v.length===3&&v.every(n=>typeof n==='number'&&Number.isFinite(n));
+ const digest=(v:unknown)=>createHash('sha256').update(canonicalJson(v)).digest('hex');
+-interface HomeRow { door_part:number;planet_id:string;building_id:string;interior_id:string;document:string;variant:HomeDescriptor['variant'] }
++interface HomeRow { door_part:number;planet_id:string;building_id:string;interior_id:string;document:string;roof_finish:string|null;variant:HomeDescriptor['variant'] }
+ /** Everything generateHomeManifest reads for one planet. */
+ export interface HomeGenerationInputs { radius:number; seed:number; environment:string|null }
+ /** Stable for this planet and generator version; independent of browser identity. */
+@@ -100,9 +102,16 @@ export function homeStore(db:DatabaseSync,planets:ReturnType<typeof planetStore>
+     }
+     return occupiedExteriorDoor(db,h.planet_id,entry.frame!,()=>new GroundWorld(planets.view('',h.planet_id)),entry.partId);
+   }
++  const hasTiledRoof = (hash?: string) => !!hash && blueprints.parts(hash).some(part => PARTS[part.part].role === 'slope');
++  function roofFinish(planetId: string) {
++    const h = home(planetId);
++    return h && isHomeRoofFinish(h.roof_finish) ? { buildingId: h.building_id, finish: h.roof_finish } : undefined;
++  }
+   function descriptor(id:string,planetId=String(player(id).planet_id)):HomeDescriptor|null {
+     const h=home(planetId);if(!h)return null;const p=planets.planet(planetId),o=planets.view(id,planetId).objects.find(o=>o.id===h.building_id)!;
+-    return {planetId,buildingId:h.building_id,interiorId:h.interior_id,door:door(h),interior:interior(h),canEdit:p.owner_id===id,buildingVersion:o.version,variant:h.variant,canUndo:!!db.prepare('SELECT 1 FROM object_replacements WHERE object_id=? AND undone=0').get(o.id)};
++    const canEdit = p.owner_id === id;
++    return {planetId,buildingId:h.building_id,interiorId:h.interior_id,door:door(h),interior:interior(h),canEdit,buildingVersion:o.version,variant:h.variant,canUndo:!!db.prepare('SELECT 1 FROM object_replacements WHERE object_id=? AND undone=0').get(o.id),
++      ...(canEdit ? { roofFinishAvailable: hasTiledRoof(o.blueprintHash), roofFinish: roofFinish(planetId)?.finish } : {})};
+   }
+   function content(bp:Blueprint) {const value=canonicalJson(hashInput(bp.parts)),hash=createHash('sha256').update(value).digest('hex');db.prepare('INSERT OR IGNORE INTO blueprint_contents(hash,content) VALUES(?,?)').run(hash,value);return hash;}
+   /** What generating this planet's home would read, or null when it must not get one: a manifest is a
+@@ -212,6 +221,33 @@ export function homeStore(db:DatabaseSync,planets:ReturnType<typeof planetStore>
+       db.prepare('UPDATE home_interiors SET document=? WHERE planet_id=?').run(JSON.stringify({...old,doorOpen:body.open,doorVersion:old.doorVersion+1}),h.planet_id);
+       db.prepare('UPDATE planets SET revision=revision+1 WHERE id=?').run(h.planet_id);changed(h.planet_id);
+     });},
++    roofFinish,
++    setRoofFinish(id: string, body: Record<string, unknown>) {
++      strict(body, ['buildingId', 'visitEpoch', 'expectedVersion', 'expectedFinish', 'finish']);
++      if (!enabled) throw new RequestError(404, 'Home sample is unavailable.');
++      const { finish, expectedFinish } = body;
++      if ((finish !== null && !isHomeRoofFinish(finish)) ||
++          (expectedFinish !== null && !isHomeRoofFinish(expectedFinish)) ||
++          !Number.isSafeInteger(body.expectedVersion))
++        throw new RequestError(400, 'Choose a roof finish.');
++      transaction(() => {
++        const h = byBuilding(body.buildingId), p = player(id), at = location(id);
++        if (planets.planet(h.planet_id).owner_id !== id)
++          throw new RequestError(403, 'Only the home owner can change the roof finish.');
++        epoch(at, body.visitEpoch);
++        if (p.planet_id !== h.planet_id || at.kind !== 'exterior' || JSON.parse(String(p.flight ?? '{"mode":"ground"}')).mode !== 'ground')
++          throw new RequestError(409, 'Stand outside your home to change its roof finish.');
++        const building = planets.object(h.planet_id, h.building_id);
++        if (building?.version !== body.expectedVersion || h.roof_finish !== expectedFinish)
++          throw new RequestError(409, 'This home changed in another tab. Select it again.');
++        if (!hasTiledRoof(building?.blueprintHash)) throw new RequestError(409, 'This home has no tiled roof.');
++        if (h.roof_finish === finish) return;
++        db.prepare('UPDATE home_interiors SET roof_finish=? WHERE building_id=?').run(finish, h.building_id);
++        // The visual signature tracks the finish. Keep collision and ground
++        // pose revisions stable, while rejecting stale player snapshots.
++        changed(h.planet_id);
++      });
++    },
+     save(id:string,body:Record<string,unknown>){
+       strict(body,['buildingId','expectedVersion','material','items']);const h=byBuilding(body.buildingId);if(planets.planet(h.planet_id).owner_id!==id)throw new RequestError(403,'Only the home owner can edit the room.');
+       const loc=location(id);if(loc.kind!=='interior'||loc.buildingId!==h.building_id)throw new RequestError(409,'Enter your home before arranging it.');
+diff --git a/src/shared/home.ts b/src/shared/home.ts
+index 78029fc7d5939ac0f34d980df078841cbbbe043a..7918a012c6b61f2b0b05531a491f8c1e1587b8f1 100644
+--- a/src/shared/home.ts
++++ b/src/shared/home.ts
+@@ -16,6 +16,10 @@ export const homeNearDoor = (position: Vec3, room: HomeRoom = HOME_ROOM, partId:
+ export const HOME_BODY_RADIUS = .18;
+ export const HOME_MOVE_SPEED = 4;
+ export const HOME_MAX_ITEMS = 12;
++export const HOME_ROOF_FINISHES = ['slate', 'terracotta'] as const;
++export type HomeRoofFinish = typeof HOME_ROOF_FINISHES[number];
++export const isHomeRoofFinish = (value: unknown): value is HomeRoofFinish => HOME_ROOF_FINISHES.some(finish => finish === value);
++
+ export const HOME_MATERIALS = ['warm', 'sage', 'blue'] as const;
+ export const HOME_ITEM_KINDS = ['table', 'chair', 'shelf', 'plant'] as const;
+ export type HomeMaterial = typeof HOME_MATERIALS[number];
+@@ -30,6 +34,7 @@ export function normalizeHomeInterior(value: HomeInterior): HomeInterior {
+ export interface HomeDescriptor {
+   planetId: string; buildingId: string; interiorId: string;
+   door: { partId?: HomeDoorPartId; position: Vec3; yaw: number; frame?: { position: Vec3; quaternion: [number, number, number, number] } };
++  roofFinish?: HomeRoofFinish; roofFinishAvailable?: boolean;
+   interior: HomeInterior; canEdit: boolean; buildingVersion: number; variant: 'base' | 'terrace' | 'roof' | 'extended' | 'custom'; canUndo: boolean;
+ }
+ export interface HomeInfrastructureManifest {
