@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "eee9df1f2e96750359ccaa9edabcda8160eece95",
-  "worldTree": "e812adcdef7dabc6273e8f0cc6c71270c8a7e471",
-  "patchSHA256": "416d277767865967fa2f52560e8f96979b053e35a8be63a92c69a05a3de82986",
+  "worldRevision": "f8f767e4faced8c5fb82c64a0cbd1c54fe32c098",
+  "worldTree": "1f57d470f62c2c533d1cb1a089c8beeb06ce0b6c",
+  "patchSHA256": "c29aa4c4854bbc376636a65ddbdbb8a1f881e04999e505d3eef7612f82bf99db",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -103,8 +103,8 @@
     {
       "action": "A",
       "path": "scripts/verify-friends-world.mjs",
-      "blob": "dece79c8a91d4e8d7e8d5a7896af6e1263963603",
-      "sha256": "9835ce5cdd725ae2c4ea01c9b4134ffc4c6ee128268b04faf01846cddf24bd03"
+      "blob": "7340ab600f7bc7503a5ad93515a095fdf1d2b18a",
+      "sha256": "cf58ff5a674fb3b6a0cff21212baeb026045c7ccd28b7562283e7208b7cb2d54"
     },
     {
       "action": "A",
@@ -583,14 +583,14 @@
     {
       "action": "M",
       "path": "src/client/flight.css",
-      "blob": "044eb69124dbd394fcdf96bfbdd5145f969e5101",
-      "sha256": "4aa4c1bfba67e1297c36af80d721cf12bce75cb562cd788f91629c9ce19d54f9"
+      "blob": "431c9c7fcb46481d0dad9b9db8301f4fc32b35e5",
+      "sha256": "41da68ab788a8b1c3f892b01a8ed36e0a0d6cd17dfbe9ddca82dcd3e42db69cc"
     },
     {
       "action": "M",
       "path": "src/client/flight.ts",
-      "blob": "7b499e2157dd600fbcbf208a63b09c652cb61e55",
-      "sha256": "8692d09cccf6396fda0f704c0719aff2859dddf79b271209ea89ab74c582c8de"
+      "blob": "dea90da8db4ec0027ca97442dd403ff12a129cd5",
+      "sha256": "bf26dd4f1a1454a80b37d0aa8bd254068742ae2fc9c922432711a7edbdb86486"
     },
     {
       "action": "M",
@@ -643,14 +643,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "6daf32f167a29bddaea531a5a5c79051302594e2",
-      "sha256": "bc28d0ecc3435b5b4b85599384927b55ceb7d6346f91e9d3d13cec9feae8da21"
+      "blob": "b1c0e36441a1edf92980cb9a0d49b505056fe9b3",
+      "sha256": "7a450c3def25bcf65d6ff189828aa9ebcc7f8f1cad2a2e8fb64d52b270b56c06"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920",
-      "sha256": "02ded8106e7ee55083be9ab8b2a508585ee17b0a89d83ec17d31a2761e882c60"
+      "blob": "1a359c182a6ba7dc47dfcf2a7853dbee6d978419",
+      "sha256": "45e663657905dc6caad749df287f317a567cf6053363b0f6a32c8532d2494e4e"
     },
     {
       "action": "A",
@@ -817,14 +817,14 @@
     {
       "action": "A",
       "path": "src/server/friends-session.ts",
-      "blob": "986ea594b03eb325dc0b00be582d9d45b492f7cc",
-      "sha256": "54aac812a80ce1486c4f5bc0069e3b99969c56dccd595019d0a208f2435b58b1"
+      "blob": "ddcab5c8711d1dd1f7a4e250b11356a7ad3f0dcf",
+      "sha256": "4864f071dfd002d540d86a2f87241df034efa9ac6e6f640847f34887abdfab03"
     },
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "6ce43154262164be406b09ff6b8a74e5aad3a2a5",
-      "sha256": "fc37b230cb7ddbe3fa9142ef13f806b3b8e1fb1871586a41f4e99591cb10e98f"
+      "blob": "c342d0b5524859d75501070c99fb9c23fe03c3e2",
+      "sha256": "52dbe4651ecdb6b1b719afad67a984ef9add963df54dab4e7d6dcb69781c20e8"
     },
     {
       "action": "A",
