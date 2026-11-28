@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "981bf464a5bf2f1b675e45f4ccd3f20895b9c0d8",
-  "worldTree": "b856959bc5aaf7e667d7cacbe4ae320247e00d2d",
-  "patchSHA256": "62b67ec8bb84c0c8628c2ec3ed87f08ffa0c27f49868f54bc525596edaffd63c",
+  "worldRevision": "44f59eec6d0a71d55c10258fe414fd4edd4797f7",
+  "worldTree": "4d9337b477432bb7fedcd6f1364798efa1524030",
+  "patchSHA256": "6801fe278debafdc70002d630ed426773bfa99946093b82c4bf437a5d752787a",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -511,8 +511,8 @@
     {
       "action": "A",
       "path": "src/client/bothouse-residents.ts",
-      "blob": "6b5468c5294258ee5f6e6a4bcf1e75ad734210b4",
-      "sha256": "3a4ed80e080acdd4e95c135c2ce0730b668b4529b83a6d4b31f20258de2041cb"
+      "blob": "71d4d81968eb6132f1a6006d7550cf481832926d",
+      "sha256": "36d7895e2621765448fbdab51876af7dfc8a0b5b1f525627b7146c21c38a629f"
     },
     {
       "action": "A",
@@ -571,8 +571,8 @@
     {
       "action": "M",
       "path": "src/client/flight.ts",
-      "blob": "dea90da8db4ec0027ca97442dd403ff12a129cd5",
-      "sha256": "bf26dd4f1a1454a80b37d0aa8bd254068742ae2fc9c922432711a7edbdb86486"
+      "blob": "9f573f8a38940de60ae1646d88f63da3ba792f1c",
+      "sha256": "681f108f6ce7aee2a07d743ae11b81dd8f3768419ba3cb0af5f3337484bf122a"
     },
     {
       "action": "M",
@@ -613,8 +613,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "ba468c1c6fc2df2617f6cff5d2bd45d0ed752d0b",
-      "sha256": "a05e39d20b6a7b7baac87c25068084109c6e19af09ff62f1b1f23ea38b377bde"
+      "blob": "a08f0d9f7ce60a33774662ebe88594eca2653323",
+      "sha256": "3a1871e80d7589c9d93d25233b1217de6f6abbb930f2e037af054389edf5cbe8"
     },
     {
       "action": "M",
@@ -629,6 +629,36 @@
       "sha256": "9ef6d4f912fc91c7814e5bbb6bf6e1695638540b40f70a1472e5a87b046a7739"
     },
     {
+      "path": "src/client/paired-flight-visual.css",
+      "action": "A",
+      "blob": "bcd3127ee71672a85c08ea43273eaefe2405f21e",
+      "sha256": "d98b82ba651fdb6c32b707243dd2a991cbc2fc5fd9a12870e988468208ce0bb0"
+    },
+    {
+      "path": "src/client/paired-flight-visual.ts",
+      "action": "A",
+      "blob": "18553d8050f63650641f5d6e5d3b91d7665a91d2",
+      "sha256": "cb091820804f822112b2dda94b86d2698e551e918fa9cbe0d88d65636ed40a4c"
+    },
+    {
+      "path": "src/client/paired-public-flight-session.ts",
+      "action": "A",
+      "blob": "a729fd49d31cba8d6b01e79cef7e37b7dffb007f",
+      "sha256": "aeea874b671f317230221ad06e92103e2a561580d40aabe697a42d4f77413a48"
+    },
+    {
+      "path": "src/client/paired-public-flight.css",
+      "action": "A",
+      "blob": "6e966eb01312ac6169651463e100f3c0117c000a",
+      "sha256": "f005d7fc0c6c6833a66dd98f5189f5d1a68ebc05c0cfed564c0790e036f86364"
+    },
+    {
+      "path": "src/client/paired-public-flight.ts",
+      "action": "A",
+      "blob": "7f1dc71c92d0b13d378cdba7f372e36d20bfc315",
+      "sha256": "3fdb55fcedf7e1c09608443a11ea67ed0a17e11b10ac77fedf4afbb41ebde679"
+    },
+    {
       "action": "M",
       "path": "src/client/photo-mode.css",
       "blob": "2e44da8cc037900e2f2cfbad0c57a04420d83cb8",
@@ -639,6 +669,12 @@
       "path": "src/client/photo-mode.ts",
       "blob": "b827ccc218a09106f5a68c9da855fa10b73cc7eb",
       "sha256": "c1ede7c5fe6c639d06bd755e1a042187d68a7e0ddd4fdd0717b3ffba99ebe63c"
+    },
+    {
+      "path": "src/client/presence.ts",
+      "action": "M",
+      "blob": "1f91acbf841efb7e3b775855db7601711ed2b981",
+      "sha256": "e56cf3d79ae667ba0c28c457ad0ad90b1ae5c8798751bf9304e20b46a2495f9c"
     },
     {
       "action": "M",
@@ -727,8 +763,8 @@
     {
       "action": "M",
       "path": "src/client/village-polish.ts",
-      "blob": "5343c6934d3748aaf621bb80922fed15e172827c",
-      "sha256": "73414343961c689064a6f04c3292959a2d9ef4d5275a6a05fcfd036ea151eb7e"
+      "blob": "8e7ab01455c3c800d0378f1ab2f4b520dc0a536c",
+      "sha256": "390e2983cfb1621abaac55255ad0ee24f479ffcdaf44e82c5d1687f612ff5ef5"
     },
     {
       "action": "M",
@@ -775,8 +811,14 @@
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "df796b569c400c1d99bc16ba3d43d2b0ec70923a",
-      "sha256": "f1f10c9f7278f8fe2476cc74f526b00b5343711b71e838cc357658d705584703"
+      "blob": "fe865f83155e7b5824bc6003deae347f4ef68019",
+      "sha256": "0ce9e998b4091ccd452af308a64c0e5575b43b1b4d0e1def35fc001eb912b38e"
+    },
+    {
+      "path": "src/server/paired-public-flight.ts",
+      "action": "A",
+      "blob": "69f90023cc4d600d62812cc60aeef0603f0641b5",
+      "sha256": "6c6172d7bc0052a984d3a5cca4f4b0b207d16de7db6022fcdea3333140a66858"
     },
     {
       "action": "A",
@@ -789,6 +831,12 @@
       "path": "src/server/planets.ts",
       "blob": "b4fb62da4c54828ab8fd282430162c771bd0d2b4",
       "sha256": "d0bbf37531cd37fee908f3971eaf4b7a7f295376b11d292cf4516d17566a6f73"
+    },
+    {
+      "path": "src/server/presence.ts",
+      "action": "M",
+      "blob": "44eac4831315af01fc982b85d1008ac7a063de85",
+      "sha256": "995e012f9c6c96559fd70e278ac2cead4eea9c8ebd7dafb2f53ba34265181b42"
     },
     {
       "action": "A",
@@ -813,6 +861,18 @@
       "path": "src/shared/courtyard-arrival.ts",
       "blob": "c3ff42a4c1edccdd15a868eeea00a4fc4bba1d93",
       "sha256": "43565b441e61e0077903d884d39ae6c122df58f85afe997c0a736e3260b39b07"
+    },
+    {
+      "path": "src/shared/main-town-dock-board.ts",
+      "action": "A",
+      "blob": "705d062a1c3de666ed2699094c03afab7b14ab85",
+      "sha256": "a2dac55952b74b5a584acb75188131843291e1488be4f0cf9b9024e26d5b41e8"
+    },
+    {
+      "path": "src/shared/paired-public-flight.ts",
+      "action": "A",
+      "blob": "2584cc2b6c07c4806d9a2c9130388035e3ac635f",
+      "sha256": "a1687d2d7a55ebe72efd18942322fc76a68cde5ba2feeda418dd18b84d19f0a2"
     },
     {
       "action": "A",

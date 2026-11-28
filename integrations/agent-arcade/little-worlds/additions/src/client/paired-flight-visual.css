@@ -1,0 +1,18 @@
+.paired-flight-marker,
+.paired-flight-distance {
+  position: absolute;
+  pointer-events: none;
+  padding: .28rem .55rem;
+  border: 1px solid #70b2a4;
+  border-radius: .35rem;
+  background: #183b42ed;
+  color: #d5f2e7;
+  font-size: .75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.paired-flight-marker { transform: translate(-50%, calc(-100% - 1.25rem)); }
+.paired-flight-distance { top: 4.1rem; left: 50%; transform: translateX(-50%); }
+@media (max-width: 700px) {
+  .paired-flight-distance { top: auto; bottom: 8.3rem; }
+}
