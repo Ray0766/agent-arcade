@@ -42,7 +42,8 @@ export class VisitorWatering {
   private readonly wetGeometry = new T.CircleGeometry(1, 24).rotateX(-Math.PI / 2);
   private readonly wetMaterial = new T.MeshStandardMaterial({ color: '#392b26', roughness: .32 });
 
-  constructor(private readonly scene: T.Scene, private readonly panel: HTMLElement, leaveMouseLook: () => void) {
+  constructor(private readonly scene: T.Scene, private readonly panel: HTMLElement, leaveMouseLook: () => void,
+    private readonly onWatered?: (scope: string) => void) {
     this.button.type = 'button';
     this.button.id = 'visitor-watering';
     this.button.className = 'primary';
@@ -62,6 +63,7 @@ export class VisitorWatering {
     scene.add(this.stream, this.ring);
   }
 
+  get canWaterHere() { return this.candidates.length > 0; }
   get picking() { return this.choosing && this.started === null; }
 
   pick(x: number, y: number, camera: T.Camera, canvas: HTMLCanvasElement, world: GroundWorld,
@@ -145,6 +147,7 @@ export class VisitorWatering {
             this.scene.add(mesh);
             this.wet.set(flower.object.id, { flower, mesh });
           }
+          this.onWatered?.(this.scope);
           this.cancel();
         } else {
           const aim = end.clone().sub(player.root.position).projectOnPlane(up).normalize();

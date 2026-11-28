@@ -1043,19 +1043,20 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15e338587c 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..b1b78bf93bede8bdb78fc6d6dade3056733fc24d 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -30,6 +30,8 @@ import { createTutorialRoute } from './tutorial-route.ts';
+@@ -30,6 +30,9 @@ import { createTutorialRoute } from './tutorial-route.ts';
  import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
  import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
 +import { BothouseResidents } from './bothouse-residents.ts';
++import { CourtyardStampCard } from './courtyard-stamp-card.ts';
 +import { VisitorWatering } from './visitor-watering.ts';
  import { GroundPresence } from './presence.ts';
  import { PresenceVisitGate } from './presence-visit.ts';
  import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
-@@ -75,6 +77,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
+@@ -75,6 +78,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
  import {createVillageDrawing} from './village-drawing.ts';
  import {buildCameraFrame} from './build-camera.ts';
  import {arrivalViewScore} from './arrival-camera.ts';
@@ -1063,7 +1064,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
  import { HomeSetup } from './home-setup.ts';
  import { TeleportStations } from './teleport-station.ts';
  import { SaveProgress } from './save-progress.ts';
-@@ -144,6 +147,9 @@ let residentConversationKey='';
+@@ -144,6 +148,9 @@ let residentConversationKey='';
  let queue: Promise<unknown> = Promise.resolve();
  const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
@@ -1073,7 +1074,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
  function renderSaveProgress(){
    if(!state||physicsMismatch)return;
-@@ -268,16 +274,20 @@ function accept(next: PlayerState) {
+@@ -268,16 +275,20 @@ function accept(next: PlayerState) {
    const design=(state.ship??defaultShip()).design;world.parked.setDesign(design);flight?.setDesign(design);renderer.domElement.dataset.shipDesign=world.parked.document;
    flight?.receive(state.flight,reconnecting);
    if(previousMode==='ground'&&state.flight.mode==='space'&&activePlanet==='hub'&&!reduced&&flight){departure={time:0,base:world.parked.root.position.clone(),start:camera.position.clone(),rotation:camera.quaternion.clone()};flight.presentation=true;document.body.classList.add('departing');notice('Departure clearance granted · Sunseed Harbour',4200);}
@@ -1099,7 +1100,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
  }
  function renderTask() {
-@@ -317,6 +327,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+@@ -317,6 +328,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
  setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
  worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
@@ -1107,7 +1108,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
  const practical=createWorldPracticalLights();scene.add(practical.group);
  const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
-@@ -341,7 +352,7 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
+@@ -341,7 +353,7 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
    return point;
  }});
  const villagePolish=createVillagePolish(scene,{surfacePoint});
@@ -1116,7 +1117,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
  function tutorialContext(){
    const u=colony?.universe;if(!u||!state||u.currentPlanet.id!==state.planetId)return null;
    return {universe:u.player===state?u:{...u,player:state},online:online&&colony!.syncing,
-@@ -349,11 +360,15 @@ function tutorialContext(){
+@@ -349,11 +361,15 @@ function tutorialContext(){
      paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
  }
  function frameVillageGuide(){
@@ -1136,7 +1137,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
      visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
      homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
-@@ -362,12 +377,15 @@ function frameVillageGuide(){
+@@ -362,12 +378,15 @@ function frameVillageGuide(){
    if(context&&planet&&groundWorld&&walker){
      const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
@@ -1153,15 +1154,17 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
-@@ -470,6 +488,7 @@ function prepareSurface(planet:PlanetView){
+@@ -470,6 +489,9 @@ function prepareSurface(planet:PlanetView){
  }
  configureGround();
  const player = courier('clay');scene.add(player.root);
-+const watering = new VisitorWatering(scene, interaction, () => { mouseLook?.release(); clearInput(); });
++const courtyardStampCard = new CourtyardStampCard(() => { mouseLook?.release(); clearInput(); });
++const watering = new VisitorWatering(scene, interaction, () => { mouseLook?.release(); clearInput(); },
++  scope => courtyardStampCard.watered(scope));
  // The same head/coat/shoulder/satchel/parcel set as the independent upper-body
  // framing contract. Bounds follow the actual current animation, including yaw.
  const cameraUpperMeshes:T.Mesh[]=[];
-@@ -544,6 +563,10 @@ window.addEventListener('keydown',event=> {
+@@ -544,6 +566,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
@@ -1172,7 +1175,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
      event.preventDefault();keys.add(key);target=null;
      if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
    }
-@@ -584,7 +607,7 @@ lookButton.onclick=()=>{clearInput();mouseLook?.request();lookButton.blur();};
+@@ -584,7 +610,7 @@ lookButton.onclick=()=>{clearInput();mouseLook?.request();lookButton.blur();};
  renderer.domElement.addEventListener('pointerdown',e=> {
    if(!canSceneInput()||e.button!==0)return;
    if(mouseLook.locked())return;
@@ -1181,7 +1184,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    pointerStart={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,dragged:false};renderer.domElement.setPointerCapture(e.pointerId);
  });
  renderer.domElement.addEventListener('pointermove',e=>{
-@@ -597,7 +620,12 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+@@ -597,7 +623,12 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
  renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
  renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
@@ -1195,7 +1198,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +726,50 @@ async function interact() {
+@@ -698,7 +729,50 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1247,7 +1250,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +792,40 @@ setInterval(async()=>{
+@@ -721,17 +795,48 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1273,6 +1276,14 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
 +    ? groundWorld.planetId+'/'+visitEpoch+'/'+groundWorld.revision : null;
 +  const wateringReady = !!wateringScope && !benchRest && !photoPaused && canGreetVisitor();
 +  watering.setScope(wateringScope, wateringReady);
++  const stampScope = wateringScope && state.location?.kind === 'exterior' &&
++    document.querySelector('#friend-visit-closure:not([hidden])') === null
++    ? state.planetId + '/' + visitEpoch : null;
++  const stampVisible = !!stampScope && !flight?.active && !photoPaused && !overview && !colony?.paused &&
++    !worldGuide.talking && !document.querySelector('dialog[open]') && !homeInterior?.active && !homeInterior?.preparing;
++  courtyardStampCard.frame(stampScope, stampVisible && garden && groundWorld && standing ? {
++    planet: garden, world: groundWorld, pose: standing, waterScope: wateringScope, waterHere: watering.canWaterHere,
++  } : null);
 +  if (measureCamera) renderer.domElement.dataset.visitorWatering = JSON.stringify(watering.snapshot());
 +  visitPhotoButton.hidden=!canTakeVisitPhoto();
 +  if (benchRest && (!visitVisible || !groundWorld || !standing?.grounded ||
@@ -1291,7 +1302,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +873,7 @@ function animate(now:number) {
+@@ -779,7 +884,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1300,7 +1311,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -799,6 +893,16 @@ function animate(now:number) {
+@@ -799,6 +904,16 @@ function animate(now:number) {
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
@@ -1317,7 +1328,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +975,7 @@ function animate(now:number) {
+@@ -871,7 +986,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1326,7 +1337,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +1012,14 @@ function animate(now:number) {
+@@ -908,11 +1023,14 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1341,7 +1352,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1071,18 @@ function animate(now:number) {
+@@ -964,7 +1082,18 @@ function animate(now:number) {
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
@@ -1361,7 +1372,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1094,24 @@ function animate(now:number) {
+@@ -976,6 +1105,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1386,7 +1397,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1166,17 @@ function ensureColony() {
+@@ -1030,15 +1177,17 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1406,7 +1417,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a51211aba423fc14d183e069bec46b15
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1197,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1208,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
