@@ -12,7 +12,8 @@ export interface PublicFlightRound {
   ship: PublicFlightShip | null;
   meetingPeerId?: string;
 }
-export interface PublicFlightView { peers: PublicFlightPeer[]; round: PublicFlightRound | null }
+export interface PublicFlightView { repair?: import('./paired-quay-repair.ts').PairedQuayView; peers: PublicFlightPeer[]; round: PublicFlightRound | null }
 export type PublicFlightCommand =
   | { action: 'invite'; peerId: string; requestId: string }
-  | { action: 'accept' | 'decline' | 'cancel'; id: string };
+  | import('./paired-quay-repair.ts').PairedQuayCommand
+  | { action: 'accept' | 'decline' | 'cancel' | 'meet'; id: string };

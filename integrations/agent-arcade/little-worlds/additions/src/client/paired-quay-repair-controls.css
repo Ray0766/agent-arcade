@@ -1,0 +1,52 @@
+#paired-quay-repair {
+  box-sizing: border-box;
+  inline-size: min(19rem, calc(100vw - 2rem));
+  padding: .75rem .85rem .85rem;
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: .5rem;
+  background: var(--ui-panel);
+  color: var(--ink);
+  box-shadow: inset 3px 0 #50736b, 0 4px 16px #20362b29;
+  font: 14px/1.5 system-ui, sans-serif;
+  pointer-events: auto;
+}
+
+#paired-quay-repair.at-workbench {
+  position: fixed;
+  right: clamp(1rem, 3vw, 2.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+#paired-quay-repair h2 { margin: 0; font-size: 1rem; }
+#paired-quay-repair p { margin: .35rem 0 0; }
+#paired-quay-repair .paired-quay-role { font-weight: 650; }
+#paired-quay-repair output:not([hidden]) { display: block; margin-top: .45rem; font-weight: 700; }
+#paired-quay-repair output[data-aligned=true] { color: var(--ui-teal); }
+#paired-quay-repair .paired-quay-feedback { color: var(--ui-muted); }
+.paired-quay-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.paired-quay-actions:has(button:not([hidden])) { margin-top: .65rem; }
+#paired-quay-repair button {
+  min-block-size: 44px;
+  padding: .35rem .55rem;
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: .35rem;
+  background: var(--ui-chip);
+  color: var(--ink);
+  font: 650 .82rem/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+#paired-quay-repair button.primary { background: var(--ui-action); color: var(--ui-action-ink); }
+#paired-quay-repair button[aria-disabled=true] { opacity: .66; cursor: default; }
+#paired-quay-repair button:focus-visible { outline: 2px solid var(--ui-teal); outline-offset: 2px; }
+
+@media (max-width: 700px) {
+  #paired-quay-repair.at-workbench {
+    right: .75rem;
+    top: auto;
+    bottom: 3.5rem;
+    transform: none;
+    max-block-size: 40dvh;
+    overflow: auto;
+  }
+}
