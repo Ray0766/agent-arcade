@@ -1,4 +1,5 @@
 import './paired-public-flight.css';
+import type { FlightResumeStatus } from './paired-public-flight-session.ts';
 
 type Stage = 'dock' | 'flying' | 'landed';
 type Peer = { id: string; name: string };
@@ -18,6 +19,8 @@ export type PairedFlightDockAction =
 type DockFrame = {
   peers: readonly Peer[];
   round: PairedFlightDockRound | null;
+  resume: FlightResumeStatus | null;
+  position: Stage;
   canInvite: boolean;
   canBoard: boolean;
   canMeet: boolean;
@@ -43,6 +46,8 @@ export class PairedPublicFlightControls {
     send: (action: PairedFlightDockAction) => Promise<void>;
     board: (roundId: string) => boolean;
     findShip: () => void;
+    retryResume: () => void;
+    dismissResume: () => void;
   }) {
     this.root.id = 'paired-public-flight';
     this.root.dataset.i18nVerbatim = '';
@@ -59,13 +64,13 @@ export class PairedPublicFlightControls {
   frame(snapshot: DockFrame | null) {
     if (snapshot?.round?.id !== this.snapshot?.round?.id) this.feedback.hidden = true;
     this.snapshot = snapshot;
-    if (!snapshot?.canInvite || snapshot.round) this.pick = false;
+    if (!snapshot?.canInvite || snapshot.round || snapshot.resume) this.pick = false;
     this.paint();
   }
 
   private paint() {
     const s = this.snapshot, round = s?.round;
-    const show = !!s && (s.interactive && s.canInvite && s.peers.length > 0 || !!round);
+    const show = !!s && (s.interactive && s.canInvite && s.peers.length > 0 || !!round || !!s.resume);
     this.root.hidden = !show;
     if (!show) return;
     const key = JSON.stringify([s, this.pick, this.pending, chinese()]);
@@ -79,7 +84,8 @@ export class PairedPublicFlightControls {
     this.chooser.setAttribute('aria-label', text('选一位同场好友', 'Choose a friend here'));
     this.heading.textContent = text('约飞主星', 'Fly to the main planet together');
     this.status.textContent = '';
-    if (round) this.paintRound(s, round);
+    if (s.resume) this.paintResume(s, s.resume);
+    else if (round) this.paintRound(s, round);
     else if (!this.pick) {
       this.action('choose', text('约一位同场好友', 'Invite a friend here'), () => {
         this.pick = true;
@@ -107,6 +113,24 @@ export class PairedPublicFlightControls {
       });
     }
     if (focused) this.actions.querySelector<HTMLElement>('#' + focused)?.focus({ preventScroll: true });
+  }
+
+  private paintResume(s: DockFrame, resume: FlightResumeStatus) {
+    const next = s.position === 'flying' ? text('可继续本人的航程，或用原航程控件返回。', 'Continue your own journey, or use its controls to return.')
+      : s.position === 'landed' ? text('你已在主星，可以先自己逛逛。', 'You’re on the main planet and can explore on your own.')
+      : s.canInvite ? text('可用原来的同场好友入口重新邀请。', 'You can start a new invitation from this dock.')
+      : text('可以独自登船。要重约，请回到同一座已获准的私人码头。', 'You can board on your own. To invite them again, return to the same approved private dock.');
+    if (resume === 'checking') {
+      this.heading.textContent = text('正在确认约飞…', 'Checking the shared plan…');
+      this.status.textContent = s.position === 'flying' ? next : text('正在查询原来的约定。', 'Looking up the original plan.');
+      return;
+    }
+    this.heading.textContent = resume === 'ended' ? text('这次约飞已结束', 'This shared plan has ended') :
+      text('暂未确认约飞', 'Shared plan not yet confirmed');
+    this.status.textContent = next;
+    if (!s.interactive) return;
+    if (resume === 'unconfirmed') this.action('retry', text('重试', 'Retry'), () => this.transport.retryResume(), true);
+    this.action('dismiss', resume === 'ended' ? text('知道了', 'Got it') : text('收起', 'Close'), () => this.transport.dismissResume());
   }
 
   private paintRound(s: DockFrame, round: PairedFlightDockRound) {

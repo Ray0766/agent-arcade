@@ -1300,7 +1300,7 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594eca2653323 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..d615f835ae481a5d858d34a975c5d5f6c9618d35 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
 @@ -1,3 +1,6 @@
@@ -1425,7 +1425,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +720,97 @@ async function interact() {
+@@ -698,7 +720,120 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1447,7 +1447,8 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
 +    if (action.action === 'invite') {
 +      await savePosition(true);
 +      await queue;
-+      return pairedFlight.command({ ...action, requestId: crypto.randomUUID() });
++      await pairedFlight.command({ ...action, requestId: crypto.randomUUID() });
++      return;
 +    }
 +    if (action.action === 'meet') {
 +      const round = pairedFlight.view?.round;
@@ -1458,7 +1459,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
 +      return;
 +    }
 +    const command: PublicFlightCommand = { action: action.action, id: action.id };
-+    return pairedFlight.command(command);
++    await pairedFlight.command(command);
 +  },
 +  board: id => {
 +    const round = pairedFlight.view?.round;
@@ -1466,7 +1467,29 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
 +      flight?.openPairedPublicDeparture({ id, client: waveClient }));
 +  },
 +  findShip: () => { worldGuide.findShip(); },
++  retryResume: () => pairedFlight.retryResume(),
++  dismissResume: () => pairedFlight.dismissResume(),
 +});
++declare global {
++  interface Window {
++    arcadeGameWindow?: {
++      onMinimizedChange(listener: (minimized: boolean) => void): () => void;
++    };
++  }
++}
++let desktopWindowMinimized = false;
++const updatePairedFlightVisibility = () => pairedFlight.visibility(!document.hidden && !desktopWindowMinimized);
++const unsubscribeDesktopMinimize = window.arcadeGameWindow?.onMinimizedChange(minimized => {
++  desktopWindowMinimized = minimized;
++  updatePairedFlightVisibility();
++});
++if (unsubscribeDesktopMinimize) {
++  window.addEventListener('pagehide', event => {
++    if (!event.persisted) unsubscribeDesktopMinimize();
++  });
++}
++updatePairedFlightVisibility();
++document.addEventListener('visibilitychange', updatePairedFlightVisibility);
 +function pairedMeetingVisible(peerId?: string) {
 +  return !!(peerId && groundWorld && activePlanet === 'hub' && !flight?.active && !overview && canSceneInput() &&
 +    presence.seesPublicFlightPeer(peerId, renderCamera(), groundWorld));
@@ -1524,7 +1547,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +833,65 @@ setInterval(async()=>{
+@@ -721,17 +856,75 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1540,7 +1563,9 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
  function animate(now:number) {
    requestAnimationFrame(animate);
    mouseLook?.sync();lookButton.hidden=!canLook()||overview;paintLookHint();
-+  const pairingOnline = online && !document.hidden && !graphicsLost && !!state && !state.appearanceRequired;
++  const pairingVisible = !document.hidden && !graphicsLost && !!state && !state.appearanceRequired;
++  const pairingOnline = online && pairingVisible;
++  updatePairedFlightVisibility();
 +  const pairedBoarding = pairingOnline && waveVisitAllowed() && nearDock && !homeTransition &&
 +    !homeInterior?.preparing && !colony?.building;
 +  const dockScope = pairedBoarding ? activePlanet + '/' + (state.location?.visitEpoch ?? 0) : undefined;
@@ -1548,18 +1573,26 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
 +    pairedDockScope = dockScope;
 +    if (dockScope) void savePosition(true);
 +  }
-+  pairedFlight.frame(pairingOnline && (pairedBoarding || pairedFlight.tracking) ? waveClient : null);
++  const checkingOldPlan = pairedFlight.resumeStatus === 'checking' || pairedFlight.resumeStatus === 'unconfirmed';
++  pairedFlight.frame(pairingOnline && (pairedBoarding || pairedFlight.tracking || checkingOldPlan) ? waveClient : null);
++  const resumeStatus = pairedFlight.resumeStatus;
 +  const publicFlightView = pairedFlight.view;
 +  const publicFlightRound = publicFlightView?.round;
-+  if (publicFlightView && lastPairedRound && !publicFlightRound) {
++  if (pairedFlight.takeResumed()) {
++    const zh = document.documentElement.lang.startsWith('zh');
++    notice(zh ? '已找回这次约飞。' : 'Your shared flight plan was found.');
++  }
++  if (publicFlightView && lastPairedRound && !publicFlightRound && !resumeStatus) {
 +    notice(document.documentElement.lang.startsWith('zh') ? '这次约飞已结束。' : 'The shared flight plan has ended.');
 +  }
 +  if (publicFlightView || !pairingOnline) lastPairedRound = publicFlightRound?.id;
 +  const pairedDeparture = publicFlightRound?.phase === 'agreed' && publicFlightRound.mine === 'dock' ? publicFlightRound.id : undefined;
 +  flight?.syncPairedPublicDeparture(pairedDeparture);
 +  const pairedInput = (flight?.active || canSceneInput()) && !overview && !document.querySelector('dialog[open]');
-+  pairedFlightDock.frame(pairingOnline && publicFlightView ? {
-+    peers: publicFlightView.peers.map(peer => ({ id: peer.id, name: pairedFlightPeerLabel(peer) })),
++  pairedFlightDock.frame(pairingVisible && (publicFlightView || resumeStatus) ? {
++    resume: resumeStatus,
++    position: state.flight.mode === 'space' ? 'flying' : state.planetId === 'hub' ? 'landed' : 'dock',
++    peers: (publicFlightView?.peers ?? []).map(peer => ({ id: peer.id, name: pairedFlightPeerLabel(peer) })),
 +    round: publicFlightRound ? {
 +      id: publicFlightRound.id, peerName: pairedFlightPeerLabel(publicFlightRound.peer),
 +      phase: publicFlightRound.phase === 'agreed' ? 'accepted' : publicFlightRound.incoming ? 'received' : 'sent',
@@ -1593,7 +1626,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +939,7 @@ function animate(now:number) {
+@@ -779,7 +972,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1602,7 +1635,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -799,6 +959,11 @@ function animate(now:number) {
+@@ -799,6 +992,11 @@ function animate(now:number) {
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
@@ -1614,7 +1647,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +1036,7 @@ function animate(now:number) {
+@@ -871,7 +1069,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1623,7 +1656,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +1073,14 @@ function animate(now:number) {
+@@ -908,11 +1106,14 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1638,7 +1671,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1132,18 @@ function animate(now:number) {
+@@ -964,7 +1165,18 @@ function animate(now:number) {
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
@@ -1658,7 +1691,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1155,24 @@ function animate(now:number) {
+@@ -976,6 +1188,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1683,7 +1716,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1030,15 +1227,22 @@ function ensureColony() {
+@@ -1030,15 +1260,22 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1708,7 +1741,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..a08f0d9f7ce60a33774662ebe88594ec
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1263,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1296,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
