@@ -6,6 +6,7 @@ import { distance } from '../shared/world.ts';
 import { canBoard } from '../shared/ports.ts';
 import { RequestError } from './errors.ts';
 
+import type { QuaySampleAccess } from './quay-study-sample.ts';
 import { isQuayCommand, QuayRepairRound } from './paired-quay-repair.ts';
 
 interface WindowMember {
@@ -19,6 +20,7 @@ interface Round {
   trips: Map<WindowMember, { id: string; journey: number; request: string }>;
 }
 interface Access {
+  samples: QuaySampleAccess;
   state(id: string): PlayerState;
   session(digest: string): string;
   owner(player: string): string | null | undefined;
@@ -156,9 +158,9 @@ export function pairedPublicFlights(access: Access, now = Date.now) {
           const near = access.atQuay(m.player), otherNear = access.atQuay(other.player);
           if (!q.stillAtBench(m.player,near) || !q.stillAtBench(other.player,otherNear)) { end(r); return empty(); }
           if (command?.action === 'repair') {
-            if (!q.apply(m.player,command,near,()=>!!bySign(m) && !!bySign(other))) { end(r); return empty(); }
+            if (!q.apply(m.player,command,near,()=>!!bySign(m) && !!bySign(other),access.samples,other.player)) { end(r); return empty(); }
           } else if (command && command.action !== 'meet') throw changed();
-          const repair = q.view(m.player,other.player,near);
+          const repair = q.view(m.player,other.player,near,access.samples);
           return repair ? {peers:[],round:null,repair} : empty();
         }
         if (command?.action === 'repair') throw changed();

@@ -1,0 +1,22 @@
+.study-quay-sample-preview {
+  margin: .65rem 0;
+  overflow: hidden;
+  border: 1px solid #a6b4a2;
+  border-radius: .55rem;
+  background: #e6eada;
+  color: #29453a;
+}
+.study-quay-sample-preview canvas {
+  display: block;
+  width: 100%;
+  height: clamp(6rem, 22vh, 10rem);
+}
+.study-quay-sample-preview canvas[hidden] { display: none; }
+.study-quay-sample-preview figcaption {
+  padding: .35rem .65rem;
+  border-top: 1px solid #a6b4a2;
+  background: #f2f2e4;
+  font-size: .88rem;
+  font-weight: 600;
+  text-align: center;
+}

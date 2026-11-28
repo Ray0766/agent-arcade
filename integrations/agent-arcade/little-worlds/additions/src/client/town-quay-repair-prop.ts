@@ -16,17 +16,12 @@ export const QUAY_WRENCH_PARTS = [
   { at:[0,0,.23], size:[.095,.04,.07] },
 ] satisfies {at:[number,number,number];size:[number,number,number]}[];
 
-/** A tabletop support and its two engraved witness lines in Ivo’s local work frame. */
-export function quayRepairProp() {
+/** The original steel support and witness lines, without the cabinet or tools. */
+export function quayRepairMechanism() {
   const root=new Group(), turntable=new Group(), arm=new Group();
   root.name='ivo-repair-support';
   turntable.name='quay-repair-turntable';
   arm.name='quay-repair-arm';
-  const table=buildBlueprintModel([{part:'furniture.sideboard',x:0,z:0,level:0,n:1,rot:0}],worldMaterials(),'medium',{sockets:false});
-  root.add(table.object);
-  const boxBounds=new Box3().setFromObject(table.object);
-  const tableCenter=boxBounds.getCenter(new Vector3());
-  table.object.position.set(-tableCenter.x,-boxBounds.max.y+.015,-tableCenter.z+.06);
   turntable.position.y=.075; arm.position.y=.035;
   root.add(turntable); turntable.add(arm);
   const iron=new MeshStandardMaterial({color:'#4c6b70',roughness:.82});
@@ -44,6 +39,25 @@ export function quayRepairProp() {
   box(arm,mark,[.024,.008,.070],[0,.060,.246]);
   box(arm,brass,[.19,.038,.069],[0,.043,.275]);
   const nut=new Mesh(new CylinderGeometry(.063,.063,.051,6),brass); nut.position.y=.179; root.add(nut);
+  return {
+    root, arm, nut, iron, brass, mark, box,
+    setTurn(turn:number) { turntable.rotation.y=turn*.28; },
+    dispose() {
+      root.traverse(o=>{if(o instanceof Mesh)o.geometry.dispose();});
+      iron.dispose();brass.dispose();mark.dispose();
+    },
+  };
+}
+
+/** A tabletop support in Ivo’s local work frame. */
+export function quayRepairProp() {
+  const mechanism=quayRepairMechanism();
+  const {root,arm,nut,iron,brass,mark,box}=mechanism;
+  const table=buildBlueprintModel([{part:'furniture.sideboard',x:0,z:0,level:0,n:1,rot:0}],worldMaterials(),'medium',{sockets:false});
+  root.add(table.object);
+  const boxBounds=new Box3().setFromObject(table.object);
+  const tableCenter=boxBounds.getCenter(new Vector3());
+  table.object.position.set(-tableCenter.x,-boxBounds.max.y+.015,-tableCenter.z+.06);
   const lockStripe=box(root,mark,[.031,.008,.065],[0,.208,.014]);
   lockStripe.name='quay-repair-lock-stripe';
   const wrenchPivot=new Group(), wrench=new Group();
@@ -57,7 +71,7 @@ export function quayRepairProp() {
   brace.name='paired-quay-aligned-brace';
   let lastRound='',lastPhase:PairedQuayRepairScene['phase']|undefined,startedAt=0;
   const animate=(pose:QuayRepairPose,reduced:boolean)=>{
-    turntable.rotation.y=pose.turn*.28;
+    mechanism.setTurn(pose.turn);
     const bounce=reduced?pose.press:Math.sin(pose.press*Math.PI*4)*pose.press;
     arm.rotation.x=pose.loose?.16+Math.abs(bounce)*.45:pose.locked?pose.press*.018:0;
     nut.rotation.y=pose.locked?1.2:pose.tightening*1.2;
@@ -97,8 +111,7 @@ export function quayRepairProp() {
     },
     dispose(){
       root.remove(table.object); table.dispose();
-      root.traverse(o=>{if(o instanceof Mesh)o.geometry.dispose();});
-      iron.dispose(); brass.dispose(); mark.dispose();
+      mechanism.dispose();
     },
   };
 }

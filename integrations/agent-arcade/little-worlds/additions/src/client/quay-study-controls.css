@@ -1,0 +1,19 @@
+#home-quay-study {
+  inline-size: min(33rem, calc(100vw - 2rem));
+  box-sizing: border-box;
+  color: var(--ink);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-dialog-border);
+  border-radius: 9px;
+  padding: 1rem;
+}
+
+#home-quay-study h2 { font-size: 1.15rem; margin: 0 0 .6rem; }
+.quay-study-model { block-size: clamp(8rem, 30dvh, 15rem); border-radius: .4rem; overflow: hidden; }
+#home-quay-study output { display: block; margin-block: .55rem; font-weight: 700; }
+#home-quay-study p { margin: .3rem 0; }
+#home-quay-study p:empty { display: none; }
+.quay-study-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+#home-quay-study button { min-height: 44px; }
+#home-quay-study button:focus-visible { outline: 2px solid var(--ui-teal); outline-offset: 2px; }
+#home-quay-save { background: var(--ui-action); color: var(--ui-action-ink); }
