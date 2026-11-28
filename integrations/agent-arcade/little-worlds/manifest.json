@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "eee9df1f2e96750359ccaa9edabcda8160eece95",
-  "worldTree": "e812adcdef7dabc6273e8f0cc6c71270c8a7e471",
-  "patchSHA256": "416d277767865967fa2f52560e8f96979b053e35a8be63a92c69a05a3de82986",
+  "worldRevision": "c72999f19a103d23433304782263ee8cdfc62477",
+  "worldTree": "9b032f073d360c7e32265818c0158ba5e60139e3",
+  "patchSHA256": "0ec7b5719ca395f56894c8c442e1854c12f77aeb757dbbcc20066ad73b58ffbc",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -159,6 +159,12 @@
       "path": "spec/guide-interaction.test.ts",
       "blob": "6ae7e86665a1cce7cfa13e6385d52c84f5a6dfb6",
       "sha256": "9bf8bb4ac1e6950dd3935a7b565c3dd9d661b02dbc6bbcb5633e642eb95c97d3"
+    },
+    {
+      "path": "spec/home-door-badge-art.test.ts",
+      "action": "A",
+      "blob": "6e16f82fb15ab4c0a0fe21313d917e96bada870c",
+      "sha256": "487f783d9e93b5381b9ce4515e2792923fc21a44b498fc6a6ca2efc41c3d0c14"
     },
     {
       "action": "M",
@@ -527,6 +533,12 @@
       "sha256": "790fa64210032ccead148275a13e47ca879d99110b0b56e152391e8c38849cdd"
     },
     {
+      "path": "src/client/camera-blueprint-model.ts",
+      "action": "M",
+      "blob": "86cf8fda99cfda92f8caff38bc4ccf72f206c3bf",
+      "sha256": "3e1675d087e55c0865820e3dd9b83d46a2f59fc4adb164111d549889f62d49e1"
+    },
+    {
       "action": "M",
       "path": "src/client/character-sample.ts",
       "blob": "d621be9dcc697e99164dad8926c4dfa95db123c1",
@@ -541,8 +553,8 @@
     {
       "action": "M",
       "path": "src/client/colony.ts",
-      "blob": "01cf312f46a7f0ac7795a8146c05f1955aa0a0f2",
-      "sha256": "99e131d1d2f437f3712a7b9216af132d21b100eb91e3e91b2c1efd4aea6279a2"
+      "blob": "ff51159ab6ea222b211f582cfd2eb5874b1938d8",
+      "sha256": "a34e8a752ed23bbe7f6ba0180f51b9f29bf7e25274760205e989a6e9dedae349"
     },
     {
       "action": "A",
@@ -599,6 +611,24 @@
       "sha256": "1d85ad5104bc1b6f40aaa5d2f7238278d181c59c59bdffc1cbd7b3d47e2f59e5"
     },
     {
+      "path": "src/client/home-controls.css",
+      "action": "M",
+      "blob": "cc73f00c09d53d2bd94382173043de485ab83d87",
+      "sha256": "e40385657550c9463216be6a36b1b10ebd592d85520e5e760237e533a91a5eb9"
+    },
+    {
+      "path": "src/client/home-controls.ts",
+      "action": "M",
+      "blob": "41cc9d87521db1c221abd9b8126ca243db3a9984",
+      "sha256": "b29224d1ce4b1873a44031127eaf1aac871fec29577ebde80b82f83332d3939d"
+    },
+    {
+      "path": "src/client/home-door-badge-art.ts",
+      "action": "A",
+      "blob": "4e469e16bb00d36be759c4deee6da483e084818b",
+      "sha256": "cfb0059ce2c32acd09383f84e7d43cf1d046361e940300c39861d6111fb55d07"
+    },
+    {
       "action": "A",
       "path": "src/client/home-furniture-models.ts",
       "blob": "73c9906b5b44ea66f38c1f4bdc1c1b36a554404e",
@@ -615,6 +645,12 @@
       "path": "src/client/home-interior.ts",
       "blob": "3bb9d6cdafa25b144fe3eedc89316f900eae2c49",
       "sha256": "f699d95580e9ccaf30419a5ef7cff5baaea9b5e71013b18111b1643ddfd4930c"
+    },
+    {
+      "path": "src/client/home-roof-appearance.ts",
+      "action": "A",
+      "blob": "6b4620ec45819e85d8dc21cc0a124d7e8a27c4e0",
+      "sha256": "79680c6bffb74188a2cd3ba92aa45e94fc3a750efcd7872e2d955a5305969ac8"
     },
     {
       "path": "src/client/home-stamp-album.css",
@@ -643,14 +679,14 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "6daf32f167a29bddaea531a5a5c79051302594e2",
-      "sha256": "bc28d0ecc3435b5b4b85599384927b55ceb7d6346f91e9d3d13cec9feae8da21"
+      "blob": "d43b985e52035a813df91d78cdf07a8e6b29c458",
+      "sha256": "38e2fe6e91de9dbb4d80e64504db64938b3da8f0f04ad645b95a98c1e09ebff9"
     },
     {
       "action": "M",
       "path": "src/client/messages.ts",
-      "blob": "28e1802e36cf4c2f4de4f06f9ea4f1e2c15c6920",
-      "sha256": "02ded8106e7ee55083be9ab8b2a508585ee17b0a89d83ec17d31a2761e882c60"
+      "blob": "c958ec1a55228ea2702f4dc13d89cee96adfc09e",
+      "sha256": "218802690241b0a8ecc866d2fba5cb6afd421f64461db9602fff1c5505b21189"
     },
     {
       "action": "A",
@@ -713,6 +749,12 @@
       "sha256": "37fe250628d55e63f7870ca3c75606001ab175f19b7524ed7c6f907721d2fa8b"
     },
     {
+      "path": "src/client/structure-finish.ts",
+      "action": "M",
+      "blob": "ee69ce32c965cffd2915dccbcb121e6ca566df2d",
+      "sha256": "3264ae678d61e6e13cc59642f5b6c28b751774dd580379bd4f78cc70685c80e2"
+    },
+    {
       "action": "M",
       "path": "src/client/terrain-model.ts",
       "blob": "fb9b2ec315a9892be7b8651a0ce8905832113fac",
@@ -721,8 +763,8 @@
     {
       "action": "A",
       "path": "src/client/town-exterior.ts",
-      "blob": "fe277442fe5d23039b362d745c4d122b4942d28c",
-      "sha256": "c947c3a83cd44de164dff24f023a4cc3851a84017ada0332e2184b03031ac54e"
+      "blob": "e29b21e72b06bde454ea10614ed443a649bb809e",
+      "sha256": "dd242b801ff0f1631ef7b9cff25be2f01de15426796d283a3a6af40726f80e4e"
     },
     {
       "action": "A",
@@ -785,6 +827,12 @@
       "sha256": "3b48c1b5a98a08e2f1f2735221d4dd4ad31d4182c6a0047a2dfc57bf8a353e91"
     },
     {
+      "path": "src/client/world-visual-signature.ts",
+      "action": "M",
+      "blob": "1a8eb28ef11712cb467be4fb581eb0412f838f21",
+      "sha256": "f91cfb1a437143765ba247abb684c9df8d3024aeca6ee62d5aea2943d47ec9b5"
+    },
+    {
       "action": "A",
       "path": "src/server/app-residents.ts",
       "blob": "da3115fcd52c6cb413c300535fcf17394c3a6ed8",
@@ -793,8 +841,8 @@
     {
       "action": "M",
       "path": "src/server/arrival-homes.ts",
-      "blob": "137d9ff162d8b02451631755f60574e48bfc52e7",
-      "sha256": "83571b2b112fb39bad10f2c129f8dc33de50e72d6c7b14acec1a7999167f686d"
+      "blob": "8f7e997e14a2631427975d2cbaabe36e20eab661",
+      "sha256": "44bfca4e546667afe70b8072c1532cea461dc9238d4d17f2473ca7f0c0da8afa"
     },
     {
       "action": "M",
@@ -821,10 +869,16 @@
       "sha256": "54aac812a80ce1486c4f5bc0069e3b99969c56dccd595019d0a208f2435b58b1"
     },
     {
+      "path": "src/server/home.ts",
+      "action": "M",
+      "blob": "d18c37208ad6889a1eea340f9265c378a7385857",
+      "sha256": "ecefa4157a5b44f9aed9368a07ec9a7b196754287d4c663b4da8376446538cfe"
+    },
+    {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "6ce43154262164be406b09ff6b8a74e5aad3a2a5",
-      "sha256": "fc37b230cb7ddbe3fa9142ef13f806b3b8e1fb1871586a41f4e99591cb10e98f"
+      "blob": "7da14950e131dc103f5f98bc6f14c3e39f57e201",
+      "sha256": "15f1593b6d9470b3e63086aa5c45039850746b8e46b8100d4c33ed5b7fd0d747"
     },
     {
       "action": "A",
@@ -853,8 +907,8 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "0a679fcba74b10ca6fedb33b0efb56c7e95afc92",
-      "sha256": "e2fac63f5ac814221f9436648a29afb6eb6f67585397fb6df1ce884328a18a71"
+      "blob": "9f35fb9a39a9dc995e5a1a6272ff175ac06e733c",
+      "sha256": "6b038ea16a0c57afdc52d7bebb229a8c7447f1dc1a97adc9bd0f8042e619c8ce"
     },
     {
       "action": "A",
@@ -869,6 +923,24 @@
       "sha256": "cd07badfabbdee958dc4d65af9a7a8c7f91d791767408465bb43767156de139c"
     },
     {
+      "path": "src/shared/home-door-badge.ts",
+      "action": "A",
+      "blob": "d75dea1edd176971a49ffe7481e06d1d03b56c6f",
+      "sha256": "0b36bc00d858030036e74ddc3801cc621c271c6578beabe03b0a661f67aa6b38"
+    },
+    {
+      "path": "src/shared/home-exterior.ts",
+      "action": "A",
+      "blob": "f5c24408a48beb2344d3d0526685e39ff322f8cc",
+      "sha256": "ef69d9553690e50a29cc030a679b885abe801665368b9e471971fcd5548b222f"
+    },
+    {
+      "path": "src/shared/home.ts",
+      "action": "M",
+      "blob": "7d9c2eaaf20f08ef4cdff7a508ee660cab9bae6b",
+      "sha256": "4f8bf8d795661a5ce375ac475a53883e7d20f165e2a68836828079291297933a"
+    },
+    {
       "action": "A",
       "path": "src/shared/planet-residents.ts",
       "blob": "1c8be445c6722ab637fa4854906855fc0b2d22a5",
@@ -877,14 +949,20 @@
     {
       "action": "M",
       "path": "src/shared/planets.ts",
-      "blob": "289bee97e274cd249b0d48f3fa56855ec06e8e1a",
-      "sha256": "ee2337c3af7ec859ec1b66e90d9d407769484e8079b46b60c97b9282346d9af9"
+      "blob": "e2751a98e78d224b7f028a378cd2acb3bbbc50f5",
+      "sha256": "78174fbf1012d010a1d04cdfa2272d62d1010ceab3d9886db6d365d5d8de0d4d"
     },
     {
       "action": "A",
       "path": "src/shared/resident-portrait.ts",
       "blob": "9f6a08cdaf111ec2f3c4386ac53303138c7ac50f",
       "sha256": "24836ed60409e82b0d0d4eef34e86a3da691c09f98d1f8a6a9b0786cabd79d28"
+    },
+    {
+      "path": "src/shared/structure-exterior.ts",
+      "action": "A",
+      "blob": "1f20accaf1760278ddff61736bd6bd6465d4e0ee",
+      "sha256": "78e9ecfb33e580849dbcf95d37427ab2ee58762c8faa915e2d84a2533000b3e9"
     },
     {
       "action": "M",
