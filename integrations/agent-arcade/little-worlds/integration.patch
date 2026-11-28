@@ -1314,20 +1314,23 @@ index 7a870819b29ebed6159a71a69de0600400265e76..bf706cd6fa139b03cabbd15bbdea1995
 +  language = saved === 'en' || saved === 'zh' ? saved : fallback;
    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 diff --git a/src/client/main.ts b/src/client/main.ts
-index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e6b29c458 100644
+index 0639a7b2e636be2963ca2599618308f12632025a..0666c8df11da5d57a2b6f94f13071380f2f97d2a 100644
 --- a/src/client/main.ts
 +++ b/src/client/main.ts
-@@ -30,6 +30,9 @@ import { createTutorialRoute } from './tutorial-route.ts';
+@@ -30,6 +30,12 @@ import { createTutorialRoute } from './tutorial-route.ts';
  import { canWalkTutorialConnector,tutorialStationApproaches } from '../shared/tutorial-navigation.ts';
  import { createVillagePolish } from './village-polish.ts';
  import { BOARD_RADIUS, portPoint } from '../shared/ports.ts';
 +import { BothouseResidents } from './bothouse-residents.ts';
++import { DoorBadgeRubbing } from './door-badge-rubbing.ts';
++import { doorBadgeRubbingSite } from '../shared/door-badge-rubbing-site.ts';
++import type { DoorBadgeRubbingPreview } from '../shared/door-badge-rubbing.ts';
 +import { CourtyardStampCard } from './courtyard-stamp-card.ts';
 +import { VisitorWatering } from './visitor-watering.ts';
  import { GroundPresence } from './presence.ts';
  import { PresenceVisitGate } from './presence-visit.ts';
  import { canAcceptPlayer, isDoorOnlyRevision } from './sync.ts';
-@@ -75,6 +78,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
+@@ -75,6 +81,7 @@ import type {TownResidentDefinition} from '../shared/town-residents.ts';
  import {createVillageDrawing} from './village-drawing.ts';
  import {buildCameraFrame} from './build-camera.ts';
  import {arrivalViewScore} from './arrival-camera.ts';
@@ -1335,7 +1338,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
  import { HomeSetup } from './home-setup.ts';
  import { TeleportStations } from './teleport-station.ts';
  import { SaveProgress } from './save-progress.ts';
-@@ -144,6 +148,9 @@ let residentConversationKey='';
+@@ -144,6 +151,9 @@ let residentConversationKey='';
  let queue: Promise<unknown> = Promise.resolve();
  const helpDialog = $<HTMLDialogElement>('help-dialog');
  const action = $<HTMLButtonElement>('interact');
@@ -1345,7 +1348,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
  function status(message: string, error = false) { setText($('save-status'), message); $('save-status').classList.toggle('error', error); }
  function renderSaveProgress(){
    if(!state||physicsMismatch)return;
-@@ -264,20 +271,24 @@ function accept(next: PlayerState) {
+@@ -264,20 +274,24 @@ function accept(next: PlayerState) {
      walker.facing.copy(walker.north);started=false;
    }
    if(previousPlanet!==state.planetId||previousMode!==state.flight.mode||locationChanged)presence.clear();
@@ -1376,7 +1379,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    notice(error instanceof Error ? error.message : 'Could not save. Reconnecting…');
  }
  function renderTask() {
-@@ -317,6 +328,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
+@@ -317,6 +331,7 @@ renderer.domElement.addEventListener('webglcontextlost',event=>{
  setAttribute(renderer.domElement, 'aria-label', 'Little Worlds planet. Use WASD or arrows to walk, hold Shift to run; board your ship to fly between worlds.');
  worldMaterials().attachRenderer(renderer,textureFormat());
  const scene = new T.Scene();
@@ -1384,7 +1387,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
  const exteriorHomeDoor=createHomeDoor();scene.add(exteriorHomeDoor.root);exteriorHomeDoor.root.visible=false;
  const practical=createWorldPracticalLights();scene.add(practical.group);
  const camera = new T.PerspectiveCamera(52, innerWidth / innerHeight, .08, 2400);
-@@ -341,7 +353,7 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
+@@ -341,7 +356,7 @@ const tutorialRoute=createTutorialRoute(scene,{surfacePoint:(normal,offset=0)=>{
    return point;
  }});
  const villagePolish=createVillagePolish(scene,{surfacePoint});
@@ -1393,7 +1396,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
  function tutorialContext(){
    const u=colony?.universe;if(!u||!state||u.currentPlanet.id!==state.planetId)return null;
    return {universe:u.player===state?u:{...u,player:state},online:online&&colony!.syncing,
-@@ -349,11 +361,15 @@ function tutorialContext(){
+@@ -349,11 +364,15 @@ function tutorialContext(){
      paused:photoPaused||!!colony?.paused||!!document.querySelector('dialog[open]'),touch:matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0,route:guideRouteFeedback,fixedIndoor:!!indoorRoomView.room||!!homeInterior?.active};
  }
  function frameVillageGuide(){
@@ -1413,7 +1416,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    tutorialRoute.frame({position:walker?walker.up.toArray() as Vec3:SPAWN,target:guideTarget,planetId:activePlanet,radius:activeRadius,
      visible:visible&&!!context?.ready&&!worldGuide.active,paused:photoPaused||!!context?.paused,reducedMotion:reduced,time:elapsed,
      homeRoutes:planet?.homeManifest?.routes,routeRevision:planet?.revision,stationApproaches:guideStationApproaches,
-@@ -362,12 +378,15 @@ function frameVillageGuide(){
+@@ -362,12 +381,15 @@ function frameVillageGuide(){
    if(context&&planet&&groundWorld&&walker){
      const room=homeInterior?.guideContext(),indoor=!!room||!!indoorRoomView.room,feet=room?.feet??walker.up.clone().multiplyScalar(standing?.radius??groundRadius());
      const guideState=worldGuide.frame({universe:context.universe,position:walker.up.toArray() as Vec3,world:groundWorld,
@@ -1430,7 +1433,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    renderer.domElement.dataset.tutorialStep=tutorial?.step?.kind??'';
    renderer.domElement.dataset.tutorialRoute=JSON.stringify(tutorialRoute.diagnostics);
    renderer.domElement.dataset.villagePolish=JSON.stringify(villagePolish.diagnostics);
-@@ -388,7 +407,7 @@ function prepareSurface(planet:PlanetView){
+@@ -388,7 +410,7 @@ function prepareSurface(planet:PlanetView){
    pendingPlanet=planet;
    // Public terrain consumes the fixed template; generated private terrain
    // follows every saved construction edit, excluding door-only changes.
@@ -1439,17 +1442,26 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    if(!worldPending&&key===renderedWorldKey){
      if(!groundWorld||groundWorld.planetId!==planet.id||groundWorld.revision!==planet.revision)groundWorld=new GroundWorld(planet);
      return;
-@@ -470,6 +489,9 @@ function prepareSurface(planet:PlanetView){
+@@ -470,6 +492,18 @@ function prepareSurface(planet:PlanetView){
  }
  configureGround();
  const player = courier('clay');scene.add(player.root);
++const badgeRubbing = new DoorBadgeRubbing({
++  preview: async visit => {
++    await savePosition(true);
++    await queue;
++    return request<DoorBadgeRubbingPreview>('courtyard/door-badge-rubbing?planetId='+encodeURIComponent(visit.planetId)+'&visitEpoch='+visit.visitEpoch);
++  },
++  keep: (visit, version) => serial(() => request<DoorBadgeRubbingPreview>(
++    'courtyard/door-badge-rubbing', { ...visit, version })),
++});
 +const courtyardStampCard = new CourtyardStampCard(() => { mouseLook?.release(); clearInput(); });
 +const watering = new VisitorWatering(scene, interaction, () => { mouseLook?.release(); clearInput(); },
 +  scope => courtyardStampCard.watered(scope));
  // The same head/coat/shoulder/satchel/parcel set as the independent upper-body
  // framing contract. Bounds follow the actual current animation, including yaw.
  const cameraUpperMeshes:T.Mesh[]=[];
-@@ -544,6 +566,10 @@ window.addEventListener('keydown',event=> {
+@@ -544,6 +578,10 @@ window.addEventListener('keydown',event=> {
    if(event.isComposing||event.ctrlKey||event.metaKey||event.altKey||flight?.active||document.querySelector('dialog[open]')||colony?.paused||(event.target instanceof Element&&event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')))return;
    const key=event.key.toLowerCase();
    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','e','shift'].includes(key)) {
@@ -1460,7 +1472,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
      event.preventDefault();keys.add(key);target=null;
      if(key==='e' && !event.repeat){if(homeControls?.canEnter)void homeControls.enter();else if(nearDock)flight?.openLaunch();else if(teleportStations?.canUse){clearInput();void teleportStations.use();}else void interact();}
    }
-@@ -584,7 +610,7 @@ lookButton.onclick=()=>{clearInput();mouseLook?.request();lookButton.blur();};
+@@ -584,7 +622,7 @@ lookButton.onclick=()=>{clearInput();mouseLook?.request();lookButton.blur();};
  renderer.domElement.addEventListener('pointerdown',e=> {
    if(!canSceneInput()||e.button!==0)return;
    if(mouseLook.locked())return;
@@ -1469,7 +1481,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    pointerStart={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,dragged:false};renderer.domElement.setPointerCapture(e.pointerId);
  });
  renderer.domElement.addEventListener('pointermove',e=>{
-@@ -597,7 +623,12 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
+@@ -597,7 +635,12 @@ renderer.domElement.addEventListener('pointercancel',()=>pointerStart=null);
  renderer.domElement.addEventListener('lostpointercapture',()=>pointerStart=null);
  renderer.domElement.addEventListener('pointerup',e=> {
    const released=pointerStart;pointerStart=null;
@@ -1483,7 +1495,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    raycaster.setFromCamera(new T.Vector2(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1),renderCamera());
    const hit=raycaster.intersectObject(world.globe)[0];
    if(hit) {target=logicalNormal(hit.point.normalize());destinationRing.position.copy(surfacePoint(target,.05));destinationRing.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),surfaceNormal(target));}
-@@ -698,7 +729,50 @@ async function interact() {
+@@ -698,7 +741,50 @@ async function interact() {
      player.greet(elapsed);
    }catch(error){failed(error);}finally{busy=false;action.disabled=false;}
  }
@@ -1535,7 +1547,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
  setInterval(()=>void savePosition(),350);
  setInterval(async()=>{
    if(!online||!walker||state?.appearanceRequired||state?.flight.mode!=='ground'||document.hidden)return;
-@@ -721,17 +795,48 @@ setInterval(async()=>{
+@@ -721,17 +807,55 @@ setInterval(async()=>{
    if(online || busy || physicsMismatch || stateLoader.pending) return;
    if(!state&&(arrival.stopped||Date.now()<arrival.next))return;
    try {
@@ -1564,6 +1576,13 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
 +  const stampScope = wateringScope && state.location?.kind === 'exterior' &&
 +    document.querySelector('#friend-visit-closure:not([hidden])') === null
 +    ? state.planetId + '/' + visitEpoch : null;
++  const badgeVisible = !!stampScope && !flight?.active && !photoPaused && !overview && !colony?.paused && !benchRest &&
++    !worldGuide.talking && !speakingResident && !homeInterior?.active && !homeInterior?.preparing &&
++    !document.querySelector('dialog[open]:not(#door-badge-rubbing)') &&
++    (badgeRubbing.opened || canSceneInput());
++  const badgeSite = badgeVisible && garden && groundWorld && standing
++    ? doorBadgeRubbingSite(garden, groundWorld, standing, visitEpoch) : null;
++  badgeRubbing.frame(badgeSite ? { planetId: badgeSite.planetId, visitEpoch } : null);
 +  const stampVisible = !!stampScope && !flight?.active && !photoPaused && !overview && !colony?.paused &&
 +    !worldGuide.talking && !document.querySelector('dialog[open]') && !homeInterior?.active && !homeInterior?.preparing;
 +  courtyardStampCard.frame(stampScope, stampVisible && garden && groundWorld && standing ? {
@@ -1587,7 +1606,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    if(graphicsLost)return;
    if(qualityApplyPending&&!photoMode?.capturing)resize();
    observeQualityFrame(now-previous,{ready:!!walker&&!worldPending&&!homeInterior?.preparing,foreground:!document.hidden,paused:photoPaused||homeTransition||!!document.querySelector('dialog[open]')||document.body.matches('.workshop-open,.shipyard-open,.history-open,.terrain-workshop-open')});
-@@ -779,7 +884,7 @@ function animate(now:number) {
+@@ -779,7 +903,7 @@ function animate(now:number) {
    // A rejected isolated pose must not let unrendered motion reach the save
    // timer. Only this synchronous frame's new movement can be rolled back.
    if(groundWorld&&standing){
@@ -1596,7 +1615,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
        physicsClock=Math.min(.05,physicsClock+dt);
        while(physicsClock>=FIXED_STEP&&motionPending.length<MAX_PATH_STEPS){
          physicsClock-=FIXED_STEP;const before=standing;
-@@ -799,6 +904,16 @@ function animate(now:number) {
+@@ -799,6 +923,16 @@ function animate(now:number) {
    destinationRing.visible=!!target;
    const feet=walker.up.clone().multiplyScalar(standing?.radius??groundPose(walker.up.toArray() as Vec3,groundField()).radius);
    player.root.position.copy(feet).addScaledVector(walker.up,.018);player.root.quaternion.copy(surfaceOrientation(walker.up,walker.facing));player.animate(elapsed,walker.velocity.length()*(standing?.radius??groundRadius())/RADIUS,reduced,0,standing?.grounded??true);
@@ -1613,7 +1632,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    const fov=activeRadius>20&&!overview?(innerWidth<600?62:54):activePlanet==='hub'?(innerWidth<600?65:55):(innerWidth<600&&!overview?58:48);if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
    const renderUp=surfaceNormal(walker.up);
    const hub=activePlanet==='hub',phone=innerWidth<600;
-@@ -871,7 +986,7 @@ function animate(now:number) {
+@@ -871,7 +1005,7 @@ function animate(now:number) {
      }else{
        const probe=(start:T.Vector3,end:T.Vector3)=>groundWorld?.cameraDistance(start,end,.06)??start.distanceTo(end);
        const pose=legacyOutdoorCameraPose(walker,phone,groundRadius(),feet,renderUp,cameraPitch,probe);
@@ -1622,7 +1641,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
        // Retain the baseline hub/craft geometry checks alongside static proxies.
        const shortenAgainst=(root:T.Object3D)=>{
          const offset=pose.position.clone().sub(headPoint),length=offset.length();
-@@ -908,11 +1023,14 @@ function animate(now:number) {
+@@ -908,11 +1042,14 @@ function animate(now:number) {
    fitGroundSunShadowDepth(sun);
    if('setSunDirection' in world)world.setSunDirection(sun.position.clone().sub(sun.target.position).normalize().toArray() as Vec3);
    const cutawayFrame=cameraLocalExceptionB&&!overview?committedCutawayFrame:activeTownCutaway&&groundWorld?activeTownCutaway.update({world:groundWorld,camera,feet,up:renderUp,dt,enabled:cameraCutawayB&&!overview,diagnostics:measureCamera}):null;
@@ -1637,7 +1656,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    // Opt-in, atomic evidence from this rendered frame. Reading this snapshot can
    // never move the player, steer the camera, or write a saved position.
    if(measureCamera)renderer.domElement.dataset.cameraFrame=JSON.stringify({
-@@ -964,7 +1082,18 @@ function animate(now:number) {
+@@ -964,7 +1101,18 @@ function animate(now:number) {
      nearResident=!scenePaused&&standing?.grounded&&!near&&!nearDock&&!homeControls?.canEnter&&!teleportStations?.canUse?residents?.nearest(walker.up.toArray() as Vec3,standing.radius)??null:null;
      renderer.domElement.dataset.nearResident=nearResident?.id??'';
      if(speakingResident){if(scenePaused||nearResident?.id!==speakingResident.id)closeResidentConversation();else renderResidentConversation();}
@@ -1657,7 +1676,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
      if(near){delete action.dataset.residentPrompt;setHTML(action, (state.quest==='available'&&near==='mica'?'Collect the parcel':state.quest==='carrying'&&near==='sol'?'Deliver to Sol':`Talk to ${NPCS[near].name}`)+' <kbd>E</kbd>');setText($('nearby'), near==='mica'?'A little sunshine, ready to go.':'Something’s waiting to grow.');}
      else if(nearResident){
        const language=document.documentElement.lang.startsWith('zh')?'zh':'en';
-@@ -976,6 +1105,24 @@ function animate(now:number) {
+@@ -976,6 +1124,24 @@ function animate(now:number) {
          setText($('nearby'),`${language==='zh'?'小镇居民':'Village resident'} · ${nearResident.role[language]} · ${nearResident.place[language]}`,true);
        }
      }
@@ -1682,7 +1701,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
      else{delete action.dataset.residentPrompt;setText($('nearby'), '');}
      if(state.quest!=='delivered') {
        const destination=new T.Vector3(...NPCS[state.quest==='available'?'mica':'sol'].position);
-@@ -1011,7 +1158,8 @@ function ensureColony() {
+@@ -1011,7 +1177,8 @@ function ensureColony() {
        if(!online)throw new Error('Offline · retrying');
        return await serial(async()=>{const next=await request<Universe>(route,body);colony?.accept(next);return next;});
      }finally{homeTransition=false;}
@@ -1692,7 +1711,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    homeSetup=new HomeSetup({preview:planetId=>serial(()=>request<import('../shared/home-setup.ts').HomeSetupPreview>('home/setup/preview',{planetId})),confirm:body=>serial(()=>request<Universe>('home/setup/confirm',body)),apply:next=>colony?.accept(next),ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},notice});
    teleportStations=new TeleportStations({findShip:()=>worldGuide.findShip(),
      teleport:async(planetId,requestId)=>{
-@@ -1030,15 +1178,17 @@ function ensureColony() {
+@@ -1030,15 +1197,17 @@ function ensureColony() {
      confirm:body=>serial(()=>request<Universe>('teleport/station/confirm',body)),
      ghost:addition=>{colony?.previewHome(addition);if(addition){overview=true;setAttribute($('view-mode'),'aria-label','Walking view');setHTML($('view-mode'),'↗ <span>Walking view</span>');}},
      apply:next=>{if(colony?.universe!==next)colony?.accept(next);},notice});
@@ -1712,7 +1731,7 @@ index 0639a7b2e636be2963ca2599618308f12632025a..d43b985e52035a813df91d78cdf07a8e
    });
    mountOnboarding({findShip:()=>worldGuide.findShip(),read:()=>colony?.universe?{universe:colony.universe,mode:state.flight.mode,building:colony.building,nearDock,online:online&&colony.syncing}:null});
    tutorial=mountTutorial({read:tutorialContext,retryHome:async()=>{const next=await serial(()=>request<PlayerState>('arrival/retry',{}));accept(next);tutorial?.frame(tutorialContext());}});
-@@ -1059,12 +1209,36 @@ photoMode=new PhotoMode({renderer,
+@@ -1059,12 +1228,36 @@ photoMode=new PhotoMode({renderer,
        const bearing=camera.position.clone().normalize();view.position.copy(bearing.multiplyScalar(distance));view.up.copy(walker.north);view.lookAt(target);
      }
      view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -2778,7 +2797,7 @@ index f533e71cfc73d2be94e83498c99214dc9d9a3057..479e67a0d45fd7307d2ef6675d52340e
    }};
  }
 diff --git a/src/server/index.ts b/src/server/index.ts
-index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e39f57e201 100644
+index 9321f714cc1187e76b4445145ff9a6722db64e26..4eea6361c3cb619f89cbbcc2a024ee46d5974a05 100644
 --- a/src/server/index.ts
 +++ b/src/server/index.ts
 @@ -1,7 +1,7 @@
@@ -2790,7 +2809,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
  import { marked } from 'marked';
  import { BLUEPRINT_BODY_LIMIT } from '../shared/blueprints.ts';
  import { presenceStore } from './presence.ts';
-@@ -12,7 +12,14 @@ import { workerScript } from './worker-script.ts';
+@@ -12,7 +12,17 @@ import { workerScript } from './worker-script.ts';
  import { createGuideHelp } from './guide-help.ts';
  import {GuideLedger,createGuideAI,GuideAIError} from './guide-ai.ts';
  import {guideConfiguration} from './guide-config.ts';
@@ -2801,15 +2820,19 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
 +import {planetResidents} from './planet-residents.ts';
 +import {jsonBody,residentSettings} from './resident-http.ts';
  import { businessLog } from './business-log.ts';
++import { doorBadgeRubbings } from './door-badge-rubbings.ts';
++import type { DoorBadgeRubbingPreview, DoorBadgeRubbingVisit } from '../shared/door-badge-rubbing.ts';
++
 +import { courtyardCardVisit, courtyardStampCollection, requireCourtyardCardVisit, requireOwnStampAlbum } from './courtyard-stamp-collection.ts';
  
  const homeSample=process.env.HOME_SAMPLE==='1';
  const samplePort=Number(process.env.HOME_SAMPLE_PORT??8126);
-@@ -25,6 +32,13 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
+@@ -25,6 +35,14 @@ if(homeSample&&!store.homeSample){store.close();throw new Error('HOME_SAMPLE ref
  const cookieName=homeSample?(samplePort===8126?'little_home_sample':`little_home_sample_p${samplePort}`):'little_post';
  if (store.migrationBackup) console.log(`Before migration, saved a consistent backup: ${store.migrationBackup}`);
  const audit=businessLog(databasePath);
 +const residentSources=planetResidents(store.db);
++const badgeRubbings = doorBadgeRubbings(store.db);
 +const stampCards = courtyardStampCollection(store.db);
 +const appResidentLinks=appResidents(store.db,residentSources);
 +const friendsAuthority=friendsIdentity(readFriendsOrigins(databasePath,process.env));
@@ -2819,7 +2842,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
  const guideHelp=createGuideHelp();
  // Default off; production requires explicit approval configuration and the transferred ledger.
  const aiConfig=guideConfiguration(process.env);
-@@ -53,25 +67,153 @@ const server = createServer(async (req, res) => {
+@@ -53,25 +71,190 @@ const server = createServer(async (req, res) => {
    try {
      const url = new URL(req.url ?? '/', 'http://localhost');
      if (url.pathname === '/healthz') { send(200, { ok: true, profile:homeSample?'home-sample':store.integratedWorld?'integrated':'legacy-test' }); return; }
@@ -2956,6 +2979,43 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
 +        if (friendsWorld.resolve(cookieDigest) !== id || friendsWorld.visitCheck(id, cookieDigest, planetId)?.access !== access)
 +          throw new RequestError(401, 'Reload to reconnect your visit.');
 +      };
++      const visitBadgeRubbing = (visit: DoorBadgeRubbingVisit, expected?: string): DoorBadgeRubbingPreview => {
++        const writing = expected !== undefined;
++        if (writing) store.db.exec('BEGIN IMMEDIATE');
++        try {
++          const { key, planetName, badgeRevision } = store.doorBadgeRubbing(id, visit);
++          const version = createHash('sha256').update(JSON.stringify([cookieDigest, key, badgeRevision])).digest('hex');
++          const current = { planetId: key.planetId, planetName, badge: key.badge };
++          if (writing) {
++            if (version !== expected) throw new RequestError(409, 'The door badge changed. Look at it again.');
++            badgeRubbings.keep(id, current);
++          }
++          const result = { current, version, saved: badgeRubbings.forPlanet(id, visit.planetId) };
++          if (writing) store.db.exec('COMMIT');
++          return result;
++        } catch (error) {
++          if (writing && store.db.isTransaction) store.db.exec('ROLLBACK');
++          throw error;
++        }
++      };
++      if (url.pathname === '/api/home/door-badge-rubbings' && req.method === 'GET') {
++        auditRoute=undefined;
++        if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your study.');
++        if (url.search) throw new RequestError(400, 'The album only shows your own cards.');
++        requireOwnStampAlbum(store.state(id));
++        send(200, badgeRubbings.album(id)); return;
++      }
++      if (url.pathname === '/api/courtyard/door-badge-rubbing' && req.method === 'GET') {
++        auditRoute=undefined;
++        if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
++        const params = url.searchParams, epoch = params.get('visitEpoch');
++        if (params.size !== 2 || !params.has('planetId') || !epoch || !/^\d+$/.test(epoch))
++          throw new RequestError(400, 'Choose the current courtyard visit.');
++        const visit = courtyardCardVisit(params.get('planetId'), Number(epoch));
++        requireCourtyardCardVisit(store.state(id), visit);
++        await requireFriendDestination(visit.planetId);
++        send(200, visitBadgeRubbing(visit)); return;
++      }
 +      if (url.pathname === '/api/home/stamp-album' && req.method === 'GET') {
 +        auditRoute=undefined;
 +        if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your study.');
@@ -2978,7 +3038,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
        }
        if (url.pathname === '/api/blueprints' && req.method === 'GET') {
          if (!id || !store.has(id)) throw new RequestError(401, 'Reload to reconnect your visit.');
-@@ -95,12 +237,13 @@ const server = createServer(async (req, res) => {
+@@ -95,12 +278,13 @@ const server = createServer(async (req, res) => {
        if (!rate || now - rate.start > 10_000) limits.set(id, { start: now, count: 1 });
        else if (++rate.count > 90) throw new RequestError(429, 'A little too fast. Try again in a moment.');
        const bodyLimit = ['/api/blueprints/save','/api/home/save'].includes(url.pathname) ? BLUEPRINT_BODY_LIMIT : 2048;
@@ -2998,7 +3058,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
        auditContext=url.pathname.startsWith('/api/guide/')?{}:body;
        if(!['/api/appearance','/api/arrival/retry'].includes(url.pathname))store.requireAppearance(id);
        if(url.pathname==='/api/guide/ask'){
-@@ -119,6 +262,9 @@ const server = createServer(async (req, res) => {
+@@ -119,6 +303,9 @@ const server = createServer(async (req, res) => {
        else if(url.pathname==='/api/home/move')send(200,store.moveHome(id,body));
        else if(url.pathname==='/api/home/exit'){const result=store.exitHome(id,body);presence.leave(id);send(200,result);}
        else if(url.pathname==='/api/home/save')send(200,store.saveHome(id,body));
@@ -3008,13 +3068,25 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
        else if(url.pathname==='/api/home/door')send(200,store.setHomeDoor(id,body));
        else if(url.pathname==='/api/home/paths/preview')send(200,store.previewHomePaths(id,body));
        else if(url.pathname==='/api/home/paths/apply')send(200,store.applyHomePaths(id,body));
-@@ -139,12 +285,24 @@ const server = createServer(async (req, res) => {
+@@ -139,12 +326,36 @@ const server = createServer(async (req, res) => {
        else if (url.pathname === '/api/interact') send(200, store.interact(id, body.action));
        else if(url.pathname==='/api/trip/start'){const u=store.startTrip(id,body);presence.leave(id);send(200,u);}
        else if(url.pathname==='/api/trip/change')send(200,store.changeTrip(id,body));
 -      else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);send(200,u);}
 +      else if(url.pathname==='/api/trip/finish'){const u=await store.finishTrip(id,body);presence.leave(id);await sendVisitUniverse(u);}
        else if(url.pathname==='/api/planets/rename')send(200,store.renamePlanet(id,body));
++      else if (url.pathname === '/api/courtyard/door-badge-rubbing') {
++        auditRoute=undefined;
++        if (!req.headers.origin || req.headers['sec-fetch-site']==='cross-site' || url.search)
++          throw new RequestError(403, 'Use this world’s own page.');
++        const { planetId, visitEpoch, version } = body;
++        if (Object.keys(body).length !== 3 || typeof version !== 'string' || !/^[a-f0-9]{64}$/.test(version))
++          throw new RequestError(400, 'Look at the current door badge first.');
++        const visit = courtyardCardVisit(planetId, visitEpoch);
++        requireCourtyardCardVisit(store.state(id), visit);
++        await requireFriendDestination(visit.planetId);
++        send(200, visitBadgeRubbing(visit, version));
++      }
 +      else if (url.pathname === '/api/courtyard/stamp-card') {
 +        const { planetId, visitEpoch, action, stamps } = body;
 +        if (Object.keys(body).length !== 4 || (action !== 'collect' && action !== 'continue') ||
@@ -3036,7 +3108,7 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
        else if (url.pathname === '/api/teleport/station/preview') send(200,store.previewStation(id,body));
        else if (url.pathname === '/api/teleport/station/confirm') send(200,store.confirmStation(id,body));
        else if (url.pathname === '/api/planets/visit') throw new RequestError(410,'Board your ship and fly to the planet before landing.');
-@@ -168,7 +326,7 @@ const server = createServer(async (req, res) => {
+@@ -168,7 +379,7 @@ const server = createServer(async (req, res) => {
        type = 'text/html; charset=utf-8';
      } else {
        const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
@@ -3046,10 +3118,20 @@ index 9321f714cc1187e76b4445145ff9a6722db64e26..7da14950e131dc103f5f98bc6f14c3e3
        type = ({ '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg','.webp':'image/webp','.ktx2':'image/ktx2','.wasm':'application/wasm','.json':'application/json','.hdr':'image/vnd.radiance' } as Record<string, string>)[extname(path)] ?? 'application/octet-stream';
      }
 diff --git a/src/server/store.ts b/src/server/store.ts
-index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175ac06e733c 100644
+index 78de6a6d453b52aed7cc7567eac6ad492a624c92..ff00bf4add91f0938a3893328cbb0dba72ecf87b 100644
 --- a/src/server/store.ts
 +++ b/src/server/store.ts
-@@ -185,7 +185,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -2,6 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
+ import { encodeBlueprint, hashInput } from '../shared/blueprint-codec.ts';
+ import { canonicalJson } from '../assets/claude-geometry/core/doc.ts';
+ import { MAX_BLUEPRINTS } from '../shared/blueprints.ts';
++import { doorBadgeRubbingSite } from '../shared/door-badge-rubbing-site.ts';
++import { requireCourtyardCardVisit } from './courtyard-stamp-collection.ts';
++import type { DoorBadgeRubbingVisit } from '../shared/door-badge-rubbing.ts';
+ import { homeStore, migrateHomes } from './home.ts';
+ import { HOME_SAMPLE_RADIUS } from '../shared/home.ts';
+ import { planetCenter, spaceDistance } from '../shared/flight.ts';
+@@ -185,7 +188,10 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
        migrateArrivalHomes(db);
        migrateTrips(db);
        migrateAppearances(db);
@@ -3061,7 +3143,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175a
      } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
    }
    const history = historyStore(db);
-@@ -208,6 +211,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -208,6 +214,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      if (!result) throw new RequestError(401, 'Your session has expired. Reload to start a new visit.');
      return result;
    };
@@ -3073,7 +3155,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175a
    const state = (id: string): PlayerState => {
      row(id);const flight=navigation.flight(id);
      const location=homeEnabled?homes.location(id):undefined;
-@@ -291,7 +299,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -291,7 +302,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
        if(heavy)void prepareStation(heavy,owned).catch(error=>console.error('Station preparation deferred:',error instanceof Error?error.message:error));
        else teleport.ensureHomeStation(owned);
      }
@@ -3086,7 +3168,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175a
    };
    return {
      db, state, universe, migrationBackup, homeSample, integratedWorld,
-@@ -328,14 +340,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -328,14 +343,18 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      flight(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.checkpoint(id,clean,now);return state(id);},
      land(id:string,body:Record<string,unknown>,now=Date.now()){homes.exterior(id,body.visitEpoch);const clean={...body};delete clean.visitEpoch;navigation.land(id,clean,now);homes.movedExterior(id);return universe(id);},
      has: (id: string) => Boolean(db.prepare('SELECT id FROM players WHERE id=?').get(id)),
@@ -3107,7 +3189,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175a
        }catch(error){if(db.isTransaction)db.exec('ROLLBACK');throw error;}
        return state(id);
      },
-@@ -360,8 +376,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -360,8 +379,11 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      /** The same arrival as `create`, with the home layout and its station search run on the worker so other
       * players are answered meanwhile. Every write still happens here, after re-checking what was read: the
       * home, its owner and the new player's place at the door in one transaction, then the station. */
@@ -3121,7 +3203,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175a
        const planetId=planets.freshHomePlanet(reservedHomes);reservedHomes.add(planetId);
        try{
          const inputs=homes.generationInputs(planetId,id);
-@@ -374,12 +393,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -374,12 +396,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
            const door=homes.door(planetId);
            if(!door)throw new RequestError(409,'The sample home could not be prepared.');
            db.prepare('UPDATE players SET planet_id=?,position=? WHERE id=?').run(planetId,JSON.stringify(door.position),id);
@@ -3136,7 +3218,7 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175a
              throw new RequestError(503,BUSY);
            }
            throw error;
-@@ -447,6 +466,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -447,6 +469,13 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
        homes.movedExterior(id);return universe(id);
      },
      terrain(id:string,body:Record<string,unknown>){row(id);homes.requireOutside(id);planets.terrain(id,body);return universe(id);},
@@ -3150,12 +3232,27 @@ index 78de6a6d453b52aed7cc7567eac6ad492a624c92..9f35fb9a39a9dc995e5a1a6272ff175a
      claim(id: string, planetId: unknown) { row(id); planets.claim(id, planetId); if(homeSample){homes.initialise(String(planetId));teleport.ensureHomeStation(String(planetId));} return universe(id); },
      createObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.create(id, body); return universe(id); },
      updateObject(id: string, body: Record<string, unknown>) { row(id); homes.requireOutside(id); planets.update(id, body); return universe(id); },
-@@ -455,6 +481,12 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
+@@ -455,6 +484,27 @@ export function openStore(path: string, options: { homeSample?: boolean; integra
      moveHome(id:string,body:Record<string,unknown>,now=Date.now()){row(id);homes.move(id,body,now);return state(id);},
      exitHome(id:string,body:Record<string,unknown>,now=Date.now()){row(id);homes.exit(id,body,now);return universe(id);},
      setHomeDoor(id:string,body:Record<string,unknown>){row(id);homes.setDoor(id,body);return universe(id);},
 +    homeRoofFinish: homes.roofFinish,
 +    homeExterior: homes.homeExterior,
++    doorBadgeRubbing(id: string, visit: DoorBadgeRubbingVisit) {
++      const player = state(id);
++      requireCourtyardCardVisit(player, visit);
++      const view = planets.view(id, visit.planetId);
++      const homeExterior = homes.homeExterior(visit.planetId);
++      if (view.mine || !homeExterior?.doorBadge || !player.ground)
++        throw new RequestError(409, 'No door badge is available here.');
++      const geometry = ground.world(visit.planetId);
++      const site = doorBadgeRubbingSite({ ...view, homeExterior }, geometry,
++        { ...player.ground, position: player.position }, visit.visitEpoch);
++      const badgeRevision = homes.doorBadgeRevision(visit.planetId);
++      if (!site || badgeRevision === undefined) throw new RequestError(409, 'Stand beside the current door badge.');
++      const { planetName, ...key } = site;
++      return { key, planetName, badgeRevision };
++    },
 +    setHomeExteriorFinish(id: string, kind: 'wall' | 'door-badge', body: Record<string, unknown>) {
 +      row(id); homes.setExteriorFinish(id, kind, body); return universe(id);
 +    },
@@ -3746,7 +3843,7 @@ index 71ed1e58ea13b6067bfea1fced2e5eb87b00235b..9e48801c480f5ae609e7ae7d69e465ef
 +      expect(s.db.prepare('PRAGMA user_version').get()!.user_version).toBe(STORE_SCHEMA);
        expect(s.db.prepare('PRAGMA integrity_check').get()!.integrity_check).toBe('ok');
 diff --git a/src/server/arrival-homes.ts b/src/server/arrival-homes.ts
-index 441fc1bc451816aea76c162e01ff16dc58e762d7..8f7e997e14a2631427975d2cbaabe36e20eab661 100644
+index 441fc1bc451816aea76c162e01ff16dc58e762d7..5eeb60fa64ca347ade4474f8fb4611e28c13ec90 100644
 --- a/src/server/arrival-homes.ts
 +++ b/src/server/arrival-homes.ts
 @@ -3,7 +3,7 @@ import type {ArrivalState} from '../shared/world.ts';
@@ -3754,7 +3851,7 @@ index 441fc1bc451816aea76c162e01ff16dc58e762d7..8f7e997e14a2631427975d2cbaabe36e
  import {RequestError} from './errors.ts';
  
 -export const STORE_SCHEMA=20;
-+export const STORE_SCHEMA=24;
++export const STORE_SCHEMA=25;
  export function migrateArrivalHomes(db:DatabaseSync){
    db.exec(`CREATE TABLE IF NOT EXISTS home_preparations (
      player_id TEXT PRIMARY KEY REFERENCES players(id),
@@ -4235,7 +4332,7 @@ index 316bbc899113d6e694098c81970d2f9e7b0bda4b..1a8eb28ef11712cb467be4fb581eb041
 +    door ? [door.buildingId, door.partNumber] : null, includeExteriorAppearance ? [planet.homeRoofFinish, planet.homeExterior] : null]);
  }
 diff --git a/src/server/home.ts b/src/server/home.ts
-index 6e607660c4d20c80b38389f1b3f0a462f7077709..d18c37208ad6889a1eea340f9265c378a7385857 100644
+index 6e607660c4d20c80b38389f1b3f0a462f7077709..8093138362688d94ccd604bd640e17f4888cfce5 100644
 --- a/src/server/home.ts
 +++ b/src/server/home.ts
 @@ -1,11 +1,14 @@
@@ -4255,7 +4352,7 @@ index 6e607660c4d20c80b38389f1b3f0a462f7077709..d18c37208ad6889a1eea340f9265c378
  import type { HomeDescriptor, HomeInfrastructureManifest, HomeInterior, HomeItem, HomeLocation, HomeRoom } from '../shared/home.ts';
  import { distance } from '../shared/world.ts';
  import type { Vec3 } from '../shared/world.ts';
-@@ -52,11 +55,17 @@ export function migrateHomes(db: DatabaseSync) {
+@@ -52,11 +55,19 @@ export function migrateHomes(db: DatabaseSync) {
      CREATE TRIGGER IF NOT EXISTS home_building_no_delete BEFORE DELETE ON planet_objects
        WHEN EXISTS(SELECT 1 FROM home_interiors WHERE building_id=OLD.id)
        BEGIN SELECT RAISE(ABORT,'The home contains a persistent interior and cannot be deleted'); END;`);
@@ -4265,16 +4362,18 @@ index 6e607660c4d20c80b38389f1b3f0a462f7077709..d18c37208ad6889a1eea340f9265c378
 +    db.exec("ALTER TABLE home_interiors ADD COLUMN wall_finish TEXT CHECK(wall_finish IN ('sage','ochre'))");
 +  if (!db.prepare('PRAGMA table_info(home_interiors)').all().some(column => column.name === 'door_badge'))
 +    db.exec("ALTER TABLE home_interiors ADD COLUMN door_badge TEXT CHECK(door_badge IN ('leaf-branch','open-book'))");
++  if (!db.prepare('PRAGMA table_info(home_interiors)').all().some(column => column.name === 'door_badge_revision'))
++    db.exec('ALTER TABLE home_interiors ADD COLUMN door_badge_revision INTEGER NOT NULL DEFAULT 0 CHECK(door_badge_revision>=0)');
  }
  const strict=(body:Record<string,unknown>,keys:string[])=>{if(Object.keys(body).some(k=>!keys.includes(k)))throw new RequestError(400,'Unexpected home field.');};
  const vec=(v:unknown):v is Vec3=>Array.isArray(v)&&v.length===3&&v.every(n=>typeof n==='number'&&Number.isFinite(n));
  const digest=(v:unknown)=>createHash('sha256').update(canonicalJson(v)).digest('hex');
 -interface HomeRow { door_part:number;planet_id:string;building_id:string;interior_id:string;document:string;variant:HomeDescriptor['variant'] }
-+interface HomeRow { door_part:number;planet_id:string;building_id:string;interior_id:string;document:string;roof_finish:string|null;wall_finish:string|null;door_badge:string|null;variant:HomeDescriptor['variant'] }
++interface HomeRow { door_part:number;planet_id:string;building_id:string;interior_id:string;document:string;roof_finish:string|null;wall_finish:string|null;door_badge:string|null;door_badge_revision:number;variant:HomeDescriptor['variant'] }
  /** Everything generateHomeManifest reads for one planet. */
  export interface HomeGenerationInputs { radius:number; seed:number; environment:string|null }
  /** Stable for this planet and generator version; independent of browser identity. */
-@@ -100,9 +109,28 @@ export function homeStore(db:DatabaseSync,planets:ReturnType<typeof planetStore>
+@@ -100,9 +111,28 @@ export function homeStore(db:DatabaseSync,planets:ReturnType<typeof planetStore>
      }
      return occupiedExteriorDoor(db,h.planet_id,entry.frame!,()=>new GroundWorld(planets.view('',h.planet_id)),entry.partId);
    }
@@ -4304,12 +4403,13 @@ index 6e607660c4d20c80b38389f1b3f0a462f7077709..d18c37208ad6889a1eea340f9265c378
    }
    function content(bp:Blueprint) {const value=canonicalJson(hashInput(bp.parts)),hash=createHash('sha256').update(value).digest('hex');db.prepare('INSERT OR IGNORE INTO blueprint_contents(hash,content) VALUES(?,?)').run(hash,value);return hash;}
    /** What generating this planet's home would read, or null when it must not get one: a manifest is a
-@@ -212,6 +240,63 @@ export function homeStore(db:DatabaseSync,planets:ReturnType<typeof planetStore>
+@@ -212,6 +242,64 @@ export function homeStore(db:DatabaseSync,planets:ReturnType<typeof planetStore>
        db.prepare('UPDATE home_interiors SET document=? WHERE planet_id=?').run(JSON.stringify({...old,doorOpen:body.open,doorVersion:old.doorVersion+1}),h.planet_id);
        db.prepare('UPDATE planets SET revision=revision+1 WHERE id=?').run(h.planet_id);changed(h.planet_id);
      });},
 +    roofFinish,
 +    homeExterior,
++    doorBadgeRevision: (planetId: string) => home(planetId)?.door_badge_revision,
 +    setExteriorFinish(id: string, kind: 'wall' | 'door-badge', body: Record<string, unknown>) {
 +      strict(body, ['buildingId', 'visitEpoch', 'expectedVersion', 'expectedFinish', 'finish']);
 +      if (!enabled) throw new RequestError(404, 'Home sample is unavailable.');
@@ -4335,7 +4435,7 @@ index 6e607660c4d20c80b38389f1b3f0a462f7077709..d18c37208ad6889a1eea340f9265c378
 +          throw new RequestError(409, wall ? 'This home has no exterior plaster.' : 'This door has no suitable badge mount.');
 +        if (saved === finish) return;
 +        db.prepare(wall ? 'UPDATE home_interiors SET wall_finish=? WHERE building_id=?'
-+          : 'UPDATE home_interiors SET door_badge=? WHERE building_id=?').run(finish, h.building_id);
++          : 'UPDATE home_interiors SET door_badge=?,door_badge_revision=door_badge_revision+1 WHERE building_id=?').run(finish, h.building_id);
 +        changed(h.planet_id);
 +      });
 +    },

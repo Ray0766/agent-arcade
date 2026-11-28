@@ -2,9 +2,9 @@
   "repository": "https://github.com/comp4020-agentic-coding-studio/comp4020-final-ray0766.git",
   "baseCommit": "809aa0dee5df7ae4e3036f67f44da9a7ca31d153",
   "baseTree": "b1d8fe7a5edb9a16cc06b27ce1cf01973e5b56c7",
-  "worldRevision": "c72999f19a103d23433304782263ee8cdfc62477",
-  "worldTree": "9b032f073d360c7e32265818c0158ba5e60139e3",
-  "patchSHA256": "0ec7b5719ca395f56894c8c442e1854c12f77aeb757dbbcc20066ad73b58ffbc",
+  "worldRevision": "22cc30c728a821dd9a233143efc255f39d94c998",
+  "worldTree": "d8736edc5f0a2737407a4114cd7708b7e5e677da",
+  "patchSHA256": "510a79fb5d89fc77f1b5983f09592fee2419c9f6ac326ec7566be3c3722808f6",
   "windowsPublisherSHA256": {
     "publish-residents.py": "e8ad43f595f85f9ca48944a2b776aedebc0194bd9b1c06009c948fe7048230e5",
     "resident_portraits.py": "54d071eae342c66140d412a60567ffb532726ceef7b9b882884638db780c327d"
@@ -577,8 +577,8 @@
     {
       "path": "src/client/courtyard-stamp-api.ts",
       "action": "A",
-      "blob": "e5d1ba31fbefeb773b7f88d152be2bd6c60fb372",
-      "sha256": "14cb574247c0a2cb50e2e5124130f3b3be7d3c9ee32760c68d42caca3976fa27"
+      "blob": "c6fbbdb1037c1daa8900fc3a0b55639efdadf2b3",
+      "sha256": "2242db73cb603b547026801b0dc7cb43ea8f3629a268cd5e6f546426a30dfb72"
     },
     {
       "path": "src/client/courtyard-stamp-card.css",
@@ -591,6 +591,18 @@
       "action": "A",
       "blob": "3eda55b57687d04fec18acbe837fab87d9ae64ee",
       "sha256": "a8356e6e93c13fd5810f0628b8b5d9b38daeca4b73402633c4cf149c276a1852"
+    },
+    {
+      "path": "src/client/door-badge-rubbing.css",
+      "action": "A",
+      "blob": "fe030f241aa5f28fd36fa63c5a1efd5bbfd131dd",
+      "sha256": "bef6a2af80f3af1c401e953462997b4734d4f7dfd966475fdbdfe5645b0873bb"
+    },
+    {
+      "path": "src/client/door-badge-rubbing.ts",
+      "action": "A",
+      "blob": "acae2a159dff5baf49ef10aaa1362af3f4953cc6",
+      "sha256": "f2bc69759e89cf405a26b6dd43492057d5be864e78804e1cf65099fd8755fbcb"
     },
     {
       "action": "M",
@@ -655,14 +667,14 @@
     {
       "path": "src/client/home-stamp-album.css",
       "action": "A",
-      "blob": "8911e087a434ddfd0cd9e16cfdd50cca961dbc53",
-      "sha256": "ae16b7d1371584364b37e9111bd95bfb61cda40702c5d9c65ed42259712cb291"
+      "blob": "09c24bc142e9e884f4bc02c763842d27bab7cdd1",
+      "sha256": "6961d408763a8184b2a34a2acfe16f93ed620230ee491496e08962fc2a03d66e"
     },
     {
       "path": "src/client/home-stamp-album.ts",
       "action": "A",
-      "blob": "e469f41255f730851592e08444969388ee37ced9",
-      "sha256": "4f0e877fbe1527909d38df056bec1f4426c9d9ca53bc623e8837d09684f8b125"
+      "blob": "61436d69377b6a0041834992b16644158d63d072",
+      "sha256": "6b2575cae4bcdad3e798b4f3f2b3b69e03fda8b1c8e975637f3a26c5ca4cbeff"
     },
     {
       "action": "M",
@@ -679,8 +691,8 @@
     {
       "action": "M",
       "path": "src/client/main.ts",
-      "blob": "d43b985e52035a813df91d78cdf07a8e6b29c458",
-      "sha256": "38e2fe6e91de9dbb4d80e64504db64938b3da8f0f04ad645b95a98c1e09ebff9"
+      "blob": "0666c8df11da5d57a2b6f94f13071380f2f97d2a",
+      "sha256": "357010ea27d5c4207ad74ada148be94f873783268a9ee0c130b4a5f5dd97691f"
     },
     {
       "action": "M",
@@ -841,8 +853,8 @@
     {
       "action": "M",
       "path": "src/server/arrival-homes.ts",
-      "blob": "8f7e997e14a2631427975d2cbaabe36e20eab661",
-      "sha256": "44bfca4e546667afe70b8072c1532cea461dc9238d4d17f2473ca7f0c0da8afa"
+      "blob": "5eeb60fa64ca347ade4474f8fb4611e28c13ec90",
+      "sha256": "78c11d6b1fbb18415c41d5c0e15029c0b89f16b4ef685c107075455f39af1a5e"
     },
     {
       "action": "M",
@@ -855,6 +867,12 @@
       "action": "A",
       "blob": "ffb53475245a050e48a7e8ce344c3a852bfcce8d",
       "sha256": "76a68301f6926f7896d327769dec468265fb03a35852d40bdde588e9de7e01e3"
+    },
+    {
+      "path": "src/server/door-badge-rubbings.ts",
+      "action": "A",
+      "blob": "1a92a6135f7b8fee1a5edb27184b6e78f1557c23",
+      "sha256": "2659344e3f1f61847a01535c3cec52a1b264172e99c8d03cc8a4c29905454b84"
     },
     {
       "action": "A",
@@ -871,14 +889,14 @@
     {
       "path": "src/server/home.ts",
       "action": "M",
-      "blob": "d18c37208ad6889a1eea340f9265c378a7385857",
-      "sha256": "ecefa4157a5b44f9aed9368a07ec9a7b196754287d4c663b4da8376446538cfe"
+      "blob": "8093138362688d94ccd604bd640e17f4888cfce5",
+      "sha256": "1d6927139c7a84cb1dae27107381fd6e97a1197c18c2a0e9974f662971580cc8"
     },
     {
       "action": "M",
       "path": "src/server/index.ts",
-      "blob": "7da14950e131dc103f5f98bc6f14c3e39f57e201",
-      "sha256": "15f1593b6d9470b3e63086aa5c45039850746b8e46b8100d4c33ed5b7fd0d747"
+      "blob": "4eea6361c3cb619f89cbbcc2a024ee46d5974a05",
+      "sha256": "a77023c470ce2c4aa11f9788529d57fce0b7294a12913f0b7938b2c40fce614f"
     },
     {
       "action": "A",
@@ -907,8 +925,8 @@
     {
       "action": "M",
       "path": "src/server/store.ts",
-      "blob": "9f35fb9a39a9dc995e5a1a6272ff175ac06e733c",
-      "sha256": "6b038ea16a0c57afdc52d7bebb229a8c7447f1dc1a97adc9bd0f8042e619c8ce"
+      "blob": "ff00bf4add91f0938a3893328cbb0dba72ecf87b",
+      "sha256": "b09ab4f53319c98736eae248820ee05b3ed42ca4bd84a1ccde0cbc8720406bf4"
     },
     {
       "action": "A",
@@ -921,6 +939,18 @@
       "action": "A",
       "blob": "5bb50ea82376d455c6c236ce47a0e3d2cc420517",
       "sha256": "cd07badfabbdee958dc4d65af9a7a8c7f91d791767408465bb43767156de139c"
+    },
+    {
+      "path": "src/shared/door-badge-rubbing-site.ts",
+      "action": "A",
+      "blob": "e3feda757d9442bda233e7173919ca13abcdb11a",
+      "sha256": "2ca7f4a73494bbd06d164275b4838935f4f02dbe4e4d345f1cc360102a0f13a2"
+    },
+    {
+      "path": "src/shared/door-badge-rubbing.ts",
+      "action": "A",
+      "blob": "29e4c71af577aca2cd87949206820133f7407673",
+      "sha256": "f1faa5d6b8445601f2763051ca3b97c4c871b82a8c1d1dc44a8d03d593371dc8"
     },
     {
       "path": "src/shared/home-door-badge.ts",
