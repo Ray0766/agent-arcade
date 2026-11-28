@@ -1,19 +1,41 @@
 import * as T from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { objectHeight, objectRadius, type PlacedObject } from '../shared/planets.ts';
+import { COURTYARD_PLANTINGS } from '../shared/courtyard-plantings.ts';
+import { STONE_BED } from '../assets/claude-geometry/blueprint/parts/home/bed.ts';
 import type { GroundWorld, GroundPose } from '../shared/physics/world.ts';
 import { aimWaterStream, buildWateringCan, WATER_COLOR, wateringCanMouth } from './watering-tool.ts';
 
 const POUR_MS = 1650;
-type Flower = { object: PlacedObject; model: T.Object3D };
+type Flower = { key: string; kind: 'pot' | 'cell'; object: PlacedObject; model: T.Object3D; anchor: T.Object3D };
 type Scene = { world: GroundWorld; pose: GroundPose; objects: readonly PlacedObject[];
   getModel(id: string): T.Object3D | undefined };
 const potHeight = (flower: Flower) => objectHeight(flower.object) * .42;
-const soil = (flower: Flower) => flower.model.localToWorld(new T.Vector3(0, potHeight(flower) * .9, 0));
+const soil = (flower: Flower) => flower.kind === 'cell'
+  ? flower.anchor.localToWorld(new T.Vector3(.18, STONE_BED.soil + .008, 0))
+  : flower.anchor.localToWorld(new T.Vector3(0, potHeight(flower) * .9, 0));
+const aboveSoil = (flower: Flower) => flower.anchor.localToWorld(new T.Vector3(.18, STONE_BED.soil + .15, 0));
 
-function alignWithPot(mesh: T.Object3D, flower: Flower, height: number, radius: number) {
-  mesh.position.copy(flower.model.localToWorld(new T.Vector3(0, height, 0)));
-  flower.model.getWorldQuaternion(mesh.quaternion);
+function alignWithFlower(mesh: T.Object3D, flower: Flower, height: number, radius: number) {
+  mesh.position.copy(flower.anchor.localToWorld(new T.Vector3(0, height, 0)));
+  flower.anchor.getWorldQuaternion(mesh.quaternion);
   mesh.scale.set(radius, 1, radius);
+}
+
+function sameFlower(left: Flower, right: Flower) {
+  return left.key === right.key && left.anchor === right.anchor && left.object.version === right.object.version;
+}
+
+function wetBedRim() {
+  const { half, thick, joint, soil, heights } = STONE_BED;
+  const run = 2 * half - thick - joint;
+  const strips = heights.map((height, index) => new T.PlaneGeometry(run - .025, thick * .69)
+    .rotateX(-Math.PI / 2)
+    .translate(-half + run / 2, height - soil - .003, -half + thick * .64)
+    .rotateY(-index * Math.PI / 2));
+  const rim = mergeGeometries(strips)!;
+  strips.forEach(strip => strip.dispose());
+  return rim;
 }
 
 export class VisitorWatering {
@@ -37,9 +59,18 @@ export class VisitorWatering {
   });
   private readonly stream = new T.Mesh(new T.CylinderGeometry(.5, .5, 1, 8),
     new T.MeshBasicMaterial({ color: WATER_COLOR }));
-  private readonly ring = new T.Mesh(new T.RingGeometry(.94, 1, 32).rotateX(-Math.PI / 2),
+  private readonly potRing = new T.RingGeometry(.94, 1, 32).rotateX(-Math.PI / 2);
+  private readonly bedRing = new T.RingGeometry(.94 * Math.SQRT2, Math.SQRT2, 4, 1, Math.PI / 4).rotateX(-Math.PI / 2);
+  private readonly ring = new T.Mesh<T.BufferGeometry, T.MeshBasicMaterial>(this.potRing,
     new T.MeshBasicMaterial({ color: '#ffdb84', side: T.DoubleSide }));
   private readonly wetGeometry = new T.CircleGeometry(1, 24).rotateX(-Math.PI / 2);
+  private readonly wetBedGeometry = new T.PlaneGeometry(
+    2 * (STONE_BED.half - STONE_BED.thick - .008), 2 * (STONE_BED.half - STONE_BED.thick - .008)).rotateX(-Math.PI / 2);
+  private readonly wetBedMaterial = new T.MeshStandardMaterial({ color: '#332724', roughness: .47 });
+  private readonly wetBedRim = wetBedRim();
+  private readonly wetRimMaterial = new T.MeshStandardMaterial({
+    color: '#746f5e', roughness: .52, opacity: .58, transparent: true, depthWrite: false,
+  });
   private readonly wetMaterial = new T.MeshStandardMaterial({ color: '#392b26', roughness: .32 });
 
   constructor(private readonly scene: T.Scene, private readonly panel: HTMLElement, leaveMouseLook: () => void,
@@ -63,7 +94,7 @@ export class VisitorWatering {
     scene.add(this.stream, this.ring);
   }
 
-  get canWaterHere() { return this.candidates.length > 0; }
+  get canWaterPotHere() { return this.candidates.some(flower => flower.kind === 'pot'); }
   get picking() { return this.choosing && this.started === null; }
 
   pick(x: number, y: number, camera: T.Camera, canvas: HTMLCanvasElement, world: GroundWorld,
@@ -80,12 +111,21 @@ export class VisitorWatering {
     if (!hit) return;
     let root: T.Object3D | null = hit.object;
     while (root && !models.includes(root)) root = root.parent;
-    const flower = this.candidates.find(item => item.model === root);
+    const flower = this.candidates.find(item => {
+      if (item.model !== root) return false;
+      if (item.kind === 'pot') return true;
+      // The stone and planting share the structure's merged meshes. Match the
+      // actual nearest surface hit to its own blueprint cell, never its sibling.
+      const local = item.anchor.worldToLocal(hit.point.clone());
+      return local.y > .025 && Math.abs(local.x) <= STONE_BED.half + .018 &&
+        Math.abs(local.z) <= STONE_BED.half + .018;
+    });
     if (!flower) return;
     const eye = camera.getWorldPosition(new T.Vector3());
     // The exact mesh ray handles the pot and its neighbours. Stop the coarse
     // physics ray short of the pot so its collision margin cannot mask the hit.
-    const end = hit.point.clone().addScaledVector(this.ray.ray.direction, -objectRadius(flower.object));
+    const margin = flower.kind === 'cell' ? STONE_BED.half + .10 : objectRadius(flower.object);
+    const end = hit.point.clone().addScaledVector(this.ray.ray.direction, -margin);
     if (world.cameraDistance(eye, end, .02) + .065 >= eye.distanceTo(end)) this.selected = flower;
   }
 
@@ -108,31 +148,47 @@ export class VisitorWatering {
     now: number, moving: boolean, reduced: boolean) {
     if (!context || !this.scope) return;
     for (const [id, { flower, mesh }] of this.wet) {
-      if (context.getModel(id) === flower.model && context.objects.some(object => object.id === id && object.version === flower.object.version)) continue;
+      if (context.getModel(flower.object.id) === flower.model &&
+          context.objects.some(object => object.id === flower.object.id && object.version === flower.object.version)) continue;
       mesh.removeFromParent();
       this.wet.delete(id);
     }
     const { world, pose } = context;
     const up = new T.Vector3(...pose.position);
-    const near = (object: PlacedObject) => up.angleTo(new T.Vector3(...object.position)) * world.baseRadius;
-    this.candidates = moving || world.blocked(pose) ? [] : context.objects.flatMap(object => {
-      if (object.kind !== 'flowers') return [];
-      const distance = near(object);
-      if (distance < .65 || distance > 1.75) return [];
+    const near = (position: T.Vector3) => up.angleTo(position) * world.baseRadius;
+    const eye = up.clone().multiplyScalar(pose.radius + .9);
+    this.candidates = moving || !pose.grounded || world.blocked(pose) ? [] : context.objects.flatMap(object => {
+      const pot = object.kind === 'flowers';
+      const bed = object.kind === 'structure' && object.blueprintHash === COURTYARD_PLANTINGS.bed.hash;
+      if ((!pot && !bed) || near(new T.Vector3(...object.position)) > (pot ? 1.75 : 2.55)) return [];
       const model = context.getModel(object.id);
       if (!model?.visible || !model.parent) return [];
-      const flower = { object, model };
-      const eye = up.clone().multiplyScalar(pose.radius + .9);
-      const aboveFlowers = new T.Vector3(...object.position).multiplyScalar(world.radius(object.position) + .72);
-      return world.cameraDistance(eye, aboveFlowers, .06) + .05 >= eye.distanceTo(aboveFlowers) ? [flower] : [];
+      if (pot) {
+        if (near(new T.Vector3(...object.position)) < .65) return [];
+        const aboveFlowers = new T.Vector3(...object.position).multiplyScalar(world.radius(object.position) + .72);
+        return world.cameraDistance(eye, aboveFlowers, .06) + .05 >= eye.distanceTo(aboveFlowers)
+          ? [{ key: object.id, kind: 'pot', object, model, anchor: model } satisfies Flower] : [];
+      }
+      return COURTYARD_PLANTINGS.bed.parts.flatMap(part => {
+        if (part.part !== 'garden.bed') return [];
+        const anchor = model.getObjectByName(`part:${part.n}`);
+        if (anchor?.userData.part !== part.part) return [];
+        const distance = near(anchor.getWorldPosition(new T.Vector3()));
+        if (distance < .65 || distance > 1.75) return [];
+        const flower: Flower = { key: `${object.id}:bed:${part.n}`, kind: 'cell', object, model, anchor };
+        const landing = aboveSoil(flower);
+        return world.cameraDistance(eye, landing, .02) + .05 >= eye.distanceTo(landing) ? [flower] : [];
+      });
     });
     const chosen = this.selected;
-    if (moving || !this.candidates.length || (chosen && !this.candidates.some(flower =>
-      flower.model === chosen.model && flower.object.version === chosen.object.version))) this.cancel();
+    if (moving || !this.candidates.length || (chosen && !this.candidates.some(flower => sameFlower(flower, chosen)))) this.cancel();
 
     if (this.selected) {
       const flower = this.selected;
-      alignWithPot(this.ring, flower, potHeight(flower) + .025, objectRadius(flower.object) * .99);
+      const bed = flower.kind === 'cell';
+      this.ring.geometry = bed ? this.bedRing : this.potRing;
+      alignWithFlower(this.ring, flower, bed ? Math.max(...STONE_BED.heights) + .026 : potHeight(flower) + .025,
+        bed ? STONE_BED.half : objectRadius(flower.object) * .99);
       this.ring.visible = true;
       if (this.started !== null) {
         const end = soil(flower);
@@ -141,13 +197,15 @@ export class VisitorWatering {
         const forearm = arm?.children.find(node => node instanceof T.Group && node.position.y === -.22);
         if (!arm || !forearm) this.cancel();
         else if (now - this.started >= POUR_MS) {
-          if (!this.wet.has(flower.object.id)) {
-            const mesh = new T.Mesh(this.wetGeometry, this.wetMaterial);
-            alignWithPot(mesh, flower, potHeight(flower) * .9 + .008, objectRadius(flower.object) * .735);
+          if (!this.wet.has(flower.key)) {
+            const mesh = new T.Mesh(bed ? this.wetBedGeometry : this.wetGeometry, bed ? this.wetBedMaterial : this.wetMaterial);
+            alignWithFlower(mesh, flower, bed ? STONE_BED.soil + .006 : potHeight(flower) * .9 + .008,
+              bed ? 1 : objectRadius(flower.object) * .735);
+            if (bed) mesh.add(new T.Mesh(this.wetBedRim, this.wetRimMaterial));
             this.scene.add(mesh);
-            this.wet.set(flower.object.id, { flower, mesh });
+            this.wet.set(flower.key, { flower, mesh });
           }
-          this.onWatered?.(this.scope);
+          if (!bed) this.onWatered?.(this.scope);
           this.cancel();
         } else {
           const aim = end.clone().sub(player.root.position).projectOnPlane(up).normalize();
@@ -161,7 +219,7 @@ export class VisitorWatering {
           this.can.rotation.x = .53 - arm.rotation.x - forearm.rotation.x;
           const mouth = wateringCanMouth(this.can);
           this.stream.visible = lift >= .95;
-          aimWaterStream(this.stream, mouth, end, .031);
+          aimWaterStream(this.stream, mouth, end, bed ? .04 : .031);
           this.streamPoints = this.stream.visible ? { start: mouth.toArray(), end: end.toArray() } : null;
         }
       }
@@ -170,7 +228,7 @@ export class VisitorWatering {
   }
 
   snapshot() {
-    return { selected: this.selected?.object.id ?? null, active: this.started !== null, stream: this.streamPoints,
+    return { selected: this.selected?.key ?? null, active: this.started !== null, stream: this.streamPoints,
       wet: [...this.wet.keys()] };
   }
 
@@ -188,8 +246,9 @@ export class VisitorWatering {
     this.panel.toggleAttribute('data-visitor-watering', !this.button.hidden);
     const zh = document.documentElement.lang.startsWith('zh');
     const text = this.started !== null ? (zh ? '停止浇水' : 'Stop watering')
+      : this.selected?.kind === 'cell' ? (zh ? '浇这格花圃' : 'Water this bed cell')
       : this.selected ? (zh ? '浇这盆花' : 'Water this pot')
-      : this.choosing ? (zh ? '取消选盆' : 'Cancel selection')
+      : this.choosing ? (zh ? '取消选花' : 'Cancel selection')
       : zh ? '选花浇水' : 'Choose flowers to water';
     if (this.button.textContent !== text) this.button.textContent = text;
   }
